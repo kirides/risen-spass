@@ -35,6 +35,9 @@ void bindDialog(sol::state_view lua, sol::table risen);
 // Registers the Quest usertype and risen.quest.new/get/define/add_log. Needs risen.quest (bindQuest), risen.dialog.
 void bindQuestObjects(sol::state_view lua, sol::table risen);
 
+// Adds the item methods (item_value, item_amount, item_icon, ...) to the Entity usertype.
+void addItemMethods(sol::usertype<LuaEntity>& ut);
+
 // Adds the NPC methods (guild, hp, level, set_state, goto_*, equip_all, ...) to the Entity usertype.
 void addNpcMethods(sol::usertype<LuaEntity>& ut);
 

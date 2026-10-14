@@ -174,6 +174,7 @@ void bindEntity(sol::state_view lua, sol::table risen) {
         });
 
     addNpcMethods(entityType);
+    addItemMethods(entityType);
 
     sol::table entity = lua.create_table();
     // risen.entity.get("NPC_Name") -> Entity | nil   (unique entity name as used by the scene admin)

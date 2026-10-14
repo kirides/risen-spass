@@ -7,6 +7,7 @@
 #include "bootstrap.h"
 #include "game/bindings.h"
 #include "game/events.h"
+#include "game/vfs_mount.h"
 #include "game/loc_overlay.h"
 #include "game/script_bridge.h"
 #include "game/symbols.h"
@@ -62,6 +63,7 @@ bool installHooks() {
     ok &= installLocHooks();
     installEventHooks();
     installFileTrace();
+    installModMountHook();
     return ok;
 }
 

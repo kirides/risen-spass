@@ -14,11 +14,13 @@ namespace spass {
 //   [debug]
 //   app_data  = ""          # redirect the game's %LOCALAPPDATA% and %APPDATA% (config, savegames, screenshots,
 //                           # sentry) to this directory: lets a test copy run without touching the user's data
+//   trace_files = ""        # log every file the engine opens whose path contains this text, from process start
 struct Config {
     bool enabled = true;
     std::string logLevel = "info";
     bool unsafeLua = false;
     std::string appData;
+    std::string traceFiles;
 };
 
 Config loadConfig(const std::filesystem::path& file);

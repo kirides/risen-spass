@@ -41,6 +41,15 @@ private:
     bool owned_ = true;
 };
 
+template <class R, class F>
+sol::optional<R> itemGet(F&& f) {
+    R r{};
+    if (!guarded([&] { r = f(); })) {
+        return sol::nullopt;
+    }
+    return r;
+}
+
 bool templateValid(const std::string& name) {
     bool ok = false;
     guarded([&] {
@@ -51,6 +60,35 @@ bool templateValid(const std::string& name) {
 }
 
 }  // namespace
+
+void addItemMethods(sol::usertype<LuaEntity>& ut) {
+    const Symbols& s = sym();
+    // PSItem is a holder like the other PS* wrappers: its first qword is the eCEntity*. A missing property set (the
+    // entity is not an item) makes the engine calls fail, which the guard turns into nil.
+    ut["is_item_valid"] = [&s](const LuaEntity& e) {
+        return itemGet<bool>([&] { EntityHolder h{ptr(e)}; return s.psitem_is_valid(&h); }).value_or(false);
+    };
+    ut["item_value"] = [&s](const LuaEntity& e) { return itemGet<int>([&] { EntityHolder h{ptr(e)}; return s.psitem_gold_value(&h); }); };
+    ut["item_amount"] = [&s](const LuaEntity& e) {
+        return itemGet<double>([&] { EntityHolder h{ptr(e)}; return static_cast<double>(s.psitem_amount(&h)); });
+    };
+    ut["set_item_amount"] = [&s](const LuaEntity& e, double amount) {
+        return guarded([&] { EntityHolder h{ptr(e)}; s.psitem_set_amount(&h, static_cast<unsigned long>(amount)); });
+    };
+    ut["item_category"] = [&s](const LuaEntity& e) { return itemGet<int>([&] { EntityHolder h{ptr(e)}; return s.psitem_category(&h); }); };
+    ut["item_use_type"] = [&s](const LuaEntity& e) { return itemGet<int>([&] { EntityHolder h{ptr(e)}; return s.psitem_use_type(&h); }); };
+    ut["item_icon"] = [&s](const LuaEntity& e) {
+        return itemGet<std::string>([&] {
+            EntityHolder h{ptr(e)};
+            OutString out;
+            s.psitem_icon(&h, out.ptr());
+            return out.take();
+        });
+    };
+    ut["is_mission_item"] = [&s](const LuaEntity& e) {
+        return itemGet<bool>([&] { EntityHolder h{ptr(e)}; return s.psitem_is_mission_item(&h); }).value_or(false);
+    };
+}
 
 void bindItems(sol::state_view lua, sol::table risen) {
     const Symbols& s = sym();

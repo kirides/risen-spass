@@ -483,3 +483,28 @@ listed and read through the engine's own exports instead of parsing the `FFC`/`G
   `common/{templates,projects,meshes,physics,materials,library,...}`. `common/templates/<Group>/*.tple` are the entity templates (items,
   NPCs, monsters, lights, ...) whose names `Template(const char*)` accepts; `common/projects/<World>/` holds the world data (`*.wrl`, `*.sec`,
   `*.lrent`); `compiled/strings/*.tab` are the compiled string tables behind `loc.ini`.
+
+## 17. Mounting directories and shadowing packed files [partly confirmed in-game]
+
+* **Mounting works at runtime.** `eCVirtualFileSystem::MountDirectory(virtual, physical)` (Engine `0x734390`, protected but exported)
+  calls `CFXVirtualFileSystem::MountDirectory(virtual, physical, flags)`; `flags` is `4` when the file system object's byte at `+0x19` is set,
+  else `0` (we use the plain variant). The engine's own `Mount(section, EMount)` prepares each entry with `MakeAbsVirtualPath`, `MakeDir` and
+  Windows separators; `risen.vfs.mount` does the same. `Unmount(virtual)` (`0x734310`) removes a mount (careful: it also removes the stock ones,
+  `unmount("ini")` makes `ini/...` unreadable for the rest of the process).
+* **Overlay semantics.** After `mount("vfsprobe", "<dir>")` the files of `<dir>` appear under `vfsprobe/...` in the listings *and* a file
+  `<dir>/ini/loc.ini` is returned when the relative path `ini/loc.ini` is read (every spelling: `ini/...`, `#G3:/ini/...`), shadowing the packed
+  or stock file; after `unmount` the original is back. New files are readable by their relative path too (`read`), but are not added to the
+  stock directory listings (`find`/`exists` of the original directory do not show them).
+* **Startup overlay.** `eCVirtualFileSystem::ProcessMountList(const bCString&)` (`0x735360`) runs once, for `mountlist_packed.ini`; hooking it
+  and mounting after it makes an overlay active before the engine loads any resource (`mod.toml` `data_overlay = true`, experimental).
+* **Templates cannot be shadowed this way.** The engine does open a loose `data/common/templates/Items/Weapons_Swords/It_1H_Sword.tple` from the overlay
+  (seen with `risen.debug.trace_files`), but then terminates with a `Fatal error` dialog ("can't load ge3dialog resource dll, terminating
+  process" -- the generic fatal-error handler) **whatever the content is**: a corrupt file, a copy of another template, a copy with one byte
+  patched, and even a byte-identical copy of the stock file. Mounting after startup has no effect on templates (they are already loaded; a corrupt
+  shadow file did not matter). So loose overlays are fine for files read through the archive manager (text, ini), not for the template database.
+* **Template files** (`GENOMETP`): 8-byte magic, 0xDB-versioned header with the template GUID at `+0x10`, then a typed property stream that carries
+  its own schema (names of property sets and properties as length-prefixed strings, e.g. `gCItem_PS`, `GoldValue`, `IconImage`, `eCMesh_PS`,
+  `MeshFileName`). Values sit in an earlier block: the gold value of `It_1H_Sword` (50) is the int at byte offset 1261, the club's (8) at the same
+  offset. Editing them is therefore possible offline, but the engine must be told about the file differently (not yet found).
+* **Item data** (Script.dll `PSItem`, holders like the other `PS*`): `GetGoldValue`, `GetAmount/SetAmount`, `GetCategory`, `GetUseType`, `GetIconImage`,
+  `IsMissionItem`, `IsValid` -> `Entity:item_value()`, `item_amount()`, ... (e.g. sword: value 50, icon `ic_it_1h_sword`; club: 8, `ic_it_1h_club`).

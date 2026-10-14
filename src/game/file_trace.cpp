@@ -91,6 +91,12 @@ void installFileTrace() {
     g_createA.install("CreateFileA", reinterpret_cast<CreateFileA_t>(GetProcAddress(k32, "CreateFileA")), &detourA);
 }
 
+void setFileTraceFilter(const std::string& filter) {
+    std::lock_guard lock(g_mutex);
+    g_filter = lower(filter);
+    g_active = !g_filter.empty();
+}
+
 void bindDebug(sol::state_view lua, sol::table risen) {
     sol::table dbg = lua.create_table();
     dbg.set_function("trace_files", [](const std::string& filter) {

@@ -6,6 +6,7 @@
 
 #include "game/abi.h"
 #include "game/bindings.h"
+#include "game/vfs_mount.h"
 
 // risen.vfs: the engine's virtual file system (docs/RE.md §16). Everything goes through the engine's own exports, so
 // the contents of the packed archives (*.pak mounted by mountlist_packed.ini) are listed and read exactly as the game
@@ -130,6 +131,15 @@ void bindVfs(sol::state_view lua, sol::table risen) {
             return s.evfs_find_dirs != nullptr && s.evfs_find_dirs(s.evfs_instance(), d.get(), &a);
         });
     });
+
+    // risen.vfs.mount("virtual/path", "C:/physical/dir") -> bool: makes a physical directory visible in the virtual file
+    // system (the engine's own eCVirtualFileSystem::MountDirectory, as used for the entries of mountlist_packed.ini).
+    // risen.vfs.mount("virtual/path", "C:/physical/dir") -> bool: makes a physical directory visible in the virtual file
+    // system (the engine's own eCVirtualFileSystem::MountDirectory, as used for the entries of mountlist_packed.ini).
+    vfs.set_function("mount", [](const std::string& virtualPath, const std::string& physicalPath) {
+        return mountDirectory(virtualPath, physicalPath);
+    });
+    vfs.set_function("unmount", [](const std::string& virtualPath) { return unmountDirectory(virtualPath); });
 
     vfs.set_function("size", [&s](const std::string& path) -> sol::optional<double> {
         if (s.vfs_instance == nullptr || s.vfs_file_size == nullptr) {

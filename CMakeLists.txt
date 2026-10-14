@@ -71,6 +71,7 @@ add_library(spass_core STATIC
     src/game/properties.cpp
     src/game/script_bridge.cpp
     src/game/symbols.cpp
+    src/game/vfs_mount.cpp
     src/hook/exports.cpp
     src/hook/hook_manager.cpp
     src/lua/mods.cpp

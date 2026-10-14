@@ -16,6 +16,7 @@ namespace spass::lua {
 //   main        = "main.lua"          # optional, default "main.lua"
 //   load_after  = ["other_mod"]       # optional ordering constraints
 //   requires    = ["base_mod"]        # optional hard dependencies (mod is skipped if missing)
+//   data_overlay = false              # experimental: mount the mod directory into the virtual file system at startup
 struct ModInfo {
     std::string id;
     std::string name;
@@ -25,6 +26,7 @@ struct ModInfo {
     std::string main = "main.lua";
     std::vector<std::string> loadAfter;
     std::vector<std::string> requires_;
+    bool dataOverlay = false;
     std::filesystem::path dir;
 };
 

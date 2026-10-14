@@ -10,6 +10,7 @@ author      = "you"
 main        = "main.lua"       # default
 load_after  = ["other_mod"]    # ordering only
 requires    = ["base_mod"]     # hard dependency (mod is skipped if missing)
+data_overlay = false           # experimental: mount the mod directory into the virtual file system at startup (docs/RE.md §17)
 ```
 
 The Lua layer starts right after the game's script DLLs are loaded (`gCScriptAdmin::PostInitialize`), before any
@@ -225,6 +226,8 @@ risen.vfs.dirs("data/common")                    -- sub-directory names
 risen.vfs.find("data/common/templates/Items", "*")   -- file names matching a pattern ("*.dll", "It_*", ...)
 risen.vfs.find_ext("ini", "xml")
 risen.vfs.walk("data/common/templates", "*.tple")   -- recursive: every file below a directory as "dir/sub/name"
+risen.vfs.mount("mymod", mod.dir)     -- mount a physical directory (files appear under mymod/..., and shadow packed files of the same relative path)
+risen.vfs.unmount("mymod")
 risen.vfs.read("ini/loc.ini" [, max_bytes])      -- file contents as a string (nil if it cannot be opened); default limit 16 MiB
 risen.vfs.size(path)                             -- unreliable for packed files (often 0): read instead
 ```
@@ -240,7 +243,14 @@ risen.engine.symbols()   -- { symbol = true|false }
 risen.engine.build()     -- { ["Game.dll"] = { timestamp = <PE link time>, size = ..., base = "0x..." }, ... } (include it in bug reports)
 ```
 
+## Items
+```lua
+local sword = risen.entity.spawn("It_1H_Sword", x, y, z)
+sword:item_value()  sword:item_amount()  sword:set_item_amount(3)  sword:item_icon()  -- "ic_it_1h_sword"
+sword:item_category()  sword:item_use_type()  sword:is_item_valid()  sword:is_mission_item()
+```
+
 ## Files
 Log: `<Risen>\bin\spass\spass.log`, config: `<Risen>\bin\spass\config.toml`
-(`enabled`, `log_level`, `[lua] unsafe`, `[debug] app_data` – redirects the game's `%LOCALAPPDATA%`/`%APPDATA%`;
+(`enabled`, `log_level`, `[lua] unsafe`, `[debug] trace_files` (log the engine's file opens from process start), `[debug] app_data` – redirects the game's `%LOCALAPPDATA%`/`%APPDATA%`;
 `scripts/test-run.ps1` uses it to keep a test copy's savegames and `ConfigUser.xml` away from the real ones).

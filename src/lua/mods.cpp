@@ -66,6 +66,7 @@ std::vector<ModInfo> discoverMods(const std::filesystem::path& root) {
             m.main = t["main"].value_or(std::string{"main.lua"});
             m.loadAfter = readStringArray(t, "load_after");
             m.requires_ = readStringArray(t, "requires");
+            m.dataOverlay = t["data_overlay"].value_or(false);
             m.dir = entry.path();
             mods.push_back(std::move(m));
         } catch (const toml::parse_error& e) {

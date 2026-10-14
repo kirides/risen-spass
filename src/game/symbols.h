@@ -214,6 +214,19 @@
     X(archive_file_close, L"Engine.dll", "?Close@eCArchiveFile@@QEAAXXZ", void (*)(void* self), false) \
     X(vfs_file_size, L"FFC.dll", "?GetFileSize@CFXVirtualFileSystem@@QEBA_KAEBVbCString@@@Z", unsigned long long (*)(const void* self, const void* path), false) \
     X(mem_free, L"SharedBase.dll", "?Free@bCMemoryAdmin@@QEAAXPEAX@Z", void (*)(void* self, void* ptr), false) \
+    X(evfs_mount_dir, L"Engine.dll", "?MountDirectory@eCVirtualFileSystem@@IEAA_NAEBVbCString@@0@Z", bool (*)(void* self, const void* virtualPath, const void* physicalPath), false) \
+    X(evfs_unmount, L"Engine.dll", "?Unmount@eCVirtualFileSystem@@IEAA_NAEBVbCString@@@Z", bool (*)(void* self, const void* virtualPath), false) \
+    X(evfs_make_abs_virtual, L"Engine.dll", "?MakeAbsVirtualPath@eCVirtualFileSystem@@QEAA_NAEAVbCString@@@Z", bool (*)(void* self, void* path), false) \
+    X(evfs_make_dir, L"Engine.dll", "?MakeDir@eCVirtualFileSystem@@QEAA_NAEBVbCString@@@Z", bool (*)(void* self, const void* path), false) \
+    X(evfs_process_mountlist_file, L"Engine.dll", "?ProcessMountList@eCVirtualFileSystem@@IEAA_NAEBVbCString@@@Z", bool (*)(void* self, const void* file), false) \
+    X(psitem_is_valid, L"Script.dll", "?IsValid@PSItem@@QEBA_NXZ", bool (*)(const void* self), false) \
+    X(psitem_gold_value, L"Script.dll", "?GetGoldValue@PSItem@@QEBAHXZ", int (*)(const void* self), false) \
+    X(psitem_amount, L"Script.dll", "?GetAmount@PSItem@@QEBAKXZ", unsigned long (*)(const void* self), false) \
+    X(psitem_set_amount, L"Script.dll", "?SetAmount@PSItem@@QEAAXK@Z", void (*)(void* self, unsigned long amount), false) \
+    X(psitem_category, L"Script.dll", "?GetCategory@PSItem@@QEBA?AW4gEItemCategory@@XZ", int (*)(const void* self), false) \
+    X(psitem_use_type, L"Script.dll", "?GetUseType@PSItem@@QEBA?AW4gEItemUseType@@XZ", int (*)(const void* self), false) \
+    X(psitem_icon, L"Script.dll", "?GetIconImage@PSItem@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false) \
+    X(psitem_is_mission_item, L"Script.dll", "?IsMissionItem@PSItem@@QEBA_NXZ", bool (*)(const void* self), false) \
     X(element_base_name, L"Engine.dll", "?GetFileBaseName@eCProcessibleElement@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false)
 
 namespace spass::game {

@@ -73,6 +73,33 @@ function Entity:enable_rendering(on) end
 ---@return boolean ok
 function Entity:teleport(target) end
 
+-- Item properties (entities made from item templates) ------------------------------------------------------------------
+
+---Whether the entity has item data (is an item).
+---@return boolean
+function Entity:is_item_valid() end
+---Gold value of an item.
+---@return integer|nil
+function Entity:item_value() end
+---Stack amount of an item entity.
+---@return number|nil
+function Entity:item_amount() end
+---@param amount integer
+---@return boolean ok
+function Entity:set_item_amount(amount) end
+---Item category (`gEItemCategory` value).
+---@return integer|nil
+function Entity:item_category() end
+---How the item is used (`gEItemUseType` value).
+---@return integer|nil
+function Entity:item_use_type() end
+---Name of the item's inventory icon image.
+---@return string|nil
+function Entity:item_icon() end
+---Quest/mission items cannot be dropped or sold.
+---@return boolean
+function Entity:is_mission_item() end
+
 -- NPC configuration ---------------------------------------------------------------------------------------------------
 
 ---Guild id: `0` none/animals, `1` Don's camp, `3` peasants, `5` Inquisition, `7` pirates/bandits (observed; others exist).
@@ -751,6 +778,18 @@ function vfsApi.dirs(dir) end
 ---@param pattern? string Default `"*"`.
 ---@return string[]
 function vfsApi.walk(dir, pattern) end
+---Mounts a physical directory into the virtual file system (the engine's `MountDirectory`, as used for the entries of
+---`mountlist_packed.ini`). Its files show up under `virtual_path`, and a file `<dir>/a/b.txt` is also what `read("a/b.txt")` returns
+---(it shadows a packed file with that path until `unmount`). Not usable for entity templates: the engine terminates when it loads a
+---loose template (docs/RE.md §17).
+---@param virtual_path string e.g. `"mymod"` or an existing virtual directory.
+---@param physical_path string Absolute path of a directory (forward slashes are fine).
+---@return boolean ok
+function vfsApi.mount(virtual_path, physical_path) end
+---Removes a mount made with `mount`.
+---@param virtual_path string
+---@return boolean ok
+function vfsApi.unmount(virtual_path) end
 ---Size in bytes; unreliable for packed files (often 0): read the file instead.
 ---@param path string
 ---@return number|nil

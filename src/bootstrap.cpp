@@ -61,6 +61,10 @@ void onProcessAttach(HMODULE self) {
         game::installFolderRedirect(g_config.appData);
     }
 
+    if (!g_config.traceFiles.empty()) {
+        game::setFileTraceFilter(g_config.traceFiles);
+    }
+
     game::registerBindings();
     if (!game::installHooks() || !hooks::enableAll()) {
         spdlog::error("hook installation failed, mod layer disabled");

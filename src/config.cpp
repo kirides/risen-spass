@@ -17,6 +17,7 @@ Config loadConfig(const std::filesystem::path& file) {
         cfg.logLevel = t["log_level"].value_or(cfg.logLevel);
         cfg.unsafeLua = t["lua"]["unsafe"].value_or(cfg.unsafeLua);
         cfg.appData = t["debug"]["app_data"].value_or(cfg.appData);
+        cfg.traceFiles = t["debug"]["trace_files"].value_or(cfg.traceFiles);
     } catch (const toml::parse_error& e) {
         spdlog::error("config: {}: {}", file.string(), e.description());
     }
