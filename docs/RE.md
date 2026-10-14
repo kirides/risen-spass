@@ -508,3 +508,15 @@ listed and read through the engine's own exports instead of parsing the `FFC`/`G
   offset. Editing them is therefore possible offline, but the engine must be told about the file differently (not yet found).
 * **Item data** (Script.dll `PSItem`, holders like the other `PS*`): `GetGoldValue`, `GetAmount/SetAmount`, `GetCategory`, `GetUseType`, `GetIconImage`,
   `IsMissionItem`, `IsValid` -> `Entity:item_value()`, `item_amount()`, ... (e.g. sword: value 50, icon `ic_it_1h_sword`; club: 8, `ic_it_1h_club`).
+
+## 18. Inventory removal, quest log entries [confirmed in-game]
+
+* **Removing items**: `PSInventory::FindStackIndex(const Template&, int start, bool skipEquipped)` (`0x223960`) returns the first stack of that template
+  *after* index `start` (so the search begins with `-1`; `0` skips stack 0 and returns -1 for a one-stack inventory), `PSInventory::GetAmount(int stack)` (`0x226370`)
+  the stack's amount and `DeleteItems(int stack, int count)` (`0x223fe0`) removes items from it -> `risen.item.take`. `PSInventory::CreateItems` returns the **index of the
+  stack** the items went to (0 for the first stack), not an amount.
+* **Quest log**: the log array of a `gCQuest` (`+0x50`) also receives entries from the engine itself: when a dialogue option that is bound to a quest (`Quest=<name>`)
+  runs, the labels of its speakers (`FO_PC_Hero`, `FO_<NPC>`) are appended. `Quest:log_keys()` lists the localization key of every entry
+  (our own entries are `<Quest>_Log<N>`).
+* **A complete example** that exercises all of this lives in `mods/fetchquest` (play-through and save/load check: `mods/fetchquest_driver`,
+  `scripts/smoke-test.ps1 -Scenario fetchquest`).

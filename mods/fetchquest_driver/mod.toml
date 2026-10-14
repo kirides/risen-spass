@@ -1,0 +1,6 @@
+id = "fetchquest_driver"
+name = "Fetch quest driver (dev)"
+version = "1.0.0"
+description = "Plays through mods/fetchquest unattended (talk, start, hand in apples) and logs what the engine reports."
+load_after = ["fetchquest"]
+requires = ["fetchquest"]

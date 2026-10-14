@@ -255,8 +255,15 @@ local itemApi = {}
 ---@param template string
 ---@param count? integer Default 1.
 ---@param stack_type? integer `gEStackType` (0 default).
----@return integer created Created amount, `-1` on failure.
+---@return integer stack Index of the inventory stack the items went to, `-1` on failure.
 function itemApi.give(owner, template, count, stack_type) end
+
+---Removes up to `count` items of a template from an inventory (unequipped stacks).
+---@param owner Entity
+---@param template string
+---@param count? integer Default 1.
+---@return integer removed The amount that was really removed.
+function itemApi.take(owner, template, count) end
 
 ---Amount of a template in an inventory.
 ---@param owner Entity
@@ -327,6 +334,10 @@ function Quest:add_log_entry(key) end
 
 ---@return integer
 function Quest:log_count() end
+
+---The localization key of every log entry (development aid; an empty string means the entry has no text).
+---@return string[]
+function Quest:log_keys() end
 
 ---Adds the quest to the quest manager (refused when the name already exists).
 ---@return boolean ok

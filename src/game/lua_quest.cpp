@@ -74,7 +74,9 @@ void bindQuestObjects(sol::state_view lua, sol::table risen) {
                 auto& count = *reinterpret_cast<int*>(array + 8);
                 auto& capacity = *reinterpret_cast<int*>(array + 12);
                 if (count >= capacity) {
-                    const int newCap = capacity < 4 ? 4 : capacity + capacity / 2;
+                    // Exactly one slot more: the engine treats the whole capacity as constructed entries (it showed blank
+                    // log lines when we over-allocated), so capacity must stay equal to the count.
+                    const int newCap = count + 1;
                     void* grown = s.mem_realloc(s.mem_instance(), data, static_cast<unsigned long>(newCap) * kLogElementSize,
                                                 nullptr, nullptr, nullptr, -1);
                     if (grown == nullptr) {
@@ -94,6 +96,23 @@ void bindQuestObjects(sol::state_view lua, sol::table risen) {
                 ok = true;
             });
             return ok;
+        },
+        // quest:log_keys() -> { "key of entry 1", ... }: the localization key of every log entry (empty text = no key set)
+        "log_keys", [&s](sol::this_state ts, const LuaQuest& q) {
+            sol::state_view L(ts);
+            sol::table out = L.create_table();
+            guarded([&] {
+                const char* array = static_cast<const char*>(s.quest_get_log_text(q.p));
+                const char* data = *reinterpret_cast<const char* const*>(array);
+                const int n = *reinterpret_cast<const int*>(array + 8);
+                for (int i = 0; i < n && data != nullptr; ++i) {
+                    void* entry = const_cast<char*>(data) + static_cast<std::size_t>(i) * kLogElementSize;
+                    OutUString key;
+                    s.locstr_get_key(locStringBase(entry), key.ptr());
+                    out[i + 1] = key.take();
+                }
+            });
+            return out;
         },
         // number of quest log entries
         "log_count", [&s](const LuaQuest& q) -> int {

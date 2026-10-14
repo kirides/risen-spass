@@ -84,4 +84,4 @@ while ((Get-Date) -lt $deadline -and -not $p.HasExited) {
 }
 Write-Host ("game alive: {0}, window resized: {1}" -f (-not $p.HasExited), $resized)
 if (Test-Path $log) { Get-Content $log }
-if (-not $KeepRunning -and -not $p.HasExited) { Stop-Process -Id $p.Id -Force }
+if (-not $KeepRunning -and -not $p.HasExited) { Stop-Process -Id $p.Id -Force; $p.WaitForExit(30000) | Out-Null }

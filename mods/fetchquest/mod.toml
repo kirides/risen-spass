@@ -1,0 +1,5 @@
+id = "fetchquest"
+name = "Fetch quest example"
+version = "1.0.0"
+author = "risen-spass"
+description = "Marta wants 3 apples: NPC, quest, two dialogue options, rewards, savegame-safe."

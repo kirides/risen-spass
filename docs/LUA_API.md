@@ -85,8 +85,9 @@ list (2679 names) is in [TEMPLATES.md](TEMPLATES.md).
 risen.template.exists("It_1H_Machete")                    -- bool
 risen.template.list("NPC")                                -- every template name below data/common/templates/<group> (all groups if omitted)
 local e = risen.entity.spawn("It_1H_Sword", x, y, z)      -- Entity | nil; needs a running game
-risen.item.give(player, "It_1H_Machete", 2)               -- created amount, -1 on failure; optional 4th arg: stack type
+risen.item.give(player, "It_1H_Machete", 2)               -- index of the stack the items went to, -1 on failure; optional 4th arg: stack type
 risen.item.count(player, "It_1H_Machete")                 -- integer
+risen.item.take(player, "It_Apple", 3)                    -- removes up to 3, returns how many were removed
 risen.item.money(player)                                  -- number
 ```
 
@@ -168,7 +169,7 @@ q:get_property("Status")                                           -- "gEQuestSt
 ```
 Quest types (`gEQuestType_*`): `Report` (talk), `Kill`, `HasItems`, `EnterArea`, `BringNpc`, `FollowNpc`, `DriveAway`,
 `Defeat`, `Duel`, `Arena`, `Plunder`, `Sparring`. Also: `risen.quest.get(name)`, `exists`, `count()`, `at(i)`, `remove(name)`;
-`Quest` methods `name()`, `set_topic(key)`, `add_log_entry(key)`, `log_count()`, `set_property/get_property`, `register()`.
+`Quest` methods `name()`, `set_topic(key)`, `add_log_entry(key)`, `log_count()`, `log_keys()` (the engine also appends the speakers' labels when a quest-bound option runs), `set_property/get_property`, `register()`.
 `risen.quest.define` / `add_log` validate their arguments and return `nil, "reason"` / `false, "reason"`; `define` is
 idempotent (an existing quest is returned unchanged).
 

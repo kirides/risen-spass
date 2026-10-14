@@ -136,6 +136,41 @@ void bindItems(sol::state_view lua, sol::table risen) {
         });
         return result;
     });
+    // risen.item.take(entity, "It_Apple", 3) -> removed amount: deletes up to `count` items from the inventory's stacks
+    // (unequipped stacks first found; the amount that was really removed is returned).
+    item.set_function("take", [&s](const LuaEntity& owner, const std::string& name, sol::optional<int> count) -> int {
+        int removed = 0;
+        if (s.inv_find_stack == nullptr || s.inv_delete_items == nullptr || s.inv_stack_amount == nullptr) {
+            return 0;
+        }
+        const bool ran = guarded([&] {
+            EntityHolder inv{ptr(owner)};
+            const TemplateObject t(name);
+            if (!t.valid()) {
+                spdlog::debug("item.take: unknown template '{}'", name);
+                return;
+            }
+            int wanted = count.value_or(1);
+            for (int guard = 0; wanted > 0 && guard < 64; ++guard) {
+                const int stack = s.inv_find_stack(&inv, t.get(), -1, true);
+                const int here = stack >= 0 ? s.inv_stack_amount(&inv, stack) : -1;
+                spdlog::debug("item.take: stack {} holds {} (wanted {})", stack, here, wanted);
+                if (stack < 0) {
+                    break;
+                }
+                const int n = here < wanted ? here : wanted;
+                if (n <= 0 || !s.inv_delete_items(&inv, stack, n)) {
+                    break;
+                }
+                removed += n;
+                wanted -= n;
+            }
+        });
+        if (!ran) {
+            spdlog::warn("item.take: the engine raised an exception");
+        }
+        return removed;
+    });
     // risen.item.count(entity, "It_1H_Machete") -> integer
     item.set_function("count", [&s](const LuaEntity& owner, const std::string& name) -> int {
         int result = 0;

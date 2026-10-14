@@ -15,6 +15,7 @@ param(
     [string[]]$Mods = @('persistdemo'),
     [int]$Seconds = 300,
     [string]$Filter = 'lua:|save:|load:|session:|world:|\[error\]|\[warn\]',
+    [ValidateSet('trace', 'debug', 'info', 'warn', 'error')][string]$LogLevel = 'info',
     [switch]$Keep,
     # leave the game running after the log was printed (inspect it, then kill Risen.exe yourself)
     [switch]$KeepRunning,
@@ -39,6 +40,7 @@ if (-not (Test-Path (Join-Path $bin 'Risen.exe'))) { throw "no Risen.exe in $bin
 if ($GameDir -like 'B:\SteamLibrary*') { throw 'refusing to touch the real install' }
 
 Get-Process Risen -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process Risen -ErrorAction SilentlyContinue | Wait-Process -Timeout 30 -ErrorAction SilentlyContinue
 Copy-Item (Join-Path $repo 'build\RelWithDebInfo\sentry.dll') (Join-Path $bin 'sentry.dll') -Force
 
 New-Item -ItemType Directory -Force $modsDir | Out-Null
@@ -75,7 +77,7 @@ if ($NoAutostart) {
 # Isolate the game's %LOCALAPPDATA% (savegames, ConfigUser.xml, screenshots) inside the test copy.
 $appData = (Join-Path $GameDir 'localappdata').Replace('\', '/')
 $unsafeLine = if ($Unsafe) { "`n[lua]`nunsafe = true" } else { '' }
-Set-Content (Join-Path $bin 'spass\config.toml') "[debug]`napp_data = `"$appData`"`ntrace_files = `"$TraceFiles`"$unsafeLine"
+Set-Content (Join-Path $bin 'spass\config.toml') "log_level = `"$LogLevel`"`n[debug]`napp_data = `"$appData`"`ntrace_files = `"$TraceFiles`"$unsafeLine"
 if (-not $Keep) {
     Remove-Item (Join-Path $bin 'spass\spass.log') -ErrorAction SilentlyContinue
     Remove-Item (Join-Path $bin 'spass\saves') -Recurse -Force -ErrorAction SilentlyContinue

@@ -227,6 +227,9 @@
     X(psitem_use_type, L"Script.dll", "?GetUseType@PSItem@@QEBA?AW4gEItemUseType@@XZ", int (*)(const void* self), false) \
     X(psitem_icon, L"Script.dll", "?GetIconImage@PSItem@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false) \
     X(psitem_is_mission_item, L"Script.dll", "?IsMissionItem@PSItem@@QEBA_NXZ", bool (*)(const void* self), false) \
+    X(inv_find_stack, L"Script.dll", "?FindStackIndex@PSInventory@@QEBAHAEBVTemplate@@H_N@Z", int (*)(const void* self, const void* tpl, int startIndex, bool skipEquipped), false) \
+    X(inv_delete_items, L"Script.dll", "?DeleteItems@PSInventory@@QEAA_NHH@Z", bool (*)(void* self, int stack, int count), false) \
+    X(inv_stack_amount, L"Script.dll", "?GetAmount@PSInventory@@QEBAHH@Z", int (*)(const void* self, int stack), false) \
     X(element_base_name, L"Engine.dll", "?GetFileBaseName@eCProcessibleElement@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false)
 
 namespace spass::game {
