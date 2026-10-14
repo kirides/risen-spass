@@ -26,6 +26,23 @@
     X(ustring_ctor_wide, L"SharedBase.dll", "??0bCUnicodeString@@QEAA@PEB_W@Z", void* (*)(void* self, const wchar_t*), true) \
     X(ustring_dtor, L"SharedBase.dll", "??1bCUnicodeString@@QEAA@XZ", void (*)(void* self), true)               \
     X(ustring_get_text, L"SharedBase.dll", "?GetText@bCUnicodeString@@QEBAPEB_WXZ", const wchar_t* (*)(const void* self), true) \
+    X(ustring_assign_wide, L"SharedBase.dll", "??4bCUnicodeString@@QEAAAEAV0@PEB_W@Z", void* (*)(void* self, const wchar_t*), true) \
+    /* ---- FFC.dll: string tables (every localized string read passes through LookupValue) ------------ */      \
+    X(table_lookup_value3, L"FFC.dll", "?LookupValue@CFXTableMap@@QEBA_NAEBVbCUnicodeString@@0AEAV2@@Z", bool (*)(const void* self, const void* lang, const void* key, void* out), true) \
+    X(table_lookup_value2, L"FFC.dll", "?LookupValue@CFXTableMap@@QEBA_NAEBVbCUnicodeString@@AEAV2@@Z", bool (*)(const void* self, const void* key, void* out), true) \
+    X(table_has_key, L"FFC.dll", "?HasKey@CFXTableMap@@QEBA_NAEBVbCUnicodeString@@@Z", bool (*)(const void* self, const void* key), true) \
+    X(locstr_get_key, L"FFC.dll", "?GetKey@CFXLocString@@QEBA?AVbCUnicodeString@@XZ", void* (*)(const void* self, void* ret), true) \
+    X(locstr_get_text, L"FFC.dll", "?GetText@CFXLocString@@QEBA?AVbCUnicodeString@@XZ", void* (*)(const void* self, void* ret), true) \
+    X(locstr_get_text_col_a, L"FFC.dll", "?GetText@CFXLocString@@QEBA?AVbCUnicodeString@@AEBVbCString@@@Z", void* (*)(const void* self, void* ret, const void* col), true) \
+    X(locstr_get_text_col_w, L"FFC.dll", "?GetText@CFXLocString@@QEBA?AVbCUnicodeString@@AEBV2@@Z", void* (*)(const void* self, void* ret, const void* col), true) \
+    X(locstr_get_plain, L"FFC.dll", "?GetPlainText@CFXLocString@@QEBA?AVbCUnicodeString@@XZ", void* (*)(const void* self, void* ret), true) \
+    X(locstr_get_plain_col_a, L"FFC.dll", "?GetPlainText@CFXLocString@@QEBA?AVbCUnicodeString@@AEBVbCString@@@Z", void* (*)(const void* self, void* ret, const void* col), true) \
+    X(locstr_get_plain_col_w, L"FFC.dll", "?GetPlainText@CFXLocString@@QEBA?AVbCUnicodeString@@AEBV2@@Z", void* (*)(const void* self, void* ret, const void* col), true) \
+    X(locstr_to_bstring, L"FFC.dll", "??BCFXLocString@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), true) \
+    X(locstrex_get_text, L"FFC.dll", "?GetText@CFXLocStringEx@@QEBA?AVbCUnicodeString@@XZ", void* (*)(const void* self, void* ret), true) \
+    X(locstrex_get_plain, L"FFC.dll", "?GetPlainText@CFXLocStringEx@@QEBA?AVbCUnicodeString@@XZ", void* (*)(const void* self, void* ret), true) \
+    X(locstrex_to_bstring, L"FFC.dll", "??BCFXLocStringEx@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), true) \
+    X(locstrex_to_ustring, L"FFC.dll", "??BCFXLocStringEx@@QEBA?AVbCUnicodeString@@XZ", void* (*)(const void* self, void* ret), true) \
     /* ---- Engine.dll: script registry, localization ------------------------------------------------- */      \
     X(script_map_instance, L"Engine.dll", "?GetInstance@eCScriptFunctionMap@@SAAEAV1@XZ", void* (*)(), true)    \
     X(script_map_register, L"Engine.dll", "?RegisterScript@eCScriptFunctionMap@@QEAAPEAUeSScriptBase@@AEBVbCString@@@Z", void* (*)(void* self, const void* name), true) \

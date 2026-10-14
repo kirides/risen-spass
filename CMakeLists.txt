@@ -56,6 +56,7 @@ add_library(spass_core STATIC
     src/game/abi.cpp
     src/game/bindings.cpp
     src/game/hooks.cpp
+    src/game/loc_overlay.cpp
     src/game/lua_entity.cpp
     src/game/script_bridge.cpp
     src/game/symbols.cpp

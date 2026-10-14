@@ -24,13 +24,19 @@ end)
 log.info("script.exists(SPASS_SelfTest) = " .. tostring(risen.script.exists("SPASS_SelfTest")))
 
 -- 2. Localization -----------------------------------------------------------------------------------
+-- String ids are "<prefix>:<key>"; the prefix selects the table (data/ini/loc.ini): default, info, quest, item, ...
+-- risen.loc.set() installs an overlay that answers every lookup of that id; trace() logs the ids the game asks for.
+risen.loc.trace(true)
 local function loc_test(when)
     log.info(("[%s] loc.language = %s"):format(when, tostring(risen.loc.language())))
-    log.info(("[%s] loc.exists(SPASS_Test) = %s"):format(when, tostring(risen.loc.exists("SPASS_Test"))))
-    log.info(("[%s] loc.set -> %s"):format(when, tostring(risen.loc.set("SPASS_Test", "Hello from Lua - äöü"))))
-    log.info(("[%s] loc.get -> %s"):format(when, tostring(risen.loc.get("SPASS_Test"))))
+    local id = "default:SPASS_Test"
+    log.info(("[%s] loc.set(%s) -> %s, get -> %s, exists -> %s"):format(when, id,
+        tostring(risen.loc.set(id, "Hello from Lua - äöü")), tostring(risen.loc.get(id)), tostring(risen.loc.exists(id))))
 end
 loc_test("load")
+-- Real ids seen with risen.loc.trace(true) in a running game; the game now shows these texts instead.
+risen.loc.set("TUT_Desc_FirstPlayerMission", "[Lua] The first mission text was replaced by the selftest mod.")
+risen.loc.set("GO_QuestRunning", "[Lua] Quest running")
 
 -- 3. Per-frame tick ---------------------------------------------------------------------------------
 -- Set to true in a throw-away test install to enter a new game automatically on the first tick.

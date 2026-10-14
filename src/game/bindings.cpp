@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include "game/abi.h"
+#include "game/loc_overlay.h"
 #include "game/lua_entity.h"
 #include "game/script_bridge.h"
 #include "lua/runtime.h"
@@ -69,76 +70,6 @@ void bindGameVars(sol::state_view lua, sol::table risen) {
         return guarded([&] { ok = s.gamevar_set(key.get(), value); }) && ok;
     });
     risen["gamevar"] = vars;
-}
-
-void bindLoc(sol::state_view lua, sol::table risen) {
-    // Localization (eCLocAdmin2). Strings are addressed by id as used in data/ini/loc.ini tables,
-    // e.g. "Info_Diego_Hello" or "Quest_MyMod_Title".
-    sol::table loc = lua.create_table();
-    const Symbols& s = sym();
-    loc.set_function("exists", [&s](const std::string& id) {
-        bool r = false;
-        const BString key(id);
-        guarded([&] { r = s.loc_exists_id(s.loc_instance(), key.get()); });
-        return r;
-    });
-    loc.set_function("get", [&s](const std::string& id) -> sol::optional<std::string> {
-        const BString key(id);
-        std::string text;
-        bool found = false;
-        const bool ok = guarded([&] {
-            void* admin = s.loc_instance();
-            if (!s.loc_exists_id(admin, key.get())) {
-                return;
-            }
-            OutUString out;
-            s.loc_get_string(admin, out.ptr(), key.get());
-            text = out.take();
-            found = true;
-        });
-        if (!ok || !found) {
-            return sol::nullopt;
-        }
-        return text;
-    });
-    // risen.loc.language() -> name of the active text language (the column strings are read from).
-    loc.set_function("language", [&s]() -> sol::optional<std::string> {
-        std::string name;
-        const bool ok = guarded([&] {
-            OutString out;
-            s.loc_get_text_language(s.loc_instance(), out.ptr());
-            name = out.take();
-        });
-        if (!ok) {
-            return sol::nullopt;
-        }
-        return name;
-    });
-    // risen.loc.set(id, text [, language]) -> bool. `text` is UTF-8. Defaults to the active text language.
-    // The id is created if it does not exist (SetString inserts the key itself, see docs/RE.md §5).
-    loc.set_function("set", [&s](const std::string& id, const std::string& text, sol::optional<std::string> language) {
-        bool r = false;
-        const BString key(id);
-        const UString value(text);
-        if (!guarded([&] {
-                void* admin = s.loc_instance();
-                std::string lang;
-                if (language) {
-                    lang = *language;
-                } else {
-                    OutString out;
-                    s.loc_get_text_language(admin, out.ptr());
-                    lang = out.take();
-                }
-                const BString langKey(lang);
-                r = s.loc_set_string_lang(admin, langKey.get(), key.get(), value.get());
-            })) {
-            spdlog::error("risen.loc.set('{}'): engine raised an exception", id);
-            return false;
-        }
-        return r;
-    });
-    risen["loc"] = loc;
 }
 
 void bindWorld(sol::state_view lua, sol::table risen) {

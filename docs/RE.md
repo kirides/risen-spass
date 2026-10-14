@@ -225,10 +225,23 @@ entries; it is appended to the array at `gCScriptAdmin+0x200` (count `+0x208`).
   (`Script.dll`, static) → `gCInfoModule::GetInstance()->GetSystem()->…`.
 * **Entities**: `Script.dll`'s `Entity` is an 8-byte pointer wrapper (`Entity::Entity()` just zeroes it;
   returned through a hidden pointer, e.g. `World::GetPlayer`). `World::GetPlayer` → `gCSession::GetPlayer()`.
-* **Localization**: `eCLocAdmin2` (Engine.dll singleton `GetInstance` `0x738c30`) with `GetString(id[,lang])`,
-  `SetString(id,[lang,]text)`, `SetPair`, `ExistsID`, `CloneID`, `RemoveID`, `SetTextLanguage`… Tables are
-  declared in `data\ini\loc.ini` (`default`, `info`, `quest`, `item`, `npcinfo`, `svm`, `hud`, `skills`, …)
-  with CSV sources and compiled `.tab` files inside `data\compiled\strings.pak`.
+* **Localization** [confirmed in-game]: `eCLocAdmin2` (Engine.dll singleton, `GetInstance` `0x738c30`) is a thin
+  facade over `CFXLocTable : CFXTableMap` (FFC.dll). Tables are declared in `data\ini\loc.ini` (`default`,
+  `document`, `focus`, `hud`, `info`, `quest`, `svm`, `skills`, `item`, `npcInfo`, `storyprints`, `TUT`, `ACH`, …;
+  CSV source + compiled `.tab` in `data\compiled\strings.pak`) and registered under a *prefix*;
+  `CFXTableMap::FindTable(id)` splits an id on `':'` to pick the table.
+  * **Writing does not work at runtime**: `eCLocAdmin2::SetString` → `CFXTableMap::SetValue` returns `false`
+    for every id we tried (with and without prefix, before/after the world is running). Don't build on it.
+  * **Reading**: text objects (`eCLocString`, `gCInfoLocString`, `gCQuestLocString`, … all derive from
+    `CFXLocString`/`CFXLocStringEx`) call `CFXLocString::GetText/GetPlainText/operator bCString/…`, which use
+    `CFXTableMap::LookupItem`. `CFXTableMap::LookupValue` has almost no callers, so hooking it alone does nothing.
+  * **What works** (`src/game/loc_overlay.cpp`): hook the *accessors* (`GetText()` `0x7480`/`0x7560`/`0x39650`,
+    `GetPlainText()` `0x74f0`/`0x75b0`/`0x39740`, `operator bCString` `0x7800`, and the `…Ex` variants
+    `0x399f0`/`0x39980`/`0xadc0`/`0xae40`), fetch the key with `GetKey()` (`0x7460`) and answer from a
+    mod-supplied overlay. Verified: `GO_QuestRunning` and `TUT_Desc_FirstPlayerMission` were replaced.
+  * Real ids seen at runtime look like `TUT_LoadingHint_29`, `HUD2_CONTEXT_AREA_OUTSIDE_EN`, `GO_QuestRunning`,
+    `FO_Beach_Officer_Dead`, `QUEST_PANKRATZX2_2009-02-12_09-58-28_00` (`risen.loc.trace(true)` lists them).
+  * Active text language: `eCLocAdmin2::GetTextLanguage()` (`"English"`).
 * **Virtual file system**: `CFXVirtualFileSystem` (FFC.dll) `MountDirectory(virt, phys, flags)`,
   `MountPackFile`, `UnmountDirectory`, `CreateFileA`, … Mounts are configured by `bin\mountlist_packed.ini`
   (`[Physical]`, `[Packed]` sections; the exe is started with `-mnt=mountlist_packed.ini`).
@@ -236,3 +249,63 @@ entries; it is appended to the array at `gCScriptAdmin+0x200` (count `+0x208`).
   stored in `data\common\templates.pak`.
 * **Data archives** (`*.pak`): `data\common` (templates, meshes, materials, physics, projects, strings, …),
   `data\compiled` (animations, images, library, sounds, speech_*, strings, …).
+
+---------------------------------------------------------------------------------------------------
+
+## 6. Calling-convention facts (MSVC x64) verified by decompilation / in-game
+
+* `this` is the first argument. A class return value that is **not trivially copyable** (`bCString`,
+  `bCUnicodeString`, `Entity`, `bCVector`, …) is returned through a **hidden pointer**: `RCX` for static
+  functions, `RDX` (after `this`) for member functions. The callee *constructs* into it; the caller must
+  destroy it.
+* A non-trivial class passed **by value** (`Entity::GetEntity(bCString)`, `Entity::StartSay(…, bCString, …)`)
+  is passed as a pointer to a caller-made copy, and **the callee destroys it** (`~bCString(param)` appears in
+  the callee). Never destroy such an argument after the call (double free).
+* `bCString` and `bCUnicodeString` are 8 bytes: one pointer to a ref-counted buffer. Construct/destroy only via
+  the SharedBase exports (`??0bCString@@QEAA@PEBD@Z`, `??1bCString@@QEAA@XZ`, …).
+* `Entity` (Script.dll) is 8 bytes: an `eCEntity*`. Member functions take the address of that holder as `this`
+  (`*(eCEntity**)this`). `bCVector` is three floats; `GetPosition` writes them through the hidden pointer.
+* Protected members (`gCScriptAdmin::CallScript(const bCString&,…)`, `LoadAllScriptGame`, …) are still exported
+  and callable through `GetProcAddress`.
+
+## 7. Injection and runtime facts
+
+* **Proxy**: `Risen.exe` statically imports `sentry.dll`. A DLL with that name that forwards all 169 exports to a
+  renamed `sentry_orig.dll` is loaded by the OS loader before `main()`. MSVC's linker only accepts
+  `name = module.name` forwarders when it can find an import library for `module`, so the build generates
+  `sentry_orig.lib` from the original's export list (`lib /DEF:`); without it every forwarder fails with LNK2001.
+* **Timing** (measured): `DllMain` of the proxy runs on the main thread during process start. Engine/Game/FFC/
+  SharedBase are already mapped, so exports can be resolved and MinHook trampolines created there.
+  `Script.dll` is *not* mapped yet (only `Script_Game.dll` depends on it); it appears during
+  `gCScriptAdmin::PostInitialize`, ≈ 30 s after launch on the test machine, so the Script.dll-dependent
+  symbols are resolved in a second pass inside that detour.
+* **Self-test**: after `PostInitialize` the bridge compares the registry's function slot (`+0x20`) of three
+  well-known scripts with `GetProcAddress(Script_Game.dll, …)`; it matched in every run, which validates the
+  `eSScriptBase` layout from §4.2 against the real binary.
+* `gCSession::Process` is only invoked once a *game session* is running; at the main menu it fires once.
+  `World::NewGame()` (a request posted to `gCHUDFileManager`) takes ≈ 60 s to load on the test machine.
+* Windowed mode: `ConfigLocal.xml` `<Window FullScreen="false">`; the per-user
+  `%LOCALAPPDATA%\Risen\ConfigUser.xml` overrides the window size, and the game **rewrites that file** while running.
+
+## 8. Tooling pitfalls
+
+* `pefile` stops resolving export *names* after 8192 symbols unless `PE(..., max_symbol_exports=N)` is given;
+  Engine.dll (14 836) and Game.dll (10 858) were silently truncated before. See `tools/dump_exports.py`.
+* Ghidra headless needs JDK 21 (`analyzeHeadless`); the first import+analysis of Game.dll takes ~25 min,
+  Engine.dll ~20 min, Script.dll ~2 min, FFC.dll ~2 min. `tools/ghidra/DumpDecomp.java` then decompiles any list
+  of RVAs / name substrings in seconds (`-process … -noanalysis -readOnly`).
+
+## 9. Open questions / next steps
+
+* **Spawning NPCs/items**: `Entity::Spawn(Template, bCMatrix const&, bool)` takes an `eCTemplateEntityProxy` by
+  value (callee destroys); needs a verified way to construct one from a template name
+  (`eCTemplateEntityProxy::eCTemplateEntityProxy(...)` / `SetEntityID`).
+* **New templates (items/NPC archetypes)**: stored in `data\common\templates.pak`; find out whether
+  `eCTemplateEntity::CreateNewEntity/CreateEntityCopy` + registration with the scene admin can create new
+  templates at runtime, or whether a loose-file mount (`CFXVirtualFileSystem::MountDirectory`) is the better way.
+* **Models/textures/sounds**: mount a mod directory through the VFS (`MountDirectory(virtual, physical, flags)`,
+  semantics of `flags` and mount priority still unknown) before the engine asks for the resource.
+* **Quests/dialogues** (`gCQuest`, `gCInfo*`) are data objects (`data\common\projects.pak`); creating them at
+  runtime means constructing property-set objects. Cheaper first step: drive existing quests/dialogues from Lua
+  (`risen.quest.*`, `risen.gamevar.*`, script overrides).
+* AI states/functions/callbacks (`RegisterScriptAI*`) use different signatures and are not bridged yet.
