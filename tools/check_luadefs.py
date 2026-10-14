@@ -74,6 +74,8 @@ for lvl in ('trace', 'debug', 'info', 'warn', 'error'):
 # per-mod risen.save (lua_save.cpp registers on the mod's api table)
 for fn in re.findall(r'save\.set_function\("(\w+)"', (root / 'src/game/lua_save.cpp').read_text(encoding='utf-8')):
     bound[f'save.{fn}'] = 'src/game/lua_save.cpp'
+for fn in re.findall(r'loc\.set_function\("(\w+)"', (root / 'src/game/loc_files.cpp').read_text(encoding='utf-8')):
+    bound[f'loc.{fn}'] = 'src/game/loc_files.cpp'
 # spec-less sol properties of usertypes use `"name", sol::property(` : include them
 for path in (root / 'src/game/script_bridge.cpp', root / 'src/game/lua_entity.cpp'):
     text = path.read_text(encoding='utf-8')

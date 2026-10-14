@@ -204,6 +204,12 @@ risen.loc.get("GO_QuestRunning"), risen.loc.exists(id), risen.loc.clear(id), ris
 ```
 Ids are matched case-insensitively. The game's own tables are never modified (they are read-only at runtime).
 
+**String files:** instead of calling `risen.loc.set` for every text, put them into CSV files (see `mods/stringsdemo`):
+`strings/all.csv` (every language) and `strings/<Language>.csv` (`English.csv`, `German.csv`, ...; wins over `all.csv`) of every mod are
+loaded before its `main.lua` runs. UTF-8, one `id;text` per line (`,` also works), fields may be quoted (`""` for a quote, may span
+lines), `#` starts a comment line, a header row `id;text` is skipped. `risen.loc.load_file("extra/more.csv" [, "German"])` loads further
+files from the mod directory (returns the number of strings, `nil` if missing).
+
 ## Persistence — `risen.save`
 The Lua state is not part of a savegame, so mods keep their data in a per-mod store that is written next to every
 savegame and restored when that savegame is loaded (`<Risen>\bin\spass\saves\<savegame name>.lua`). A new game starts

@@ -231,6 +231,18 @@ bool installLocHooks() {
     return ok;
 }
 
+bool setOverlayString(const std::string& id, const std::string& text, const std::string& language) {
+    if (id.empty()) {
+        return false;
+    }
+    std::lock_guard lock(g_mutex);
+    auto& entries = g_overlay[fold(id)];
+    std::erase_if(entries, [&](const Entry& e) { return fold(e.language) == fold(language); });
+    entries.push_back(Entry{UString::widen(text), language});
+    g_overlayCount = g_overlay.size();
+    return true;
+}
+
 void bindLoc(sol::state_view lua, sol::table risen) {
     sol::table loc = lua.create_table();
     const Symbols& s = sym();
@@ -238,16 +250,7 @@ void bindLoc(sol::state_view lua, sol::table risen) {
     // risen.loc.set(id, text [, language]): `text` is UTF-8. Without `language` it applies to every language.
     // Ids are "<prefix>:<key>" (prefixes: see data/ini/loc.ini), matched case-insensitively.
     loc.set_function("set", [](const std::string& id, const std::string& text, sol::optional<std::string> language) {
-        if (id.empty()) {
-            return false;
-        }
-        std::lock_guard lock(g_mutex);
-        auto& entries = g_overlay[fold(id)];
-        const std::string lang = language.value_or("");
-        std::erase_if(entries, [&](const Entry& e) { return fold(e.language) == fold(lang); });
-        entries.push_back(Entry{UString::widen(text), lang});
-        g_overlayCount = g_overlay.size();
-        return true;
+        return setOverlayString(id, text, language.value_or(""));
     });
     loc.set_function("clear", [](const std::string& id) {
         std::lock_guard lock(g_mutex);

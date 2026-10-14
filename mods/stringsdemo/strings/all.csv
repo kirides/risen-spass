@@ -1,0 +1,5 @@
+# One "id;text" per line. all.csv applies to every language; <Language>.csv (English.csv, German.csv, ...) only to that one,
+# and wins over all.csv. Fields may be quoted ("") and span lines; the first row may be a header.
+id;text
+FO_SPASS_Demo;Demo Thing
+SPASS_Demo_Greeting;"Hello, ""traveller""!"

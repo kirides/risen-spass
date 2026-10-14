@@ -1,0 +1,5 @@
+id = "stringsdemo"
+name = "String files demo"
+version = "1.0.0"
+author = "risen-spass"
+description = "Texts for any localization id from strings/*.csv: all.csv for every language, <Language>.csv per language."

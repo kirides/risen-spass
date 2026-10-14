@@ -59,6 +59,7 @@ add_library(spass_core STATIC
     src/game/file_trace.cpp
     src/game/folder_redirect.cpp
     src/game/hooks.cpp
+    src/game/loc_files.cpp
     src/game/loc_overlay.cpp
     src/game/lua_dialog.cpp
     src/game/lua_engine_info.cpp
@@ -116,3 +117,14 @@ set_target_properties(spass_proxy PROPERTIES OUTPUT_NAME sentry)
 
 install(TARGETS spass_proxy RUNTIME DESTINATION bin)
 install(DIRECTORY mods/ DESTINATION spass/mods)
+
+# ---------------------------------------------------------------------------------------------
+# Unit tests that run without the game (string files, mod discovery, the Lua runtime): `ctest -C RelWithDebInfo`
+# ---------------------------------------------------------------------------------------------
+option(SPASS_BUILD_TESTS "Build the unit tests" ON)
+if(SPASS_BUILD_TESTS)
+    enable_testing()
+    add_executable(spass_tests tests/test_main.cpp)
+    target_link_libraries(spass_tests PRIVATE spass_core)
+    add_test(NAME spass_tests COMMAND spass_tests)
+endif()

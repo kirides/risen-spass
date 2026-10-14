@@ -721,6 +721,13 @@ function locApi.exists(id) end
 ---Active text language, e.g. `"English"`.
 ---@return string
 function locApi.language() end
+---Loads a string file that lives inside the mod directory: UTF-8 CSV, one `id;text` per line (`,` also works, fields may be
+---quoted, `#` starts a comment line, a first row `id;text` is skipped). `strings/all.csv` and `strings/<Language>.csv`
+---(e.g. `strings/German.csv`) of every mod are loaded automatically before `main.lua`; use this for other files.
+---@param path string Relative to the mod directory (no `..`, no absolute paths).
+---@param language? string Only for this language; all languages if omitted.
+---@return integer|nil count Number of strings loaded, `nil` if the file does not exist.
+function locApi.load_file(path, language) end
 ---Logs every distinct string id the game asks for (find ids to override).
 ---@param on boolean
 function locApi.trace(on) end

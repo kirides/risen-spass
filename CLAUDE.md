@@ -33,6 +33,12 @@ C++20, MSVC, vcpkg manifest (`vcpkg.json`: spdlog, minhook, sol2, tomlplusplus, 
 result counts. If you replace a header's content with a file copy, `touch` it: a preserved old mtime makes MSBuild skip
 dependent files and the `Symbols` struct layout then differs between translation units (silent breakage).
 
+## Unit tests (no game needed)
+
+`build\RelWithDebInfo\spass_tests.exe` (or `ctest -C RelWithDebInfo --test-dir build`): string-file parser, mod discovery/load
+order, the Lua runtime (sandbox, events, `require`, broken mods). Add a `TEST(name)` to `tests/test_main.cpp` for new pure logic.
+A `sol::object` returned from `Runtime::emit*` must not outlive `Runtime::stop()`.
+
 ## Test loop
 
 `scripts/test-run.ps1` deploys the build and chosen example mods into `B:\DevDrive\risen-test`, writes its `config.toml`

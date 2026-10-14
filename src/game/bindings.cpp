@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include "game/abi.h"
+#include "game/loc_files.h"
 #include "game/loc_overlay.h"
 #include "game/lua_save.h"
 #include "game/lua_entity.h"
@@ -119,6 +120,7 @@ void registerBindings() {
     rt.addBinding(bindQuestObjects);
     rt.addBinding(scripts::bindScripts);
     bindSave();
+    bindModStrings();
 }
 
 }  // namespace spass::game
