@@ -15,6 +15,9 @@ struct LuaEntity {
 // Registers risen.entity.* and the Entity usertype.
 void bindEntity(sol::state_view lua, sol::table risen);
 
+// Registers risen.template, risen.entity.spawn and risen.item.*. Must run after bindEntity().
+void bindItems(sol::state_view lua, sol::table risen);
+
 // Wraps a raw pointer into a Lua value: Entity userdata, or nil for null.
 sol::object makeEntityObject(sol::state_view lua, void* entity);
 

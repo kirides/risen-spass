@@ -96,6 +96,7 @@ void registerBindings() {
     rt.addBinding(bindWorld);
     rt.addBinding(bindLoc);
     rt.addBinding(bindEntity);
+    rt.addBinding(bindItems);
     rt.addBinding(scripts::bindScripts);
 }
 

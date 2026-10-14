@@ -63,6 +63,16 @@ risen.on("tick", function()
             log.info(("player position %s %s %s npc=%s"):format(tostring(x), tostring(y), tostring(z), tostring(p:is_npc())))
             if not reported then
                 reported = true
+                -- templates, inventory, spawning
+                log.info("template.exists(It_1H_Machete) = " .. tostring(risen.template.exists("It_1H_Machete")))
+                log.info("template.exists(It_No_Such) = " .. tostring(risen.template.exists("It_No_Such")))
+                local before = risen.item.count(p, "It_1H_Machete")
+                local created = risen.item.give(p, "It_1H_Machete", 2)
+                log.info(("item.give -> %s, count %s -> %s, money %s"):format(tostring(created), tostring(before),
+                    tostring(risen.item.count(p, "It_1H_Machete")), tostring(risen.item.money(p))))
+                local dropped = risen.entity.spawn("It_1H_Sword", x + 150, y + 30, z)
+                log.info(("entity.spawn -> %s is_item=%s name=%s"):format(tostring(dropped), tostring(dropped and dropped:is_item()),
+                    tostring(dropped and dropped:name())))
                 log.info("script.call(SPASS_SelfTest, 21) -> " .. tostring(risen.script.call("SPASS_SelfTest", p, nil, 21)))
             end
         end

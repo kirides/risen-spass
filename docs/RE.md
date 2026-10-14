@@ -297,9 +297,14 @@ entries; it is appended to the array at `gCScriptAdmin+0x200` (count `+0x208`).
 
 ## 9. Open questions / next steps
 
-* **Spawning NPCs/items**: `Entity::Spawn(Template, bCMatrix const&, bool)` takes an `eCTemplateEntityProxy` by
-  value (callee destroys); needs a verified way to construct one from a template name
-  (`eCTemplateEntityProxy::eCTemplateEntityProxy(...)` / `SetEntityID`).
+* **Spawning** [confirmed in-game]: `Template::Template(const char*)` (`0x235c40`) builds a template reference from a
+  name (`Template` derives from `eCTemplateEntityProxy`; we reserve 128 bytes); `Template::IsValid` (`0x235cb0`)
+  tells whether it exists. `Entity::Spawn(Template /*by value, callee destroys*/, const bCMatrix&, bool)`
+  (`0x20e4d0`) created an item entity (`It_1H_Sword`); the pose is a 4×4 row-major float matrix with the translation in
+  the last row. `PSInventory::CreateItems(const Template&, int, gEStackType)` (`0x223820`) added items to the
+  player's inventory (`PSInventory` is an `eCEntity*` holder like `Entity`). Template names are plain strings in
+  `data\common\templates.pak` (809 `It_*`/`NPC_*`-like names found by a naive scan). Still to do: NPC templates
+  (names, AI/routine setup after spawn) and the meaning of `gEStackType`.
 * **New templates (items/NPC archetypes)**: stored in `data\common\templates.pak`; find out whether
   `eCTemplateEntity::CreateNewEntity/CreateEntityCopy` + registration with the scene admin can create new
   templates at runtime, or whether a loose-file mount (`CFXVirtualFileSystem::MountDirectory`) is the better way.

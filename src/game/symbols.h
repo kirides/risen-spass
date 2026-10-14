@@ -88,6 +88,13 @@
     X(ent_kill, L"Script.dll", "?Kill@Entity@@QEAAXXZ", void (*)(void* self), true)                             \
     X(ent_set_frozen, L"Script.dll", "?SetFrozen@Entity@@QEAAX_N@Z", void (*)(void* self, bool), true)          \
     X(ent_enable_rendering, L"Script.dll", "?EnableRendering@Entity@@QEAAX_N@Z", void (*)(void* self, bool), true) \
+    X(tpl_ctor_cstr, L"Script.dll", "??0Template@@QEAA@PEBD@Z", void* (*)(void* self, const char* name), true)   \
+    X(tpl_dtor, L"Script.dll", "??1Template@@QEAA@XZ", void (*)(void* self), true)                              \
+    X(tpl_is_valid, L"Script.dll", "?IsValid@Template@@QEBA_NXZ", bool (*)(const void* self), true)            \
+    X(ent_spawn, L"Script.dll", "?Spawn@Entity@@SA?AV1@VTemplate@@AEBVbCMatrix@@_N@Z", void* (*)(void* ret, void* byValueTemplate, const float* pose16, bool temporary), true) \
+    X(inv_create_items, L"Script.dll", "?CreateItems@PSInventory@@QEAAHAEBVTemplate@@HW4gEStackType@@@Z", int (*)(void* self, const void* tpl, int count, int stackType), true) \
+    X(inv_item_amount, L"Script.dll", "?GetItemAmount@PSInventory@@QEBAHAEBVTemplate@@@Z", int (*)(const void* self, const void* tpl), true) \
+    X(inv_money, L"Script.dll", "?GetMoneyAmount@PSInventory@@QEBAMXZ", float (*)(const void* self), true)    \
     X(ent_teleport_name, L"Script.dll", "?Teleport@Entity@@QEAA_NAEBVbCString@@@Z", bool (*)(void* self, const void* name), true) \
     X(ent_teleport_entity, L"Script.dll", "?Teleport@Entity@@QEAA_NAEBV1@@Z", bool (*)(void* self, const void* other), true)
 

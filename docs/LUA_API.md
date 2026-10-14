@@ -61,6 +61,16 @@ Entity methods: `name()`, `display_name()`, `set_name(s)`, `position()` → `x, 
 `enable_rendering(b)`, `teleport(name_or_entity)`, `address`. Handles are raw pointers: do not keep them across
 frames or loads; failures return `nil`/`false` instead of crashing.
 
+## risen.template / risen.entity.spawn / risen.item
+Template names are the blueprint names stored in `data/common/templates.pak` (`It_1H_Machete`, `It_1H_Sword`, …).
+```lua
+risen.template.exists("It_1H_Machete")                    -- bool
+local e = risen.entity.spawn("It_1H_Sword", x, y, z)      -- Entity | nil; needs a running game
+risen.item.give(player, "It_1H_Machete", 2)               -- created amount, -1 on failure; optional 4th arg: stack type
+risen.item.count(player, "It_1H_Machete")                 -- integer
+risen.item.money(player)                                  -- number
+```
+
 ## risen.quest / risen.gamevar / risen.world
 ```lua
 risen.quest.open|run|close|fail|succeed("Quest_Id")   risen.quest.is_running("Quest_Id")
