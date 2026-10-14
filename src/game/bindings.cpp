@@ -108,6 +108,7 @@ void registerBindings() {
     rt.addBinding(bindQuest);
     rt.addBinding(bindGameVars);
     rt.addBinding(bindWorld);
+    rt.addBinding(bindVfs);
     rt.addBinding(bindDebug);
     rt.addBinding(bindLoc);
     rt.addBinding(bindEntity);

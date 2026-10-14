@@ -464,3 +464,22 @@ Game.dll RVAs; every one of these is exported with a decorated name, so the hook
 * `config.toml` `[debug] app_data = "<dir>"` hooks both functions for `CSIDL_LOCAL_APPDATA`/`CSIDL_APPDATA` (-> `<dir>\Local`, `<dir>\Roaming`).
   `scripts/test-run.ps1` sets it for the test copy, so savegames, `ConfigUser.xml` and `achievements.bin` stay inside it and the real
   `%LOCALAPPDATA%\Risen` is not touched (checked by comparing file timestamps before and after a run).
+
+## 16. The virtual file system and the packed data [confirmed in-game]
+
+The engine already mounts every `*.pak` volume (`mountlist_packed.ini`, sections `[Physical]` and `[Packed]`), so the packed content is
+listed and read through the engine's own exports instead of parsing the `FFC`/`G3V0` container (`risen.vfs`, `src/game/lua_vfs.cpp`).
+
+* `eCVirtualFileSystem::FindFiles(dir, pattern, bTObjArray<bCString>&)` (Engine `0x734140`), `FindFilesWithExt(dir, ext, array)`
+  (`0x733f70`) and `FindDirectories(dir, array)` (`0x733e50`). The array is `{ bCString* data; int count; int capacity }` (same layout as
+  §12); the engine constructs `capacity` elements, so cleanup destroys `capacity` strings and frees `data` with `bCMemoryAdmin::Free`
+  (exactly what `gCScriptAdmin::LoadAllScriptGame` does). Paths work with a mount prefix (`ini`, `scripts`, `data/common/...`) or with
+  the `#G3:/` root; `#G3:/` itself lists the mount roots (`data`, `save`, `snapshots`, `appdata`, `ini`, `scripts`).
+* Reading: `eCArchiveManager::GetInstance().GetFile(path, eCArchiveFile&)` -> `eCArchiveFile::Open(0 /*read*/, true)` ->
+  `Read(buffer, count)` until it returns 0 -> `Close`. (`eCArchiveFile` is 0x50 bytes; it has a virtual destructor.)
+  `CFXVirtualFileSystem::GetFileSize(path)` returned 0 for the files tried (also for plain files in `ini`), so it is not a size source; read
+  until EOF instead.
+* Layout of the packed data (`data/...`): `compiled/{strings,sounds,images,animations,speech_<language>,library,materials,navigation,...}`,
+  `common/{templates,projects,meshes,physics,materials,library,...}`. `common/templates/<Group>/*.tple` are the entity templates (items,
+  NPCs, monsters, lights, ...) whose names `Template(const char*)` accepts; `common/projects/<World>/` holds the world data (`*.wrl`, `*.sec`,
+  `*.lrent`); `compiled/strings/*.tab` are the compiled string tables behind `loc.ini`.

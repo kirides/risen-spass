@@ -197,6 +197,23 @@
     X(is_on_info_finished, L"Game.dll", "?OnInfoFinished@gCInfoSystem@@QEAAXPEBVgCRuntimeInfo@@@Z", void (*)(void* self, const void* runtimeInfo), false) \
     X(inv_insert_stack, L"Game.dll", "?InsertStack@gCInventory_PS@@QEAAHPEAVeCEntity@@@Z", int (*)(void* self, void* item), false) \
     X(ps_get_entity, L"Engine.dll", "?GetEntity@eCEntityPropertySet@@UEAAPEAVeCEntity@@XZ", void* (*)(void* self), false) \
+    X(vfs_instance, L"FFC.dll", "?GetInstance@CFXVirtualFileSystem@@SAAEAV1@XZ", void* (*)(), false) \
+    X(vfs_virtual_to_physical, L"FFC.dll", "?VirtualToPhysicalPath@CFXVirtualFileSystem@@QEBA_NAEBVbCString@@AEAV2@@Z", bool (*)(const void* self, const void* virtualPath, void* physicalOut), false) \
+    X(evfs_instance, L"Engine.dll", "?GetInstance@eCVirtualFileSystem@@SAAEAV1@XZ", void* (*)(), false) \
+    X(evfs_exists_file, L"Engine.dll", "?ExistsFile@eCVirtualFileSystem@@QEAA_NAEBVbCString@@@Z", bool (*)(void* self, const void* path), false) \
+    X(evfs_find_files, L"Engine.dll", "?FindFiles@eCVirtualFileSystem@@QEAA_NAEBVbCString@@0AEAV?$bTObjArray@VbCString@@@@@Z", bool (*)(void* self, const void* dir, const void* pattern, void* outArray), false) \
+    X(evfs_find_ext, L"Engine.dll", "?FindFilesWithExt@eCVirtualFileSystem@@QEAA_NAEBVbCString@@0AEAV?$bTObjArray@VbCString@@@@@Z", bool (*)(void* self, const void* dir, const void* ext, void* outArray), false) \
+    X(evfs_find_dirs, L"Engine.dll", "?FindDirectories@eCVirtualFileSystem@@QEAA_NAEBVbCString@@AEAV?$bTObjArray@VbCString@@@@@Z", bool (*)(void* self, const void* dir, void* outArray), false) \
+    X(archive_instance, L"Engine.dll", "?GetInstance@eCArchiveManager@@SAAEAV1@XZ", void* (*)(), false) \
+    X(archive_get_file, L"Engine.dll", "?GetFile@eCArchiveManager@@QEAA_NAEBVbCString@@AEAVeCArchiveFile@@@Z", bool (*)(void* self, const void* path, void* fileOut), false) \
+    X(archive_file_ctor, L"Engine.dll", "??0eCArchiveFile@@QEAA@XZ", void* (*)(void* self), false) \
+    X(archive_file_dtor, L"Engine.dll", "??1eCArchiveFile@@UEAA@XZ", void (*)(void* self), false) \
+    X(archive_file_open, L"Engine.dll", "?Open@eCArchiveFile@@QEAA_NW4bEArchiveFileAccessMode@1@_N@Z", bool (*)(void* self, int mode, bool flag), false) \
+    X(archive_file_is_open, L"Engine.dll", "?IsOpen@eCArchiveFile@@QEBA_NXZ", bool (*)(const void* self), false) \
+    X(archive_file_read, L"Engine.dll", "?Read@eCArchiveFile@@UEAAKPEAXK@Z", unsigned long (*)(void* self, void* buffer, unsigned long count), false) \
+    X(archive_file_close, L"Engine.dll", "?Close@eCArchiveFile@@QEAAXXZ", void (*)(void* self), false) \
+    X(vfs_file_size, L"FFC.dll", "?GetFileSize@CFXVirtualFileSystem@@QEBA_KAEBVbCString@@@Z", unsigned long long (*)(const void* self, const void* path), false) \
+    X(mem_free, L"SharedBase.dll", "?Free@bCMemoryAdmin@@QEAAXPEAX@Z", void (*)(void* self, void* ptr), false) \
     X(element_base_name, L"Engine.dll", "?GetFileBaseName@eCProcessibleElement@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false)
 
 namespace spass::game {

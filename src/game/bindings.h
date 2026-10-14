@@ -12,5 +12,7 @@ void registerBindings();
 void bindDebug(sol::state_view lua, sol::table risen);
 void installFileTrace();
 
+// risen.vfs.* (lua_vfs.cpp): the engine's virtual file system, including packed archives.
+void bindVfs(sol::state_view lua, sol::table risen);
 
 }  // namespace spass::game

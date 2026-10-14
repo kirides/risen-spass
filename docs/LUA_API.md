@@ -211,7 +211,18 @@ risen.save.set("visited", { "Harbor", "Mine" })               -- booleans, numbe
 already visible in `load.before` (so content can depend on it); `save.before` is the place for a last update. The store is
 namespaced by mod id. Sidecar files of deleted savegames are not removed.
 
-## risen.debug — development aid
+## risen.vfs / risen.debug — development aids
+```lua
+risen.vfs.physical("#G3:/save")       -- physical path of a virtual path (nil when unknown)
+risen.vfs.exists("#G3:/save/QuickSave.save")
+-- the engine's own view of the files, including everything inside the packed archives (docs/RE.md §16)
+risen.vfs.dirs("data/common")                    -- sub-directory names
+risen.vfs.find("data/common/templates/Items", "*")   -- file names matching a pattern ("*.dll", "It_*", ...)
+risen.vfs.find_ext("ini", "xml")
+risen.vfs.read("ini/loc.ini" [, max_bytes])      -- file contents as a string (nil if it cannot be opened); default limit 16 MiB
+risen.vfs.size(path)                             -- unreliable for packed files (often 0): read instead
+```
+`mods/vfsprobe` crawls the tree and logs it. Paths are mount-relative (`ini`, `scripts`, `data/...`) or start with `#G3:/`.
 ```lua
 risen.debug.trace_files("SaveGames")  -- log every file the engine opens whose path contains that text; "" stops
 ```

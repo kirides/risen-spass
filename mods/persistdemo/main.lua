@@ -55,7 +55,7 @@ local function go(p) phase, phase_at = p, frames end
 risen.on("session.start", function(mode)
     report("session.start(" .. mode .. ") before ensure")
     risen.debug.trace_files("save")
-    log.info("persistdemo: save_allowed=" .. tostring(risen.world.is_save_allowed()))
+    log.info("persistdemo: save dir -> " .. tostring(risen.vfs.physical("#G3:/save")) .. "  save_allowed=" .. tostring(risen.world.is_save_allowed()))
     ensure_quest_and_dialog()
     if mode == "new" and phase == "done" then
         report("new game after a loaded game")   -- what did the engine reset?
