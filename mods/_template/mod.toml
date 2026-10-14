@@ -1,0 +1,9 @@
+# Copy this folder to <Risen>\bin\spass\mods\<your_mod> and rename it (folders starting with "_" or "." and ending with ".off" are ignored).
+id          = "my_mod"           # required: a-z 0-9 _ ; unique
+name        = "My Mod"
+version     = "0.1.0"
+author      = "you"
+description = "What the mod does."
+# main        = "main.lua"       # entry point (default)
+# load_after  = ["other_mod"]    # ordering only
+# requires    = ["base_mod"]     # hard dependency: the mod is skipped if it is missing

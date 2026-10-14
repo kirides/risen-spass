@@ -18,6 +18,7 @@ local function talk_and_choose(info_name)
     return info
 end
 
+local function run_info(name) return assert(risen.dialog.get(name), name .. " does not exist"):run() end
 local function quest_log_count() local q = risen.quest.get(QUEST); return q and q:log_count() or -1 end
 local function quest_status() local q = risen.quest.get(QUEST); return q and q:get_property("Status") or "missing" end
 
@@ -46,7 +47,7 @@ risen.on("tick", function()
         local info = talk_and_choose("SPASS_Marta_Work")
         if info then go("choose1") end
     elseif step == "choose1" and wait == 90 then
-        log.info("driver: choosing the work option -> " .. tostring(risen.dialog.get("SPASS_Marta_Work"):run()))
+        log.info("driver: choosing the work option -> " .. tostring(run_info("SPASS_Marta_Work")))
         go("wait_running")
     elseif step == "wait_running" then
         if risen.quest.is_running(QUEST) then
@@ -72,7 +73,9 @@ risen.on("tick", function()
         local marta = loaded and risen.entity.get(NPC)
         if marta and wait > 600 then
             local x, y, z = marta:position()
-            local same = saved_pos[1] and math.abs(x - saved_pos[1]) < 1 and math.abs(y - saved_pos[2]) < 5 and math.abs(z - saved_pos[3]) < 1
+            x, y, z = x or 0, y or 0, z or 0
+            local sp = saved_pos or {}
+            local same = sp[1] ~= nil and math.abs(x - sp[1]) < 1 and math.abs(y - sp[2]) < 5 and math.abs(z - sp[3]) < 1
             log.info(("driver: after load: Marta respawned=true same_spot=%s quest=%s infos=%s/%s log entries=%d"):format(tostring(same),
                 quest_status(), tostring(risen.dialog.get("SPASS_Marta_Work") ~= nil), tostring(risen.dialog.get("SPASS_Marta_Apples") ~= nil),
                 quest_log_count()))
@@ -85,13 +88,13 @@ risen.on("tick", function()
         log.info("driver: giving 1 apple -> " .. tostring(risen.item.give(player(), "It_Apple", 1)))
         if talk_and_choose("SPASS_Marta_Apples") then go("choose2") end
     elseif step == "choose2" and wait == 90 then
-        log.info("driver: handing in 1 apple -> " .. tostring(risen.dialog.get("SPASS_Marta_Apples"):run()))
+        log.info("driver: handing in 1 apple -> " .. tostring(run_info("SPASS_Marta_Apples")))
         go("wait_not_enough")
     elseif step == "wait_not_enough" then
         if quest_log_count() >= 2 then
             log.info(("driver: not enough apples: status=%s log entries=%d apples=%d"):format(quest_status(), quest_log_count(),
                 risen.item.count(player(), "It_Apple")))
-            log.info("driver: LogText = " .. tostring(risen.quest.get(QUEST):get_property("LogText")):sub(1, 700))
+            log.info("driver: LogText = " .. tostring((risen.quest.get(QUEST) or { get_property = function() return "?" end }):get_property("LogText")):sub(1, 700))
             go("settle2")
         elseif wait > 2400 then
             log.info("driver: TIMEOUT waiting for the not-enough message")
@@ -102,7 +105,7 @@ risen.on("tick", function()
             ", apples=" .. risen.item.count(player(), "It_Apple"))
         if talk_and_choose("SPASS_Marta_Apples") then go("choose3") end
     elseif step == "choose3" and wait == 90 then
-        log.info("driver: handing in 3 apples -> " .. tostring(risen.dialog.get("SPASS_Marta_Apples"):run()))
+        log.info("driver: handing in 3 apples -> " .. tostring(run_info("SPASS_Marta_Apples")))
         go("wait_success")
     elseif step == "wait_success" then
         if quest_status():find("Success") then

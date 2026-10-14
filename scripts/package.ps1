@@ -1,0 +1,55 @@
+<#
+.SYNOPSIS
+    Builds a release zip: the proxy DLL, install/uninstall scripts, the example mods, the Lua definitions and the docs.
+
+.DESCRIPTION
+    Run after `cmake --build build --config RelWithDebInfo` (and the unit tests). The zip contains everything a player or
+    modder needs; install it with:
+        .\install.ps1 -GameDir 'C:\...\Risen' [-WithExamples]
+    Nothing in the game directory except bin\sentry.dll is touched (the original is kept as sentry_orig.dll);
+    `[ -enabled = false ]` in bin\spass\config.toml switches the whole layer off without uninstalling.
+
+.PARAMETER Config  Build configuration to package (default RelWithDebInfo).
+.PARAMETER Out     Output directory (default <repo>\dist).
+#>
+param(
+    [string]$Config = 'RelWithDebInfo',
+    [string]$Out = ''
+)
+$ErrorActionPreference = 'Stop'
+$repo = Split-Path -Parent $PSScriptRoot
+if ($Out -eq '') { $Out = Join-Path $repo 'dist' }
+
+$dll = Join-Path $repo "build\$Config\sentry.dll"
+if (-not (Test-Path $dll)) { throw "Build first: $dll does not exist" }
+$cmake = Get-Content (Join-Path $repo 'CMakeLists.txt') -Raw
+if ($cmake -notmatch 'project\(risen_spass VERSION ([0-9.]+)') { throw 'cannot read the version from CMakeLists.txt' }
+$version = $Matches[1]
+$name = "risen-spass-$version"
+
+$stage = Join-Path $Out $name
+Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force $stage | Out-Null
+
+Copy-Item $dll (Join-Path $stage 'sentry.dll')
+Copy-Item (Join-Path $repo 'scripts\install.ps1'), (Join-Path $repo 'scripts\uninstall.ps1') $stage
+Copy-Item (Join-Path $repo 'types') $stage -Recurse
+New-Item -ItemType Directory -Force (Join-Path $stage 'docs') | Out-Null
+foreach ($d in 'LUA_API.md', 'TEMPLATES.md', 'SYMBOLS.md', 'DEVELOPMENT.md') {
+    Copy-Item (Join-Path $repo "docs\$d") (Join-Path $stage 'docs') -ErrorAction SilentlyContinue
+}
+Copy-Item (Join-Path $repo 'README.md') $stage
+
+# Example mods that make sense for end users; the *_driver/probe/dump mods are development tools.
+$mods = Join-Path $stage 'mods'
+New-Item -ItemType Directory -Force $mods | Out-Null
+Copy-Item (Join-Path $repo 'mods\.luarc.json') $mods
+foreach ($m in 'hello', 'fetchquest', 'stringsdemo', 'eventlog', '_template') {
+    Copy-Item (Join-Path $repo "mods\$m") $mods -Recurse
+}
+
+New-Item -ItemType Directory -Force $Out | Out-Null
+$zip = Join-Path $Out "$name.zip"
+Remove-Item $zip -ErrorAction SilentlyContinue
+Compress-Archive -Path $stage -DestinationPath $zip
+Write-Host "created $zip ($([math]::Round((Get-Item $zip).Length / 1MB, 1)) MB)"

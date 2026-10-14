@@ -1,0 +1,62 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      VCPKG_ROOT: C:\vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\.vcpkg-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      # vcpkg binary packages (spdlog, minhook, sol2, tomlplusplus, luajit) are cached between runs
+      - name: Prepare the vcpkg binary cache
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+      - uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'CMakePresets.json') }}
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # The "ninja" preset is meant for a Visual Studio developer shell (this is the same command sequence used locally).
+      - name: Configure
+        run: cmake --preset ninja
+      - name: Build
+        run: cmake --build build-ninja --config RelWithDebInfo
+      - name: Unit tests (no game needed)
+        run: build-ninja\RelWithDebInfo\spass_tests.exe
+
+      # The Lua API description must match the bindings
+      - name: API definitions are in sync
+        run: python tools/check_luadefs.py
+
+      - name: Install the Lua language server and type-check the example mods
+        shell: pwsh
+        run: |
+          $url = (Invoke-RestMethod https://api.github.com/repos/LuaLS/lua-language-server/releases/latest).assets |
+              Where-Object { $_.name -like '*win32-x64.zip' } | Select-Object -First 1 -ExpandProperty browser_download_url
+          Invoke-WebRequest $url -OutFile $env:RUNNER_TEMP\luals.zip
+          Expand-Archive $env:RUNNER_TEMP\luals.zip -DestinationPath $env:RUNNER_TEMP\luals
+          Push-Location mods
+          & "$env:RUNNER_TEMP\luals\bin\lua-language-server.exe" --check . --configpath .luarc.json --checklevel Warning
+          Pop-Location
+
+      - name: Package
+        shell: pwsh
+        run: |
+          # package.ps1 expects the Visual Studio layout (build\RelWithDebInfo); the Ninja preset writes build-ninja\RelWithDebInfo
+          New-Item -ItemType Directory -Force build\RelWithDebInfo | Out-Null
+          Copy-Item build-ninja\RelWithDebInfo\sentry.dll build\RelWithDebInfo\
+          .\scripts\package.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: risen-spass
+          path: dist/*.zip

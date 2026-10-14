@@ -49,7 +49,8 @@ A `sol::object` returned from `Runtime::emit*` must not outlive `Runtime::stop()
 # -Start load   quick-loads the last quick save instead of starting a new game   -Keep  keep log+saves
 # -NoAutostart  stay at the main menu (the `tick` event then fires only once)
 ```
-The log is `B:\DevDrive\risen-test\bin\spass\spass.log`. Kill stray `Risen.exe` processes before a run. A new game takes
+The log is `B:\DevDrive\risen-test\bin\spass\spass.log`. `scripts\smoke-test.ps1` replays the persistence and fetch-quest scenarios
+and asserts on the log (run it before committing changes that touch events, saving, quests, dialogues or items; ~6 minutes). Kill stray `Risen.exe` processes before a run. A new game takes
 ~60 s to load, so give runs 90-300 s. The tick-driven demos in `mods/` show how to script a whole scenario unattended.
 `Risen.exe` calls `SteamAPI_RestartAppIfNecessary`; `run-windowed.ps1` sets `SteamAppId` to prevent a relaunch of the real
 install. Screenshots of the D3D9 window are black: verify through engine state and log lines.

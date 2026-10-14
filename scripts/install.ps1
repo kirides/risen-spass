@@ -23,9 +23,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-$repo = Split-Path -Parent $PSScriptRoot
+# works from the repository (scripts\install.ps1) and from a release zip (install.ps1 next to sentry.dll and mods\)
+$repo = if (Test-Path (Join-Path $PSScriptRoot 'mods')) { $PSScriptRoot } else { Split-Path -Parent $PSScriptRoot }
 $bin = Join-Path $GameDir 'bin'
-$proxy = Join-Path $repo "build\$Config\sentry.dll"
+$proxy = if (Test-Path (Join-Path $repo 'sentry.dll')) { Join-Path $repo 'sentry.dll' } else { Join-Path $repo "build\$Config\sentry.dll" }
 $sentry = Join-Path $bin 'sentry.dll'
 $orig = Join-Path $bin 'sentry_orig.dll'
 
