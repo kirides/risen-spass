@@ -4,6 +4,7 @@
 --   * option 2 ("I'm done") is only offered while the quest is *running*; it completes the quest and pays the reward
 -- The demo also drives the conversation itself (talk, choose, talk again) so it can run unattended.
 local log = risen.log
+local function the_player() return assert(risen.entity.player(), "the player does not exist yet") end
 
 local NAME, QUEST = "SPASS_Gus", "Q_SPASS_Gus"
 risen.loc.set("FO_" .. NAME, "Gus the Talkative")
@@ -68,7 +69,7 @@ risen.on("tick", function()
             tostring(finish and finish:get_property("Type")), tostring(finish and finish:get_property("ConditionType")), tostring(finish and finish:get_property("Quest"))))
 
     elseif frames == 600 and gus then
-        log.info("dialogdemo: dialog.start -> " .. tostring(risen.dialog.start(risen.entity.player(), gus)))
+        log.info("dialogdemo: dialog.start -> " .. tostring(risen.dialog.start(the_player(), gus)))
     elseif frames == 660 and gus then
         describe_options("before the quest")
     elseif frames == 720 and intro then
@@ -79,7 +80,7 @@ risen.on("tick", function()
         second_started = true
         local q = risen.quest.get(QUEST)
         log.info(("dialogdemo: quest running=%s log_entries=%s"):format(tostring(risen.quest.is_running(QUEST)), tostring(q and q:log_count())))
-        log.info("dialogdemo: dialog.start (2nd) -> " .. tostring(risen.dialog.start(risen.entity.player(), gus)))
+        log.info("dialogdemo: dialog.start (2nd) -> " .. tostring(risen.dialog.start(the_player(), gus)))
     elseif second_started and not second_chosen and frames >= quest_started_at + 150 and finish then
         second_chosen = true
         describe_options("while the quest runs")
@@ -88,7 +89,7 @@ risen.on("tick", function()
         final_logged = true
         local q = risen.quest.get(QUEST)
         log.info(("dialogdemo: final: quest Status=%s, machetes=%s"):format(tostring(q and q:get_property("Status")),
-            tostring(risen.item.count(risen.entity.player(), "It_1H_Machete"))))
+            tostring(risen.item.count(the_player(), "It_1H_Machete"))))
     elseif final_logged and gus and frames == (quest_finished_at or 0) + 200 then
         -- provoke a real fight so the event layer can report a death (npc.killed / npc.defeated)
         local x, y, z = gus:position()

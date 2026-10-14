@@ -22,6 +22,9 @@ Every mod gets its own sandboxed environment: base functions, `string`, `table`,
 
 Globals: `mod` (`id, name, version, author, dir`), `risen`.
 
+**Editor support:** [`types/risen.d.lua`](../types/risen.d.lua) describes every function below for LuaLS (completion, hover docs, type
+checks); see [`types/README.md`](../types/README.md).
+
 ## Events
 
 | Event | Arguments | When |

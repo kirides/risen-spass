@@ -277,7 +277,7 @@ void bindScripts(sol::state_view lua, sol::table risen) {
         std::int64_t result = 0;
         const bool ok = guarded([&] {
             const BString n(name);
-            result = sym().script_admin_call(admin, n.get(), self ? self->e : nullptr, other ? other->e : nullptr,
+            result = sym().script_admin_call(admin, n.get(), self ? ptr(*self) : nullptr, other ? ptr(*other) : nullptr,
                                              arg.value_or(0));
         });
         if (!ok) {

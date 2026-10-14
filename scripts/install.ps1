@@ -44,6 +44,11 @@ Write-Host "installed proxy -> $sentry"
 
 $data = Join-Path $bin 'spass'
 New-Item -ItemType Directory -Force (Join-Path $data 'mods') | Out-Null
+# LuaLS definitions (completion and type checks in the editor): <spass>\types and a .luarc.json next to the mods.
+Copy-Item (Join-Path $repo 'types') $data -Recurse -Force
+$luarc = Join-Path $data 'mods\.luarc.json'
+if (-not (Test-Path $luarc)) { Copy-Item (Join-Path $repo 'mods\.luarc.json') $luarc }
+Write-Host "copied the Lua definitions (types\risen.d.lua)"
 if ($WithExamples) {
     Copy-Item (Join-Path $repo 'mods\*') (Join-Path $data 'mods') -Recurse -Force
     Write-Host "copied example mods"

@@ -79,6 +79,7 @@ risen.on("tick", function()
         log.info(("tick %d player=%s"):format(frames, p and tostring(p:name()) or "nil"))
         if p then
             local x, y, z = p:position()
+            x, y, z = x or 0, y or 0, z or 0
             log.info(("player position %s %s %s npc=%s"):format(tostring(x), tostring(y), tostring(z), tostring(p:is_npc())))
             if not reported then
                 reported = true
