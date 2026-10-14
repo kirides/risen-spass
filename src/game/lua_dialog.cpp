@@ -1,0 +1,335 @@
+#include <windows.h>
+
+#include <spdlog/spdlog.h>
+
+#include "game/abi.h"
+#include "game/lua_entity.h"
+#include "game/properties.h"
+#include "hook/exports.h"
+
+// Runtime-created dialogues (docs/RE.md §11). A dialogue option is a gCInfo owned by an NPC (by entity name).
+// It runs a sequence of commands (Say, RunScript, AddLogText, ...). The *text of the first command* is the
+// option label shown to the player. Everything here goes through exported engine functions:
+//   gCInfoSystem::CreateInfo(name)  ->  set owner/type/condition via the Access* references
+//   gCInfo::InsertComSeqItem("Say") ->  configure the returned command object
+// and the texts are plain localization keys that the loc overlay (risen.loc.set) answers.
+
+namespace spass::game {
+namespace {
+
+struct LuaInfo {
+    void* p = nullptr;
+};
+
+void* infoSystem() {
+    const Symbols& s = sym();
+    void* qm = s.qm_instance();
+    return qm != nullptr ? s.qm_info_system(qm) : nullptr;
+}
+
+void setString(void* bstringField, const std::string& value) {
+    sym().bstring_assign_cstr(bstringField, value.c_str());
+}
+
+// bTPropertyContainer<enum>: { vftable (8 bytes), int value } -- verified from gCInfoSystem decompilation
+void setEnum(void* container, int value) {
+    *reinterpret_cast<int*>(static_cast<char*>(container) + 8) = value;
+}
+int getEnum(const void* container) {
+    return *reinterpret_cast<const int*>(static_cast<const char*>(container) + 8);
+}
+
+template <class R, class F>
+sol::optional<R> tryGet(const char* what, F&& f) {
+    R r{};
+    if (!guarded([&] { r = f(); })) {
+        spdlog::warn("dialog.{}: engine raised an exception", what);
+        return sol::nullopt;
+    }
+    return r;
+}
+
+template <class F>
+bool tryDo(const char* what, F&& f) {
+    if (!guarded([&] { f(); })) {
+        spdlog::warn("dialog.{}: engine raised an exception", what);
+        return false;
+    }
+    return true;
+}
+
+}  // namespace
+
+void bindDialog(sol::state_view lua, sol::table risen) {
+    const Symbols& s = sym();
+
+    lua.new_usertype<LuaInfo>(
+        "Info", sol::no_constructor,
+        sol::meta_function::to_string, [](const LuaInfo& i) { return fmt::format("Info({})", i.p); },
+        // info:set_property("ConditionType", "gEInfoCondType_General") / info:get_property("Type")
+        "set_property", [](const LuaInfo& i, const std::string& name, const std::string& value) { return propertySet(i.p, name, value); },
+        "get_property", [](const LuaInfo& i, const std::string& name) { return propertyGet(i.p, name); },
+        "set_owner", [&s](const LuaInfo& i, const std::string& v) { return tryDo("set_owner", [&] { setString(s.info_access_owner(i.p), v); }); },
+        "set_parent", [&s](const LuaInfo& i, const std::string& v) { return tryDo("set_parent", [&] { setString(s.info_access_parent(i.p), v); }); },
+        "set_quest", [&s](const LuaInfo& i, const std::string& v) { return tryDo("set_quest", [&] { setString(s.info_access_quest(i.p), v); }); },
+        "set_type", [&s](const LuaInfo& i, int v) { return tryDo("set_type", [&] { setEnum(s.info_access_type(i.p), v); }); },
+        "set_condition", [&s](const LuaInfo& i, int v) { return tryDo("set_condition", [&] { setEnum(s.info_access_condition(i.p), v); }); },
+        "set_permanent", [&s](const LuaInfo& i, bool v) { return tryDo("set_permanent", [&] { *s.info_access_permanent(i.p) = v; }); },
+        "set_given", [&s](const LuaInfo& i, bool v) { return tryDo("set_given", [&] { *s.info_access_given(i.p) = v; }); },
+        "name", [&s](const LuaInfo& i) {
+            return tryGet<std::string>("name", [&] {
+                return std::string(sym().bstring_get_text(s.info_access_name(i.p)));
+            });
+        },
+        "owner", [&s](const LuaInfo& i) {
+            return tryGet<std::string>("owner", [&] {
+                return std::string(sym().bstring_get_text(s.info_access_owner(i.p)));
+            });
+        },
+        "type", [&s](const LuaInfo& i) { return tryGet<int>("type", [&] { return getEnum(s.info_access_type(i.p)); }); },
+        "condition", [&s](const LuaInfo& i) { return tryGet<int>("condition", [&] { return getEnum(s.info_access_condition(i.p)); }); },
+        "given", [&s](const LuaInfo& i) { return tryGet<bool>("given", [&] { return *s.info_access_given(i.p); }); },
+        "conditions_fulfilled", [&s](const LuaInfo& i) { return tryGet<bool>("conditions_fulfilled", [&] { return s.info_conditions_ok(i.p); }).value_or(false); },
+        "available", [&s](const LuaInfo& i) { return tryGet<bool>("available", [&] { return s.info_is_available(i.p); }).value_or(false); },
+        "command_count", [&s](const LuaInfo& i) { return tryGet<int>("command_count", [&] { return s.info_command_count(i.p); }).value_or(0); },
+        // info:add_command("Say") -> 1-based index, nil if the command name is unknown (names: docs/LUA_API.md)
+        "add_command", [&s](const LuaInfo& i, const std::string& name) -> sol::optional<int> {
+            int idx = -1;
+            const bool ok = guarded([&] {
+                ByValueString arg(name);  // by-value bCString: the callee destroys it
+                idx = s.info_insert_command(i.p, arg.ptr());
+            });
+            if (!ok || idx < 0) {
+                return sol::nullopt;
+            }
+            return idx + 1;
+        },
+        // info:add_script_command() / info:add_log_command(): RunScript and AddLogText cannot be created by name
+        // or enum; they are created through their class factory and inserted as objects.
+        "add_script_command", [&s](const LuaInfo& i) -> sol::optional<int> {
+            int idx = -1;
+            if (!guarded([&] {
+                    if (void* cmd = s.runscript_create()) {
+                        idx = s.info_insert_command_ptr(i.p, cmd);
+                    }
+                }) || idx < 0) {
+                return sol::nullopt;
+            }
+            return idx + 1;
+        },
+        "add_log_command", [&s](const LuaInfo& i) -> sol::optional<int> {
+            int idx = -1;
+            if (!guarded([&] {
+                    if (void* cmd = s.addlog_create()) {
+                        idx = s.info_insert_command_ptr(i.p, cmd);
+                    }
+                }) || idx < 0) {
+                return sol::nullopt;
+            }
+            return idx + 1;
+        },
+        // info:add_command_type(enum) -> 1-based index (the engine's gEInfoCommand value; see risen.dialog.command_table)
+        "add_command_type", [&s](const LuaInfo& i, int type) -> sol::optional<int> {
+            int idx = -1;
+            if (!guarded([&] { idx = s.info_insert_command_type(i.p, type); }) || idx < 0) {
+                return sol::nullopt;
+            }
+            return idx + 1;
+        },
+        // info:set_say(index, speaker, listener, text_key)
+        "set_say", [&s](const LuaInfo& i, int index, const std::string& speaker, const std::string& listener,
+                        const std::string& key) {
+            // Staged so a fault reports which engine call is at fault.
+            void* cmd = nullptr;
+            if (!guarded([&] { cmd = s.info_get_command(i.p, index - 1); }) || cmd == nullptr) {
+                spdlog::warn("dialog.set_say: no command at index {}", index);
+                return false;
+            }
+            const BString sp(speaker), li(listener), k(key);
+            if (!guarded([&] { s.say_set_speaker(cmd, sp.get()); })) {
+                spdlog::warn("dialog.set_say: SetSpeaker faulted (cmd={})", cmd);
+                return false;
+            }
+            if (!guarded([&] { s.say_set_listener(cmd, li.get()); })) {
+                spdlog::warn("dialog.set_say: SetListener faulted");
+                return false;
+            }
+            void* text = nullptr;
+            if (!guarded([&] { text = s.say_access_text(cmd); })) {
+                spdlog::warn("dialog.set_say: AccessText faulted");
+                return false;
+            }
+            if (!guarded([&] { s.locstr_set_key(locStringBase(text), k.get()); })) {
+                spdlog::warn("dialog.set_say: SetKey faulted (text={})", text);
+                return false;
+            }
+            return true;
+        },
+        // info:set_script(index, "ScriptName") for a RunScript command: runs a (Lua-defined) script
+        "set_script", [&s](const LuaInfo& i, int index, const std::string& script) {
+            return tryDo("set_script", [&] {
+                void* cmd = s.info_get_command(i.p, index - 1);
+                if (cmd == nullptr) {
+                    return;
+                }
+                const BString name(script);
+                alignas(16) unsigned char proxy[64] = {};
+                s.script_proxy_ctor_name(proxy, name.get());
+                s.script_proxy_assign(s.runscript_access_script(cmd), proxy);
+                s.script_proxy_dtor(proxy);
+            });
+        },
+        // info:set_log(index, "QuestName", text_key) for an AddLogText command
+        "set_log", [&s](const LuaInfo& i, int index, const std::string& quest, const std::string& key) {
+            return tryDo("set_log", [&] {
+                void* cmd = s.info_get_command(i.p, index - 1);
+                if (cmd == nullptr) {
+                    return;
+                }
+                const BString k(key);
+                setString(s.addlog_access_quest(cmd), quest);
+                s.locstr_set_key(locStringBase(s.addlog_access_text(cmd)), k.get());
+            });
+        },
+        // Runs this info right now (as if the player had chosen it).
+        "run", [&s](const LuaInfo& i) {
+            return tryGet<bool>("run", [&] { return s.is_execute_info(infoSystem(), i.p); }).value_or(false);
+        });
+
+    sol::table dialog = lua.create_table();
+    // risen.dialog.new_info("Unique_Info_Name", "OwnerEntityName") -> Info | nil
+    dialog.set_function("new_info", [&s](const std::string& name, const std::string& owner) -> sol::optional<LuaInfo> {
+        void* info = nullptr;
+        const bool ok = guarded([&] {
+            void* is = infoSystem();
+            if (is == nullptr) {
+                return;
+            }
+            const BString n(name);
+            info = s.is_create_info(is, n.get());
+            if (info != nullptr) {
+                setString(s.info_access_owner(info), owner);
+            }
+        });
+        if (!ok || info == nullptr) {
+            spdlog::warn("dialog.new_info('{}'): could not create the info (game not ready?)", name);
+            return sol::nullopt;
+        }
+        return LuaInfo{info};
+    });
+    dialog.set_function("get", [&s](const std::string& name) -> sol::optional<LuaInfo> {
+        void* info = nullptr;
+        guarded([&] {
+            void* is = infoSystem();
+            const BString n(name);
+            info = is ? s.is_get_info(is, n.get()) : nullptr;
+        });
+        if (info == nullptr) {
+            return sol::nullopt;
+        }
+        return LuaInfo{info};
+    });
+    // Must be called after creating infos so the engine's owner -> infos map includes them.
+    dialog.set_function("rebuild", [&s] { return tryDo("rebuild", [&] { s.is_rebuild_owner_map(infoSystem()); }); });
+    dialog.set_function("has_infos", [&s](const LuaEntity& npc) {
+        return tryGet<bool>("has_infos", [&] { return s.is_has_infos(infoSystem(), npc.e); }).value_or(false);
+    });
+    // Dev aid: the engine's own table of command names -> gEInfoCommand values, a static array of 59 entries
+    // { int value; <4 pad>; bCString name } at Game.dll + 0x122ef00 (docs/RE.md §11). Version specific.
+    dialog.set_function("command_table", [](sol::this_state ts) {
+        sol::state_view L(ts);
+        sol::table out = L.create_table();
+        const auto base = exports::moduleBase(L"Game.dll");
+        guarded([&] {
+            for (int k = 0; k < 59; ++k) {
+                const char* entry = reinterpret_cast<const char*>(base + 0x122ef00 + static_cast<std::size_t>(k) * 16);
+                const int value = *reinterpret_cast<const int*>(entry);
+                const char* name = sym().bstring_get_text(entry + 8);
+                out[name] = value;
+            }
+        });
+        return out;
+    });
+    // Options currently offered by the running conversation: { Info, ... } (names via info:name())
+    dialog.set_function("available", [&s](sol::this_state ts) {
+        sol::state_view L(ts);
+        sol::table out = L.create_table();
+        guarded([&] {
+            void* is = infoSystem();
+            const int n = s.is_available_count(is);
+            for (int k = 0; k < n; ++k) {
+                if (void* info = s.is_get_available(is, k)) {
+                    out[k + 1] = LuaInfo{info};
+                }
+            }
+        });
+        return out;
+    });
+    dialog.set_function("is_running", [&s] {
+        return tryGet<bool>("is_running", [&] { return s.is_is_running(infoSystem()); }).value_or(false);
+    });
+    // risen.dialog.start(player, npc): opens the conversation like pressing the talk key
+    dialog.set_function("start", [&s](const LuaEntity& player, const LuaEntity& npc) {
+        return tryGet<bool>("start", [&] {
+                   EntityHolder p{player.e};
+                   EntityHolder n{npc.e};
+                   return s.dialog_start(&p, &n);
+               })
+            .value_or(false);
+    });
+    risen["dialog"] = dialog;
+
+    // risen.dialog.create{ name=, owner=, type=, condition=, quest=, lines={...} } -> Info | nil
+    //   lines: { speaker="player"|"npc"|<entity name>, listener="npc"|"player"|..., text="..." }
+    //          { script="LuaScriptName" }            -- runs a script defined with risen.script.define
+    //          { log = { quest="Q_Name", text="..." } }  -- adds a quest log entry
+    // Texts are stored in the localization overlay under "<info name>_<line number>".
+    const char* chunk = R"LUA(
+local risen = ...
+function risen.dialog.create(spec)
+    local info = risen.dialog.new_info(spec.name, spec.owner)
+    if not info then return nil end
+    -- spec.type: "Info" (default), "Important", "Comment", "News", "Refuse", "Parent"
+    -- spec.condition: "General" (default), "Hello", "End", "Back", "Trade", "NothingToSay", quest states ("Running", ...)
+    local type_name = "gEInfoType_" .. (spec.type or "Info")
+    local cond_name = "gEInfoCondType_" .. (spec.condition or "General")
+    if not info:set_property("Type", type_name) then risen.log.warn("dialog: cannot set Type " .. type_name) end
+    if not info:set_property("ConditionType", cond_name) then risen.log.warn("dialog: cannot set ConditionType " .. cond_name) end
+    if spec.quest then info:set_quest(spec.quest) end
+    if spec.parent then info:set_parent(spec.parent) end
+    info:set_permanent(spec.permanent == true)
+    for n, line in ipairs(spec.lines or {}) do
+        if line.script then
+            local idx = info:add_script_command()
+            if not idx or not info:set_script(idx, line.script) then risen.log.warn("dialog: bad script line " .. n) end
+        elseif line.log then
+            local idx = info:add_log_command()
+            local key = ("%s_%d"):format(spec.name, n)
+            risen.loc.set(key, line.log.text)
+            if not idx or not info:set_log(idx, line.log.quest, key) then risen.log.warn("dialog: bad log line " .. n) end
+        else
+            local idx = info:add_command("Say")
+            local key = ("%s_%d"):format(spec.name, n)
+            risen.loc.set(key, line.text or "")
+            if not idx or not info:set_say(idx, line.speaker or "npc", line.listener or "player", key) then
+                risen.log.warn("dialog: bad say line " .. n)
+            end
+        end
+    end
+    risen.dialog.rebuild()
+    return info
+end
+)LUA";
+    sol::load_result loaded = lua.load(chunk, "=risen.dialog");
+    if (!loaded.valid()) {
+        spdlog::error("lua: dialog helpers failed to load: {}", loaded.get<sol::error>().what());
+        return;
+    }
+    sol::protected_function fn = loaded;
+    sol::protected_function_result r = fn(risen);
+    if (!r.valid()) {
+        spdlog::error("lua: dialog helpers failed to run: {}", r.get<sol::error>().what());
+    }
+}
+
+}  // namespace spass::game

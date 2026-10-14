@@ -339,3 +339,77 @@ entries; it is appended to the array at `gCScriptAdmin+0x200` (count `+0x208`).
 * **Not done yet**: dialogue (`gCInfo`/`gCInfoSystem` are data objects: custom conversations need either new
   info objects or scripted `Entity::StartSay`/`StartOutput` lines), appearance variants (head/body templates `Hero_Head_*`),
   schedules/routines beyond a single state, party membership (`PSParty`), enemy/friend relations beyond guild.
+
+## 11. Dialogues (gCInfo) [confirmed in-game]
+
+* **Model**: a dialogue option is a `gCInfo` owned by an NPC (`+0x28` owner entity name; `+0x18` name; `+0x30` "already
+  given" flag; `+0x38` parent name; `+0x40` quest name; `+0x50` ConditionType; `+0x60` Type). Its body is a command
+  sequence (array at `+0x98`, count `+0xa0`). `gCInfo::GetDialogDescription` uses the text of the **first command**
+  as the option label. `gCInfoSystem::HasInfos(npc)` counts top-level infos (empty parent) whose Type is not 5 and
+  that are available.
+* **Creation**: `gCInfoSystem::CreateInfo(const bCString& name)` (Game `0x8b13f0`; system from
+  `gCQuestManager::GetInstance()->GetInfoManager()`) allocates, names and registers the info; afterwards
+  `gCInfoSystem::BuildMapInfosByOwners()` (`0x8b1e40`, protected but exported) rebuilds the owner → infos map.
+* **Properties by name**: `bCAccessorProperty(object, "ConditionType")` + `ConvertStringToValue("gEInfoCondType_General")`
+  is the engine's generic, notification-aware setter (the editor uses it). It works on any `bCObjectBase`
+  (infos, quests, ...) and is how we set `Type`, `ConditionType`, `Quest`, `LogTopic`-like properties without knowing
+  enum numbers. Enum names seen: `gEInfoType_{Info,Important,Comment,News,Refuse,Parent}`,
+  `gEInfoCondType_{General,Hello,End,Back,Trade,Heal,Open,Running,Success,Failed,Cancelled,Won,Lost,Ready,Overtime,
+  NotYetFinished,Delivery,PartDelivery,Join,Dismiss,MobJoin,MobDismiss,SlaveJoin,Duel,Crime,PoliticalCrime,
+  FirstWarn,SecondWarn,PickPocket,MasterThief,Reactivator,Activator,Wait,LongTimeNoSee,NothingToSay,Finished,DoCancel}`.
+  Evaluating conditions of a quest-state type for an info **without** an existing quest makes the engine pop up a
+  debug message box that blocks the main thread: never scan condition values blindly.
+* **Commands**: `gCInfo::InsertComSeqItem(bCString name)` (by-value string; callee destroys) creates a command by its
+  editor name for enum values < 0x3b. The engine's own table (59 entries `{int enum; bCString name}` at Game.dll+0x122ef00):
+  `Attack=1 Back=2 BoostAttribs=3 ClearGameEvent=4 CloseQuest=5 Description=7 DoLoot=9 DoTrade=10 End=11 EndGame=12
+  FullStop=13 Give=14 GiveXP=15 Heal=16 InfoWait=17 MoveTo=21 PickPocket=22 PlayMusic=23 RunQuest=25 Say=27
+  SayConfirm=28 SayHoldingPosition=29 SayKeepItUp=30 SaySound=31 SaySVM=32 SetGameEvent=33 SetGuardStatus=34
+  SetMobEnabled=35 SetPartyEnabled=37 SetRelaxingPoint=38 SetRoutine=39 SetSlaveryEnabled=40 SetSleepingPoint=41
+  SetSectorStatus=42 SetTeachEnabled=43 SetTradeEnabled=44 SetWorkingPoint=45 ShowPicture=46 ShowSubtitle=47 Sleep=48
+  StartEffect=49 SucceedQuest=50 Use=51 Wear=52 Trigger=55 RunInfo=56 RunAIScript=64 AddInfoSystemEndScript=65
+  StartTutorial=66`.
+  **`RunScript` and `AddLogText` are not insertable by name/enum**: create them with their class factories
+  (`gCInfoCommandRunScript::CreateObject()`, `gCInfoCommandAddLogText::CreateObject()`) and
+  `gCInfo::InsertComSeqItem(gCInfoCommand*)`. `AddLogText::GetCommandType()` returns 0 and its `Execute` is a no-op, i.e.
+  it is a dead command; quest log entries do not come from it (see §12).
+* **Say**: `gCInfoCommandSay::SetSpeaker/SetListener(bCString)` with keywords `"player"`, `"npc"` (the conversation
+  partner that is not the player) or an entity name (`gCInfo::GetEntityByKeyword`); the text is a `gCInfoLocString`
+  (derives from `CFXLocString`, vtable first, so the `CFXLocString` base starts at +8; `SetKey(bCString)` on the object
+  start corrupts memory and faults). Texts are plain loc keys, served by the loc overlay.
+* **Running**: `InfoSystem::StartInfoSystem(Entity, Entity)` (Script.dll, static) opens the conversation;
+  `gCInfoSystem::GetAvailableInfoCount/GetAvailableInfo(i)` list the offered options;
+  `gCInfoSystem::ExecuteDialogInfo(info)` runs an info only if it is in the system's running list (i.e. while a
+  conversation with its owner is open), then plays `Say` lines (~13 s for two lines) and executes `RunScript`.
+  After an info was used it becomes unavailable (`InfoGiven`) unless `Permanent`.
+
+## 12. Quests (gCQuest) [confirmed in-game]
+
+* **Creation**: `gCQuest::CreateObject()` (`0x95d030`, allocates 0x188 bytes and runs `Create`) → set the name through
+  the object's vtable (`+0x108` SetName, `+0x100` GetName; exactly as `gCQuestManager::AddQuest` does) → set properties by
+  name (`Type` = `gEQuestType_*`, `ExperiencePoints`, `Silent`, …) → `gCQuestManager::AddQuest(quest, name)` (`0x960880`;
+  refuses duplicate names; also files the quest under its type). Status transitions use the manager
+  (`OpenQuest/RunQuest/SucceedQuest/…`, already exposed by Script.dll's `QuestManager`): Open → Running → Success verified.
+  The manager knew 370 vanilla quests at the main menu.
+* **Property names** (from `Access*`): `Type`, `Status`, `LogTopic`, `LogText`, `ExperiencePoints`, `StartChapter`,
+  `EndChapter`, `Silent`, `Actors`, `FinishedQuests`, `DeliveryEntities`, `RunningQuestScript`, `SucceededQuestScript`,
+  `FailedQuestScript`, … Quest types: `gEQuestType_{Arena,BringNpc,Defeat,DriveAway,Duel,EnterArea,FollowNpc,HasItems,Kill,
+  Plunder,Report,Sparring}`; statuses `gEQuestStatus_{Open,Running,Success,Failed,Cancelled,Lost,Obsolete,Won}`.
+* **Title**: `LogTopic` is a `gCQuestLocString` (`AccessLogTopic()`); its string conversion does not accept a plain key
+  (reads back empty), so the key is set with `CFXLocString::SetKey` on the base subobject (same +8 rule as above).
+  Verified: after `set_topic`, `get_property("LogTopic")` returns the overlay text.
+* **Log**: the quest log is the array at `quest+0x50` (`{SLogEntry* data; int count; int capacity}`; `gCQuest::GetLogText`
+  returns it, `lea rax,[rcx+0x50]`). `SLogEntry` is **0x30 bytes = two `eCLocString` (0x18 each)**; `DrawQuestLog` draws the
+  first string of each entry. Entries are appended natively: grow with `bCMemoryAdmin::Realloc`, zero the new slots, construct
+  the text with `eCLocString::eCLocString(const bCString&)` and the second one with the default constructor, increment `count`.
+  Verified: `log_count` 0 → 1 without crash. (The array count is **not** at +0x10: that was XP.)
+* **Conditioned dialogue**: an info with `ConditionType=gEInfoCondType_Running` and `Quest=<name>` is offered only while the
+  quest is running (verified: absent before the quest, present during, and the "start" option disappears after use).
+
+## 13. Test harness facts
+
+* `SteamAPI_RestartAppIfNecessary(1652640)` can make the Steam client relaunch the game **from the real install path**
+  (observed once: Steam reported `B:\SteamLibrary\...\Risen.exe` starting at the time a test copy was launched, and that
+  instance crashed in `SharedBase.dll+0x7caa9`). `scripts/run-windowed.ps1` therefore sets `SteamAppId`/`SteamGameId`
+  before launching, which prevents the restart; no relaunch happened afterwards.
+* Screen capture of the Direct3D 9 window (`CopyFromScreen`, `PrintWindow`) returned black frames, so the dialogue/quest
+  UI was verified through the engine's own state (available options, quest status, log counts) and the loc-key trace.

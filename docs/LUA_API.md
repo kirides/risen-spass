@@ -100,6 +100,49 @@ Entity methods (every call returns `nil`/`false` instead of crashing on a bad ha
 **Persistence:** entities created at runtime are part of the world and can be saved; Lua state is not. Guard
 spawns with `risen.entity.get("YourName")` so a loaded save does not get a second copy.
 
+## Dialogues — `risen.dialog` (see `mods/dialogdemo`)
+A dialogue option is an *info* owned by an NPC (by entity name). Its lines are commands; the text of the **first
+line is the label** shown in the dialog list. Texts are stored in the localization overlay automatically.
+```lua
+local info = risen.dialog.create({
+    name  = "SPASS_Gus_Work",            -- unique info name
+    owner = "SPASS_Gus",                 -- NPC entity name
+    -- type = "Info" (default) | "Important" | "Comment" | "News" | "Refuse" | "Parent"
+    -- condition = "General" (default) | "Running" | "Success" | "Failed" | "Open" | "Hello" | "End" | "Back" | "Trade" | ...
+    -- quest = "Q_Name"                 -- for quest-state conditions
+    lines = {
+        { speaker = "player", listener = "npc", text = "Do you have any work for me?" },
+        { speaker = "npc", listener = "player", text = "Walk around, then come back." },
+        { script = "MyScript" },                       -- runs a script made with risen.script.define
+    },
+})
+```
+Speaker/listener keywords: `"player"`, `"npc"` (the other party), or an entity name. An info disappears after it was
+used unless `permanent = true`. Condition names are the engine's `gEInfoCondType_*`; **quest-state conditions only work
+with an existing quest** (`quest = ...`), otherwise the engine reports an error.
+
+Other calls: `risen.dialog.start(player, npc)` (open the conversation), `risen.dialog.available()` (options currently
+offered: list of `Info`), `risen.dialog.is_running()`, `risen.dialog.has_infos(npc)`, `risen.dialog.get(name)`,
+`risen.dialog.rebuild()`. `Info` methods: `name()`, `owner()`, `run()` (only works for infos the running conversation
+already knows), `available()`, `set_property(name, value)`/`get_property(name)` (any engine property by name),
+`add_command("Say"|"Description"|"End"|"Back"|"SetGameEvent"|"ClearGameEvent"|"GiveXP"|"Give"|"RunQuest"|"SucceedQuest"|
+"CloseQuest"|"Attack"|"MoveTo"|"StartEffect"|"SetRoutine"|"DoTrade"|"Heal"|"FullStop"|"InfoWait"|"RunInfo"|"SaySVM"|
+"SaySound"|"ShowSubtitle")`, `add_script_command()`, `set_say(i, speaker, listener, key)`, `set_script(i, name)`.
+
+## Quests — `risen.quest.define` / `add_log` (see `mods/questdemo`)
+```lua
+local q = risen.quest.define({ name = "Q_MyQuest", title = "My Quest", type = "Report", xp = 100 })
+risen.quest.open("Q_MyQuest"); risen.quest.run("Q_MyQuest")        -- status Open -> Running
+risen.quest.add_log("Q_MyQuest", "Talk to Gus again.")             -- quest log entry
+risen.quest.succeed("Q_MyQuest")                                   -- or fail / close
+q:get_property("Status")                                           -- "gEQuestStatus_Running", ...
+```
+Quest types (`gEQuestType_*`): `Report` (talk), `Kill`, `HasItems`, `EnterArea`, `BringNpc`, `FollowNpc`, `DriveAway`,
+`Defeat`, `Duel`, `Arena`, `Plunder`, `Sparring`. Also: `risen.quest.get(name)`, `exists`, `count()`, `at(i)`, `remove(name)`;
+`Quest` methods `name()`, `set_topic(key)`, `add_log_entry(key)`, `log_count()`, `set_property/get_property`, `register()`.
+Quests created at runtime are part of the quest manager and its savegame data; define them from `main.lua`/the first tick
+of every session (`if not risen.quest.exists(...)`).
+
 ## risen.quest / risen.gamevar / risen.world
 ```lua
 risen.quest.open|run|close|fail|succeed("Quest_Id")   risen.quest.is_running("Quest_Id")

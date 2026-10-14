@@ -98,6 +98,8 @@ void registerBindings() {
     rt.addBinding(bindEntity);
     rt.addBinding(bindItems);
     rt.addBinding(bindNpcHelpers);
+    rt.addBinding(bindDialog);
+    rt.addBinding(bindQuestObjects);
     rt.addBinding(scripts::bindScripts);
 }
 

@@ -1,0 +1,6 @@
+id          = "dialogdemo"
+name        = "Dialogue Demo"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Creates an NPC with a custom conversation at runtime (risen.dialog). Set PROBE=true to log which command names / condition types the engine accepts."
+main        = "main.lua"

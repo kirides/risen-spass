@@ -57,9 +57,12 @@ add_library(spass_core STATIC
     src/game/bindings.cpp
     src/game/hooks.cpp
     src/game/loc_overlay.cpp
+    src/game/lua_dialog.cpp
     src/game/lua_entity.cpp
     src/game/lua_items.cpp
     src/game/lua_npc.cpp
+    src/game/lua_quest.cpp
+    src/game/properties.cpp
     src/game/script_bridge.cpp
     src/game/symbols.cpp
     src/hook/exports.cpp
@@ -76,7 +79,7 @@ target_compile_definitions(spass_core PUBLIC
 target_link_libraries(spass_core PUBLIC
     spdlog::spdlog minhook::minhook sol2::sol2 tomlplusplus::tomlplusplus luajit::luajit)
 if(MSVC)
-    target_compile_options(spass_core PUBLIC /W4 /permissive- /utf-8 /Zc:__cplusplus /EHsc)
+    target_compile_options(spass_core PUBLIC /W4 /permissive- /utf-8 /Zc:__cplusplus /EHsc /FS)
 endif()
 
 # ---------------------------------------------------------------------------------------------

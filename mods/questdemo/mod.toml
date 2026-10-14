@@ -1,0 +1,6 @@
+id          = "questdemo"
+name        = "Quest Demo"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Defines a new quest at runtime, runs it, writes log entries and completes it (risen.quest.define / add_log)."
+main        = "main.lua"

@@ -121,6 +121,65 @@
     X(ent_turn_to, L"Script.dll", "?StartTurnTo@Entity@@QEAA_NAEBV1@@Z", bool (*)(void* self, const void* target), true) \
     X(inv_equip_stack, L"Script.dll", "?EquipStack@PSInventory@@QEAA_NH@Z", bool (*)(void* self, int stack), true) \
     X(inv_stack_count, L"Script.dll", "?GetStackCount@PSInventory@@QEBAHXZ", int (*)(const void* self), true)   \
+    /* ---- dialogue (gCInfo / gCInfoSystem, Game.dll) -- see docs/RE.md §11 ----------------------------------- */ \
+    X(qm_instance, L"Game.dll", "?GetInstance@gCQuestManager@@SAPEAV1@XZ", void* (*)(), true)                    \
+    X(qm_info_system, L"Game.dll", "?GetInfoManager@gCQuestManager@@QEAAPEAVgCInfoSystem@@XZ", void* (*)(void* self), true) \
+    X(is_create_info, L"Game.dll", "?CreateInfo@gCInfoSystem@@QEAAPEAVgCInfo@@AEBVbCString@@@Z", void* (*)(void* self, const void* name), true) \
+    X(is_get_info, L"Game.dll", "?GetInfo@gCInfoSystem@@IEAAPEAVgCInfo@@AEBVbCString@@@Z", void* (*)(void* self, const void* name), true) \
+    X(is_rebuild_owner_map, L"Game.dll", "?BuildMapInfosByOwners@gCInfoSystem@@IEAAXXZ", void (*)(void* self), true) \
+    X(is_execute_info, L"Game.dll", "?ExecuteDialogInfo@gCInfoSystem@@QEAA_NPEAVgCInfo@@@Z", bool (*)(void* self, void* info), true) \
+    X(is_has_infos, L"Game.dll", "?HasInfos@gCInfoSystem@@QEAA_NPEAVeCEntity@@@Z", bool (*)(void* self, void* entity), true) \
+    X(is_is_running, L"Game.dll", "?IsRunning@gCInfoSystem@@QEAA_NXZ", bool (*)(void* self), true)              \
+    /* generic property access by name (the engine's editor mechanism): works on any bCObjectBase */             \
+    X(acc_ctor, L"SharedBase.dll", "??0bCAccessorProperty@@QEAA@PEBVbCObjectBase@@AEBVbCString@@@Z", void* (*)(void* self, const void* obj, const void* name), true) \
+    X(acc_dtor, L"SharedBase.dll", "??1bCAccessorProperty@@QEAA@XZ", void (*)(void* self), true)                \
+    X(acc_is_valid, L"SharedBase.dll", "?IsValid@bCAccessorProperty@@QEBA_NXZ", bool (*)(const void* self), true) \
+    X(acc_set_string, L"SharedBase.dll", "?ConvertStringToValue@bCAccessorProperty@@QEAAXAEBVbCString@@@Z", void (*)(void* self, const void* value), true) \
+    X(acc_get_string, L"SharedBase.dll", "?ConvertValueToString@bCAccessorProperty@@QEAA?AVbCString@@XZ", void* (*)(void* self, void* ret), true) \
+    /* quest creation (gCQuest factory, manager) -- docs/RE.md §12 */                                            \
+    X(quest_create_object, L"Game.dll", "?CreateObject@gCQuest@@SAPEAVbCObjectBase@@XZ", void* (*)(), true)     \
+    X(qm_add_quest, L"Game.dll", "?AddQuest@gCQuestManager@@QEAA_NPEAVgCQuest@@AEBVbCString@@@Z", bool (*)(void* self, void* quest, const void* name), true) \
+    X(qm_get_quest, L"Game.dll", "?GetQuest@gCQuestManager@@QEAAPEAVgCQuest@@AEBVbCString@@@Z", void* (*)(void* self, const void* name), true) \
+    X(quest_access_topic, L"Game.dll", "?AccessLogTopic@gCQuest@@QEAAAEAVgCQuestLocString@@XZ", void* (*)(void* self), true) \
+    X(mem_instance, L"SharedBase.dll", "?GetInstance@bCMemoryAdmin@@SAAEAV1@XZ", void* (*)(), true)             \
+    X(mem_realloc, L"SharedBase.dll", "?Realloc@bCMemoryAdmin@@QEAAPEAXPEAXKPEBD11H@Z", void* (*)(void* self, void* ptr, unsigned long size, const char*, const char*, const char*, int), true) \
+    X(locstring_ctor_key, L"Engine.dll", "??0eCLocString@@QEAA@AEBVbCString@@@Z", void* (*)(void* self, const void* key), true) \
+    X(locstring_ctor_default, L"Engine.dll", "??0eCLocString@@QEAA@XZ", void* (*)(void* self), true)             \
+    X(qm_quest_count, L"Game.dll", "?GetQuestCount@gCQuestManager@@QEBAHXZ", int (*)(const void* self), true)   \
+    X(qm_quest_at, L"Game.dll", "?GetQuestAt@gCQuestManager@@QEAAPEAVgCQuest@@H@Z", void* (*)(void* self, int index), true) \
+    X(qm_remove_quest, L"Game.dll", "?RemoveQuest@gCQuestManager@@QEAA_NAEBVbCString@@@Z", bool (*)(void* self, const void* name), true) \
+    X(quest_get_log_text, L"Game.dll", "?GetLogText@gCQuest@@QEBAAEBV?$bTObjArray@USLogEntry@gCQuest@@@@XZ", const void* (*)(const void* self), true) \
+    X(is_available_count, L"Game.dll", "?GetAvailableInfoCount@gCInfoSystem@@QEAAHXZ", int (*)(void* self), true) \
+    X(is_get_available, L"Game.dll", "?GetAvailableInfo@gCInfoSystem@@QEAAPEAVgCInfo@@H@Z", void* (*)(void* self, int index), true) \
+    X(info_access_owner, L"Game.dll", "?AccessOwner@gCInfo@@QEAAAEAVbCString@@XZ", void* (*)(void* self), true) \
+    X(info_access_name, L"Game.dll", "?AccessName@gCInfo@@QEAAAEAVbCString@@XZ", void* (*)(void* self), true)   \
+    X(info_access_parent, L"Game.dll", "?AccessParent@gCInfo@@QEAAAEAVbCString@@XZ", void* (*)(void* self), true) \
+    X(info_access_quest, L"Game.dll", "?AccessQuest@gCInfo@@QEAAAEAVbCString@@XZ", void* (*)(void* self), true) \
+    X(info_access_type, L"Game.dll", "?AccessType@gCInfo@@QEAAAEAV?$bTPropertyContainer@W4gEInfoType@@@@XZ", void* (*)(void* self), true) \
+    X(info_access_condition, L"Game.dll", "?AccessConditionType@gCInfo@@QEAAAEAV?$bTPropertyContainer@W4gEInfoCondType@@@@XZ", void* (*)(void* self), true) \
+    X(info_access_permanent, L"Game.dll", "?AccessPermanent@gCInfo@@QEAAAEA_NXZ", bool* (*)(void* self), true)   \
+    X(info_access_given, L"Game.dll", "?AccessInfoGiven@gCInfo@@QEAAAEA_NXZ", bool* (*)(void* self), true)      \
+    X(info_conditions_ok, L"Game.dll", "?AreConditionsFulfilled@gCInfo@@QEAA_NXZ", bool (*)(void* self), true)  \
+    X(info_is_available, L"Game.dll", "?IsAvailable@gCInfo@@QEAA_NXZ", bool (*)(void* self), true)             \
+    X(info_insert_command, L"Game.dll", "?InsertComSeqItem@gCInfo@@QEAAHVbCString@@@Z", int (*)(void* self, void* byValueName), true) \
+    X(info_insert_command_type, L"Game.dll", "?InsertComSeqItem@gCInfo@@QEAAHW4gEInfoCommand@@@Z", int (*)(void* self, int type), true) \
+    X(info_insert_command_ptr, L"Game.dll", "?InsertComSeqItem@gCInfo@@QEAAHPEAVgCInfoCommand@@@Z", int (*)(void* self, void* command), true) \
+    X(runscript_create, L"Game.dll", "?CreateObject@gCInfoCommandRunScript@@SAPEAVbCObjectBase@@XZ", void* (*)(), true) \
+    X(addlog_create, L"Game.dll", "?CreateObject@gCInfoCommandAddLogText@@SAPEAVbCObjectBase@@XZ", void* (*)(), true) \
+    X(info_get_command, L"Game.dll", "?GetComSeqItem@gCInfo@@QEBAPEAVgCInfoCommand@@H@Z", void* (*)(const void* self, int index), true) \
+    X(info_command_count, L"Game.dll", "?GetComSeqItemCount@gCInfo@@QEBAHXZ", int (*)(const void* self), true)  \
+    X(say_access_text, L"Game.dll", "?AccessText@gCInfoCommandSay@@QEAAAEAVgCInfoLocString@@XZ", void* (*)(void* self), true) \
+    X(say_set_speaker, L"Game.dll", "?SetSpeaker@gCInfoCommandSay@@QEAAXAEBVbCString@@@Z", void (*)(void* self, const void* s), true) \
+    X(say_set_listener, L"Game.dll", "?SetListener@gCInfoCommandSay@@QEAAXAEBVbCString@@@Z", void (*)(void* self, const void* s), true) \
+    X(runscript_access_script, L"Game.dll", "?AccessScript@gCInfoCommandRunScript@@QEAAAEAVeCScriptProxyScript@@XZ", void* (*)(void* self), true) \
+    X(addlog_access_quest, L"Game.dll", "?AccessQuestName@gCInfoCommandAddLogText@@QEAAAEAVbCString@@XZ", void* (*)(void* self), true) \
+    X(addlog_access_text, L"Game.dll", "?AccessText@gCInfoCommandAddLogText@@QEAAAEAVgCInfoLocString@@XZ", void* (*)(void* self), true) \
+    X(locstr_set_key, L"FFC.dll", "?SetKey@CFXLocString@@QEAAXAEBVbCString@@@Z", void (*)(void* self, const void* key), true) \
+    X(bstring_assign_cstr, L"SharedBase.dll", "??4bCString@@QEAAAEAV0@PEBD@Z", void* (*)(void* self, const char*), true) \
+    X(script_proxy_ctor_name, L"Engine.dll", "??0eCScriptProxyScript@@QEAA@AEBVbCString@@@Z", void* (*)(void* self, const void* name), true) \
+    X(script_proxy_dtor, L"Engine.dll", "??1eCScriptProxyScript@@QEAA@XZ", void (*)(void* self), true)          \
+    X(script_proxy_assign, L"Engine.dll", "??4eCScriptProxyScript@@QEAAAEAV0@AEBV0@@Z", void* (*)(void* self, const void* other), true) \
+    X(dialog_start, L"Script.dll", "?StartInfoSystem@InfoSystem@@SA_NAEBVEntity@@0@Z", bool (*)(const void* player, const void* npc), true) \
     X(ent_teleport_name, L"Script.dll", "?Teleport@Entity@@QEAA_NAEBVbCString@@@Z", bool (*)(void* self, const void* name), true) \
     X(ent_teleport_entity, L"Script.dll", "?Teleport@Entity@@QEAA_NAEBV1@@Z", bool (*)(void* self, const void* other), true)
 

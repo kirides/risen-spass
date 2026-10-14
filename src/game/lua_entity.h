@@ -18,6 +18,12 @@ void bindEntity(sol::state_view lua, sol::table risen);
 // Registers risen.template, risen.entity.spawn and risen.item.*. Must run after bindEntity().
 void bindItems(sol::state_view lua, sol::table risen);
 
+// Registers risen.dialog.* and the Info usertype (runtime-created dialogues). Needs risen.loc and risen.script.
+void bindDialog(sol::state_view lua, sol::table risen);
+
+// Registers the Quest usertype and risen.quest.new/get/define/add_log. Needs risen.quest (bindQuest), risen.dialog.
+void bindQuestObjects(sol::state_view lua, sol::table risen);
+
 // Adds the NPC methods (guild, hp, level, set_state, goto_*, equip_all, ...) to the Entity usertype.
 void addNpcMethods(sol::usertype<LuaEntity>& ut);
 
