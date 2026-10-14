@@ -1,0 +1,6 @@
+id          = "hello"
+name        = "Hello World"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Smoke test: proves that the Lua layer is loaded and the native bindings work."
+main        = "main.lua"

@@ -1,0 +1,6 @@
+id          = "selftest"
+name        = "Self Test"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Exercises every risen.* API once and logs the results (see bin/spass/spass.log). Development aid."
+main        = "main.lua"

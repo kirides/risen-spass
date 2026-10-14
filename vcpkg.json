@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "risen-spass",
+  "version-string": "0.1.0",
+  "description": "Hook-based Lua (LuaJIT) scripting layer for Risen (Enhanced, x64)",
+  "dependencies": [
+    "luajit",
+    "minhook",
+    "sol2",
+    "spdlog",
+    "tomlplusplus"
+  ]
+}
