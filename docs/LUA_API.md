@@ -75,9 +75,11 @@ using the old pointer, so handles kept across loads either point at the right en
 and become invalid after such a change.
 
 ## risen.template / risen.entity.spawn / risen.item
-Template names are the blueprint names stored in `data/common/templates.pak` (`It_1H_Machete`, `It_1H_Sword`, …).
+Template names are the blueprint names stored in `data/common/templates.pak` (`It_1H_Machete`, `It_1H_Sword`, …); the complete
+list (2679 names) is in [TEMPLATES.md](TEMPLATES.md).
 ```lua
 risen.template.exists("It_1H_Machete")                    -- bool
+risen.template.list("NPC")                                -- every template name below data/common/templates/<group> (all groups if omitted)
 local e = risen.entity.spawn("It_1H_Sword", x, y, z)      -- Entity | nil; needs a running game
 risen.item.give(player, "It_1H_Machete", 2)               -- created amount, -1 on failure; optional 4th arg: stack type
 risen.item.count(player, "It_1H_Machete")                 -- integer
@@ -219,12 +221,20 @@ risen.vfs.exists("#G3:/save/QuickSave.save")
 risen.vfs.dirs("data/common")                    -- sub-directory names
 risen.vfs.find("data/common/templates/Items", "*")   -- file names matching a pattern ("*.dll", "It_*", ...)
 risen.vfs.find_ext("ini", "xml")
+risen.vfs.walk("data/common/templates", "*.tple")   -- recursive: every file below a directory as "dir/sub/name"
 risen.vfs.read("ini/loc.ini" [, max_bytes])      -- file contents as a string (nil if it cannot be opened); default limit 16 MiB
 risen.vfs.size(path)                             -- unreliable for packed files (often 0): read instead
 ```
 `mods/vfsprobe` crawls the tree and logs it. Paths are mount-relative (`ini`, `scripts`, `data/...`) or start with `#G3:/`.
 ```lua
 risen.debug.trace_files("SaveGames")  -- log every file the engine opens whose path contains that text; "" stops
+```
+
+## risen.engine — what the layer found in the running game
+```lua
+risen.engine.missing()   -- { "symbol (required|optional)", ... }: engine functions that could not be bound (their features are off)
+risen.engine.symbols()   -- { symbol = true|false }
+risen.engine.build()     -- { ["Game.dll"] = { timestamp = <PE link time>, size = ..., base = "0x..." }, ... } (include it in bug reports)
 ```
 
 ## Files

@@ -108,11 +108,12 @@ void registerBindings() {
     rt.addBinding(bindQuest);
     rt.addBinding(bindGameVars);
     rt.addBinding(bindWorld);
-    rt.addBinding(bindVfs);
     rt.addBinding(bindDebug);
+    rt.addBinding(bindEngineInfo);
     rt.addBinding(bindLoc);
     rt.addBinding(bindEntity);
     rt.addBinding(bindItems);
+    rt.addBinding(bindVfs);  // after bindItems: adds risen.template.list
     rt.addBinding(bindNpcHelpers);
     rt.addBinding(bindDialog);
     rt.addBinding(bindQuestObjects);

@@ -182,6 +182,43 @@ void bindVfs(sol::state_view lua, sol::table risen) {
     });
 
     risen["vfs"] = vfs;
+
+    // Lua helpers built on the primitives (readable and copyable by mods):
+    //   risen.vfs.walk(dir [, pattern])  -> every file below `dir` as "dir/sub/name", recursively
+    //   risen.template.list([group])     -> names of all entity templates (files *.tple below data/common/templates),
+    //                                       optionally only those in sub-directory `group` ("NPC", "Items", "Monster", ...)
+    const char* chunk = R"LUA(
+local risen = ...
+function risen.vfs.walk(dir, pattern)
+    local out = {}
+    local function go(d)
+        for _, f in ipairs(risen.vfs.find(d, pattern or "*") or {}) do out[#out + 1] = d .. "/" .. f end
+        for _, sub in ipairs(risen.vfs.dirs(d) or {}) do go(d .. "/" .. sub) end
+    end
+    go(dir)
+    return out
+end
+
+function risen.template.list(group)
+    local root = "data/common/templates" .. (group and ("/" .. group) or "")
+    local names = {}
+    for _, path in ipairs(risen.vfs.walk(root, "*.tple")) do
+        names[#names + 1] = path:match("([^/]+)%.[^./]+$")
+    end
+    table.sort(names)
+    return names
+end
+)LUA";
+    sol::load_result loaded = lua.load(chunk, "=risen.vfs");
+    if (!loaded.valid()) {
+        spdlog::error("lua: vfs helpers failed to load: {}", loaded.get<sol::error>().what());
+        return;
+    }
+    sol::protected_function fn = loaded;
+    sol::protected_function_result r = fn(risen);
+    if (!r.valid()) {
+        spdlog::error("lua: vfs helpers failed to run: {}", r.get<sol::error>().what());
+    }
 }
 
 }  // namespace spass::game

@@ -12,6 +12,9 @@ void registerBindings();
 void bindDebug(sol::state_view lua, sol::table risen);
 void installFileTrace();
 
+// risen.engine.* (lua_engine_info.cpp): which engine symbols were bound, and the game build.
+void bindEngineInfo(sol::state_view lua, sol::table risen);
+
 // risen.vfs.* (lua_vfs.cpp): the engine's virtual file system, including packed archives.
 void bindVfs(sol::state_view lua, sol::table risen);
 

@@ -61,6 +61,7 @@ add_library(spass_core STATIC
     src/game/hooks.cpp
     src/game/loc_overlay.cpp
     src/game/lua_dialog.cpp
+    src/game/lua_engine_info.cpp
     src/game/lua_entity.cpp
     src/game/lua_items.cpp
     src/game/lua_npc.cpp

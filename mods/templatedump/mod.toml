@@ -1,0 +1,4 @@
+id = "templatedump"
+name = "Template dump"
+version = "1.0.0"
+description = "Logs every entity template name, grouped by directory (development aid; see docs/TEMPLATES.md)."
