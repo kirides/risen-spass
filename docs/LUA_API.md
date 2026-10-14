@@ -29,12 +29,22 @@ Globals: `mod` (`id, name, version, author, dir`), `risen`.
 | `mods.loaded` | – | after every mod's `main.lua` ran |
 | `tick` | – | every frame of a running game session (`gCSession::Process`) |
 | `shutdown` | – | Lua runtime stops |
+| `session.start` | `mode` = `"new"`, `"load"` or `"other"` | a game session was (re)started: new game, or after a savegame was loaded |
+| `session.stop` | – | the running session is being torn down (also fires a few times while a game is starting) |
+| `world.changed` | `name` | a world became the active one |
+| `save.before` / `save.after` | `name` / `name, ok` | around every savegame write (manual, quick, auto) |
+| `load.before` / `load.after` | `name` / `name, ok` | around reading a savegame. `load.before` runs **before the engine reads quests and infos** |
+| `quest.status_changed` | `quest, status, previous` | any quest changed status (`"Open"`, `"Running"`, `"Success"`, `"Failed"`, `"Obsolete"`, `"Cancelled"`, `"Lost"`, `"Won"`) – including the game's own quests |
+| `npc.killed` / `npc.defeated` | `entity` | an NPC died / was knocked out in combat |
+| `info.started` / `info.finished` | `info_name, owner` | a dialogue option was chosen / finished playing |
+| `item.picked_up` | `owner, template, amount` | an inventory took an item entity from the world (`owner` is the entity whose inventory it is) |
 
 ```lua
 local h = risen.on("tick", function() ... end, 10)   -- optional priority, higher runs first
 risen.off(h)
 risen.emit("my_mod.event", a, b)                      -- mod-to-mod events
 ```
+`mods/eventlog` logs every event above with its arguments (development aid).
 
 ## risen.log / risen.version
 `risen.log.trace|debug|info|warn|error(...)` (arguments are `tostring`-ed and joined by spaces).
@@ -58,8 +68,11 @@ Limit: 1024 Lua scripts.
 `risen.entity.get("UniqueName")`, `risen.entity.player()` → `Entity | nil`.
 Entity methods: `name()`, `display_name()`, `set_name(s)`, `position()` → `x, y, z`, `distance_to(e)`,
 `is_npc()`, `is_player()`, `is_dead()`, `is_item()`, `is_character()`, `kill()`, `set_frozen(b)`,
-`enable_rendering(b)`, `teleport(name_or_entity)`, `address`. Handles are raw pointers: do not keep them across
-frames or loads; failures return `nil`/`false` instead of crashing.
+`enable_rendering(b)`, `teleport(name_or_entity)`, `valid()`, `address`. A handle remembers the entity's unique
+name: after a savegame load, a session start/stop or a world change it looks the entity up **by name again** instead of
+using the old pointer, so handles kept across loads either point at the right entity or fail with `nil`/`false`
+(`entity:valid()` tells which). Failures never crash the game. Entities without a unique name cannot be re-resolved
+and become invalid after such a change.
 
 ## risen.template / risen.entity.spawn / risen.item
 Template names are the blueprint names stored in `data/common/templates.pak` (`It_1H_Machete`, `It_1H_Sword`, …).
@@ -97,8 +110,13 @@ Entity methods (every call returns `nil`/`false` instead of crashing on a bad ha
 | `goto_pos(x,y,z[,mode])`, `goto_entity(e[,mode])`, `stop_goto()`, `turn_to(e)` | `mode` is the engine's walk mode enum (0 default) |
 | `equip_all()`, `stack_count()` | equips every equippable inventory stack |
 
-**Persistence:** entities created at runtime are part of the world and can be saved; Lua state is not. Guard
-spawns with `risen.entity.get("YourName")` so a loaded save does not get a second copy.
+**Persistence:** entities created at runtime are **not** part of a savegame (verified in-game): after a load they are
+gone and must be spawned again. Use the guard pattern on `session.start` and `load.after`:
+```lua
+local function ensure() if not risen.entity.get("SPASS_Bob") then risen.npc.spawn(...) end end
+risen.on("session.start", ensure)
+risen.on("load.after", function(_, ok) if ok then ensure() end end)
+```
 
 ## Dialogues — `risen.dialog` (see `mods/dialogdemo`)
 A dialogue option is an *info* owned by an NPC (by entity name). Its lines are commands; the text of the **first
@@ -119,7 +137,12 @@ local info = risen.dialog.create({
 ```
 Speaker/listener keywords: `"player"`, `"npc"` (the other party), or an entity name. An info disappears after it was
 used unless `permanent = true`. Condition names are the engine's `gEInfoCondType_*`; **quest-state conditions only work
-with an existing quest** (`quest = ...`), otherwise the engine reports an error.
+with an existing quest** (`quest = ...`).
+
+`risen.dialog.create` validates the whole spec *before* touching the engine and returns `nil, "reason"` (also logged as a
+warning) for: an unknown type/condition, a quest-state condition without `quest`, a `quest` that does not exist yet
+(the engine would block the game with a message box), an unregistered `script`, empty `lines`, non-string texts.
+It is **idempotent**: an info that already exists is returned as is, so the call can sit in a "create if missing" block.
 
 Other calls: `risen.dialog.start(player, npc)` (open the conversation), `risen.dialog.available()` (options currently
 offered: list of `Info`), `risen.dialog.is_running()`, `risen.dialog.has_infos(npc)`, `risen.dialog.get(name)`,
@@ -140,15 +163,32 @@ q:get_property("Status")                                           -- "gEQuestSt
 Quest types (`gEQuestType_*`): `Report` (talk), `Kill`, `HasItems`, `EnterArea`, `BringNpc`, `FollowNpc`, `DriveAway`,
 `Defeat`, `Duel`, `Arena`, `Plunder`, `Sparring`. Also: `risen.quest.get(name)`, `exists`, `count()`, `at(i)`, `remove(name)`;
 `Quest` methods `name()`, `set_topic(key)`, `add_log_entry(key)`, `log_count()`, `set_property/get_property`, `register()`.
-Quests created at runtime are part of the quest manager and its savegame data; define them from `main.lua`/the first tick
-of every session (`if not risen.quest.exists(...)`).
+`risen.quest.define` / `add_log` validate their arguments and return `nil, "reason"` / `false, "reason"`; `define` is
+idempotent (an existing quest is returned unchanged).
+
+**Quests, infos and savegames** (verified in-game): the engine saves a quest's state (status, log entries) and an info's
+"given" flag *by name* and restores it while it reads a savegame – but only into objects that **already exist** at that
+moment. Define quests and infos in a `load.before` handler (a fresh process starts without them), and again on
+`session.start` (a new game resets the quest manager and removes runtime quests; runtime infos survive). Because
+`define`/`create` are idempotent, the same function can serve both events:
+```lua
+local function content()
+    risen.quest.define{ name = "Q_Mine", title = "Mine", type = "Report" }
+    risen.dialog.create{ name = "Mine_Hello", owner = "Bob", condition = "Running", quest = "Q_Mine", lines = { ... } }
+end
+risen.on("load.before", content)
+risen.on("session.start", content)
+```
 
 ## risen.quest / risen.gamevar / risen.world
 ```lua
 risen.quest.open|run|close|fail|succeed("Quest_Id")   risen.quest.is_running("Quest_Id")
 risen.gamevar.get("Name") -> int|nil                   risen.gamevar.set("Name", 1)
 risen.world.is_game_running()  risen.world.new_game()  risen.world.quick_load()
+risen.world.quick_save()  risen.world.auto_save("name")  risen.world.is_save_allowed()
 ```
+`new_game`, `quick_load`, `quick_save` and `auto_save` are *requests*: the engine performs them on its next processing step
+(watch `save.after` / `load.after` / `session.start`).
 
 ## risen.loc — localization overlay
 ```lua
@@ -158,6 +198,25 @@ risen.loc.get("GO_QuestRunning"), risen.loc.exists(id), risen.loc.clear(id), ris
 ```
 Ids are matched case-insensitively. The game's own tables are never modified (they are read-only at runtime).
 
+## Persistence — `risen.save`
+The Lua state is not part of a savegame, so mods keep their data in a per-mod store that is written next to every
+savegame and restored when that savegame is loaded (`<Risen>\bin\spass\saves\<savegame name>.lua`). A new game starts
+with an empty store; a failed load keeps the previous data.
+```lua
+risen.save.set("kills", risen.save.get("kills", 0) + 1)       -- key: string or number
+risen.save.get("kills", 0)   risen.save.remove("kills")   risen.save.keys()   risen.save.clear()
+risen.save.set("visited", { "Harbor", "Mine" })               -- booleans, numbers, strings, acyclic tables of those
+```
+`set` raises an error for functions, userdata, cyclic tables and non-finite numbers. The data of the loaded savegame is
+already visible in `load.before` (so content can depend on it); `save.before` is the place for a last update. The store is
+namespaced by mod id. Sidecar files of deleted savegames are not removed.
+
+## risen.debug — development aid
+```lua
+risen.debug.trace_files("SaveGames")  -- log every file the engine opens whose path contains that text; "" stops
+```
+
 ## Files
 Log: `<Risen>\bin\spass\spass.log`, config: `<Risen>\bin\spass\config.toml`
-(`enabled`, `log_level`, `[lua] unsafe`).
+(`enabled`, `log_level`, `[lua] unsafe`, `[debug] app_data` – redirects the game's `%LOCALAPPDATA%`/`%APPDATA%`;
+`scripts/test-run.ps1` uses it to keep a test copy's savegames and `ConfigUser.xml` away from the real ones).

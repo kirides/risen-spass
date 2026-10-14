@@ -90,7 +90,7 @@ void bindItems(sol::state_view lua, sol::table risen) {
                                    sol::optional<int> stackType) -> int {
         int result = -1;
         guarded([&] {
-            EntityHolder inv{owner.e};
+            EntityHolder inv{ptr(owner)};
             const TemplateObject t(name);
             if (t.valid()) {
                 result = s.inv_create_items(&inv, t.get(), count.value_or(1), stackType.value_or(0));
@@ -102,7 +102,7 @@ void bindItems(sol::state_view lua, sol::table risen) {
     item.set_function("count", [&s](const LuaEntity& owner, const std::string& name) -> int {
         int result = 0;
         guarded([&] {
-            EntityHolder inv{owner.e};
+            EntityHolder inv{ptr(owner)};
             const TemplateObject t(name);
             if (t.valid()) {
                 result = s.inv_item_amount(&inv, t.get());
@@ -114,7 +114,7 @@ void bindItems(sol::state_view lua, sol::table risen) {
     item.set_function("money", [&s](const LuaEntity& owner) -> float {
         float result = 0;
         guarded([&] {
-            EntityHolder inv{owner.e};
+            EntityHolder inv{ptr(owner)};
             result = s.inv_money(&inv);
         });
         return result;

@@ -1,16 +1,27 @@
 #pragma once
 
+#include <string>
+
 #include <sol/sol.hpp>
 
 namespace spass::game {
 
-// Lua-side handle for an engine entity (eCEntity*). It is a raw pointer: like the engine's own
-// `Entity` class it does not keep the entity alive. Every call is wrapped in SEH, so using a handle
-// to a destroyed entity yields `nil` instead of a crash in the common case, but handles should not
-// be stored across frames/loads.
+// Lua-side handle for an engine entity (eCEntity*). Like the engine's own `Entity` class it does not keep
+// the entity alive, but it remembers the entity's unique name: whenever the "world generation" changed since
+// the pointer was taken (a savegame was loaded, a session started/stopped, the world changed) the handle
+// looks the entity up by name again instead of trusting the old pointer, and reports a missing entity as
+// stale (see ptr()). Every engine call is additionally wrapped in SEH.
 struct LuaEntity {
-    void* e = nullptr;
+    mutable void* e = nullptr;
+    mutable std::string name;
+    mutable unsigned generation = 0;
 };
+
+// Pointer of `h` valid for the current world generation, or nullptr if the entity is gone (or was never named).
+void* ptr(const LuaEntity& h);
+
+// Advances the world generation (called by the lifecycle hooks); every older handle revalidates on next use.
+void bumpEntityGeneration();
 
 // Registers risen.entity.* and the Entity usertype.
 void bindEntity(sol::state_view lua, sol::table risen);

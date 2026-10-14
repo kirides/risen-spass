@@ -71,6 +71,9 @@
     X(world_new_game, L"Script.dll", "?NewGame@World@@QEAAXXZ", void (*)(void* self), true)                     \
     X(world_quick_load, L"Script.dll", "?QuickLoad@World@@QEAAXXZ", void (*)(void* self), true)                 \
     X(world_is_game_running, L"Script.dll", "?IsGameRunning@World@@QEBA_NXZ", bool (*)(const void* self), true) \
+    X(world_quick_save, L"Script.dll", "?QuickSave@World@@QEAAXXZ", void (*)(void* self), false) \
+    X(world_auto_save, L"Script.dll", "?AutoSave@World@@QEAAXAEBVbCString@@@Z", void (*)(void* self, const void* name), false) \
+    X(world_is_save_allowed, L"Script.dll", "?IsSaveAllowed@World@@QEBA_NXZ", bool (*)(const void* self), false) \
     X(gamevar_get, L"Script.dll", "?GetGameVariable@InfoSystem@@SA_NAEBVbCString@@AEAH@Z", bool (*)(const void*, int*), true) \
     X(gamevar_set, L"Script.dll", "?SetGameVariable@InfoSystem@@SA_NAEBVbCString@@H@Z", bool (*)(const void*, int), true) \
     X(ent_get_entity, L"Script.dll", "?GetEntity@Entity@@SA?AV1@VbCString@@@Z", void* (*)(void* ret, void* byValueName), true) \
@@ -181,7 +184,20 @@
     X(script_proxy_assign, L"Engine.dll", "??4eCScriptProxyScript@@QEAAAEAV0@AEBV0@@Z", void* (*)(void* self, const void* other), true) \
     X(dialog_start, L"Script.dll", "?StartInfoSystem@InfoSystem@@SA_NAEBVEntity@@0@Z", bool (*)(const void* player, const void* npc), true) \
     X(ent_teleport_name, L"Script.dll", "?Teleport@Entity@@QEAA_NAEBVbCString@@@Z", bool (*)(void* self, const void* name), true) \
-    X(ent_teleport_entity, L"Script.dll", "?Teleport@Entity@@QEAA_NAEBV1@@Z", bool (*)(void* self, const void* other), true)
+    X(ent_teleport_entity, L"Script.dll", "?Teleport@Entity@@QEAA_NAEBV1@@Z", bool (*)(void* self, const void* other), true) \
+    /* ---- lifecycle events (hooked, optional: a missing symbol only disables that event) -- docs/RE.md §14 ---- */ \
+    X(save_write, L"Game.dll", "?Save@gCSaveGameManager@@AEAA_NAEBVbCString@@AEBVbCUnicodeString@@K_NAEAVgCSaveGame@@@Z", bool (*)(void* self, const void* name, const void* title, unsigned long flags, bool overwrite, void* saveGame), false) \
+    X(save_load, L"Game.dll", "?Load@gCSaveGameManager@@AEAA_NAEBVbCString@@PEAVIFFFileStream2@@@Z", bool (*)(void* self, const void* name, void* stream), false) \
+    X(session_start, L"Game.dll", "?Start@gCSession@@QEAAXW4gESession_StartMode@@@Z", void (*)(void* self, int mode), false) \
+    X(session_stop, L"Game.dll", "?Stop@gCSession@@QEAAXXZ", void (*)(void* self), false)                          \
+    X(world_activate, L"Game.dll", "?Activate@gCWorld@@UEAA_NXZ", bool (*)(void* self), false)                      \
+    X(quest_set_status, L"Game.dll", "?SetStatus@gCQuest@@QEAA_NAEBW4gEQuestStatus@@_N1@Z", bool (*)(void* self, const int* status, bool a, bool b), false) \
+    X(qm_on_npc_killed, L"Game.dll", "?OnNPCKilled@gCQuestManager@@QEAA_NAEBVeCEntity@@@Z", bool (*)(void* self, void* entity), false) \
+    X(qm_on_npc_defeated, L"Game.dll", "?OnNPCDefeated@gCQuestManager@@QEAA_NAEBVeCEntity@@@Z", bool (*)(void* self, void* entity), false) \
+    X(is_on_info_finished, L"Game.dll", "?OnInfoFinished@gCInfoSystem@@QEAAXPEBVgCRuntimeInfo@@@Z", void (*)(void* self, const void* runtimeInfo), false) \
+    X(inv_insert_stack, L"Game.dll", "?InsertStack@gCInventory_PS@@QEAAHPEAVeCEntity@@@Z", int (*)(void* self, void* item), false) \
+    X(ps_get_entity, L"Engine.dll", "?GetEntity@eCEntityPropertySet@@UEAAPEAVeCEntity@@XZ", void* (*)(void* self), false) \
+    X(element_base_name, L"Engine.dll", "?GetFileBaseName@eCProcessibleElement@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false)
 
 namespace spass::game {
 

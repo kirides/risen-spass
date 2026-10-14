@@ -9,6 +9,7 @@
 #include "common/paths.h"
 #include "config.h"
 #include "game/bindings.h"
+#include "game/folder_redirect.h"
 #include "game/hooks.h"
 #include "game/symbols.h"
 #include "hook/hook_manager.h"
@@ -54,6 +55,10 @@ void onProcessAttach(HMODULE self) {
         }
         spdlog::error("required engine symbols missing ({}): wrong game version? Mod layer disabled.", list);
         return;
+    }
+
+    if (!g_config.appData.empty()) {
+        game::installFolderRedirect(g_config.appData);
     }
 
     game::registerBindings();

@@ -5,6 +5,8 @@
 #include <spdlog/spdlog.h>
 
 #include "bootstrap.h"
+#include "game/bindings.h"
+#include "game/events.h"
 #include "game/loc_overlay.h"
 #include "game/script_bridge.h"
 #include "game/symbols.h"
@@ -58,6 +60,8 @@ bool installHooks() {
                                         &detourScriptAdminPostInit);
     ok &= g_sessionProcess.install("gCSession::Process", s.session_process, &detourSessionProcess);
     ok &= installLocHooks();
+    installEventHooks();
+    installFileTrace();
     return ok;
 }
 

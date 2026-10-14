@@ -413,3 +413,54 @@ entries; it is appended to the array at `gCScriptAdmin+0x200` (count `+0x208`).
   before launching, which prevents the restart; no relaunch happened afterwards.
 * Screen capture of the Direct3D 9 window (`CopyFromScreen`, `PrintWindow`) returned black frames, so the dialogue/quest
   UI was verified through the engine's own state (available options, quest status, log counts) and the loc-key trace.
+
+## 14. Savegames, session lifecycle and events [confirmed in-game unless marked]
+
+Game.dll RVAs; every one of these is exported with a decorated name, so the hooks bind by name (`src/game/events.cpp`).
+
+* **Save path.** All saves (menu, quick, auto) end in `gCSaveGameManager::Save(name, title, flags, overwrite, gCSaveGame&)`
+  (`0x99bc50`, private) -> `WriteSaveGame` (`0x99b4c0`): header, `eCModuleAdmin::WritePreLoadData`, `gCWorld::WriteSaveGame`
+  (entities), `eCModuleAdmin::WriteSaveGame` (every module: session, quest manager, info system, ...). `QuickSave` (`0x99c520`) is
+  a wrapper that renames an old file to a backup name and calls `Save(name, ..., overwrite = true)`.
+  `World::QuickSave/AutoSave/SaveGame/LoadGame/QuickLoad/NewGame` (Script.dll) only *post* requests to `gCHUDFileManager`,
+  which performs them from `OnProcessEvent` on the next processing step.
+* **Load path.** `gCHUDFileManager::LoadGame` (`0x87aef0`) -> `gCSaveGameManager::Load(name)` (`0x99d080`) -> `Load(name, stream)`
+  (`0x99b8f0`, private): reads the header, `eCModuleAdmin::ReadPreLoadData`, reloads the world (`gCWorld::Reload`),
+  `gCWorld::ReadSaveGame` (entities), then `eCModuleAdmin::ReadSaveGame` (modules). Afterwards `gCSession::Start(1)` and
+  `GotoLoadedPosition` run. New game: `gCHUDFileManager::NewGame` (`0x87afe0`) -> `gCQuestManager::ReadQuests()` + `gCInfoSystem::Reset()` when the
+  world is unchanged, `gCWorld::Restart`, `gCSession::Start(0)`.
+* **Session modes.** `gCSession::Start(gESession_StartMode)` (`0x973da0`): `0` new game, `1` load, `2` other. It calls `Stop()` (`0x9743c0`)
+  first when a player entity exists. `gCWorld::Activate` (`0x994760`) makes a world current; its name is
+  `eCProcessibleElement::GetFileBaseName()` (`"World"`).
+* **What a savegame contains** (tested with a runtime NPC, quest, info and mod data, loaded in the same process and in a fresh one):
+  * **Entities created with `Entity::Spawn` are not saved**: the NPC was gone after loading (also in the same process, where the
+    world is reloaded). Mods must respawn them (`session.start`, `load.after`).
+  * **Quests**: `gCQuestManager::ReadSaveGame` (`0x961f00`) reads `(name, runtime data)` pairs and looks each name up in the manager;
+    an unknown name is streamed into a temporary quest and *discarded* (`"Quest '%s' not found, streaming runtime data into
+    temporary Quest!"`). With the quest created beforehand, status **and log entries** were restored. So runtime quests must be
+    created in `load.before`, which runs before the module read. `NewGame` calls `ReadQuests()`, which removes runtime quests
+    (verified: a quest defined in a loaded session was gone at `session.start(new)`).
+  * **Infos**: `gCInfoSystem::ReadSaveGame` (`0x8b3d70`) restores the "given" flag by info name; it only applies to infos that exist
+    (verified: `given = true` survived a fresh-process load when the info was created in `load.before`). Runtime infos survive
+    `NewGame` (the owner map is kept), so they only need to exist once per process.
+  * Game variables (`InfoSystem::Get/SetGameVariable`) are saved by the engine; the Lua state is not -> `risen.save` sidecar files.
+* **Events and their engine sources.** `gCQuest::SetStatus(status, bool, bool)` (`0x95d920`; the quest's current status is the int at
+  `+0xC8`, `0` open, `1` running, `2` success, `3` failed, `4` obsolete, `5` cancelled, `6` lost, `7` won; it also fires a global script proxy
+  with the quest name), `gCQuestManager::OnNPCKilled/OnNPCDefeated(const eCEntity&)` (`0x95f9b0`/`0x95f8c0`, fired by the combat/death code; setting
+  hit points to 0 through the script API does *not* trigger them – a real fight does), `gCInfoSystem::ExecuteDialogInfo(gCInfo*)`
+  (`0x8b3b70`) for a chosen option and `OnInfoFinished(gCRuntimeInfo*)` (`0x8afcb0`; the `gCInfo` is at `runtimeInfo+0x10`),
+  `gCInventory_PS::InsertStack(eCEntity* item)` (`0x8c0cf0`: the inventory takes the item entity and kills it; template name = entity vtable `+0x170`
+  -> `GetName` `+0x178`; quantity = `gCItem_PS` (property set `0x27`) `+0x20`; owner = `eCEntityPropertySet::GetEntity()`).
+  `gCInfoSystem::OnInfoStarted(bCString)` is *not* the info start: its argument is an AI state name (`IS_2_Running_ProcessInfo`, ...).
+* **Pitfall.** The engine's log function (`FUN_1804a5b00`) is an empty stub in this build, so engine error messages never appear anywhere;
+  failures such as "Could not create file for write access" return `false` silently. `risen.debug.trace_files(substring)` (hook on
+  `CreateFileA/W`) is how to see what the engine really opens.
+
+## 15. Test environment isolation [confirmed]
+
+* The engine expands `$(localappdata)` in `mountlist_packed.ini` and finds `ConfigUser.xml`/`SaveGames` through `SHGetFolderPathA`
+  (SharedBase.dll, Risen.exe) and `SHGetSpecialFolderPathA` (FFCore.dll) – **not** through the environment variable. A hard-coded
+  absolute path in the mount list makes the `save` mount unusable: every save then fails without a message (§14).
+* `config.toml` `[debug] app_data = "<dir>"` hooks both functions for `CSIDL_LOCAL_APPDATA`/`CSIDL_APPDATA` (-> `<dir>\Local`, `<dir>\Roaming`).
+  `scripts/test-run.ps1` sets it for the test copy, so savegames, `ConfigUser.xml` and `achievements.bin` stay inside it and the real
+  `%LOCALAPPDATA%\Risen` is not touched (checked by comparing file timestamps before and after a run).

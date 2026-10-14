@@ -1,0 +1,5 @@
+id = "eventlog"
+name = "Event logger"
+version = "1.0.0"
+author = "risen-spass"
+description = "Logs every engine event the Lua layer can emit (development aid)."

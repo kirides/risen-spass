@@ -68,6 +68,11 @@ void Runtime::addBinding(Binding binding) {
     bindings_.push_back(std::move(binding));
 }
 
+void Runtime::addModBinding(ModBinding binding) {
+    std::lock_guard lock(mutex_);
+    modBindings_.push_back(std::move(binding));
+}
+
 bool Runtime::start(const std::filesystem::path& modsDir, bool unsafeLua) {
     std::lock_guard lock(mutex_);
     if (state_) {
@@ -184,6 +189,9 @@ sol::table Runtime::makeModApi(const ModInfo& mod) {
             }
         }
     });
+    for (const auto& b : modBindings_) {
+        b(lua, api, mod);
+    }
     return api;
 }
 

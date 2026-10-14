@@ -88,5 +88,11 @@ risen.on("tick", function()
         final_logged = true
         local q = risen.quest.get(QUEST)
         log.info(("dialogdemo: final: quest Status=%s, machetes=%s"):format(tostring(q and q:get_property("Status")),
-            tostring(risen.item.count(risen.entity.player(), "It_1H_Machete"))))    end
+            tostring(risen.item.count(risen.entity.player(), "It_1H_Machete"))))
+    elseif final_logged and gus and frames == (quest_finished_at or 0) + 200 then
+        -- provoke a real fight so the event layer can report a death (npc.killed / npc.defeated)
+        local x, y, z = gus:position()
+        local pirate = risen.npc.spawn("Pirate_S_01", x + 80, y + 10, z, { name = "SPASS_Pirate", level = 20, hp_max = 2000 })
+        log.info("dialogdemo: spawned a pirate next to Gus: " .. tostring(pirate))
+    end
 end)

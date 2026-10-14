@@ -33,6 +33,10 @@ public:
     using Binding = std::function<void(sol::state_view lua, sol::table risen)>;
     void addBinding(Binding binding);
 
+    // Per-mod additions to the `risen` view each mod gets (e.g. risen.save, which is namespaced by mod id).
+    using ModBinding = std::function<void(sol::state_view lua, sol::table api, const ModInfo& mod)>;
+    void addModBinding(ModBinding binding);
+
     bool start(const std::filesystem::path& modsDir, bool unsafeLua = false);
     void stop();
     bool running() const { return state_ != nullptr; }
@@ -112,6 +116,7 @@ private:
     std::recursive_mutex mutex_;
     std::unique_ptr<sol::state> state_;
     std::vector<Binding> bindings_;
+    std::vector<ModBinding> modBindings_;
     std::map<std::string, std::vector<Handler>> handlers_;
     std::uint64_t nextHandle_ = 1;
     sol::table base_;   // read-only whitelist inherited by every mod environment

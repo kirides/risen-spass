@@ -183,14 +183,31 @@ void bindQuestObjects(sol::state_view lua, sol::table risen) {
     // risen.quest.add_log(quest_name, text) -> bool   adds an entry to the quest log
     const char* chunk = R"LUA(
 local risen = ...
+
+local QUEST_TYPES = { Report = true, Kill = true, HasItems = true, EnterArea = true, BringNpc = true, FollowNpc = true,
+    DriveAway = true, Defeat = true, Duel = true, Arena = true, Plunder = true, Sparring = true }
+
+local function fail(what, msg)
+    local text = what .. ": " .. msg
+    risen.log.warn(text)
+    return nil, text
+end
+
+-- risen.quest.define(spec) -> Quest | nil, error. Idempotent: an existing quest of that name is returned as is.
 function risen.quest.define(spec)
+    if type(spec) ~= "table" then return fail("quest.define", "the argument must be a table") end
+    if type(spec.name) ~= "string" or spec.name == "" then return fail("quest.define", "'name' must be a non-empty string") end
+    if spec.type ~= nil and not QUEST_TYPES[spec.type] then
+        return fail("quest.define", ("unknown type '%s' (Report, Kill, HasItems, EnterArea, BringNpc, FollowNpc, DriveAway, Defeat, Duel, Arena, Plunder, Sparring)"):format(tostring(spec.type)))
+    end
+    if spec.title ~= nil and type(spec.title) ~= "string" then return fail("quest.define", "'title' must be a string") end
+    if spec.xp ~= nil and (type(spec.xp) ~= "number" or spec.xp < 0) then return fail("quest.define", "'xp' must be a non-negative number") end
     if risen.quest.exists(spec.name) then
-        risen.log.warn("quest.define: '" .. spec.name .. "' already exists")
+        risen.log.debug("quest.define: '" .. spec.name .. "' already exists")
         return risen.quest.get(spec.name)
     end
     local q = risen.quest.new(spec.name)
-    if not q then return nil end
-    -- Quest types (gEQuestType_*): Report, Kill, HasItems, EnterArea, BringNpc, FollowNpc, DriveAway, Defeat, Duel, ...
+    if not q then return fail("quest.define", "the engine could not create the quest (game not ready?)") end
     local function prop(name, value)
         if not q:set_property(name, value) then risen.log.warn(("quest.define: cannot set %s=%s"):format(name, value)) end
     end
@@ -200,14 +217,20 @@ function risen.quest.define(spec)
     if not q:set_topic(topic_key) then risen.log.warn("quest.define: cannot set the log topic") end
     if spec.xp then prop("ExperiencePoints", tostring(spec.xp)) end
     if spec.silent ~= nil then prop("Silent", spec.silent and "true" or "false") end
-    if not q:register() then return nil end
+    if not q:register() then return fail("quest.define", "the quest manager refused '" .. spec.name .. "'") end
     return q
 end
 
+-- risen.quest.add_log(quest_name, text) -> true | false, error
 local log_counter = 0
 function risen.quest.add_log(quest_name, text)
+    if type(quest_name) ~= "string" or type(text) ~= "string" then return false, "quest.add_log: quest name and text must be strings" end
     local q = risen.quest.get(quest_name)
-    if not q then return false end
+    if not q then
+        local msg = "quest.add_log: quest '" .. quest_name .. "' does not exist"
+        risen.log.warn(msg)
+        return false, msg
+    end
     log_counter = log_counter + 1
     local key = ("%s_Log%d"):format(quest_name, log_counter)
     risen.loc.set(key, text)

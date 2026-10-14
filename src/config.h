@@ -11,10 +11,14 @@ namespace spass {
 //   log_level = "info"      # trace|debug|info|warn|error
 //   [lua]
 //   unsafe    = false       # true: mods get io/ffi/debug/package (development only)
+//   [debug]
+//   app_data  = ""          # redirect the game's %LOCALAPPDATA% and %APPDATA% (config, savegames, screenshots,
+//                           # sentry) to this directory: lets a test copy run without touching the user's data
 struct Config {
     bool enabled = true;
     std::string logLevel = "info";
     bool unsafeLua = false;
+    std::string appData;
 };
 
 Config loadConfig(const std::filesystem::path& file);

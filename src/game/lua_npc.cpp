@@ -33,92 +33,92 @@ void addNpcMethods(sol::usertype<LuaEntity>& ut) {
     const Symbols& s = sym();
 
     // ---- guild / group ----------------------------------------------------------------------------------
-    ut["guild"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{e.e}; return s.npc_get_guild(&h); }); };
+    ut["guild"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{ptr(e)}; return s.npc_get_guild(&h); }); };
     ut["set_guild"] = [&s](const LuaEntity& e, int guild) {
-        return tryDo([&] { EntityHolder h{e.e}; s.npc_set_guild(&h, &guild); });
+        return tryDo([&] { EntityHolder h{ptr(e)}; s.npc_set_guild(&h, &guild); });
     };
     ut["group"] = [&s](const LuaEntity& e) {
         return tryGet<std::string>([&] {
-            EntityHolder h{e.e};
+            EntityHolder h{ptr(e)};
             OutString out;
             s.npc_get_group(&h, out.ptr());
             return out.take();
         });
     };
     ut["set_group"] = [&s](const LuaEntity& e, const std::string& group) {
-        return tryDo([&] { EntityHolder h{e.e}; const BString g(group); s.npc_set_group(&h, g.get()); });
+        return tryDo([&] { EntityHolder h{ptr(e)}; const BString g(group); s.npc_set_group(&h, g.get()); });
     };
 
     // ---- skills / attributes ------------------------------------------------------------------------------
-    ut["hp"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{e.e}; return s.sk_get_hp(&h); }); };
-    ut["hp_max"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{e.e}; return s.sk_get_hp_max(&h); }); };
-    ut["level"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{e.e}; return s.sk_get_level(&h); }); };
-    ut["mana"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{e.e}; return s.sk_get_mana(&h); }); };
+    ut["hp"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{ptr(e)}; return s.sk_get_hp(&h); }); };
+    ut["hp_max"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{ptr(e)}; return s.sk_get_hp_max(&h); }); };
+    ut["level"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{ptr(e)}; return s.sk_get_level(&h); }); };
+    ut["mana"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{ptr(e)}; return s.sk_get_mana(&h); }); };
     // The engine's PSSkills::Set*(value, 0) ADDS `value` to the current total (observed: level 5 + 7 = 12, then
     // +3 = 15), so the absolute setters below add the difference to the target instead.
-    ut["add_hp"] = [&s](const LuaEntity& e, int d) { return tryDo([&] { EntityHolder h{e.e}; s.sk_set_hp(&h, d, kSkillModifierBase); }); };
-    ut["add_hp_max"] = [&s](const LuaEntity& e, int d) { return tryDo([&] { EntityHolder h{e.e}; s.sk_set_hp_max(&h, d, kSkillModifierBase); }); };
-    ut["add_level"] = [&s](const LuaEntity& e, int d) { return tryDo([&] { EntityHolder h{e.e}; s.sk_set_level(&h, d, kSkillModifierBase); }); };
-    ut["add_mana"] = [&s](const LuaEntity& e, int d) { return tryDo([&] { EntityHolder h{e.e}; s.sk_set_mana(&h, d, kSkillModifierBase); }); };
-    ut["add_mana_max"] = [&s](const LuaEntity& e, int d) { return tryDo([&] { EntityHolder h{e.e}; s.sk_set_mana_max(&h, d, kSkillModifierBase); }); };
+    ut["add_hp"] = [&s](const LuaEntity& e, int d) { return tryDo([&] { EntityHolder h{ptr(e)}; s.sk_set_hp(&h, d, kSkillModifierBase); }); };
+    ut["add_hp_max"] = [&s](const LuaEntity& e, int d) { return tryDo([&] { EntityHolder h{ptr(e)}; s.sk_set_hp_max(&h, d, kSkillModifierBase); }); };
+    ut["add_level"] = [&s](const LuaEntity& e, int d) { return tryDo([&] { EntityHolder h{ptr(e)}; s.sk_set_level(&h, d, kSkillModifierBase); }); };
+    ut["add_mana"] = [&s](const LuaEntity& e, int d) { return tryDo([&] { EntityHolder h{ptr(e)}; s.sk_set_mana(&h, d, kSkillModifierBase); }); };
+    ut["add_mana_max"] = [&s](const LuaEntity& e, int d) { return tryDo([&] { EntityHolder h{ptr(e)}; s.sk_set_mana_max(&h, d, kSkillModifierBase); }); };
     ut["set_hp_max"] = [&s](const LuaEntity& e, int v) {
-        return tryDo([&] { EntityHolder h{e.e}; s.sk_set_hp_max(&h, v - s.sk_get_hp_max(&h), kSkillModifierBase); });
+        return tryDo([&] { EntityHolder h{ptr(e)}; s.sk_set_hp_max(&h, v - s.sk_get_hp_max(&h), kSkillModifierBase); });
     };
     // Order matters for hit points: raise the maximum first (set_hp_max), then set_hp.
     ut["set_hp"] = [&s](const LuaEntity& e, int v) {
-        return tryDo([&] { EntityHolder h{e.e}; s.sk_set_hp(&h, v - s.sk_get_hp(&h), kSkillModifierBase); });
+        return tryDo([&] { EntityHolder h{ptr(e)}; s.sk_set_hp(&h, v - s.sk_get_hp(&h), kSkillModifierBase); });
     };
     ut["set_level"] = [&s](const LuaEntity& e, int v) {
-        return tryDo([&] { EntityHolder h{e.e}; s.sk_set_level(&h, v - s.sk_get_level(&h), kSkillModifierBase); });
+        return tryDo([&] { EntityHolder h{ptr(e)}; s.sk_set_level(&h, v - s.sk_get_level(&h), kSkillModifierBase); });
     };
     ut["set_mana"] = [&s](const LuaEntity& e, int v) {
-        return tryDo([&] { EntityHolder h{e.e}; s.sk_set_mana(&h, v - s.sk_get_mana(&h), kSkillModifierBase); });
+        return tryDo([&] { EntityHolder h{ptr(e)}; s.sk_set_mana(&h, v - s.sk_get_mana(&h), kSkillModifierBase); });
     };
-    ut["mana_max"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{e.e}; return s.sk_get_mana_max(&h); }); };
+    ut["mana_max"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{ptr(e)}; return s.sk_get_mana_max(&h); }); };
     ut["set_mana_max"] = [&s](const LuaEntity& e, int v) {
-        return tryDo([&] { EntityHolder h{e.e}; s.sk_set_mana_max(&h, v - s.sk_get_mana_max(&h), kSkillModifierBase); });
+        return tryDo([&] { EntityHolder h{ptr(e)}; s.sk_set_mana_max(&h, v - s.sk_get_mana_max(&h), kSkillModifierBase); });
     };
 
     // ---- AI / movement -----------------------------------------------------------------------------------
     // entity:set_state("ZS_HangAround")  -- name of a registered AI state script (docs/LUA_API.md lists them)
     ut["set_state"] = [&s](const LuaEntity& e, const std::string& state) {
         return tryDo([&] {
-            EntityHolder h{e.e};
+            EntityHolder h{ptr(e)};
             ByValueString name(state);  // by-value bCString: the callee destroys it
             s.rt_set_state(&h, name.ptr());
         });
     };
     ut["state"] = [&s](const LuaEntity& e) {
         return tryGet<std::string>([&] {
-            EntityHolder h{e.e};
+            EntityHolder h{ptr(e)};
             OutString out;
             s.rt_get_state(&h, out.ptr());
             return out.take();
         });
     };
-    ut["full_stop"] = [&s](const LuaEntity& e) { return tryDo([&] { EntityHolder h{e.e}; s.rt_full_stop(&h); }); };
+    ut["full_stop"] = [&s](const LuaEntity& e) { return tryDo([&] { EntityHolder h{ptr(e)}; s.rt_full_stop(&h); }); };
     // entity:goto(target_entity [, walk_mode]) or entity:goto(x, y, z [, walk_mode])
     ut["goto_entity"] = [&s](const LuaEntity& e, const LuaEntity& target, sol::optional<int> mode) {
         return tryGet<bool>([&] {
-                   EntityHolder h{e.e};
-                   EntityHolder t{target.e};
+                   EntityHolder h{ptr(e)};
+                   EntityHolder t{ptr(target)};
                    return s.ent_goto_entity(&h, &t, mode.value_or(0));
                })
             .value_or(false);
     };
     ut["goto_pos"] = [&s](const LuaEntity& e, float x, float y, float z, sol::optional<int> mode) {
         return tryGet<bool>([&] {
-                   EntityHolder h{e.e};
+                   EntityHolder h{ptr(e)};
                    const float p[3] = {x, y, z};
                    return s.ent_goto_pos(&h, p, mode.value_or(0));
                })
             .value_or(false);
     };
-    ut["stop_goto"] = [&s](const LuaEntity& e) { return tryDo([&] { EntityHolder h{e.e}; s.ent_stop_goto(&h); }); };
+    ut["stop_goto"] = [&s](const LuaEntity& e) { return tryDo([&] { EntityHolder h{ptr(e)}; s.ent_stop_goto(&h); }); };
     ut["turn_to"] = [&s](const LuaEntity& e, const LuaEntity& target) {
         return tryGet<bool>([&] {
-                   EntityHolder h{e.e};
-                   EntityHolder t{target.e};
+                   EntityHolder h{ptr(e)};
+                   EntityHolder t{ptr(target)};
                    return s.ent_turn_to(&h, &t);
                })
             .value_or(false);
@@ -128,7 +128,7 @@ void addNpcMethods(sol::usertype<LuaEntity>& ut) {
     // entity:equip_all() equips every inventory stack that can be equipped; returns how many succeeded.
     ut["equip_all"] = [&s](const LuaEntity& e) {
         return tryGet<int>([&] {
-                   EntityHolder h{e.e};
+                   EntityHolder h{ptr(e)};
                    const int n = s.inv_stack_count(&h);
                    int ok = 0;
                    for (int i = 0; i < n; ++i) {
@@ -138,7 +138,7 @@ void addNpcMethods(sol::usertype<LuaEntity>& ut) {
                })
             .value_or(0);
     };
-    ut["stack_count"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{e.e}; return s.inv_stack_count(&h); }); };
+    ut["stack_count"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{ptr(e)}; return s.inv_stack_count(&h); }); };
 }
 
 // risen.npc.spawn(template, x, y, z [, opts]) -> Entity | nil

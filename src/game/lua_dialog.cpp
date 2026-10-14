@@ -232,7 +232,7 @@ void bindDialog(sol::state_view lua, sol::table risen) {
     // Must be called after creating infos so the engine's owner -> infos map includes them.
     dialog.set_function("rebuild", [&s] { return tryDo("rebuild", [&] { s.is_rebuild_owner_map(infoSystem()); }); });
     dialog.set_function("has_infos", [&s](const LuaEntity& npc) {
-        return tryGet<bool>("has_infos", [&] { return s.is_has_infos(infoSystem(), npc.e); }).value_or(false);
+        return tryGet<bool>("has_infos", [&] { return s.is_has_infos(infoSystem(), ptr(npc)); }).value_or(false);
     });
     // Dev aid: the engine's own table of command names -> gEInfoCommand values, a static array of 59 entries
     // { int value; <4 pad>; bCString name } at Game.dll + 0x122ef00 (docs/RE.md §11). Version specific.
@@ -271,8 +271,8 @@ void bindDialog(sol::state_view lua, sol::table risen) {
     // risen.dialog.start(player, npc): opens the conversation like pressing the talk key
     dialog.set_function("start", [&s](const LuaEntity& player, const LuaEntity& npc) {
         return tryGet<bool>("start", [&] {
-                   EntityHolder p{player.e};
-                   EntityHolder n{npc.e};
+                   EntityHolder p{ptr(player)};
+                   EntityHolder n{ptr(npc)};
                    return s.dialog_start(&p, &n);
                })
             .value_or(false);
@@ -286,9 +286,84 @@ void bindDialog(sol::state_view lua, sol::table risen) {
     // Texts are stored in the localization overlay under "<info name>_<line number>".
     const char* chunk = R"LUA(
 local risen = ...
+
+-- Names are the engine's own enum names (docs/RE.md §11). Anything else is refused before the engine is touched.
+local INFO_TYPES = { Info = true, Important = true, Comment = true, News = true, Refuse = true, Parent = true }
+-- Conditions that evaluate a quest: the engine pops up a blocking message box when the quest does not exist.
+local QUEST_CONDITIONS = { Open = true, Running = true, Success = true, Failed = true, Cancelled = true, Won = true,
+    Lost = true, Ready = true, Overtime = true, NotYetFinished = true, Delivery = true, PartDelivery = true }
+local PLAIN_CONDITIONS = { General = true, Hello = true, End = true, Back = true, Trade = true, Heal = true, Join = true,
+    Dismiss = true, MobJoin = true, MobDismiss = true, SlaveJoin = true, Duel = true, Crime = true, PoliticalCrime = true,
+    FirstWarn = true, SecondWarn = true, PickPocket = true, MasterThief = true, Reactivator = true, Activator = true,
+    Wait = true, LongTimeNoSee = true, NothingToSay = true, Finished = true, DoCancel = true }
+
+local function nonempty(v) return type(v) == "string" and v ~= "" end
+
+-- Returns an error message for a spec the engine could not handle, nil when it is fine.
+local function check_dialog(spec)
+    if type(spec) ~= "table" then return "the argument must be a table" end
+    if not nonempty(spec.name) then return "'name' (unique info name) must be a non-empty string" end
+    if not nonempty(spec.owner) then return "'owner' (NPC entity name) must be a non-empty string" end
+    if spec.type ~= nil and not INFO_TYPES[spec.type] then
+        return ("unknown type '%s' (Info, Important, Comment, News, Refuse, Parent)"):format(tostring(spec.type))
+    end
+    local cond = spec.condition or "General"
+    if not QUEST_CONDITIONS[cond] and not PLAIN_CONDITIONS[cond] then
+        return ("unknown condition '%s'"):format(tostring(cond))
+    end
+    if QUEST_CONDITIONS[cond] and not nonempty(spec.quest) then
+        return ("condition '%s' needs 'quest' (the quest it depends on)"):format(cond)
+    end
+    if spec.quest ~= nil then
+        if not nonempty(spec.quest) then return "'quest' must be a non-empty string" end
+        if not risen.quest.exists(spec.quest) then
+            return ("quest '%s' does not exist yet: define it first (risen.quest.define) - the engine cannot evaluate a missing quest"):format(spec.quest)
+        end
+    end
+    if spec.parent ~= nil and not nonempty(spec.parent) then return "'parent' must be a non-empty string" end
+    if type(spec.lines) ~= "table" or #spec.lines == 0 then return "'lines' must be a non-empty list" end
+    for n, line in ipairs(spec.lines) do
+        if type(line) ~= "table" then return ("line %d must be a table"):format(n) end
+        if line.script ~= nil then
+            if not nonempty(line.script) then return ("line %d: 'script' must be a script name"):format(n) end
+            if not risen.script.exists(line.script) then
+                return ("line %d: script '%s' is not registered (risen.script.define it first)"):format(n, line.script)
+            end
+        elseif line.log ~= nil then
+            if type(line.log) ~= "table" or not nonempty(line.log.quest) or type(line.log.text) ~= "string" then
+                return ("line %d: 'log' needs { quest = ..., text = ... }"):format(n)
+            end
+            if not risen.quest.exists(line.log.quest) then
+                return ("line %d: log quest '%s' does not exist"):format(n, line.log.quest)
+            end
+        else
+            if type(line.text) ~= "string" then return ("line %d: 'text' must be a string"):format(n) end
+            for _, key in ipairs({ "speaker", "listener" }) do
+                if line[key] ~= nil and not nonempty(line[key]) then
+                    return ("line %d: '%s' must be 'player', 'npc' or an entity name"):format(n, key)
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function fail(what, msg)
+    local text = what .. ": " .. msg
+    risen.log.warn(text)
+    return nil, text
+end
+
+-- risen.dialog.create(spec) -> Info | nil, error. Idempotent: an info that already exists is returned as is,
+-- so the call can sit in a "create if missing" block that runs on every session start and load.
 function risen.dialog.create(spec)
+    local err = check_dialog(spec)
+    if err then return fail("dialog.create", err) end
+    local existing = risen.dialog.get(spec.name)
+    if existing then return existing end
+
     local info = risen.dialog.new_info(spec.name, spec.owner)
-    if not info then return nil end
+    if not info then return fail("dialog.create", "the engine could not create the info '" .. spec.name .. "' (game not ready?)") end
     -- spec.type: "Info" (default), "Important", "Comment", "News", "Refuse", "Parent"
     -- spec.condition: "General" (default), "Hello", "End", "Back", "Trade", "NothingToSay", quest states ("Running", ...)
     local type_name = "gEInfoType_" .. (spec.type or "Info")
@@ -298,7 +373,7 @@ function risen.dialog.create(spec)
     if spec.quest then info:set_quest(spec.quest) end
     if spec.parent then info:set_parent(spec.parent) end
     info:set_permanent(spec.permanent == true)
-    for n, line in ipairs(spec.lines or {}) do
+    for n, line in ipairs(spec.lines) do
         if line.script then
             local idx = info:add_script_command()
             if not idx or not info:set_script(idx, line.script) then risen.log.warn("dialog: bad script line " .. n) end
@@ -310,7 +385,7 @@ function risen.dialog.create(spec)
         else
             local idx = info:add_command("Say")
             local key = ("%s_%d"):format(spec.name, n)
-            risen.loc.set(key, line.text or "")
+            risen.loc.set(key, line.text)
             if not idx or not info:set_say(idx, line.speaker or "npc", line.listener or "player", key) then
                 risen.log.warn("dialog: bad say line " .. n)
             end

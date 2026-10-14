@@ -4,6 +4,7 @@
 
 #include "game/abi.h"
 #include "game/loc_overlay.h"
+#include "game/lua_save.h"
 #include "game/lua_entity.h"
 #include "game/script_bridge.h"
 #include "lua/runtime.h"
@@ -84,6 +85,19 @@ void bindWorld(sol::state_view lua, sol::table risen) {
     });
     world.set_function("new_game", [&s] { return guarded([&] { s.world_new_game(nullptr); }); });
     world.set_function("quick_load", [&s] { return guarded([&] { s.world_quick_load(nullptr); }); });
+    // Saving is a request too: the engine writes the savegame on its next processing step; watch save.after.
+    world.set_function("quick_save", [&s] { return s.world_quick_save != nullptr && guarded([&] { s.world_quick_save(nullptr); }); });
+    world.set_function("auto_save", [&s](const std::string& name) {
+        const BString n(name);
+        return s.world_auto_save != nullptr && guarded([&] { s.world_auto_save(nullptr, n.get()); });
+    });
+    world.set_function("is_save_allowed", [&s] {
+        bool r = false;
+        if (s.world_is_save_allowed != nullptr) {
+            guarded([&] { r = s.world_is_save_allowed(nullptr); });
+        }
+        return r;
+    });
     risen["world"] = world;
 }
 
@@ -94,6 +108,7 @@ void registerBindings() {
     rt.addBinding(bindQuest);
     rt.addBinding(bindGameVars);
     rt.addBinding(bindWorld);
+    rt.addBinding(bindDebug);
     rt.addBinding(bindLoc);
     rt.addBinding(bindEntity);
     rt.addBinding(bindItems);
@@ -101,6 +116,7 @@ void registerBindings() {
     rt.addBinding(bindDialog);
     rt.addBinding(bindQuestObjects);
     rt.addBinding(scripts::bindScripts);
+    bindSave();
 }
 
 }  // namespace spass::game
