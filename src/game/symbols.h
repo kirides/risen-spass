@@ -230,6 +230,7 @@
     X(inv_find_stack, L"Script.dll", "?FindStackIndex@PSInventory@@QEBAHAEBVTemplate@@H_N@Z", int (*)(const void* self, const void* tpl, int startIndex, bool skipEquipped), false) \
     X(inv_delete_items, L"Script.dll", "?DeleteItems@PSInventory@@QEAA_NHH@Z", bool (*)(void* self, int stack, int count), false) \
     X(inv_stack_amount, L"Script.dll", "?GetAmount@PSInventory@@QEBAHH@Z", int (*)(const void* self, int stack), false) \
+    X(ent_get_property_set, L"Engine.dll", "?GetPropertySet@eCEntity@@QEAAPEAVeCEntityPropertySet@@AEBVbCString@@@Z", void* (*)(void* self, const void* className), false) \
     X(element_base_name, L"Engine.dll", "?GetFileBaseName@eCProcessibleElement@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false)
 
 namespace spass::game {

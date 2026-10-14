@@ -520,3 +520,17 @@ listed and read through the engine's own exports instead of parsing the `FFC`/`G
   (our own entries are `<Quest>_Log<N>`).
 * **A complete example** that exercises all of this lives in `mods/fetchquest` (play-through and save/load check: `mods/fetchquest_driver`,
   `scripts/smoke-test.ps1 -Scenario fetchquest`).
+
+## 19. NPC properties, guilds and peaceful NPCs [confirmed in-game]
+
+* **Property sets by name**: `eCEntity::GetPropertySet(const bCString& className)` (Engine `0x21e4a0`) returns an entity's property set by its engine class
+  (`gCNPC_PS`, `gCInventory_PS`, `gCSkills_PS`, `gCItem_PS`, `gCScriptRoutine_PS`, ...); the property set is a `bCObjectBase`, so the generic
+  `bCAccessorProperty` mechanism (§11) reads and writes its properties in the engine's text format: `Entity:get_property(set, name)` / `set_property`.
+  `gCNPC_PS` properties seen: `Guild`, `Species`, `AttitudeLock`, `Gender`, `GuardStatus`, `Group`, `Discovered`, `Ransacked`, `DefeatedByPlayer`, `BraveryOverride`,
+  `DamageCalculationType`, `LastFightAgainstPlayer`, `Voice`. Enum value names are plain strings in `Game.dll` (`gEAttitude_{None,Neutral,Friendly,Angry,Hostile}`,
+  `gEGuardStatus_{Active,Inactive,Behind,FirstWarnGiven,SecondWarnGiven}`, `gEBraveryOverride_{None,Brave,Coward}`, `gESpecies_*`, `gEFight_*`).
+* **Guilds** (`gEGuild_*` = the number `PSNpc::PropertyGuild` stores): None 0, Don 1, Dig 2, Grd 3, Cit 4, Inq 5, Mag 6, Pir 7 (plus `Count`).
+  Spawned `Peasant_1_01` is a `Grd`. A pirate spawned next to one NPC of each guild attacked Don (knocked out), Grd, Inq and Mag; Dig, Cit and None stayed in `ZS_Watch_Loop`.
+* **`AttitudeLock = gEAttitude_Friendly` does not make an NPC peaceful** (it was still attacked and fought back). Use the guild: `risen.npc.spawn{ peaceful = true }`
+  sets `Cit`.
+* **`Entity::Kill`** removes the entity from the world completely (`risen.entity.get` no longer finds it); it is not a combat death (no `npc.killed`).

@@ -34,10 +34,12 @@ Not started (needs RE + live tests each): branching conversations (`Parent` info
 Learned: a quest-bound option makes the engine append the speakers' labels to the quest log (RE.md §18); `risen.item.take/give/count` and
 `Entity:item_*` exist for effects that need items.
 
-## 3. NPCs — mostly open
-Done: the real template names are listed in [`TEMPLATES.md`](TEMPLATES.md) (`risen.template.list`; 2679 templates, groups `NPC/<area>`, `Monster`, `Items/...`).
-Open: reliable behaviour (routines: `gCScriptRoutine_PS`, guard points), relationships beyond guild numbers, appearance (head/body templates `NPC/_HumanParts`),
-despawn/cleanup, named spawn points, a "peaceful" spawn option (spawned NPCs next to hostile guilds fight immediately).
+## 3. NPCs — partly done
+Done: the real template names are listed in [`TEMPLATES.md`](TEMPLATES.md) (`risen.template.list`; 2679 templates, groups `NPC/<area>`, `Monster`, `Items/...`);
+**any property of any property set by name** (`Entity:get_property/set_property`, e.g. `gCNPC_PS` `Guild`, `Species`, `GuardStatus`, `BraveryOverride`);
+all guild names and numbers; a **peaceful** spawn option (citizen guild: pirates leave it alone; `AttitudeLock` does not help); `Entity:kill()` verified to remove an entity.
+Open: reliable behaviour (routines: `gCScriptRoutine_PS`, guard points), relationships beyond guilds (individual enemies, party membership), appearance
+(head/body templates `NPC/_HumanParts`), named spawn points (needs an entity/waypoint enumeration), `Decay` as a gentler despawn.
 
 ## 4. New content
 * **4.1 Read the game archives — done** through the engine's own VFS instead of parsing `*.pak`: `risen.vfs.dirs/find/find_ext/walk/read` (RE.md §16).

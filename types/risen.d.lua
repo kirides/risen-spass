@@ -102,7 +102,7 @@ function Entity:is_mission_item() end
 
 -- NPC configuration ---------------------------------------------------------------------------------------------------
 
----Guild id: `0` none/animals, `1` Don's camp, `3` peasants, `5` Inquisition, `7` pirates/bandits (observed; others exist).
+---Guild number (`gEGuild_*`): see `risen.npc.guilds` (`None` 0, `Don` 1, `Dig` 2, `Grd` 3, `Cit` 4, `Inq` 5, `Mag` 6, `Pir` 7).
 ---@return integer|nil
 function Entity:guild() end
 ---@param guild integer
@@ -204,6 +204,22 @@ function Entity:turn_to(target) end
 ---@return integer equipped How many stacks were equipped.
 function Entity:equip_all() end
 
+---Reads any property of any of the entity's property sets by name, in the engine's text format (enums as `"gEGuild_..."`,
+---numbers and booleans as text). The set is named by its engine class: `"gCNPC_PS"` (guild, species, attitude lock, ...),
+---`"gCInventory_PS"`, `"gCSkills_PS"`, `"gCItem_PS"`, `"gCScriptRoutine_PS"`, ...
+---@param set string
+---@param name string
+---@return string|nil value `nil` if the entity lacks the set or the property.
+function Entity:get_property(set, name) end
+
+---Writes a property of a property set by name (see `get_property`). Enum values must be spelled as the engine does
+---(`"gEGuild_..."`); an invalid value is ignored by the engine.
+---@param set string
+---@param name string
+---@param value string
+---@return boolean ok `false` if the entity lacks the set or the property.
+function Entity:set_property(set, name, value) end
+
 ---Number of inventory stacks.
 ---@return integer|nil
 function Entity:stack_count() end
@@ -282,7 +298,8 @@ function itemApi.money(owner) end
 ---@field hp_max? integer
 ---@field hp? integer Defaults to `hp_max` when that is given.
 ---@field mana? integer
----@field guild? integer
+---@field guild? integer|string Guild number or name (`"Pir"`, `"Cit"`, ... see `risen.npc.guilds`).
+---@field peaceful? boolean Citizen guild unless `guild` is given: pirates, guards and monsters leave the NPC alone (a shopkeeper, quest giver).
 ---@field group? string
 ---@field items? {[1]: string, [2]?: integer}[] `{ {"It_1H_Machete", 1}, ... }`
 ---@field equip? boolean Equip the items.
@@ -290,6 +307,11 @@ function itemApi.money(owner) end
 
 ---@class RisenNpcApi
 local npcApi = {}
+
+---Guild numbers by name: `None` 0, `Don` 1 (Don's camp), `Dig` 2 (diggers), `Grd` 3 (guards), `Cit` 4 (citizens), `Inq` 5 (Inquisition),
+---`Mag` 6 (mages), `Pir` 7 (pirates/bandits). Pirates attack Don, Grd, Inq and Mag, but not Cit, Dig or None.
+---@type table<string, integer>
+npcApi.guilds = {}
 
 ---Spawns a template and configures it in one call.
 ---@param template string

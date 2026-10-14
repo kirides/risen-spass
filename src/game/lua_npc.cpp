@@ -2,6 +2,7 @@
 
 #include "game/abi.h"
 #include "game/lua_entity.h"
+#include "game/properties.h"
 
 // NPC configuration (docs/RE.md §10). All PS* wrappers of Script.dll are "holders": their first qword is the
 // eCEntity*, and they fetch the property set they need through eCEntity's vtable (+0x198, by type id:
@@ -124,6 +125,31 @@ void addNpcMethods(sol::usertype<LuaEntity>& ut) {
             .value_or(false);
     };
 
+    // ---- any property of any property set, by name ----------------------------------------------------------------
+    // entity:get_property("gCNPC_PS", "Guild") -> "gEGuild_..." (enums by name, numbers/bools as text)
+    // entity:set_property("gCNPC_PS", "Guild", "gEGuild_...") -> bool. The set is named by its engine class (gCNPC_PS,
+    // gCInventory_PS, gCSkills_PS, gCItem_PS, gCScriptRoutine_PS, ...); nil/false when the entity lacks the set or the property.
+    ut["get_property"] = [&s](const LuaEntity& e, const std::string& set, const std::string& name) -> sol::optional<std::string> {
+        void* ps = nullptr;
+        if (s.ent_get_property_set == nullptr || !guarded([&] {
+                const BString cls(set);
+                ps = s.ent_get_property_set(ptr(e), cls.get());
+            }) || ps == nullptr) {
+            return sol::nullopt;
+        }
+        return propertyGet(ps, name);
+    };
+    ut["set_property"] = [&s](const LuaEntity& e, const std::string& set, const std::string& name, const std::string& value) {
+        void* ps = nullptr;
+        if (s.ent_get_property_set == nullptr || !guarded([&] {
+                const BString cls(set);
+                ps = s.ent_get_property_set(ptr(e), cls.get());
+            }) || ps == nullptr) {
+            return false;
+        }
+        return propertySet(ps, name, value);
+    };
+
     // ---- gear --------------------------------------------------------------------------------------------
     // entity:equip_all() equips every inventory stack that can be equipped; returns how many succeeded.
     ut["equip_all"] = [&s](const LuaEntity& e) {
@@ -142,15 +168,32 @@ void addNpcMethods(sol::usertype<LuaEntity>& ut) {
 }
 
 // risen.npc.spawn(template, x, y, z [, opts]) -> Entity | nil
-//   opts: name, hp, hp_max, level, mana, guild, group, state, items = { {"It_1H_Sword", 1}, ... }, equip (bool)
+//   opts: name, hp, hp_max, level, mana, guild (number or name), group, peaceful, state, items = { {"It_1H_Sword", 1}, ... }, equip
 // written in Lua on top of the primitives above so mods can read and copy it.
 void bindNpcHelpers(sol::state_view lua, sol::table risen) {
     sol::table npc = lua.create_table();
     risen["npc"] = npc;
     const char* chunk = R"LUA(
 local risen = ...
+-- gEGuild_* numbers (verified in-game, docs/RE.md section 19)
+risen.npc.guilds = { None = 0, Don = 1, Dig = 2, Grd = 3, Cit = 4, Inq = 5, Mag = 6, Pir = 7 }
+
+-- Guild given as a number or a name ("Pir", "gEGuild_Pir") -> number, or nil
+local function guild_number(g)
+    if type(g) == "number" then return g end
+    if type(g) == "string" then return risen.npc.guilds[(g:gsub("^gEGuild_", ""))] end
+    return nil
+end
+
 function risen.npc.spawn(template, x, y, z, opts)
     opts = opts or {}
+    local guild = guild_number(opts.guild)
+    if opts.guild ~= nil and guild == nil then
+        risen.log.warn("npc.spawn: unknown guild '" .. tostring(opts.guild) .. "' (None, Don, Dig, Grd, Cit, Inq, Mag, Pir)")
+        return nil
+    end
+    -- "peaceful": citizens (and diggers) are left alone by pirates, guards and monsters do not provoke them
+    if opts.peaceful and guild == nil then guild = risen.npc.guilds.Cit end
     local e = risen.entity.spawn(template, x, y, z)
     if not e then return nil end
     if opts.name then e:set_name(opts.name) end
@@ -158,7 +201,7 @@ function risen.npc.spawn(template, x, y, z, opts)
     if opts.hp_max then e:set_hp_max(opts.hp_max) end
     if opts.hp then e:set_hp(opts.hp) elseif opts.hp_max then e:set_hp(opts.hp_max) end
     if opts.mana then e:set_mana_max(opts.mana); e:set_mana(opts.mana) end
-    if opts.guild then e:set_guild(opts.guild) end
+    if guild then e:set_guild(guild) end
     if opts.group then e:set_group(opts.group) end
     for _, it in ipairs(opts.items or {}) do risen.item.give(e, it[1], it[2] or 1) end
     if opts.equip then e:equip_all() end

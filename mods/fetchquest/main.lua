@@ -80,7 +80,7 @@ local function ensure_npc()
         pos = { x + 150, y + 20, z + 150 }
         risen.save.set("marta_pos", pos)
     end
-    risen.npc.spawn("Peasant_1_01", pos[1], pos[2], pos[3], { name = NPC, level = 3, hp_max = 300, guild = 3, group = "SPASS" })
+    risen.npc.spawn("Peasant_1_01", pos[1], pos[2], pos[3], { name = NPC, level = 3, hp_max = 300, peaceful = true, group = "SPASS" })
 end
 
 risen.on("load.before", define_content)             -- before the engine reads quests/infos of a savegame

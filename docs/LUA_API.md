@@ -97,7 +97,7 @@ Spawn a template and configure it in one call (see `mods/npcdemo`):
 local bob = risen.npc.spawn("Peasant_1_01", x, y, z, {
     name = "SPASS_Bob",            -- unique entity name; also the key for its label: "FO_SPASS_Bob"
     level = 10, hp_max = 400,      -- hp defaults to hp_max
-    mana = 100, guild = 3, group = "SPASS",
+    mana = 100, guild = "Cit", group = "SPASS",   -- guild: number or name; `peaceful = true` = citizen (nobody attacks them)
     items = { {"It_1H_Machete", 1} }, equip = true,
     state = "ZS_HangAround",       -- initial AI state (the AI may switch states immediately)
 })
@@ -107,7 +107,8 @@ Entity methods (every call returns `nil`/`false` instead of crashing on a bad ha
 
 | Method | Notes |
 |---|---|
-| `guild()`, `set_guild(n)` | `0` none/animals, `1` Don's camp, `3` peasants, `5` Inquisition, `7` pirates/bandits (observed; other values exist) |
+| `guild()`, `set_guild(n)` | numbers of the `gEGuild_*` enum: `0` None, `1` Don, `2` Dig (diggers), `3` Grd (guards), `4` Cit (citizens), `5` Inq, `6` Mag, `7` Pir (`risen.npc.guilds`). Pirates attack Don/Grd/Inq/Mag but leave Cit/Dig/None alone |
+| `get_property(set, name)`, `set_property(set, name, value)` | any property of a property set by name, e.g. `e:get_property("gCNPC_PS", "Guild")` -> `"gEGuild_Pir"`, `"AttitudeLock"`, `"Species"`, `"GuardStatus"`, `"BraveryOverride"` |
 | `group()`, `set_group(s)` | free-form group name used by AI to find allies |
 | `hp()`, `hp_max()`, `level()`, `mana()`, `mana_max()` | |
 | `set_hp_max(n)`, `set_hp(n)`, `set_level(n)`, `set_mana(n)`, `set_mana_max(n)` | absolute (the engine setters are additive; the wrapper computes the difference). Set `hp_max` before `hp` |

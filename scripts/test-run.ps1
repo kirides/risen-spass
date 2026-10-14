@@ -46,6 +46,7 @@ Copy-Item (Join-Path $repo 'build\RelWithDebInfo\sentry.dll') (Join-Path $bin 's
 New-Item -ItemType Directory -Force $modsDir | Out-Null
 foreach ($d in Get-ChildItem $modsDir -Directory) {
     if ($d.Name -eq 'autostart' -or $d.Name -like '*.off') { continue }
+    Remove-Item ($d.FullName + '.off') -Recurse -Force -ErrorAction SilentlyContinue   # a stale disabled copy
     Rename-Item $d.FullName ($d.Name + '.off')
 }
 foreach ($m in $Mods) {
