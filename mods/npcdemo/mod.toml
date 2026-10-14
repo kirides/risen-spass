@@ -1,0 +1,6 @@
+id          = "npcdemo"
+name        = "NPC Demo"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Spawns a custom NPC next to the player once a game is running (see docs/LUA_API.md, risen.npc)."
+main        = "main.lua"

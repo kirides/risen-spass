@@ -95,6 +95,32 @@
     X(inv_create_items, L"Script.dll", "?CreateItems@PSInventory@@QEAAHAEBVTemplate@@HW4gEStackType@@@Z", int (*)(void* self, const void* tpl, int count, int stackType), true) \
     X(inv_item_amount, L"Script.dll", "?GetItemAmount@PSInventory@@QEBAHAEBVTemplate@@@Z", int (*)(const void* self, const void* tpl), true) \
     X(inv_money, L"Script.dll", "?GetMoneyAmount@PSInventory@@QEBAMXZ", float (*)(const void* self), true)    \
+    /* PSNpc property wrappers: `this` is a holder whose first qword is the eCEntity* (property set id 0x1e) */   \
+    X(npc_set_guild, L"Script.dll", "??4PropertyGuild@PSNpc@@QEAAAEAV01@AEBW4gEGuild@@@Z", void* (*)(void* self, const int* v), true) \
+    X(npc_get_guild, L"Script.dll", "??BPropertyGuild@PSNpc@@QEBA?BW4gEGuild@@XZ", int (*)(const void* self), true) \
+    X(npc_set_group, L"Script.dll", "??4PropertyGroup@PSNpc@@QEAAAEAV01@AEBVbCString@@@Z", void* (*)(void* self, const void* bstr), true) \
+    X(npc_get_group, L"Script.dll", "??BPropertyGroup@PSNpc@@QEBA?BVbCString@@XZ", void* (*)(const void* self, void* ret), true) \
+    /* PSSkills (holder + property set): set functions take (value, gESkillModifier) */                          \
+    X(sk_get_hp, L"Script.dll", "?GetHitPoints@PSSkills@@QEBAHXZ", int (*)(const void*), true)                  \
+    X(sk_get_hp_max, L"Script.dll", "?GetHitPointsMax@PSSkills@@QEBAHXZ", int (*)(const void*), true)           \
+    X(sk_get_level, L"Script.dll", "?GetLevel@PSSkills@@QEBAHXZ", int (*)(const void*), true)                   \
+    X(sk_get_mana, L"Script.dll", "?GetManaPoints@PSSkills@@QEBAHXZ", int (*)(const void*), true)               \
+    X(sk_get_mana_max, L"Script.dll", "?GetManaPointsMax@PSSkills@@QEBAHXZ", int (*)(const void*), true)        \
+    X(sk_set_hp, L"Script.dll", "?SetHitPoints@PSSkills@@QEAAXHW4gESkillModifier@@@Z", void (*)(void*, int, int), true) \
+    X(sk_set_hp_max, L"Script.dll", "?SetHitPointsMax@PSSkills@@QEAAXHW4gESkillModifier@@@Z", void (*)(void*, int, int), true) \
+    X(sk_set_level, L"Script.dll", "?SetLevel@PSSkills@@QEAAXHW4gESkillModifier@@@Z", void (*)(void*, int, int), true) \
+    X(sk_set_mana, L"Script.dll", "?SetManaPoints@PSSkills@@QEAAXHW4gESkillModifier@@@Z", void (*)(void*, int, int), true) \
+    X(sk_set_mana_max, L"Script.dll", "?SetManaPointsMax@PSSkills@@QEAAXHW4gESkillModifier@@@Z", void (*)(void*, int, int), true) \
+    /* PSRoutine: AI state machine (property set 0x24) */                                                        \
+    X(rt_set_state, L"Script.dll", "?SetState@PSRoutine@@QEAAXVbCString@@@Z", void (*)(void* self, void* byValueName), true) \
+    X(rt_get_state, L"Script.dll", "?GetCurrentState@PSRoutine@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), true) \
+    X(rt_full_stop, L"Script.dll", "?FullStop@PSRoutine@@QEAAXXZ", void (*)(void* self), true)                  \
+    X(ent_goto_entity, L"Script.dll", "?StartGoto@Entity@@QEAA_NAEAV1@W4gEWalkMode@@@Z", bool (*)(void* self, void* target, int walkMode), true) \
+    X(ent_goto_pos, L"Script.dll", "?StartGoto@Entity@@QEAA_NAEBVbCVector@@W4gEWalkMode@@@Z", bool (*)(void* self, const float* xyz, int walkMode), true) \
+    X(ent_stop_goto, L"Script.dll", "?StopGoto@Entity@@QEAAXXZ", void (*)(void* self), true)                    \
+    X(ent_turn_to, L"Script.dll", "?StartTurnTo@Entity@@QEAA_NAEBV1@@Z", bool (*)(void* self, const void* target), true) \
+    X(inv_equip_stack, L"Script.dll", "?EquipStack@PSInventory@@QEAA_NH@Z", bool (*)(void* self, int stack), true) \
+    X(inv_stack_count, L"Script.dll", "?GetStackCount@PSInventory@@QEBAHXZ", int (*)(const void* self), true)   \
     X(ent_teleport_name, L"Script.dll", "?Teleport@Entity@@QEAA_NAEBVbCString@@@Z", bool (*)(void* self, const void* name), true) \
     X(ent_teleport_entity, L"Script.dll", "?Teleport@Entity@@QEAA_NAEBV1@@Z", bool (*)(void* self, const void* other), true)
 

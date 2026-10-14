@@ -18,6 +18,12 @@ void bindEntity(sol::state_view lua, sol::table risen);
 // Registers risen.template, risen.entity.spawn and risen.item.*. Must run after bindEntity().
 void bindItems(sol::state_view lua, sol::table risen);
 
+// Adds the NPC methods (guild, hp, level, set_state, goto_*, equip_all, ...) to the Entity usertype.
+void addNpcMethods(sol::usertype<LuaEntity>& ut);
+
+// Registers risen.npc.spawn (Lua helper built on the primitives). Must run after bindItems().
+void bindNpcHelpers(sol::state_view lua, sol::table risen);
+
 // Wraps a raw pointer into a Lua value: Entity userdata, or nil for null.
 sol::object makeEntityObject(sol::state_view lua, void* entity);
 

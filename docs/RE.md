@@ -314,3 +314,28 @@ entries; it is appended to the array at `gCScriptAdmin+0x200` (count `+0x208`).
   runtime means constructing property-set objects. Cheaper first step: drive existing quests/dialogues from Lua
   (`risen.quest.*`, `risen.gamevar.*`, script overrides).
 * AI states/functions/callbacks (`RegisterScriptAI*`) use different signatures and are not bridged yet.
+
+## 10. NPCs [confirmed in-game]
+
+* **Spawning**: `Entity::Spawn(Template, pose, false)` with an NPC template name (`Peasant_1_01`, `Pirate_S_01`,
+  `Inq_Guard_01`, `Don_Henchman_S_01`, `Wolf`, `Boar`, `NPC_Guard`, …) produced simulated NPCs: `IsNPC()` and
+  `IsCharacter()` true, alive, falling to the ground, fighting each other within seconds (AI state
+  `ZS_Attack_CombatMove`). Template names are plain strings in `data\common\templates.pak`.
+* **PS\* wrappers are holders**: `PSNpc`, `PSSkills`, `PSInventory`, `PSRoutine`, … store the `eCEntity*` in their first
+  qword and fetch the property set through `eCEntity` vtable slot `+0x198` (`GetPropertySet(type)`); type ids seen:
+  `0x1e` gCNPC_PS, `0x1f` gCInventory_PS, `0x24` gCScriptRoutine_PS (`5` is used by `Entity::IsNPC`). An `EntityHolder`
+  is therefore a valid `this` for all of them, and a missing property set makes the call a no-op.
+* **Property wrappers** (`PSNpc::PropertyGuild`, `…Group`, `…AttitudeLock`, `…Gender`): assignment/conversion operators
+  are exported; `gCNPC_PS+0x170` holds the guild. Observed `gEGuild` values: none/animals 0, Don 1, peasants 3,
+  Inquisition 5, pirates 7.
+* **Skills**: `PSSkills::Set*(value, gESkillModifier)` → `SetBase(skill, value, modifier)`; with modifier `0` the value is
+  **added** to the current total (level 5 + 7 = 12; +3 = 15). Skill ids seen: `0` hit points, `2` level.
+* **AI**: `PSRoutine::SetState(bCString /*by value*/)` → `gCScriptRoutine_PS::AISetState`. State names are the registered
+  `ZS_*` AIState scripts of `Script_Game.dll` (63 found, list in LUA_API.md). The running AI replaces the state on its own
+  (a freshly spawned peasant next to hostile pirates was in `ZS_Attack_CombatMove` after ~3 s).
+* **Labels**: the name shown when the player focuses an entity is the loc string `FO_<entity name>` (e.g. `FO_Boar`,
+  `FO_It_1H_Sword`, `FO_SPASS_Bob`); `Entity::GetDisplayName` is just the entity's own name. A custom NPC therefore needs
+  `risen.loc.set("FO_<name>", "Shown name")`.
+* **Not done yet**: dialogue (`gCInfo`/`gCInfoSystem` are data objects: custom conversations need either new
+  info objects or scripted `Entity::StartSay`/`StartOutput` lines), appearance variants (head/body templates `Hero_Head_*`),
+  schedules/routines beyond a single state, party membership (`PSParty`), enemy/friend relations beyond guild.

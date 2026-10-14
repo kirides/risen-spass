@@ -97,6 +97,7 @@ void registerBindings() {
     rt.addBinding(bindLoc);
     rt.addBinding(bindEntity);
     rt.addBinding(bindItems);
+    rt.addBinding(bindNpcHelpers);
     rt.addBinding(scripts::bindScripts);
 }
 

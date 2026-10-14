@@ -41,6 +41,12 @@ std::vector<ModInfo> discoverMods(const std::filesystem::path& root) {
         if (!entry.is_directory()) {
             continue;
         }
+        // Convention: rename a mod folder to "<name>.off" (or prefix it with '_' or '.') to disable it.
+        const std::string folder = entry.path().filename().string();
+        if (folder.empty() || folder[0] == '.' || folder[0] == '_' ||
+            (folder.size() > 4 && folder.compare(folder.size() - 4, 4, ".off") == 0)) {
+            continue;
+        }
         const auto manifest = entry.path() / "mod.toml";
         if (!std::filesystem::exists(manifest)) {
             continue;

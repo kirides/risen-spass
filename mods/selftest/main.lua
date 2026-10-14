@@ -43,12 +43,31 @@ risen.loc.set("GO_QuestRunning", "[Lua] Quest running")
 local AUTOSTART = false
 
 local frames, reported = 0, false
+local spawned_npcs = {}
 risen.on("tick", function()
     frames = frames + 1
     if frames == 1 then
         log.info("first tick; world.is_game_running = " .. tostring(risen.world.is_game_running()))
         if AUTOSTART then
             log.info("world.new_game -> " .. tostring(risen.world.new_game()))
+        end
+    end
+    if frames == 900 or frames == 1200 then
+        local bob = spawned_npcs[#spawned_npcs]
+        if bob then
+            log.info(("[%d] bob state=%s level=%s hp=%s/%s mana=%s"):format(frames, tostring(bob:state()), tostring(bob:level()),
+                tostring(bob:hp()), tostring(bob:hp_max()), tostring(bob:mana())))
+            if frames == 900 then
+                bob:set_level(3)
+                bob:set_hp_max(5)
+                log.info(("[900] after set_level(3), set_hp_max(5): level=%s hp_max=%s"):format(tostring(bob:level()), tostring(bob:hp_max())))
+            end
+        end
+    end
+    if frames == 900 then
+        for _, npc in ipairs(spawned_npcs) do
+            local x, y, z = npc:position()
+            log.info(("npc %s at %s %s %s dead=%s"):format(tostring(npc:name()), tostring(x), tostring(y), tostring(z), tostring(npc:is_dead())))
         end
     end
     -- Report a few times, then go quiet (these APIs need a running world).
@@ -70,6 +89,34 @@ risen.on("tick", function()
                 local created = risen.item.give(p, "It_1H_Machete", 2)
                 log.info(("item.give -> %s, count %s -> %s, money %s"):format(tostring(created), tostring(before),
                     tostring(risen.item.count(p, "It_1H_Machete")), tostring(risen.item.money(p))))
+                -- NPC spawning: report what the engine says about each spawned entity
+                spawned_npcs = {}
+                for i, tname in ipairs({ "Peasant_1_01", "Pirate_S_01", "Inq_Guard_01", "Don_Henchman_S_01", "Wolf", "Boar", "NPC_Guard" }) do
+                    local ok = risen.template.exists(tname)
+                    local npc = ok and risen.entity.spawn(tname, x + 200 + 120 * i, y + 40, z + 200) or nil
+                    if npc then spawned_npcs[#spawned_npcs + 1] = npc end
+                    log.info(("spawn %-18s exists=%s -> %s is_npc=%s is_char=%s dead=%s name=%s"):format(tname, tostring(ok),
+                        tostring(npc), tostring(npc and npc:is_npc()), tostring(npc and npc:is_character()),
+                        tostring(npc and npc:is_dead()), tostring(npc and npc:name())))
+                    if npc then
+                        log.info(("   guild=%s group=%s hp=%s/%s level=%s mana=%s state=%s stacks=%s"):format(tostring(npc:guild()),
+                            tostring(npc:group()), tostring(npc:hp()), tostring(npc:hp_max()), tostring(npc:level()),
+                            tostring(npc:mana()), tostring(npc:state()), tostring(npc:stack_count())))
+                    end
+                end
+                -- A custom NPC built from a peasant archetype
+                local bob = risen.npc.spawn("Peasant_1_01", x + 300, y + 40, z + 300, {
+                    name = "SPASS_Bob", level = 7, hp_max = 777, group = "SPASS",
+                    items = { { "It_1H_Machete", 1 } }, equip = true, state = "ZS_HangAround",
+                })
+                if bob then
+                    spawned_npcs[#spawned_npcs + 1] = bob
+                    log.info(("custom npc: name=%s guild=%s group=%s hp=%s/%s level=%s state=%s stacks=%s"):format(
+                        tostring(bob:name()), tostring(bob:guild()), tostring(bob:group()), tostring(bob:hp()),
+                        tostring(bob:hp_max()), tostring(bob:level()), tostring(bob:state()), tostring(bob:stack_count())))
+                else
+                    log.info("custom npc: spawn failed")
+                end
                 local dropped = risen.entity.spawn("It_1H_Sword", x + 150, y + 30, z)
                 log.info(("entity.spawn -> %s is_item=%s name=%s"):format(tostring(dropped), tostring(dropped and dropped:is_item()),
                     tostring(dropped and dropped:name())))

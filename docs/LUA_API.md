@@ -71,6 +71,35 @@ risen.item.count(player, "It_1H_Machete")                 -- integer
 risen.item.money(player)                                  -- number
 ```
 
+## NPCs — `risen.npc.spawn` and the Entity NPC methods
+Spawn a template and configure it in one call (see `mods/npcdemo`):
+```lua
+local bob = risen.npc.spawn("Peasant_1_01", x, y, z, {
+    name = "SPASS_Bob",            -- unique entity name; also the key for its label: "FO_SPASS_Bob"
+    level = 10, hp_max = 400,      -- hp defaults to hp_max
+    mana = 100, guild = 3, group = "SPASS",
+    items = { {"It_1H_Machete", 1} }, equip = true,
+    state = "ZS_HangAround",       -- initial AI state (the AI may switch states immediately)
+})
+risen.loc.set("FO_SPASS_Bob", "Bob the Lua Peasant")   -- text shown when the player focuses him
+```
+Entity methods (every call returns `nil`/`false` instead of crashing on a bad handle):
+
+| Method | Notes |
+|---|---|
+| `guild()`, `set_guild(n)` | `0` none/animals, `1` Don's camp, `3` peasants, `5` Inquisition, `7` pirates/bandits (observed; other values exist) |
+| `group()`, `set_group(s)` | free-form group name used by AI to find allies |
+| `hp()`, `hp_max()`, `level()`, `mana()`, `mana_max()` | |
+| `set_hp_max(n)`, `set_hp(n)`, `set_level(n)`, `set_mana(n)`, `set_mana_max(n)` | absolute (the engine setters are additive; the wrapper computes the difference). Set `hp_max` before `hp` |
+| `add_hp(d)`, `add_hp_max(d)`, `add_level(d)`, `add_mana(d)`, `add_mana_max(d)` | relative |
+| `state()`, `set_state("ZS_…")` | AI state scripts: `ZS_Ambient`, `ZS_AmbientObserve`, `ZS_AmbientSleep`, `ZS_HangAround`, `ZS_Housewife`, `ZS_Observe`, `ZS_Watch`, `ZS_Study`, `ZS_Smith`, `ZS_Trader`, `ZS_Talk`, `ZS_FollowPlayer`, `ZS_GuidePlayer`, `ZS_WaitForPlayer`, `ZS_Attack`, `ZS_Dead`, `ZS_Monster`, … |
+| `full_stop()` | cancel the current AI action |
+| `goto_pos(x,y,z[,mode])`, `goto_entity(e[,mode])`, `stop_goto()`, `turn_to(e)` | `mode` is the engine's walk mode enum (0 default) |
+| `equip_all()`, `stack_count()` | equips every equippable inventory stack |
+
+**Persistence:** entities created at runtime are part of the world and can be saved; Lua state is not. Guard
+spawns with `risen.entity.get("YourName")` so a loaded save does not get a second copy.
+
 ## risen.quest / risen.gamevar / risen.world
 ```lua
 risen.quest.open|run|close|fail|succeed("Quest_Id")   risen.quest.is_running("Quest_Id")

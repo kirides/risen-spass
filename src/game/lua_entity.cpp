@@ -41,7 +41,7 @@ sol::object makeEntityObject(sol::state_view lua, void* entity) {
 void bindEntity(sol::state_view lua, sol::table risen) {
     const Symbols& s = sym();
 
-    lua.new_usertype<LuaEntity>(
+    auto entityType = lua.new_usertype<LuaEntity>(
         "Entity", sol::no_constructor,
         sol::meta_function::equal_to, [](const LuaEntity& a, const LuaEntity& b) { return a.e == b.e; },
         sol::meta_function::to_string,
@@ -115,6 +115,8 @@ void bindEntity(sol::state_view lua, sol::table risen) {
             }
             return false;
         });
+
+    addNpcMethods(entityType);
 
     sol::table entity = lua.create_table();
     // risen.entity.get("NPC_Name") -> Entity | nil   (unique entity name as used by the scene admin)
