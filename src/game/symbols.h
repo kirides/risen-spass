@@ -239,6 +239,7 @@
     X(ctext_saysvm, L"Game.dll", "?AccessText@gCInfoCommandSaySVM@@QEAAAEAVgCInfoLocString@@XZ", void* (*)(void* self), false) \
     X(gamevar_exists, L"Script.dll", "?ExistsGameVariable@InfoSystem@@SA_NAEBVbCString@@@Z", bool (*)(const void*), false) \
     X(gamevar_remove, L"Script.dll", "?RemoveGameVariable@InfoSystem@@SA_NAEBVbCString@@@Z", bool (*)(const void*), false) \
+    X(is_refresh_children, L"Game.dll", "?RefreshParentChildInfos@gCInfoSystem@@QEAAXXZ", void (*)(void* self), false) \
     X(element_base_name, L"Engine.dll", "?GetFileBaseName@eCProcessibleElement@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false)
 
 namespace spass::game {

@@ -30,7 +30,8 @@ entity handles remember the unique name and re-resolve after loads. Open: valida
 ## 2. Dialogue features — partly done
 Done: **every dialogue command by name with its parameters** (`{ command = "Give", ... }` lines in `risen.dialog.create`, validated against the engine's own parameter lists;
 reflection via `list_properties`; [`PROPERTIES.md`](PROPERTIES.md)); `risen.gamevar.exists/remove`; `Info:set_command_text`.
-Open (needs RE + live tests each): branching conversations (`Parent` infos, `AreChildInfosAvailable`), conditions beyond quest state
+Done too: **branching conversations** (`parent = "<info>"`, sub-menu, `Back`; RE.md §21, `mods/dialogbranch`).
+Open (needs RE + live tests each): conditions beyond quest state
 (`gCInfoCondition*` objects, a Lua-script condition), voice/sound (`SaySound` needs the speech archives), comment/news/hello infos (setting `Type`/condition works,
 unverified), verifying `SetTradeEnabled`/`SetTeachEnabled` in a real trade.
 Learned: a quest-bound option makes the engine append the speakers' labels to the quest log (RE.md §18); `risen.item.take/give/count` and

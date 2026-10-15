@@ -577,6 +577,8 @@ function Info:set_log(index, quest, text_key) end
 ---@return boolean ok
 function Info:run() end
 
+---The engine's `gEInfoType` (numbers: Refuse 0, Important 1, News 2, Info 3, Parent 4, Comment 5). `"Info"` is a normal menu option (and the type of child
+---options); `"Comment"` infos are not offered as options (the NPC says them unprompted).
 ---@alias InfoType "Info"|"Important"|"Comment"|"News"|"Refuse"|"Parent"
 ---Conditions under which an info is offered (the engine's `gEInfoCondType_*`). The quest-state ones need `quest`, and that quest must exist.
 ---@alias InfoCondition
@@ -643,7 +645,7 @@ function Info:set_command_text(index, command, text_key) end
 ---@field type? InfoType Default `"Info"`.
 ---@field condition? InfoCondition Default `"General"`.
 ---@field quest? string Required for quest-state conditions; must exist.
----@field parent? string Parent info (branching).
+---@field parent? string Name of the parent option: this option becomes a child shown in the sub-menu after the parent ran (branching conversations, `mods/dialogbranch`).
 ---@field permanent? boolean Stays available after use.
 ---@field lines DialogLine[]
 

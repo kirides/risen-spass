@@ -158,6 +158,10 @@ It is **idempotent**: an info that already exists is returned as is, so the call
 Unknown commands/parameters are refused with `nil, "reason"` before anything is created (see `mods/dialogcmds`). `info:list_properties()`,
 `info:list_command_properties(i)`, `entity:list_properties(set)` show what is available on a live object.
 
+**Branching:** `parent = "<info name>"` makes an option a child of another option of the same NPC. After the parent's lines finished, the menu shows the children
+(and keeps showing them after a permanent child ran) until a child runs the `Back` command (`{ command = "Back" }`) or `End`. The parent itself is a normal option
+(`type` `"Info"`); `risen.dialog.create` links parents and children for you (`risen.dialog.rebuild`). See `mods/dialogbranch`.
+
 Other calls: `risen.dialog.start(player, npc)` (open the conversation), `risen.dialog.available()` (options currently
 offered: list of `Info`), `risen.dialog.is_running()`, `risen.dialog.has_infos(npc)`, `risen.dialog.get(name)`,
 `risen.dialog.rebuild()`. `Info` methods: `name()`, `owner()`, `run()` (only works for infos the running conversation

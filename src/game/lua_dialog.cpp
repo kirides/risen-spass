@@ -270,7 +270,14 @@ void bindDialog(sol::state_view lua, sol::table risen) {
         return LuaInfo{info};
     });
     // Must be called after creating infos so the engine's owner -> infos map includes them.
-    dialog.set_function("rebuild", [&s] { return tryDo("rebuild", [&] { s.is_rebuild_owner_map(infoSystem()); }); });
+    dialog.set_function("rebuild", [&s] {
+        return tryDo("rebuild", [&] {
+            s.is_rebuild_owner_map(infoSystem());
+            if (s.is_refresh_children != nullptr) {
+                s.is_refresh_children(infoSystem());  // links child infos (Parent = <name>) to their parent infos
+            }
+        });
+    });
     dialog.set_function("has_infos", [&s](const LuaEntity& npc) {
         return tryGet<bool>("has_infos", [&] { return s.is_has_infos(infoSystem(), ptr(npc)); }).value_or(false);
     });

@@ -37,13 +37,17 @@ risen.on("tick", function()
     frames = frames + 1
     wait = wait + 1
     local player = risen.entity.player()
+    if not player then return end   -- no running game yet
     if step == "spawn" and wait == 300 and player then
         local x, y, z = player:position()
+        x, y, z = x or 0, y or 0, z or 0
         risen.npc.spawn("Peasant_1_01", x + 150, y + 20, z + 150, { name = NPC, peaceful = true })
         local info = risen.dialog.get(INFO)
-        for i = 1, (info and info:command_count() or 0) do
-            log.info(("cmds: command %d Amount=%s Item=%s GameEvent=%s"):format(i, tostring(info:get_command_property(i, "Amount")),
-                tostring(info:get_command_property(i, "Item")), tostring(info:get_command_property(i, "GameEvent"))))
+        if info then
+            for i = 1, info:command_count() do
+                log.info(("cmds: command %d Amount=%s Item=%s GameEvent=%s"):format(i, tostring(info:get_command_property(i, "Amount")),
+                    tostring(info:get_command_property(i, "Item")), tostring(info:get_command_property(i, "GameEvent"))))
+            end
         end
         go("talk")
     elseif step == "talk" and wait == 120 then

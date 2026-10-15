@@ -547,3 +547,13 @@ listed and read through the engine's own exports instead of parsing the `FFC`/`G
   (`Entity1`, `TradeEnabled`), `SetRoutine` (`Entity1`, `RoutineName`), ... Texts (`gCInfoLocString`) are not settable through the text format; they need `CFXLocString::SetKey` on the member
   returned by the command's `AccessText` (three variants: `Say`, `Description/ShowSubtitle/AddLogText`, `SaySVM/PickPocket`). Commands are executed one after the other over time,
   not all at once (the apples arrive a few seconds after the option was chosen).
+
+## 21. Branching conversations [confirmed in-game]
+
+* `gEInfoType` numbers: Refuse 0, Important 1, News 2, **Info 3**, Parent 4, Comment 5. `gCInfoSystem::HasInfos` ignores Comment (5), so an NPC whose only infos
+  are comments is not talkable; a parent option must be a normal `Info`.
+* `Parent` is a name (`gCInfo+0x38`); the parent's child list (`+0xd8`, count `+0xe0`) is filled by `gCInfoSystem::RefreshParentChildInfos()` (Game `0x8b1790`)
+  (`risen.dialog.rebuild` calls it). `gCInfoSystem::OnInfoFinished` (`0x8afcb0`): after an info ran, if it has available children (`AreChildInfosAvailable`) the menu is
+  rebuilt from `GetChildInfoList` (children with Type 3 whose conditions hold), otherwise the owner's top-level list is rebuilt. Children stay offered after a permanent
+  child; the `Back` command (child of a parent -> its parent's list becomes the top level again) returns to the top-level list. The children appear only *after the parent's
+  lines finished playing* (about 11 seconds for two lines).

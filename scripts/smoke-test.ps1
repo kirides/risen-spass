@@ -15,8 +15,8 @@
 param(
     [string]$GameDir = 'B:\DevDrive\risen-test',
     [int]$Seconds = 200,
-    # persistence | fetchquest | commands | all
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'all')][string]$Scenario = 'all'
+    # persistence | fetchquest | commands | branch | all
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'all')][string]$Scenario = 'all'
 )
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
@@ -86,6 +86,18 @@ if ($Scenario -in 'commands', 'all') {
         @('no Lua errors',                         '^(?!(?s).*\[error\])')
     )
     $totalFailed += Run-Checks 'dialogue commands' (Get-Content $log -Raw) $cmds
+}
+
+if ($Scenario -in 'branch', 'all') {
+    & (Join-Path $here 'test-run.ps1') -GameDir $GameDir -Mods dialogbranch -Seconds ($Seconds + 60) -Filter 'NOTHING' | Out-Null
+    $branch = @(
+        @('only the parent is offered at the top',  '(?m)branch: top-level options: PANKRATZX2_00004,SPASS_Br_Town?$'),
+        @('the children replace the menu',          'branch: the children are offered: SPASS_Br_Back,SPASS_Br_Harbor,SPASS_Br_Monastery'),
+        @('a child answers and the menu stays',     'branch: after the child: SPASS_Br_Back,SPASS_Br_Harbor,SPASS_Br_Monastery running=true'),
+        @('Back returns to the top level',          'branch: back at the top level: PANKRATZX2_00004,SPASS_Br_Town'),
+        @('no Lua errors',                          '^(?!(?s).*\[error\])')
+    )
+    $totalFailed += Run-Checks 'branching dialogue' (Get-Content $log -Raw) $branch
 }
 
 if ($totalFailed -gt 0) { Write-Host "$totalFailed check(s) failed, see $log"; exit 1 }
