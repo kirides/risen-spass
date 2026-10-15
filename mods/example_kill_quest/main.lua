@@ -77,7 +77,7 @@ local function spawn_boss()
     local garrick = risen.entity.get(NPC)
     if not garrick then return end
     local x, y, z = garrick:position()
-    if not x then return end
+    if not (x and y and z) then return end
     risen.npc.spawn("Spass_Dire_Wolf", x + 1200, y + 20, z, { name = BOSS })   -- the other end of the beach
 end
 

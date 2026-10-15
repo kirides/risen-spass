@@ -42,6 +42,8 @@ live entity -- no file shadowing needed (that path is a dead end, §17). Reachab
 | M11 | **AI script bridging**: Lua AI states/functions/callbacks (`RegisterScriptAI*`), so custom behaviour can be attached to NPCs. | open |
 | M12 | **Showcase + docs**: `mods/balance_example` (items, NPCs, spells, new item, persistent NPC with quest, conditional spawn) with smoke-test coverage; `docs/MODDING_GUIDE.md`; roadmap tick-off. | open |
 
+> M12 progress: nine verified example mods already exist (`mods/example_*`, index, patterns and the event wish list in [`EXAMPLES.md`](EXAMPLES.md), smoke scenarios `ex_*`); the showcase mod and `MODDING_GUIDE.md` of this row are still open.
+
 M1 findings the later milestones build on (details RE.md §22):
 * Edit templates on the first `tick` (earliest; `mods.loaded` is too early) and again with `{ instances = true }` on every `session.start`; edits are per process. A savegame/new-game world keeps *its own* values, so
   propagation into live entities is part of every balancing mod; patched entity values are then saved with the game.

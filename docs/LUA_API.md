@@ -27,6 +27,7 @@ Globals: `mod` (`id, name, version, author, dir`), `risen`.
 
 **Editor support:** [`types/risen.d.lua`](../types/risen.d.lua) describes every function below for LuaLS (completion, hover docs, type
 checks); see [`types/README.md`](../types/README.md).
+**Examples:** nine small, live-verified example mods (patching, balancing, materials/textures, custom NPC, fetch/kill quests, completion triggers, quest tracker) are indexed in [`EXAMPLES.md`](EXAMPLES.md).
 
 ## Events
 
