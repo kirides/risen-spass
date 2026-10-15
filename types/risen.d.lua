@@ -935,6 +935,7 @@ function logApi.error(...) end
 ---The modding API. Every mod gets its own `risen` view with its mod id baked in.
 ---@class RisenApi
 ---@field version string Version of risen-spass.
+---@field api_version integer Generation of this Lua API; a mod can require one with `api_version` in mod.toml.
 ---@field log RisenLogApi
 ---@field entity RisenEntityApi
 ---@field template RisenTemplateApi

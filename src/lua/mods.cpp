@@ -67,6 +67,12 @@ std::vector<ModInfo> discoverMods(const std::filesystem::path& root) {
             m.loadAfter = readStringArray(t, "load_after");
             m.requires_ = readStringArray(t, "requires");
             m.dataOverlay = t["data_overlay"].value_or(false);
+            m.apiVersion = static_cast<int>(t["api_version"].value_or(std::int64_t{1}));
+            if (m.apiVersion > kApiVersion) {
+                spdlog::error("mods: '{}' needs Lua API version {} but this build provides {}: update risen-spass, mod skipped", m.id,
+                              m.apiVersion, kApiVersion);
+                continue;
+            }
             m.dir = entry.path();
             mods.push_back(std::move(m));
         } catch (const toml::parse_error& e) {

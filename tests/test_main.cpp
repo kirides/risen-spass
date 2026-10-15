@@ -141,6 +141,19 @@ TEST(mods_data_overlay_flag) {
     }
 }
 
+TEST(mods_api_version_is_checked) {
+    TempDir t;
+    t.write("old/mod.toml", "id = \"old\"\napi_version = 1\n");
+    t.write("future/mod.toml", "id = \"future\"\napi_version = 99\n");
+    t.write("plain/mod.toml", "id = \"plain\"\n");
+    const auto mods = spass::lua::discoverMods(t.path);
+    std::vector<std::string> ids;
+    for (const auto& m : mods) {
+        ids.push_back(m.id);
+    }
+    CHECK(ids == (std::vector<std::string>{"old", "plain"}));  // "future" is skipped
+}
+
 // ---- Lua runtime --------------------------------------------------------------------------------------------------------
 
 TEST(runtime_sandbox_events_and_isolation) {

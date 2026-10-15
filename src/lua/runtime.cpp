@@ -93,6 +93,7 @@ bool Runtime::start(const std::filesystem::path& modsDir, bool unsafeLua) {
 
         risen_ = lua.create_table();
         risen_["version"] = SPASS_VERSION;
+        risen_["api_version"] = kApiVersion;
         sol::table log = lua.create_table();
         const auto bindLevel = [&](const char* name, spdlog::level::level_enum lvl) {
             log.set_function(name, [lvl](sol::this_state ts, sol::variadic_args va) {

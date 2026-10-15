@@ -6,6 +6,10 @@
 
 namespace spass::lua {
 
+// Generation of the Lua API in this build. Bumped when an existing function changes in an incompatible way; a mod that asks for
+// a newer one (`api_version` in mod.toml) is not loaded, so it fails with a clear message instead of misbehaving.
+inline constexpr int kApiVersion = 1;
+
 // A mod is a directory containing mod.toml:
 //
 //   id          = "my_mod"            # required, [a-z0-9_]+
@@ -16,6 +20,7 @@ namespace spass::lua {
 //   main        = "main.lua"          # optional, default "main.lua"
 //   load_after  = ["other_mod"]       # optional ordering constraints
 //   requires    = ["base_mod"]        # optional hard dependencies (mod is skipped if missing)
+//   api_version = 1                   # optional: the Lua API generation the mod was written for (a newer one is refused)
 //   data_overlay = false              # experimental: mount the mod directory into the virtual file system at startup
 struct ModInfo {
     std::string id;
@@ -27,6 +32,7 @@ struct ModInfo {
     std::vector<std::string> loadAfter;
     std::vector<std::string> requires_;
     bool dataOverlay = false;
+    int apiVersion = 1;
     std::filesystem::path dir;
 };
 

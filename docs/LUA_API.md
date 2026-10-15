@@ -10,6 +10,7 @@ author      = "you"
 main        = "main.lua"       # default
 load_after  = ["other_mod"]    # ordering only
 requires    = ["base_mod"]     # hard dependency (mod is skipped if missing)
+api_version = 1                # Lua API generation the mod was written for; a mod asking for a newer one is skipped with an error (risen.api_version)
 data_overlay = false           # experimental: mount the mod directory into the virtual file system at startup (docs/RE.md §17)
 ```
 
