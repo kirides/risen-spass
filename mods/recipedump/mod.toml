@@ -1,0 +1,6 @@
+id          = "recipedump"
+name        = "Recipe dump (development aid)"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Logs every crafting recipe template (gCRecipe_PS) for docs/RECIPE_PROPERTIES.md (tools/gen_recipe_properties_doc.py)."
+main        = "main.lua"

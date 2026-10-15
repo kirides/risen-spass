@@ -346,6 +346,16 @@
     X(psinv_unequip_stack, L"Script.dll", "?UnEquipStack@PSInventory@@QEAA_NH@Z", bool (*)(void* self, int stack), false) \
     X(psinv_set_max_select_limit, L"Script.dll", "?SetMaxSelectLimit@PSInventory@@QEAAXXZ", void (*)(void* self), false) \
     X(psinv_drop_stack, L"Script.dll", "?DropStack@PSInventory@@QEAA?AVEntity@@HAEBVbCMatrix@@@Z", void* (*)(void* self, void* ret, int stack, const float* pose), false) \
+    /* ---- crafting recipes: gCRecipe_PS arrays and the engine's craft functions (docs/RE.md section 30) ---- */ \
+    X(craft_ingredient_ctor, L"Game.dll", "??0gCCraftIngredient@@QEAA@XZ", void* (*)(void* self), false) \
+    X(craft_ingredient_dtor, L"Game.dll", "??1gCCraftIngredient@@UEAA@XZ", void (*)(void* self), false) \
+    X(recipe_set_ingredients, L"Game.dll", "?SetCraftIngredients@gCRecipe_PS@@QEAAXAEBV?$bTObjArray@VgCCraftIngredient@@@@@Z", void (*)(void* recipePs, const void* array), false) \
+    X(recipe_set_required_skills, L"Game.dll", "?SetRequiredSkills@gCRecipe_PS@@QEAAXAEBV?$bTObjArray@VgCSkillValue@@@@@Z", void (*)(void* recipePs, const void* array), false) \
+    X(psinv_can_synthesize, L"Script.dll", "?CanSynthesize@PSInventory@@QEBAHAEBVEntity@@@Z", int (*)(const void* self, const void* recipe), false) \
+    X(psinv_synthesize, L"Script.dll", "?Synthesize@PSInventory@@QEAAHAEBVEntity@@H@Z", int (*)(void* self, const void* recipe, int count), false) \
+    X(psinter_begin, L"Script.dll", "?BeginInteraction@PSInteraction@@QEAA_NVEntity@@@Z", bool (*)(void* self, void* byValueUser), false) \
+    X(psinter_can, L"Script.dll", "?CanInteractWith@PSInteraction@@QEAA_NVEntity@@@Z", bool (*)(void* self, void* byValueUser), false) \
+    X(psinter_end, L"Script.dll", "?EndInteraction@PSInteraction@@QEAA_NXZ", bool (*)(void* self), false) \
     /* ---- custom voice lines (docs/RE.md section 28) ---- */ \
     X(ent_get_sample_title, L"Script.dll", "?GetSampleTitle@Entity@@QEBA?AVbCString@@V2@@Z", void* (*)(const void* self, void* ret, void* byValueKey), false) \
     X(loc_get_voice_language, L"Engine.dll", "?GetVoiceLanguage@eCLocAdmin2@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false) \

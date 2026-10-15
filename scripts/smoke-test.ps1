@@ -14,6 +14,8 @@
       newassets    - new meshes, textures and icons from loose files (mods/newassets); two runs: build (derive + play), use (fresh process, files mounted at startup)
       spells       - spell balancing and new spells (mods/balance_spells): real casts through the engine's state scripts; two runs: save, then a fresh-process load
       ex_spell     - example: edit Fireball/Light, a new Strong Fireball crystal and scroll (mods/example_spell)
+      recipes      - recipe balancing (mods/balance_recipes): the real anvil and alchemy table through the engine's interaction scripts
+      ex_recipe    - example: a new smithing recipe (sword + 2 iron ore -> Slightly Improved Sword); four runs: save, load, load_missing, load_again
       ex_voice     - spoken dialogue lines from ogg/wav/mp3 files (mods/example_voice); two runs: voice language English, then German
 
 .DESCRIPTION
@@ -41,7 +43,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -135,6 +137,16 @@ $scenarios = [ordered]@{
                          @{ Name = 'load'; Param = @('phase=load'); Start = 'load'; Keep = $true; Limit = 120 }
                      ) }
     ex_spell          = @{ Est = 60; Title = 'example: spells (edit, new crystal and scroll)'; Kind = 'result'; Mods = @('example_spell'); Limit = 300 }
+    # crafting recipes (M6b): the real smithing anvil and alchemy table are driven through the engine's interaction scripts (risen.interact.begin + the page's click script)
+    recipes           = @{ Est = 75; Title = 'recipe balancing (M6b)'; Kind = 'result'; Mods = @('balance_recipes'); Limit = 300 }
+    # one process per phase: "save" crafts at the anvil (twice) and saves, "load" crafts again in a fresh process, "load_missing" runs without the mod's content, "load_again" has it again
+    ex_recipe         = @{ Est = 250; Title = 'example: a new smithing recipe (save, load, missing, again)'; Kind = 'result'; Mods = @('example_recipe'); Limit = 300
+                           Phases = @(
+                               @{ Name = 'save'; Param = @('phase=save'); Start = 'new'; Keep = $false; Limit = 300 }
+                               @{ Name = 'load'; Param = @('phase=load'); Start = 'load'; Keep = $true; Limit = 200 }
+                               @{ Name = 'load_missing'; Param = @('phase=load_missing'); Start = 'load'; Keep = $true; Limit = 150 }
+                               @{ Name = 'load_again'; Param = @('phase=load_again'); Start = 'load'; Keep = $true; Limit = 150 }
+                           ) }
     # one game process per phase (-Param phase=...): "save" plays the whole scenario in a new game and leaves a quick save, the others load it in a fresh process
     newtemplates = @{ Est = 210; Title = 'new templates'; Kind = 'result'; Mods = @('newtemplates', 'newtemplates_driver'); Limit = 200
                       Phases = @(

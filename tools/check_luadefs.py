@@ -23,7 +23,7 @@ members = {}    # "Type.member" -> source
 
 USERTYPES = {'LuaEntity': 'Entity', 'LuaTemplate': 'Template', 'LuaQuest': 'Quest', 'LuaInfo': 'Info', 'ScriptContext': 'ScriptContext'}
 
-for path in sorted(list((root / 'src').rglob('*.cpp')) + [root / 'src/game/npc_balance_lua.h', root / 'src/game/template_create_lua.h', root / 'src/game/spell_lua.h']):   # the .h files hold the Lua chunks of NPC balancing, template creation and spells
+for path in sorted(list((root / 'src').rglob('*.cpp')) + [root / 'src/game/npc_balance_lua.h', root / 'src/game/template_create_lua.h', root / 'src/game/spell_lua.h', root / 'src/game/recipe_lua.h']):   # the .h files hold the Lua chunks of NPC balancing, template creation and spells
     text = path.read_text(encoding='utf-8', errors='replace')
     rel = path.relative_to(root).as_posix()
     # table variables published in `risen`
@@ -95,6 +95,9 @@ for fn in re.findall(r'^function b\.(\w+)\(', (root / 'src/game/lua_balance.cpp'
 # per-mod risen.spell.enable_overrides / create (the chunk in spell_lua.h that defines `function s.<name>(` on the mod's spell table)
 for fn in re.findall(r'^function s\.(\w+)\(', (root / 'src/game/spell_lua.h').read_text(encoding='utf-8'), flags=re.M):
     bound[f'spell.{fn}'] = 'src/game/spell_lua.h'
+# per-mod risen.recipe.learn_on_start / create (the chunk in recipe_lua.h that defines `function r.<name>(` on the mod's recipe table)
+for fn in re.findall(r'^function r\.(\w+)\(', (root / 'src/game/recipe_lua.h').read_text(encoding='utf-8'), flags=re.M):
+    bound[f'recipe.{fn}'] = 'src/game/recipe_lua.h'
 # spec-less sol properties of usertypes use `"name", sol::property(` : include them
 for path in (root / 'src/game/script_bridge.cpp', root / 'src/game/lua_entity.cpp'):
     text = path.read_text(encoding='utf-8')

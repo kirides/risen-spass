@@ -1,0 +1,6 @@
+id          = "example_recipe"
+name        = "Example: a new smithing recipe"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Adds the Slightly Improved Sword (new item) and a recipe at the smithing anvil: a regular sword and two iron ore. See docs/EXAMPLES.md."
+main        = "main.lua"

@@ -249,6 +249,10 @@ function risen.template.create(name, base_name, overrides, opts)
     return t, not existed
 end
 
+-- risen.template.is_planned(name) -> bool: true when a spec validated in this process names a template it is about to create (new_items / new_npcs /
+-- templates), so later sections (recipes) may refer to it before it exists
+function risen.template.is_planned(name) return planned[name] == true end
+
 -- ---- balance sections --------------------------------------------------------------------------------------------------------------
 -- new_items = { My_Sword = { base = "It_1H_Sword", name = "...", value = 900, ... } }, new_npcs = { My_Wolf = { base = "Wolf", hp_max = 400, ... } },
 -- templates = { ... } (either kind). Validated by apply() before anything is written; applied (idempotently) on the first tick and every session.start.

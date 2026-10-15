@@ -1,6 +1,6 @@
 # Example mods
 
-Eleven small, self-contained mods under `mods/example_*`: each is the simplest realistic form of one thing a modder wants, written to be copied
+Twelve small, self-contained mods under `mods/example_*`: each is the simplest realistic form of one thing a modder wants, written to be copied
 (`main.lua` with a header that says what you learn, `mod.toml`, and a `test_*.lua` that is loaded **only** in a test run). Every one of them has a
 `risen.test` scenario that was **run live in the game**; nothing in this table is claimed that was not. The scenarios are registered in
 `scripts\smoke-test.ps1` (`ex_*`), so the regression suite covers them.
@@ -9,7 +9,7 @@ Run one (about a minute; use your own test copy, never the real install, always 
 
 ```powershell
 .\scripts\test-run.ps1 -Instance 2 -Mods example_kill_quest -WaitForResult -Seconds 300 -Scenario example_kill_quest -ShowChecks
-.\scripts\smoke-test.ps1 -Scenario ex_template_patch,ex_balance,ex_custom_npc,ex_fetch_turnin,ex_fetch_pickup,ex_kill_quest,ex_quest_rewards,ex_quest_tracker,ex_material,ex_voice,ex_spell -Parallel 3
+.\scripts\smoke-test.ps1 -Scenario ex_template_patch,ex_balance,ex_custom_npc,ex_fetch_turnin,ex_fetch_pickup,ex_kill_quest,ex_quest_rewards,ex_quest_tracker,ex_material,ex_voice,ex_spell,ex_recipe -Parallel 3
 ```
 
 ## Index
@@ -27,10 +27,14 @@ Run one (about a minute; use your own test copy, never the real install, always 
 | 8 | `example_quest_tracker` | one reusable `tracker.lua` completing quests by **dialogue** (`info.finished`), by **items** (`inventory.changed`) and by **kills** (`entity.died`), progress in `risen.save`, rewards on completion | `info.finished`, `inventory.changed`, `entity.died` | `ex_quest_tracker`, 90 s | all three completion paths, other templates ignored, repeated death counted once, rewards (15 checks) |
 | 9 | `example_voice` | an NPC whose dialogue lines are **spoken** from audio files of the mod: ogg, wav and mp3, one file per language (voice language of the game), subtitles per language, a sound made by Lua code, a sound-only `SaySound` line, a bark | `risen.dialog.create` (`sound`, `text` per language), `risen.voice.load_dir/set/say/speaking/language`, `risen.assets.import_sound/sound` | `ex_voice` (English, then German voice language: two processes), 140 s | the engine asked for the line's text id and took the variant of the voice language; FMOD created ogg/mp3/wav sounds; an option with a 0.4 s voice took 53 frames instead of 467; speaking state; refusal of bad files; a shipped NPC line shadowed by a loose sound (22 checks per language). The user heard the tones. **Not** lip sync (no `._xmot` for custom lines) |
 | 10 | `example_spell` | edit shipped spells (Fireball mana cost and damage, Light's rune and scroll cost) and add a **Strong Fireball** (double damage, double cost, needs Fireball 2) as a crystal and a scroll that is used up | `risen.balance.install` (`spells`, `new_spells`), `risen.spell.get/equipped/consume`, `risen.item.can_use` | `ex_spell`, 55 s | the player really casts (`PS_Magic` -> `PS_MagicBall_Shoot`): mana taken 10 / 20 / 10, projectile damage 140 / 280 / 280, the engine's hit script takes `damage + 25 * Fireball - protection` (191 / 331), the last scroll is gone, the edited rune cost (9 checks). **Not** the look of the fireball, NPC casters |
+| 11 | `example_recipe` | a **new smithing recipe**: a regular sword (`It_1H_Sword`) and two iron ore (`It_IronOre`) become a **Slightly Improved Sword** (a new item with its own numbers and a localized label) at the anvil; the plan item that is the recipe is given once; crafted items, the plan and the equipped sword survive a quick save and load in a fresh process, and a game without the mod keeps them dormant | `risen.balance.install` (`new_items`, `new_recipes`), `risen.recipe.info/known/can_craft/craft`, `risen.interact.begin`, the `crafting` event | `ex_recipe`, 4 processes ~190 s | real anvil twice with exact counts and events, refusal for a missing skill and for 1 ore, equipped sword, load / missing / again phases (see header of `test_recipe.lua`) |
 
 Timings are wall-clock on the development machine (engine start ~30 s of it). Each scenario ends itself the moment its checks are done.
 
 ## Patterns
+
+**Recipes.** A recipe is an item: a character knows it while it carries the recipe item (`learn = true` gives the plan once per savegame). `risen.balance.install` with `new_items` + `new_recipes` creates both (on the first `tick`, and the item the recipe makes may be in the same spec); crafting is the
+engine's: `risen.recipe.craft` for a script, `risen.interact.begin(player, anvil)` plus the click script for the real station (`example_recipe/test_recipe.lua` has the whole sequence). React to `crafting(crafter, recipe, result, count, ingredients)`; the inventory events of a craft have cause `"crafting"`.
 
 **When to apply what.**
 
@@ -99,7 +103,7 @@ missing death events; the three examples that did (`example_fetch_pickup`, `exam
 | `item.used/equipped/unequipped/consumed` | `item.equipped/unequipped(owner, template, slot)`, `item.consumed(owner, template, count)` (`item.used` for food is `item.consumed`) |
 | the player cannot be made to pick up / loot / trade from a script | `risen.item.pick_up/loot/trade/drop/transfer/equip/unequip` run the engine's own operations, so the events can be tested; the *interactive* paths (buy/sell screen, looting with the mouse) end in the same engine functions but are not run live |
 
-Still open: `Entity:set_hp(0)` is no death (the AI keeps fighting, no event: use `Kill`); crafting has no cause of its own (it shows as `"script"` create/delete); container-opened and `item.used` for non-consumables
+Still open: `Entity:set_hp(0)` is no death (the AI keeps fighting, no event: use `Kill`); (crafting has its own cause and event since M6b); container-opened and `item.used` for non-consumables
 are not events; a mod that must not poll for *positions* ("an NPC came near") still has to.
 
 ### Other gaps found

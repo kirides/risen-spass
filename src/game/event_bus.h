@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -23,7 +24,10 @@ struct EntityRef {
 // Reads the unique name now (SEH guarded). A null pointer gives an empty ref (nil in Lua).
 EntityRef capture(void* entity);
 
-using Arg = std::variant<std::monostate, std::string, double, bool, EntityRef>;
+// A list of { item template, count } pairs (the ingredients of a `crafting` event): a Lua list of { item = ..., count = ... }.
+using ItemList = std::vector<std::pair<std::string, double>>;
+
+using Arg = std::variant<std::monostate, std::string, double, bool, EntityRef, ItemList>;
 
 // Queues `event(args...)`. Dropped while no game session runs or while a savegame is being loaded (the world is being rebuilt then).
 // Traced on the `events` channel at once, dispatched by flush().

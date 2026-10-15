@@ -481,6 +481,7 @@ TEST(balance_install_reports_each_application_to_on_applied) {
 #include "npc_tests.inc"
 #include "template_create_tests.inc"
 #include "spell_tests.inc"
+#include "recipe_tests.inc"
 #include "test_risen_test.inc"
 
 }  // namespace

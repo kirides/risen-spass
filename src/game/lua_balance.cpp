@@ -31,10 +31,14 @@ struct ArrayKind {
     std::size_t offset;    // of the bTObjArray inside the property set
     std::size_t stride;    // sizeof(element)
     bool modifier;         // gCModifySkill (has a Modifier member)
+    const char* psClass;   // the property set that holds the array
+    bool recipe;           // gCRecipe_PS.RequiredSkills (the engine's setter differs)
 };
 
-constexpr ArrayKind kRequired{"required", "RequiredSkills", 0x70, 0x20, false};
-constexpr ArrayKind kModifiers{"modifiers", "ModifySkills", 0x80, 0x30, true};
+constexpr ArrayKind kRequired{"required", "RequiredSkills", 0x70, 0x20, false, "gCItem_PS", false};
+constexpr ArrayKind kModifiers{"modifiers", "ModifySkills", 0x80, 0x30, true, "gCItem_PS", false};
+// the skills a recipe asks of the crafter (docs/RE.md section 30): gCRecipe_PS.RequiredSkills at +0x40
+constexpr ArrayKind kRecipeRequired{"recipe_required", "RequiredSkills", 0x40, 0x20, false, "gCRecipe_PS", true};
 
 const ArrayKind* kindByName(const std::string& n) {
     if (n == kRequired.name) {
@@ -42,6 +46,9 @@ const ArrayKind* kindByName(const std::string& n) {
     }
     if (n == kModifiers.name) {
         return &kModifiers;
+    }
+    if (n == kRecipeRequired.name) {
+        return &kRecipeRequired;
     }
     return nullptr;
 }
@@ -66,9 +73,9 @@ Two failResult(sol::state_view lua, const std::string& reason) {
 }
 
 // The gCItem_PS of a template (by name) or of an item entity.
-void* itemSetOf(const sol::object& target, std::string& error) {
+void* itemSetOf(const sol::object& target, std::string& error, const char* psClass = "gCItem_PS") {
     if (target.get_type() == sol::type::string) {
-        return templatePropertySet(target.as<std::string>(), "gCItem_PS", error);
+        return templatePropertySet(target.as<std::string>(), psClass, error);
     }
     if (target.is<LuaEntity>()) {
         const LuaEntity& e = target.as<LuaEntity>();
@@ -83,13 +90,13 @@ void* itemSetOf(const sol::object& target, std::string& error) {
             return nullptr;
         }
         void* ps = nullptr;
-        const BString cls("gCItem_PS");
+        const BString cls(psClass);
         if (!guarded([&] { ps = s.ent_get_property_set(entity, cls.get()); })) {
             error = "the engine raised an exception (not an entity?)";
             return nullptr;
         }
         if (ps == nullptr) {
-            error = "entity is not an item (no gCItem_PS)";
+            error = std::string("entity has no ") + psClass;
         }
         return ps;
     }
@@ -143,7 +150,7 @@ bool writeArray(void* itemPs, const ArrayKind& kind, const std::vector<Entry>& e
     const Symbols& s = sym();
     auto ctor = kind.modifier ? s.modifyskill_ctor : s.skillvalue_ctor;
     auto dtor = kind.modifier ? s.modifyskill_dtor : s.skillvalue_dtor;
-    auto setter = kind.modifier ? s.item_set_modify_skills : s.item_set_required_skills;
+    auto setter = kind.recipe ? s.recipe_set_required_skills : kind.modifier ? s.item_set_modify_skills : s.item_set_required_skills;
     if (ctor == nullptr || dtor == nullptr || setter == nullptr) {
         error = "engine functions for the skill arrays are unavailable";
         return false;
@@ -390,6 +397,20 @@ local function write_array(x, kind, entries, opts)
     return true, touched
 end
 
+-- risen.balance.skill_entries(spec, what) -> engine entries | nil, problems: validates a friendly skill table ({ Smith = 1 } or a list of { skill =, amount = })
+-- the way the `requires` setting of items is (used by the recipes section)
+function risen.balance.skill_entries(spec, what) return to_entries(spec, what or "skills", false) end
+
+-- risen.balance.skill_map(entries) -> { Smith = 1, ... }: engine skill entries (as risen.item.skill_array returns them) as a friendly table
+function risen.balance.skill_map(list)
+    local out = {}
+    for _, e in ipairs(list or {}) do
+        local k = friendly_skill(e.skill)
+        out[k] = math.max(out[k] or e.amount, e.amount)
+    end
+    return out
+end
+
 -- risen.item.skill_total(character, "Strength") -> total, base | nil, reason   (also Entity:skill_total(name))
 function risen.item.skill_total(who, name)
     local engine = engine_skill(name)
@@ -623,6 +644,11 @@ function b.install(spec, opts)
     installed[spec] = true
     opts = opts or {}
     if spec.new_spells ~= nil and api.spell and api.spell.enable_overrides then api.spell.enable_overrides() end   -- per-shot numbers of new projectile spells
+    if type(spec.new_recipes) == "table" and api.recipe and api.recipe.learn_on_start then   -- recipes with `learn = true`: given once per savegame
+        for name, entry in pairs(spec.new_recipes) do
+            if type(entry) == "table" and entry.learn then api.recipe.learn_on_start(name) end
+        end
+    end
     local with_instances = opts.instances ~= false
     local on_applied = opts.on_applied
     local log = api.log
@@ -730,10 +756,10 @@ void bindBalance(sol::state_view lua, sol::table risen) {
         sol::state_view L(ts);
         const ArrayKind* kind = kindByName(kindName);
         if (kind == nullptr) {
-            return failResult(L, "kind must be \"required\" or \"modifiers\"");
+            return failResult(L, "kind must be \"required\", \"modifiers\" or \"recipe_required\"");
         }
         std::string error;
-        void* ps = itemSetOf(target, error);
+        void* ps = itemSetOf(target, error, kind->psClass);
         if (ps == nullptr) {
             return failResult(L, error);
         }
@@ -760,7 +786,7 @@ void bindBalance(sol::state_view lua, sol::table risen) {
         sol::state_view L(ts);
         const ArrayKind* kind = kindByName(kindName);
         if (kind == nullptr) {
-            return failResult(L, "kind must be \"required\" or \"modifiers\"");
+            return failResult(L, "kind must be \"required\", \"modifiers\" or \"recipe_required\"");
         }
         std::vector<Entry> list;
         for (std::size_t i = 1; i <= entries.size(); ++i) {
@@ -784,7 +810,7 @@ void bindBalance(sol::state_view lua, sol::table risen) {
             list.push_back(std::move(e));
         }
         std::string error;
-        void* ps = itemSetOf(target, error);
+        void* ps = itemSetOf(target, error, kind->psClass);
         if (ps == nullptr) {
             return failResult(L, error);
         }

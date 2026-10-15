@@ -71,6 +71,15 @@ std::string describe(const Arg& a) {
         std::string operator()(double d) const { return fmt::format("{}", d); }
         std::string operator()(bool b) const { return b ? "true" : "false"; }
         std::string operator()(const EntityRef& e) const { return e.ptr == nullptr ? "nil" : "<" + e.name + ">"; }
+        std::string operator()(const ItemList& l) const {
+            std::string out = "{";
+            const char* sep = "";
+            for (const auto& [item, count] : l) {
+                out += fmt::format("{}{} x{}", sep, item, count);
+                sep = ", ";
+            }
+            return out + "}";
+        }
     };
     return std::visit(V{}, a);
 }
@@ -82,6 +91,18 @@ sol::object toLua(sol::state_view lua, const Arg& a) {
         sol::object operator()(const std::string& s) const { return sol::make_object(lua, s); }
         sol::object operator()(double d) const { return sol::make_object(lua, d); }
         sol::object operator()(bool b) const { return sol::make_object(lua, b); }
+        sol::object operator()(const ItemList& l) const {
+            sol::state_view L = lua;
+            sol::table t = L.create_table();
+            int i = 1;
+            for (const auto& [item, count] : l) {
+                sol::table row = L.create_table();
+                row["item"] = item;
+                row["count"] = count;
+                t[i++] = row;
+            }
+            return sol::make_object(lua, t);
+        }
         sol::object operator()(const EntityRef& e) const {
             if (e.ptr == nullptr) {
                 return sol::make_object(lua, sol::lua_nil);

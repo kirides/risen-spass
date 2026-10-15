@@ -1,0 +1,5 @@
+id = "balance_recipes"
+name = "Recipe balancing"
+version = "1.0.0"
+description = "Edits shipped crafting recipes with risen.balance recipes and verifies them through the engine's own crafting (development scenario recipes; see docs/RECIPE_PROPERTIES.md)."
+main = "main.lua"

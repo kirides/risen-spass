@@ -86,10 +86,14 @@ every route that changes an inventory or kills / creates / removes an entity fir
 | `"trade"` | the trade screen's transfer (`TradeSelections`) | `risen.item.trade` |
 | `"drop"` | items dropped into the world | `risen.item.drop` |
 | `"consume"` | items used up (`ConsumeItems`), together with `item.consumed` | `risen.item.consume` |
+| `"crafting"` | the ingredients taken and the result made by `PSInventory::Synthesize` (every crafting station and `risen.recipe.craft`), together with one `crafting` event | `risen.recipe.craft`, the real anvil / alchemy table (`risen.interact.begin`) |
 | `"other"` | a stack appeared / vanished without a hooked operation announcing it (a fallback; only creations and deletions are seen) | not seen in the tests |
 
-  Gold is the item `It_Gold`. *Not seen / limits:* crafting, brewing and smithing use the same create/delete operations, so they appear as `"script"` (there is no separate cause); the trade screen's buy/sell
+  Gold is the item `It_Gold`. The temporary copies that animations hold in the hands (hammer, recipe, result at a crafting station: stack type 2) are not possessions and are neither counted nor reported.
+  *Not seen / limits:* the trade screen's buy/sell
   and the player's interactive loot/pick-up are the same engine operations as the Lua functions above (checked in the decompilation), but cannot be driven from a script, so they are not run live.
+* **`crafting(crafter, recipe, result, count, ingredients)`** fires **once per craft**, after the `inventory.removed` (one per ingredient) and `inventory.added` (the result) events of it (cause `"crafting"`). `crafter` is the Entity, `recipe` the template name of the recipe item,
+  `result` the template name that was made, `count` the amount crafted at once, `ingredients` the list `{ { item = "It_IronOre", count = 2 }, ... }` for the whole `count`. Hooked on `PSInventory::Synthesize`, which every station calls (RE.md section 30). Verified at the real anvil and alchemy table (`ex_recipe`, `recipes`).
 * **`entity.died(entity, killer, cause)`** fires **once per entity** (`npc.killed` repeats when something hits a corpse again). The engine kills through its `Kill` script
   (`self` = the killer, `other` = the victim): `killer` is its `self` (`nil` for `risen.script.call("Kill", nil, victim)`). `cause`: `"script"` (a `Kill` called through `risen.script.call`), `"cheat"` (the `OnCheatKill` script),
   `"combat"` (the engine's own death with an attacker), `"other"`. Humans that lose all hit points in a fight are **knocked out**, not killed: `entity.defeated` (and `npc.defeated`) fire for them and `entity.died` does not,
@@ -391,6 +395,41 @@ risen.spell.create("Spass_Frost_Heavy", { base = "Frost", damage = 90 })  -- the
 * **Casting from a script** (what the tests do): `risen.item.equip(player, crystal)`, `player:set_state("PS_Magic")`, wait until `player:state() == "PS_MagicBall_Loop"` (about 4.5 s), then `player:set_state("PS_MagicBall_Shoot")` is one real shot (~1 s); the mana, the `entity.spawned` projectile and `entity.damaged` follow.
 * **Not covered / limits**: numbers that are constants in the game's scripts (heal amounts 50/100/150, Fireball area radius 100/200/300 and the +25 per Fireball level, the Protection/Berserker durations) are not template data -- they are listed in SPELL_PROPERTIES.md and can only be changed by overriding the script;
   a projectile spell has no rune (the crystal is the only item the combat move accepts); an NPC shooter was not driven live (the same scripts, so the same numbers are inferred); the visual effect of a changed `effect`/`radius` was not looked at (screenshots are black); the *effect* of a rune spell (heal, summon) was not driven live, only its item numbers and the engine's cost accounting.
+
+### Recipes -- `risen.recipe`, `risen.interact`, `risen.balance` sections `recipes` and `new_recipes` (see `mods/example_recipe`, `mods/balance_recipes`, [RE.md §30](RE.md), [RECIPE_PROPERTIES.md](RECIPE_PROPERTIES.md))
+A recipe is an **item** with a `gCRecipe_PS` property set: the station (`gERecipeCategory`), the ingredients, the required skills and the result. A character **knows a recipe while it carries the recipe item** -- there is no learned-recipe list; the anvil, forge, alchemy table, ... list the recipe items of their
+category from the inventory, check `PSInventory::CanSynthesize` (skills and ingredients) and craft with `PSInventory::Synthesize` (ingredients out, result in). The shipped smithing recipes are the half-finished blades themselves (`It_1H_Steel_Hot` is the anvil recipe for `It_1H_Steel_Shaped`); a new recipe
+is a new recipe item (a clone of a written recipe item with deterministic ID, like every new template).
+```lua
+risen.balance.install({
+    new_items = { Spass_Sword_Improved = { base = "It_1H_Sword", name = { English = "Slightly Improved Sword", German = "Leicht verbessertes Schwert" }, value = 65, damage = 18 } },
+    new_recipes = {                                                            -- a new recipe item; a recipe may name an item of the same spec's new_items
+        Spass_Recipe_Improved_Sword = { station = "anvil", ingredients = { It_1H_Sword = 1, It_IronOre = 2 }, result = "Spass_Sword_Improved",
+                                        skills = { Smith = 1 }, name = "Smithing plan: Slightly Improved Sword", learn = true },   -- learn: the player is given the plan once per savegame
+    },
+    recipes = {                                                                -- edit shipped recipes
+        It_1H_Steel_Hot = { ingredients = { It_1H_Steel_Hot = 1, It_IronOre = 2 }, skills = { Smith = 2 } },
+        It_Recipe_Health_01 = { counts = { It_Plant_Health_01 = 1, It_Wine = 2 }, skills = {}, result = "It_Po_Health_02" },
+    },
+})
+risen.recipe.create("Spass_Recipe_X", { station = "forge", ingredients = { It_Pickaxe = 1 }, result = "It_Sickle" })   -- the one-recipe forms: create / modify(name, settings)
+local ok, result = risen.recipe.craft(risen.entity.player(), "Spass_Recipe_Improved_Sword")                          -- the engine's check, then the engine's craft (no station, no animation)
+```
+* **`new_recipes` settings**: `station` (required: `risen.recipe.stations()` = anvil, forge, grindstone, coolweapon, alchemy, goldsmith, scroll, cooking, frying), `ingredients` (required: `{ It_IronOre = 2 }` or `{ { item = "It_IronOre", count = 2 }, "It_1H_Sword" }`, 1 to 16),
+  `result` (required: an item name; the count is always 1: the engine's craft function creates one result per craft and never reads `ResultAmount`), `skills` (`{ Smith = 1 }`, none by default), `base` (the recipe item to clone, default `It_Recipe_Health_01`), the item settings of the recipe item (`name`, `description`, `icon`, `mesh`, `value`, `properties`),
+  `learn` (the player is given the item once per savegame: a game variable `SPASS_RECIPE_<name>` remembers it, so selling the plan is not undone; done on `world.ready` of a new game and of every load). Without `name` the recipe item is called "Recipe: <result label>", without `description` it lists station, ingredients and result.
+  Items named in `ingredients`/`result` must exist or be created by `new_items`/`new_npcs`/`templates` of the same spec (those sections are validated first).
+* **`recipes` settings** (edit shipped or created recipes; all optional, an unknown key lists the valid ones): `station`, `ingredients` (replaces the list), `counts` (changes the amount of existing ingredients: `{ It_IronOre = 3 }`; excludes `ingredients`), `skills` (replaces the list, `{}` removes the requirement), `result`, `properties`. Validated as a whole before anything is written;
+  applied on the first `tick` and on every `session.start` (idempotent: absolute values; live recipe entities are written too).
+* **Knowing and teaching**: `risen.recipe.known(who, name)`, `learn(who, name)` (gives the item unless it is carried), `forget`, `learn_once` (once per savegame), `learn_on_start(name)` (this mod's `world.ready` handler; `install`/`create` call it for `learn = true`). The catalogue: `risen.recipe.names([station])`, `info(name)` / `get(name)`.
+* **Crafting from a script**: `risen.recipe.can_craft(who, name)` is the engine's own `CanSynthesize` (how many times; 0 comes with what is missing), `risen.recipe.craft(who, name [, count [, { unknown = true }]])` checks like a station (the recipe item must be carried unless `unknown`) and calls `PSInventory::Synthesize`:
+  the ingredients are deleted, `count` results created, `inventory.removed/added` fire with cause `"crafting"` and then one `crafting` event. Nothing is touched when the check fails.
+* **The real station** (what the tests do): spawn the mob (`risen.entity.spawn("Object_Interact_Anvil", x, y, z)`), `risen.interact.begin(player, mob)` is the use key (`can` asks only the mob's `CanInteract_*` script), the player walks over and the station's page opens (`ZS_Interact_Interact`), `risen.script.call("InvEvent_OnClick_CraftSelect", player, nil, stack_of_the_recipe_item)` is
+  the click on the recipe, the engine plays the animation and crafts (about 13 s at the anvil), the state returns to `PS_Normal`. The anvil needs Smith >= 1, `It_SmithHammer` and a recipe item of its category; the alchemy table Alchemy >= 1; a smith blank in the left hand makes other stations refuse. With ingredients for several crafts the alchemy page first asks for the amount in a modal dialog.
+* **Natives**: `risen.recipe.ingredients_raw/set_ingredients_raw/can_craft_raw/craft_raw`, `risen.item.skill_array/set_skill_array(target, "recipe_required")` (the recipe's `RequiredSkills`), `risen.balance.skill_entries/skill_map`, `risen.template.is_planned`, `risen.interact.can/begin/finish`.
+* **Savegames** (verified, `ex_recipe`: four fresh processes): the recipe item and the crafted items are inventory stacks of templates with deterministic IDs, so they load again when the mod creates the templates on the first `tick` (`risen.balance.install` does); a crafted sword that was equipped stays equipped; the given-once flag is saved; without the mod's content the stacks stay dormant and the game runs.
+* **Not covered / limits**: only the anvil and the alchemy table were driven as real stations (forge, quench, grindstone and goldsmith use the same engine functions; scroll writing, cooking and frying only through the shared check); one result item per craft (a recipe cannot make several; make the result stack-able or craft in a loop); the stations' own rules (Smith/Alchemy >= 1, the hammer) are in the game's scripts; the NPC smiths were not looked at;
+  nothing was looked at on screen (black screenshots).
 
 ### New meshes, textures and icons — `risen.assets` (see `mods/newassets`, [RE.md §26](RE.md))
 A mod can bring its own **loose resource files** and use them for new items and creatures. The engine finds a resource by the bare, case-insensitive name of the *compiled* file in a cache of everything that is mounted

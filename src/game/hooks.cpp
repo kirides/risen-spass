@@ -42,6 +42,7 @@ int detourScriptAdminPostInit(void* self) {
     scripts::setAdmin(self);
     scripts::selfTest();
     installScriptEventHooks();  // Script.dll / Script_Game.dll are loaded now
+    installInventoryScriptHooks();
     hooks::enableAll();
     onGameReady();
     return result;

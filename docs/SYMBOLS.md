@@ -5,7 +5,7 @@ decorated export name (`GetProcAddress`), so nothing depends on addresses; the R
 see `risen.engine.build()`). **Required** symbols must resolve or the layer stays off; for an optional one only its own feature is
 disabled (`risen.engine.missing()` lists what failed). To add one: see the developer guide in `docs/DEVELOPMENT.md`.
 
-315 symbols, 153 required.
+324 symbols, 153 required.
 
 ## Engine.dll
 
@@ -117,6 +117,8 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `addlog_create` | `class bCObjectBase * gCInfoCommandAddLogText::CreateObject(void)` | 0x884f50 | yes |
 | `combat_admin_instance` | `class gCCombatAdmin * gCCombatAdmin::GetInstance(void)` | 0x7ca470 | no |
 | `combat_get_species` | `class gCCombatSpecies * gCCombatAdmin::GetSpecies(class bCString const &)const ` | 0x7ca3b0 | no |
+| `craft_ingredient_ctor` | `gCCraftIngredient::gCCraftIngredient(void)` | 0x9a1d90 | no |
+| `craft_ingredient_dtor` | `gCCraftIngredient::~gCCraftIngredient(void)` | 0x9a1dd0 | no |
 | `ctext_description` | `class bCString & gCInfoCommandRunAIScript::AccessAIScriptName(void)` | 0x499bb0 | no |
 | `ctext_saysvm` | `class bTPropertyContainer<enum gECombatAction> & gCCombatMoveMelee::AccessAction(void)` | 0x4ab150 | no |
 | `gdmg_do_damage` | `bool gCDamage_PS::DoDamage(class eCEntity *)` | 0x8081b0 | no |
@@ -190,6 +192,8 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `quest_create_object` | `class bCObjectBase * gCQuest::CreateObject(void)` | 0x95d030 | yes |
 | `quest_get_log_text` | `long & gCScriptRoutine_PS::AccessAIDelay(void)` | 0x499dc0 | yes |
 | `quest_set_status` | `bool gCQuest::SetStatus(enum gEQuestStatus const &,bool,bool)` | 0x95d920 | no |
+| `recipe_set_ingredients` | `void gCRecipe_PS::SetCraftIngredients(class bTObjArray<class gCCraftIngredient> const &)` | 0x5d1750 | no |
+| `recipe_set_required_skills` | `void gCRecipe_PS::SetRequiredSkills(class bTObjArray<class gCSkillValue> const &)` | 0x5d17a0 | no |
 | `rout_is_output_playing` | `bool gCScriptRoutine_PS::IsOutputPlaying(void)const ` | 0x96aac0 | no |
 | `rout_start_output` | `bool gCScriptRoutine_PS::StartOutput(class bCString const &,enum gEOutputType)` | 0x96aae0 | no |
 | `rout_stop_output` | `bool gCScriptRoutine_PS::StopOutput(void)` | 0x966180 | no |
@@ -267,12 +271,17 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `npc_set_group` | `class PSNpc::PropertyGroup & PSNpc::PropertyGroup::operator=(class bCString const &)` | 0x22b640 | yes |
 | `npc_set_guild` | `class PSNpc::PropertyGuild & PSNpc::PropertyGuild::operator=(enum gEGuild const &)` | 0x22b6f0 | yes |
 | `proj_get_shooter` | `class Entity PSProjectile::GetShooter(void)const ` | 0x2309e0 | no |
+| `psinter_begin` | `bool PSInteraction::BeginInteraction(class Entity)` | 0x221b50 | no |
+| `psinter_can` | `bool PSInteraction::CanInteractWith(class Entity)` | 0x221f60 | no |
+| `psinter_end` | `bool PSInteraction::EndInteraction(void)` | 0x221a50 | no |
+| `psinv_can_synthesize` | `int PSInventory::CanSynthesize(class Entity const &)const ` | 0x222af0 | no |
 | `psinv_drop_stack` | `class Entity PSInventory::DropStack(int,class bCMatrix const &)` | 0x225410 | no |
 | `psinv_insert_stack` | `int PSInventory::InsertStack(class Entity const &)` | 0x225550 | no |
 | `psinv_loot` | `bool PSInventory::LootSelections(class Entity &)` | 0x225ce0 | no |
 | `psinv_set_max_select_limit` | `void PSInventory::SetMaxSelectLimit(void)` | 0x225f40 | no |
 | `psinv_set_max_selection` | `void PSInventory::SetMaxSelection(void)` | 0x225e60 | no |
 | `psinv_set_selection` | `void PSInventory::SetSelection(int,int const &)` | 0x2260a0 | no |
+| `psinv_synthesize` | `int PSInventory::Synthesize(class Entity const &,int)` | 0x222d80 | no |
 | `psinv_trade` | `bool PSInventory::TradeSelections(class Entity &)` | 0x225da0 | no |
 | `psinv_transfer_amount` | `bool PSInventory::TransferAmountTo(int,int,class Entity &)` | 0x225b50 | no |
 | `psinv_unequip_stack` | `bool PSInventory::UnEquipStack(int)` | 0x2244e0 | no |

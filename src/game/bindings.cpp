@@ -145,6 +145,8 @@ void registerBindings() {
     rt.addBinding(bindTemplateCreate);  // after bindNpcBalance: risen.template.create and the new_items/new_npcs/templates sections
     rt.addBinding(bindSpell);           // after bindTemplateCreate: risen.spell and the spells/new_spells sections
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo&) { installSpellModApi(lua, api); });  // after installBalanceModApi: per-mod shot overrides
+    rt.addBinding(bindRecipe);          // after bindSpell: risen.recipe and the recipes/new_recipes sections
+    rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo&) { installRecipeModApi(lua, api); });  // after installBalanceModApi: learn = true recipes
     rt.addBinding(bindDialog);
     rt.addModBinding(bindVoiceModApi);  // after bindAssetModApi and bindDialog: wraps risen.dialog.create per mod
     rt.addBinding(bindQuestObjects);

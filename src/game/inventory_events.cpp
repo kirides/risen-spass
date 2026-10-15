@@ -33,7 +33,10 @@ namespace spass::game {
 namespace {
 
 constexpr std::size_t kListArray = 0x30, kListCount = 0x38, kStackStride = 0x60;
-constexpr std::size_t kStackTemplateProxy = 0x08, kStackEquipSlot = 0x48, kStackAmount = 0x58;
+constexpr std::size_t kStackTemplateProxy = 0x08, kStackEquipSlot = 0x48, kStackAmount = 0x58, kStackType = 0x38;
+// gEStackType 2: the temporary copies the animations hold in the hands (the anvil's hammer, the recipe, the result item: AssureItems(.., 1, 2)); they are not
+// possessions (HasRecipes skips them too), so they are neither counted nor reported (docs/RE.md section 30).
+constexpr int kStackTypeTemporary = 2;
 constexpr std::uint32_t kAmountMask = 0x1fffff;
 constexpr std::size_t kListenerOffset = 0x20;  // the gCInventoryListener base inside gCInventory_PS
 
@@ -106,7 +109,7 @@ Snap collect(void* ps) {
         for (int i = 0; i < n; ++i) {
             char* st = arr + static_cast<std::size_t>(i) * kStackStride;
             const int amount = stackAmount(st);
-            if (amount <= 0) {
+            if (amount <= 0 || *reinterpret_cast<const int*>(st + kStackType) == kStackTypeTemporary) {
                 continue;
             }
             if (void* tpl = stackTemplate(st)) {
@@ -248,6 +251,7 @@ Hook<bool (*)(void*, void*, bool)> g_cmdDestroy;
 Hook<bool (*)(void*, void*, bool)> g_cmdGive;
 Hook<void (*)(void*)> g_merge;
 Hook<bool (*)(void*, int, unsigned long, int*)> g_split;
+Hook<int (*)(void*, const void*, int)> g_synthesize;
 
 int detourCreateId(void* self, const void* id, unsigned long n, int type) {
     Op op("script");
@@ -335,6 +339,57 @@ bool detourSplit(void* self, int stack, unsigned long n, int* newStack) {
     Op op("rearrange");
     Op::touch(self);
     return g_split.original(self, stack, n, newStack);
+}
+
+// PSInventory::Synthesize(recipe, count) (Script.dll): the one function every crafting station calls once it let the player craft (anvil, forge,
+// grindstone, goldsmith, alchemy, cool weapon; also OnPlayerSynthRecipe): deletes `count` times the ingredients, creates `count` result items. It names the
+// cause "crafting" for the inventory events inside and posts one `crafting(crafter, recipe, result, count, ingredients)` event after them (docs/RE.md
+// section 30). The recipe is read beforehand: gCRecipe_PS (property set 0x5a) has the ingredient array at +0x30 (stride 0x18, proxy at +8, amount at +0x10)
+// and the result item proxy at +0x50.
+int detourSynthesize(void* self, const void* recipe, int count) {
+    const bool want = wantItemEvent("crafting");
+    std::string recipeName, resultName;
+    bus::ItemList ingredients;
+    void* crafterEntity = nullptr;
+    void* inventoryPs = nullptr;
+    guarded([&] {
+        void* const* holder = static_cast<void* const*>(self);
+        crafterEntity = holder != nullptr ? *holder : nullptr;
+        if (crafterEntity != nullptr) {
+            inventoryPs = reinterpret_cast<void* (*)(void*, int)>((*reinterpret_cast<void***>(crafterEntity))[0x198 / 8])(crafterEntity, 0x1f);
+        }
+        void* tpl = recipe != nullptr ? *static_cast<void* const*>(recipe) : nullptr;
+        if (!want || tpl == nullptr) {
+            return;
+        }
+        recipeName = templateName(tpl);
+        void* set = reinterpret_cast<void* (*)(void*, int)>((*reinterpret_cast<void***>(tpl))[0x198 / 8])(tpl, 0x5a);
+        if (set == nullptr || sym().tpl_proxy_get_entity == nullptr) {
+            return;
+        }
+        char* base = static_cast<char*>(set);
+        resultName = templateName(sym().tpl_proxy_get_entity(base + 0x50));
+        char* data = *reinterpret_cast<char**>(base + 0x30);
+        const int n = *reinterpret_cast<int*>(base + 0x38);
+        for (int i = 0; data != nullptr && i < n && i < 64; ++i) {
+            char* el = data + static_cast<std::size_t>(i) * 0x18;
+            const std::string name = templateName(sym().tpl_proxy_get_entity(el + 8));
+            const int amount = static_cast<int>(*reinterpret_cast<std::uint32_t*>(el + 0x10));
+            if (!name.empty() && amount > 0) {
+                ingredients.emplace_back(name, static_cast<double>(amount) * count);
+            }
+        }
+    });
+    int stack = -1;
+    {
+        Op op("crafting");
+        Op::touch(inventoryPs);
+        stack = g_synthesize.original(self, recipe, count);
+    }
+    if (stack >= 0 && want && !recipeName.empty()) {
+        bus::post("crafting", {bus::capture(crafterEntity), recipeName, resultName, static_cast<double>(count), std::move(ingredients)});
+    }
+    return stack;
 }
 
 // ConsumeItems(stack, count): applies the item's modifiers and deletes `count` (the use of food, potions, ...).
@@ -426,7 +481,7 @@ void reportUnscoped(void* listener, int index, bool created) {
         char* st = stackAt(ps, index);
         void* tpl = stackTemplate(st);
         const std::string name = templateName(tpl);
-        if (st == nullptr || name.empty()) {
+        if (st == nullptr || name.empty() || *reinterpret_cast<const int*>(st + kStackType) == kStackTypeTemporary) {
             return;
         }
         const int amount = stackAmount(st);
@@ -516,6 +571,11 @@ void installInventoryEventHooks() {
     install(g_cmdCreate, "gCInfoCommandCreateItem::Execute", s.infocmd_create_item, &detourCmdCreate);
     install(g_cmdDestroy, "gCInfoCommandDestroyItem::Execute", s.infocmd_destroy_item, &detourCmdDestroy);
     install(g_cmdGive, "gCInfoCommandGive::Execute", s.infocmd_give, &detourCmdGive);
+}
+
+// Hooks on Script.dll functions: Script.dll is loaded by gCScriptAdmin::PostInitialize, so this runs after installInventoryEventHooks().
+void installInventoryScriptHooks() {
+    install(g_synthesize, "PSInventory::Synthesize", sym().psinv_synthesize, &detourSynthesize);
 }
 
 }  // namespace spass::game

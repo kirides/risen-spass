@@ -9,6 +9,8 @@ void installEventHooks();
 
 // Inventory events (inventory_events.cpp) and entity events (entity_events.cpp); installEventHooks() installs the ones that only need Game.dll/Engine.dll.
 void installInventoryEventHooks();
+// PSInventory::Synthesize (crafting event): needs Script.dll, called with installScriptEventHooks().
+void installInventoryScriptHooks();
 void installEntityEventHooks();
 // The hooks on Script.dll / Script_Game.dll functions (script Kill/Defeat, Entity::Spawn): called after those DLLs are loaded; enable the hooks afterwards.
 void installScriptEventHooks();

@@ -81,6 +81,12 @@ void bindSpell(sol::state_view lua, sol::table risen);
 void installSpellHelpers(sol::state_view lua, sol::table risen);
 void installSpellModApi(sol::state_view lua, sol::table api);
 
+// Registers risen.recipe (natives: ingredients_raw/set_ingredients_raw/can_craft_raw/craft_raw; Lua: the catalogue, risen.recipe.create/modify/known/learn and the
+// `recipes` / `new_recipes` sections). Must run after bindSpell(). installRecipeHelpers runs only the Lua part (the unit tests mock the natives). (lua_recipe.cpp)
+void bindRecipe(sol::state_view lua, sol::table risen);
+void installRecipeHelpers(sol::state_view lua, sol::table risen);
+void installRecipeModApi(sol::state_view lua, sol::table api);
+
 // Registers the Quest usertype and risen.quest.new/get/define/add_log. Needs risen.quest (bindQuest), risen.dialog.
 void bindQuestObjects(sol::state_view lua, sol::table risen);
 

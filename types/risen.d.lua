@@ -378,6 +378,12 @@ function templateApi.clone(name, base) end
 ---@return string id
 function templateApi.id_for(name) end
 
+---Whether a spec validated in this process names `name` as a template it is about to create (`new_items`, `new_npcs`, `templates`): later sections (the ingredients and the result
+---of `new_recipes`) may refer to such an item although it does not exist yet. Validation of one section runs before the writes of all of them.
+---@param name string
+---@return boolean
+function templateApi.is_planned(name) end
+
 ---Why `name` cannot be the name of a new template, or `nil` when it can.
 ---@param name string
 ---@return string|nil problem
@@ -675,17 +681,18 @@ function itemApi.modifiers(item) end
 function itemApi.set_modifiers(item, spec, opts) end
 
 ---Raw array access (engine enum names): `{ { skill = "gESkill_Stat_STR", amount = 10, modifier = "gESkillModifier_AddValue" } }`. `kind` is
----`"required"` (RequiredSkills) or `"modifiers"` (ModifySkills); `modifier` is only present for `"modifiers"`.
----@param target string|Entity Template name or item entity.
----@param kind "required"|"modifiers"
+---`"required"` (RequiredSkills) or `"modifiers"` (ModifySkills) of a `gCItem_PS`, or `"recipe_required"` (the RequiredSkills of a recipe, `gCRecipe_PS`, see `risen.recipe`);
+---`modifier` is only present for `"modifiers"`.
+---@param target string|Entity Template name or item/recipe entity.
+---@param kind "required"|"modifiers"|"recipe_required"
 ---@return { skill: string, amount: integer, modifier?: string }[]|nil entries
 ---@return string|nil reason
 function itemApi.skill_array(target, kind) end
 
 ---Raw write of the whole array (engine enum names; `modifier` defaults to `"gESkillModifier_AddValue"`). Names are checked through the engine's
 ---own enum parser before the item is touched.
----@param target string|Entity Template name or item entity.
----@param kind "required"|"modifiers"
+---@param target string|Entity Template name or item/recipe entity.
+---@param kind "required"|"modifiers"|"recipe_required"
 ---@param entries { skill: string, amount: integer, modifier?: string }[]
 ---@return boolean|nil ok
 ---@return string|nil reason
@@ -753,6 +760,8 @@ local balanceApi = {}
 ---@field new_npcs? table<string, TemplateOverrides> New NPC/monster templates: `{ My_Wolf = { base = "Wolf", hp_max = 500, name = "Dire Wolf" } }`; `loot` may name items of `new_items`.
 ---@field spells? table<string, SpellSettings> Edits of the shipped spells: `{ Fireball = { mana_cost = 12, damage = 150 }, Light = { mana_cost = 7 } }` (see `risen.spell.names`, docs/SPELL_PROPERTIES.md).
 ---@field new_spells? table<string, NewSpell> New spells made of the pieces of shipped ones: `{ Spass_Fireball_Strong = { base = "Fireball", mana_cost = 24, damage_mult = 2, forms = { "crystal", "scroll" } } }`.
+---@field recipes? table<string, RecipeEdit> Edits of crafting recipes: `{ It_1H_Steel_Hot = { ingredients = { It_1H_Steel_Hot = 1, It_IronOre = 2 }, skills = { Smith = 2 } } }` (see `risen.recipe.names`, docs/RECIPE_PROPERTIES.md).
+---@field new_recipes? table<string, NewRecipe> New recipes (a recipe item each): `{ Spass_Plan = { station = "anvil", ingredients = { It_1H_Sword = 1, It_IronOre = 2 }, result = "Spass_Sword", skills = { Smith = 1 }, learn = true } }`.
 ---@field templates? table<string, TemplateOverrides> Like `new_items` and `new_npcs` for either kind (and other templates: only `name`, `mesh`, `properties`, ...).
 
 ---@class BalanceOptions
@@ -820,6 +829,19 @@ function balanceApi.scale_npcs(opts, apply_opts) end
 ---`Sneak`, `Mining`, `Smith`, `Alchemy`.
 ---@return string[]
 function balanceApi.skills() end
+
+---Validates a friendly skill table (`{ Smith = 1 }` or a list of `{ skill =, amount = }`) the way the `requires` setting of items is and converts it to engine entries (the
+---input of `risen.item.set_skill_array`). Nothing is written.
+---@param spec table
+---@param what? string Label for the problem messages (default `"skills"`).
+---@return { skill: string, amount: integer }[]|nil entries
+---@return string[]|nil problems
+function balanceApi.skill_entries(spec, what) end
+
+---Engine skill entries (as `risen.item.skill_array` returns them) as a friendly table `{ Smith = 1 }`; the highest amount wins when a skill is listed twice.
+---@param entries { skill: string, amount: integer }[]
+---@return table<string, integer>
+function balanceApi.skill_map(entries) end
 
 ---The valid modifier modes: `add`, `set`, `max`, `percent`.
 ---@return string[]
@@ -1177,6 +1199,212 @@ function spellApi.discard(owner, item) end
 ---@param projectile Entity
 ---@return Entity|nil
 function spellApi.shooter(projectile) end
+
+---------------------------------------------------------------------------------------------------------------------
+-- Recipes
+---------------------------------------------------------------------------------------------------------------------
+
+---One ingredient or result of a recipe: an item template and an amount.
+---@class RecipeItem
+---@field item string Template name (docs/TEMPLATES.md).
+---@field count integer
+
+---What a recipe is (docs/RECIPE_PROPERTIES.md).
+---@class RecipeInfo
+---@field name string The recipe item's template.
+---@field label string|nil What the recipe item is called.
+---@field station string `"anvil"`, `"forge"`, `"grindstone"`, `"coolweapon"`, `"alchemy"`, `"goldsmith"`, `"scroll"`, `"cooking"`, `"frying"`.
+---@field category string The engine enum `gERecipeCategory_...`.
+---@field ingredients RecipeItem[]
+---@field result RecipeItem The engine creates exactly one result item per craft (`count` is always 1).
+---@field skills table<string, integer> The crafter's skills, e.g. `{ Smith = 1 }`.
+---@field shipped boolean `false` for a recipe made by `risen.recipe.create` / `new_recipes`.
+
+---Edit of a shipped (or created) recipe, one entry of the `recipes` section / the argument of `risen.recipe.modify`. Every key is optional.
+---@class RecipeEdit
+---@field station? string Moves the recipe to another station (`risen.recipe.stations()`).
+---@field ingredients? RecipeItem[]|table<string,integer> Replaces the ingredient list: `{ It_IronOre = 2 }` or `{ { item = "It_IronOre", count = 2 }, "It_1H_Sword" }` (a bare name is one piece).
+---@field counts? table<string,integer> Changes the amount of existing ingredients: `{ It_IronOre = 3 }`. Excludes `ingredients`.
+---@field skills? table<string,integer> Replaces the required skills (`{}` removes them): `{ Smith = 2 }`.
+---@field result? string|RecipeItem The result item (count must be 1: the engine ignores `ResultAmount`).
+---@field properties? TemplateEdits Other properties (not the recipe's own parts: use the keys above).
+
+---One new recipe, an entry of the `new_recipes` section / the argument of `risen.recipe.create`: a recipe item (a new template cloned from a shipped recipe item, with the
+---deterministic ID of its name, so savegames that hold it load again). A character knows the recipe while the recipe item is in its inventory.
+---@class NewRecipe
+---@field station string Required: `risen.recipe.stations()`.
+---@field ingredients RecipeItem[]|table<string,integer> Required, 1 to 16 ingredients; items of the same spec's `new_items` are accepted.
+---@field result string|RecipeItem Required: the item that is made (count 1).
+---@field skills? table<string,integer> Required skills of the crafter, e.g. `{ Smith = 1 }` (none by default).
+---@field base? string Recipe item to clone (default `"It_Recipe_Health_01"`: a written recipe with the paper icon); needs a `gCRecipe_PS`.
+---@field name? string|table<string,string> Label of the recipe item (default `"Recipe: <result label>"`).
+---@field description? string|table<string,string> Description text (default: the station, the ingredients and the result).
+---@field icon? string Inventory icon of the recipe item (`gCItem_PS.IconImage`).
+---@field mesh? string Mesh of the recipe item.
+---@field value? integer Gold value of the recipe item.
+---@field properties? TemplateEdits Other properties of the recipe item.
+---@field learn? boolean The player is given the recipe item once per savegame (on `world.ready` of a new game or a load; a game variable remembers it). `risen.balance.install` and `risen.recipe.create` of a mod arrange it.
+
+---@class RisenRecipeApi
+local recipeApi = {}
+
+---The valid values of `station`: `"alchemy"`, `"anvil"`, `"cooking"`, `"coolweapon"`, `"forge"`, `"frying"`, `"goldsmith"`, `"grindstone"`, `"scroll"` (engine enums
+---`gERecipeCategory_Alchemy`, `..._Smith_Anvil`, ... are accepted as well). The anvil, forge, grindstone and cool-weapon (quench) stations belong to smithing.
+---@return string[]
+function recipeApi.stations() end
+
+---Every recipe template (shipped ones and those created by this layer), sorted; with a station only that station's. Scans the item templates once.
+---@param station? string
+---@return string[]|nil names
+---@return string|nil reason The valid stations when `station` is unknown.
+function recipeApi.names(station) end
+
+---What a recipe is: station, ingredients, result, required skills (read from the templates now, so an edit shows).
+---@param name string Template name of the recipe item.
+---@return RecipeInfo|nil
+---@return string|nil reason
+function recipeApi.info(name) end
+
+---Same as `risen.recipe.info` (for symmetry with `risen.spell.get`).
+---@param name string
+---@return RecipeInfo|nil
+---@return string|nil reason
+function recipeApi.get(name) end
+
+---Whether the character knows the recipe. The engine has no list of learned recipes: a character knows a recipe while a stack of the recipe item is in its inventory (the
+---stations list the recipe items of their category from the inventory). The smithing blanks (`It_1H_Steel_Hot`, ...) are recipe items too: holding one is knowing its recipe.
+---@param who Entity
+---@param name string
+---@return boolean|nil known
+---@return string|nil reason
+function recipeApi.known(who, name) end
+
+---Teaches the recipe: gives the character the recipe item unless it carries one. `true` = given, `false` = already known.
+---@param who Entity
+---@param name string
+---@return boolean|nil given
+---@return string|nil reason
+function recipeApi.learn(who, name) end
+
+---Takes the recipe item away. `true` = taken, `false` = it was not known.
+---@param who Entity
+---@param name string
+---@return boolean|nil taken
+---@return string|nil reason
+function recipeApi.forget(who, name) end
+
+---`learn` once per savegame: gives the recipe item the first time and remembers that in the game variable `SPASS_RECIPE_<name>` (saved with the game), so a character that sold
+---or dropped the item is not given it again. `false` = was given before.
+---@param who Entity
+---@param name string
+---@return boolean|nil given
+---@return string|nil reason
+function recipeApi.learn_once(who, name) end
+
+---Registers this mod's `world.ready` handler that runs `learn_once` for the player: the recipe item is given on a new game and on a load of a savegame that never had it.
+---`risen.balance.install` (for `new_recipes` entries with `learn = true`) and `risen.recipe.create` call it for you.
+---@param name string
+---@return boolean registered
+function recipeApi.learn_on_start(name) end
+
+---The engine's own craft check (`PSInventory::CanSynthesize`): how many times the character can craft the recipe with the ingredients in its inventory and its skills (0 comes with
+---a second value saying what is missing). The station and the recipe item are not part of it.
+---@param who Entity
+---@param name string
+---@return integer|nil times
+---@return string|nil reasonOrMissing
+function recipeApi.can_craft(who, name) end
+
+---Crafts through the engine: checks like a station (`CanSynthesize`), then `PSInventory::Synthesize` deletes the ingredients and creates `count` result items (events `inventory.removed`,
+---`inventory.added` with cause `"crafting"`, then one `crafting`). Nothing is touched when the check fails. Needs the recipe item in the inventory (like a station) unless
+---`opts.unknown`. No animation, no station: use `risen.interact.begin` for the real anvil.
+---@param who Entity
+---@param name string
+---@param count? integer 1 to 99, default 1.
+---@param opts? { unknown?: boolean }
+---@return boolean|nil ok
+---@return string|nil resultOrReason The result item's template name, or why not.
+function recipeApi.craft(who, name, count, opts) end
+
+---Edits one recipe: `risen.balance.apply { recipes = { [name] = settings } }` (validated first, nothing is written on a problem). Templates only on the first `tick`; use
+---`risen.balance.install` to apply it on every `session.start` too.
+---@param name string
+---@param settings RecipeEdit
+---@param opts? BalanceOptions
+---@return BalanceReport|nil report
+---@return string|nil reason
+---@return string[]|nil problems
+function recipeApi.modify(name, settings, opts) end
+
+---Creates one new recipe (the `new_recipes` section for a single entry) and, with `learn`, arranges that the calling mod's player is taught it. Same timing rules as
+---`risen.template.create` (first `tick` at the earliest, every process again).
+---@param name string Name of the recipe item (letters, digits, `_`).
+---@param spec NewRecipe
+---@param opts? BalanceOptions
+---@return BalanceReport|nil report
+---@return string|nil reason
+---@return string[]|nil problems
+function recipeApi.create(name, spec, opts) end
+
+---Natives (engine names): the ingredient array of a recipe, `{ { item = "It_IronOre", count = 2 }, ... }`. Use `risen.recipe.info`.
+---@param target string|Entity Template name or recipe entity.
+---@return RecipeItem[]|nil
+---@return string|nil reason
+function recipeApi.ingredients_raw(target) end
+
+---Native: replaces the whole ingredient array (`gCRecipe_PS::SetCraftIngredients`; the items are checked by the engine's own template parser first). Use the `recipes` section.
+---@param target string|Entity Template name or recipe entity.
+---@param list RecipeItem[]
+---@return boolean|nil ok
+---@return string|nil reason
+function recipeApi.set_ingredients_raw(target, list) end
+
+---Native: `PSInventory::CanSynthesize`, how many times the character can craft (0 when a skill or an ingredient is missing). Use `risen.recipe.can_craft`.
+---@param who Entity
+---@param name string
+---@return integer|nil
+---@return string|nil reason
+function recipeApi.can_craft_raw(who, name) end
+
+---Native: `PSInventory::Synthesize` **without the check** (what every station calls once the player chose an amount): deletes `count` times the ingredients that exist and creates
+---`count` result items. Use `risen.recipe.craft`.
+---@param who Entity
+---@param name string
+---@param count integer
+---@return integer|nil stack Stack index of the result.
+---@return string|nil reason
+function recipeApi.craft_raw(who, name, count) end
+
+---------------------------------------------------------------------------------------------------------------------
+-- Interactions
+---------------------------------------------------------------------------------------------------------------------
+
+---The engine's interaction of a character with a mob (anvil, forge, alchemy table, chest, ...): what the use key does (docs/RE.md section 30).
+---@class RisenInteractApi
+local interactApi = {}
+
+---`gCInteraction::CanInteractWith`: runs the mob's `CanInteract_*` script for this character (the station refuses without the skill, the tool or a recipe, and may print a HUD message).
+---@param user Entity The character.
+---@param target Entity The mob.
+---@return boolean|nil can
+---@return string|nil reason
+function interactApi.can(user, target) end
+
+---Starts the interaction like the use key: the check above, then the user's AI state becomes `ZS_Interact_PreInteract`, which runs the `PreInteract_*`, `Interact_*` and
+---`PostInteract_*` scripts of the mob's use type (walk to the mob, open the station's inventory page, animation). At the anvil or the alchemy table the page waits for the recipe
+---choice: call the engine's own click handler `risen.script.call("InvEvent_OnClick_CraftSelect", player, nil, stack_index_of_the_recipe_item)` (with ingredients for more than one
+---craft the page first asks for the amount in a modal dialog); the animation then crafts and the state returns to `PS_Normal`. A smith recipe item in the left hand makes the
+---engine refuse every other station ("CarryToAnvil"). Mobs: `Object_Interact_Anvil`, `Object_Interact_Alchemy_Table`, `Object_Interact_Forge`, ... (`risen.entity.spawn`).
+---@param user Entity The character.
+---@param target Entity The mob.
+---@return boolean|nil began
+---@return string|nil reason
+function interactApi.begin(user, target) end
+
+---`PSInteraction::EndInteraction` of the character (leaves a running interaction).
+---@param user Entity
+---@return boolean ok
+function interactApi.finish(user) end
 
 ---------------------------------------------------------------------------------------------------------------------
 -- Quests
@@ -2191,6 +2419,8 @@ function logApi.error(...) end
 ---@field balance RisenBalanceApi
 ---@field npc RisenNpcApi
 ---@field spell RisenSpellApi
+---@field recipe RisenRecipeApi
+---@field interact RisenInteractApi
 ---@field quest RisenQuestApi
 ---@field dialog RisenDialogApi
 ---@field script RisenScriptApi
@@ -2207,9 +2437,10 @@ local risen_ = {}
 
 ---Why an inventory changed (argument `cause` of `inventory.added/removed/changed`): `"script"` (CreateItems/DeleteItems/transfers made by the game's
 ---scripts or a mod: `risen.item.give/take/transfer`, quest rewards, ...), `"dialogue"` (a dialogue `Give`/`CreateItem`/`DestroyItem` command),
----`"pickup"` (an item taken from the ground), `"loot"` (corpse/chest), `"trade"`, `"drop"`, `"consume"` (food, potions), `"other"` (a change no hooked
----engine operation announced; only the creation or deletion of a stack is seen then).
----@alias InventoryCause "script"|"dialogue"|"pickup"|"loot"|"trade"|"drop"|"consume"|"other"
+---`"pickup"` (an item taken from the ground), `"loot"` (corpse/chest), `"trade"`, `"drop"`, `"consume"` (food, potions), `"crafting"` (the ingredients taken and the result
+---made by a crafting station or `risen.recipe.craft`: `PSInventory::Synthesize`), `"other"` (a change no hooked engine operation announced; only the creation or deletion of
+---a stack is seen then). The temporary copies the animations hold in the hands (stack type 2: the anvil's hammer, the recipe, the result) are neither counted nor reported.
+---@alias InventoryCause "script"|"dialogue"|"pickup"|"loot"|"trade"|"drop"|"consume"|"crafting"|"other"
 
 ---Registers an event handler. Higher priority runs first. Handlers that raise are logged and skipped.
 ---
@@ -2224,7 +2455,8 @@ local risen_ = {}
 ---`inventory.changed(owner, template, delta, total, cause, other)`, `item.picked_up(owner, template, amount)`,
 ---`item.equipped/unequipped(owner, template, slot)`, `item.consumed(owner, template, count)`, `entity.died(entity, killer, cause)`,
 ---`entity.defeated(entity, attacker)`, `npc.killed(entity, killer)`, `npc.defeated(entity, attacker)`, `entity.damaged(entity, attacker, damage, raw)`,
----`entity.spawned(entity, template)`, `entity.destroyed(name, kind, template)`.
+---`entity.spawned(entity, template)`, `entity.destroyed(name, kind, template)`, `crafting(crafter, recipe, result, count, ingredients)` (once per craft, after the `inventory.*`
+---events of it; `ingredients` is `{ { item = "It_IronOre", count = 2 }, ... }` for the whole `count`).
 ---@param event string
 ---@param handler function
 ---@param priority? integer
@@ -2248,6 +2480,7 @@ local risen_ = {}
 ---@overload fun(event: "entity.damaged", handler: fun(entity: Entity|nil, attacker: Entity|nil, damage: integer, raw: integer), priority?: integer): EventHandle
 ---@overload fun(event: "entity.spawned", handler: fun(entity: Entity|nil, template: string), priority?: integer): EventHandle
 ---@overload fun(event: "entity.destroyed", handler: fun(name: string, kind: "npc"|"player"|"item"|"other", template: string), priority?: integer): EventHandle
+---@overload fun(event: "crafting", handler: fun(crafter: Entity|nil, recipe: string, result: string, count: integer, ingredients: { item: string, count: integer }[]), priority?: integer): EventHandle
 ---@overload fun(event: "inventory.added", handler: fun(owner: Entity|nil, template: string, count: integer, total: integer, cause: InventoryCause, other: Entity|nil), priority?: integer): EventHandle
 ---@overload fun(event: "inventory.removed", handler: fun(owner: Entity|nil, template: string, count: integer, total: integer, cause: InventoryCause, other: Entity|nil), priority?: integer): EventHandle
 ---@overload fun(event: "inventory.changed", handler: fun(owner: Entity|nil, template: string, delta: integer, total: integer, cause: InventoryCause, other: Entity|nil), priority?: integer): EventHandle
