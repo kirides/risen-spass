@@ -125,7 +125,7 @@ T.run(function()
     T.section("consume / equip")
     risen.item.give(p, "It_Po_Health_01", 2); T.sleep(3)
     -- reentrancy: the event is dispatched after the engine operation, so a handler may change the very inventory the event is about
-    risen.on("item.consumed", function(owner, tpl) if tpl == "It_Po_Health_01" then risen.item.give(owner, "It_Po_Mana_01", 1) end end)
+    risen.on("item.consumed", function(owner, tpl) if owner and tpl == "It_Po_Health_01" then risen.item.give(owner, "It_Po_Mana_01", 1) end end)
     m = #seen
     risen.item.consume(p, "It_Po_Health_01"); T.sleep(3)
     T.eq("consume: inventory.removed", inv_lines(m, set("It_Po_Health_01")), { "removed PC_Hero It_Po_Health_01 1 total=1 consume other=nil" })

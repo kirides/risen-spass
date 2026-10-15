@@ -18,11 +18,13 @@
 #include <spdlog/spdlog.h>
 
 #include "common/asset_names.h"
+#include "common/input_names.h"
 #include "common/sound_file.h"
 #include "common/template_id.h"
 #include "common/test_run.h"
 #include "common/trace.h"
 #include "game/loc_files.h"
+#include "game/lua_config.h"
 #include "game/lua_test.h"
 #include "game/lua_entity.h"
 #include "lua/mods.h"
@@ -483,6 +485,7 @@ TEST(balance_install_reports_each_application_to_on_applied) {
 #include "spell_tests.inc"
 #include "recipe_tests.inc"
 #include "test_risen_test.inc"
+#include "quickloot_tests.inc"
 
 }  // namespace
 

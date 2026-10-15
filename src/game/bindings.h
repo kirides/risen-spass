@@ -21,6 +21,18 @@ void setFileTraceFilter(const std::string& filter);
 // risen.engine.* (lua_engine_info.cpp): which engine symbols were bound, and the game build.
 void bindEngineInfo(sol::state_view lua, sol::table risen);
 
+// risen.interact.focus/set_focus/info/current (lua_interact.cpp): adds to risen.interact (bound by bindRecipe, so register it after).
+void bindInteractExtras(sol::state_view lua, sol::table risen);
+void installFocusHook();
+void focusEntityKilled(void* entity);  // eCEntity::Kill hook: unpins a pinned focus entity  // pins for risen.interact.set_focus(entity, true)
+
+// risen.hud.* (lua_hud.cpp): the HUD game log and item log.
+void bindHud(sol::state_view lua, sol::table risen);
+
+// The `calls` and `hud` trace channels (call_trace.cpp): installCallTrace needs Engine.dll/Game.dll, installHudTrace Script.dll (after PostInitialize).
+void installCallTrace(const std::string& scriptFilter);
+void installHudTrace();
+
 // risen.vfs.* (lua_vfs.cpp): the engine's virtual file system, including packed archives.
 void bindVfs(sol::state_view lua, sol::table risen);
 

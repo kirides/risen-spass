@@ -29,7 +29,8 @@ function Entity:name() end
 ---@return string|nil
 function Entity:display_name() end
 
----Whether the entity still exists in the world (looked up again by its unique name).
+---Whether the entity still exists in the world (looked up again by its unique name). Gotcha: items and other spawns are named after their template (`It_Apple`), not uniquely,
+---so for them this finds the first entity of that name, which may be another one (and re-points the handle at it): do not use it for items.
 ---@return boolean
 function Entity:valid() end
 
@@ -327,6 +328,12 @@ function entityApi.player() end
 ---@param temporary? boolean Spawn as a temporary entity.
 ---@return Entity|nil
 function entityApi.spawn(template, x, y, z, temporary) end
+
+---Every NPC and monster of the world (`Entity::GetNPCs`; the player is among them), or only those within `radius` game units of `center`. The list is built on every call.
+---@param center? Entity
+---@param radius? number
+---@return Entity[] npcs
+function entityApi.npcs(center, radius) end
 
 ---@class RisenTemplateApi
 local templateApi = {}
@@ -1406,6 +1413,148 @@ function interactApi.begin(user, target) end
 ---@return boolean ok
 function interactApi.finish(user) end
 
+---The entity the engine's focus module has selected right now: what is under the crosshair and what the use key would act on (`gCFocusModule2::GetFocusEntity`, the value the
+---game's own `Focus::GetFocusEntity` hands to `BeginInteraction`). `nil` when nothing is focused. Honours `set_focus(entity, true)`.
+---@return Entity|nil focus
+function interactApi.focus() end
+
+---Makes `entity` the focus (`nil` clears it). The engine rebuilds its candidate list every frame, so without `pin` this lasts one frame; with `pin = true` the entity stays
+---the answer of `focus()` and of the use key until `set_focus(nil)` or `set_focus(x, false)` (or until it is removed from the world). A test aid, also for guided interactions.
+---@param entity Entity|nil
+---@param pin? boolean
+---@return boolean ok
+function interactApi.set_focus(entity, pin) end
+
+---What the engine knows about the interactions of `entity` (its `gCInteraction_PS`): the use type, every `gCInteraction` object (one per user kind: player, NPC, magic, ...) with
+---the names of its scripts, and who uses it right now. The use key runs the FIRST interaction of type `gEInteractionType_Interact_Player` whose `can` script (empty = always) says yes:
+---`can` is a plain script (`risen.script.call(can, player, mob)`), `pre` and `interact` are AI functions (resumable scripts that walk, play animations and open windows: not callable
+---from Lua), `post` a plain script run when the interaction ends. `props` holds every property of the `gCInteraction` object as text.
+---@param entity Entity
+---@return InteractionInfo|nil info
+---@return string|nil reason `"entity has no gCInteraction_PS"`, `"entity is gone"`.
+function interactApi.info(entity) end
+
+---The mob a character is interacting with right now (between `begin` and the end of the interaction: the player's AI state is `ZS_Interact_*`), or `nil`.
+---@param user Entity
+---@return Entity|nil target
+function interactApi.current(user) end
+
+---One `gCInteraction` of a mob.
+---@class InteractionEntry
+---@field type string `"gEInteractionType_Interact_Player"`, `"gEInteractionType_Interact_NPC"`, `"gEInteractionType_Magic"`, `"gEInteractionType_InventoryUse_Player"`, ...
+---@field can string Name of the `CanInteractScript` (`""` = none).
+---@field pre string Name of the `PreInteractScript` (an AI function).
+---@field interact string Name of the `InteractScript` (an AI function).
+---@field post string Name of the `PostInteractScript`.
+---@field props table<string,string> All properties of the object, engine text format.
+
+---@class InteractionInfo
+---@field use_type string `gCInteraction_PS.UseType`, e.g. `"gEInteractionUseType_Chest"`, `"gEInteractionUseType_Item"`, `"gEInteractionUseType_NPC"`.
+---@field interactions InteractionEntry[] In the engine's order.
+---@field user Entity|nil The character currently using the mob.
+---@field target Entity|nil The mob this entity is currently using (set on characters).
+
+---------------------------------------------------------------------------------------------------------------------
+-- Input and HUD
+---------------------------------------------------------------------------------------------------------------------
+
+---Keys. A key is named either by an engine ACTION (`"SecondaryAction"` = the right mouse button in the default map, `"PrimaryAction"` = left, `"Selection"` = the use key, `"WeaponMode"`,
+---`"Inventory"`, ...: `risen.input.actions()`; the player's current input map decides which scan code triggers it) or by a Windows virtual-key name (`"RButton"`, `"V"`, `"F5"`, `"Shift"`,
+---`"Ctrl"`, `"Space"`, ...), read from the OS only while the game window is in the foreground. `"action:<name>"` / `"vk:<name>"` force one reading. `pressed`/`was_pressed`/`was_released`
+---compare the key states sampled once per frame before the `tick` event (sampling starts with the first query).
+---@class RisenInputApi
+local inputApi = {}
+
+---Names of the engine's action keys; the index is the key number (`input.action` events carry it).
+---@return string[] names
+function inputApi.actions() end
+
+---The `gEActionKey` number of an action name.
+---@param name string
+---@return integer|nil key `nil` for raw keys and unknown names.
+---@return string|nil reason
+function inputApi.action_key(name) end
+
+---The key is held down right now (as of the last frame).
+---@param name string
+---@return boolean|nil down `nil` for an unknown key name.
+---@return string|nil reason
+function inputApi.pressed(name) end
+
+---The key went down since the previous frame.
+---@param name string
+---@return boolean|nil
+---@return string|nil reason
+function inputApi.was_pressed(name) end
+
+---The key went up since the previous frame.
+---@param name string
+---@return boolean|nil
+---@return string|nil reason
+function inputApi.was_released(name) end
+
+---Seconds the key has been held (0 when it is up); use `math.floor(seconds * 1000 / ms)` for a repeat timer.
+---@param name string
+---@return number|nil seconds
+---@return string|nil reason
+function inputApi.held_for(name) end
+
+---Shift, Ctrl and Alt (raw keys; all false while the game window is not in the foreground).
+---@return { shift: boolean, ctrl: boolean, alt: boolean } modifiers
+function inputApi.modifiers() end
+
+---Whether the game window has the keyboard focus (raw keys are only read then).
+---@return boolean
+function inputApi.window_active() end
+
+---The scan codes (keys, mouse buttons, pad buttons) the engine's CURRENT input map turns into an action, with the engine's description text (`"Right Mouse Button"` in the player's
+---language). With a name: a list for that action (empty = it cannot be triggered now); without: `{ [action] = list }` for every bound action.
+---@param name? string
+---@return table|nil bindings `{ { scan = integer, text = string }, ... }` or a table of those lists.
+---@return string|nil reason
+function inputApi.bindings(name) end
+
+---Test aid: presses (`down = true`) or releases an action as the input device would (`gCActionAdmin::KeyPressed/KeyReleased`): the engine handles it in its next frame exactly like a
+---real key (`input.action`, the player state's key script, ...). For a raw key name only `pressed`/`was_pressed` read it as down (no game code sees it).
+---@param name string
+---@param down boolean
+---@return boolean|nil ok
+---@return string|nil reason
+function inputApi.simulate(name, down) end
+
+---Event `input.action(ev)` (`risen.on("input.action", fn)`): every action event the engine delivers (a press, a hold every frame, a release, analog look/move) before the camera, the player
+---state and the character control see it. The handler returns a value other than `nil`/`false` to CONSUME the event (the engine never sees it): that is how a mod can take over a key
+---for an action without the game doing it too. Use it sparingly: it runs for every action event, also the analog mouse-look ones.
+---@class InputActionEvent
+---@field key integer `gEActionKey` number.
+---@field action string Action name (`"SecondaryAction"`).
+---@field phase "pressed"|"released"|"held"|"analog"|"unknown" `held` repeats every frame while the key is down.
+---@field value number Amount of an analog event, 1 for keys.
+---@field duration number Seconds the key had been held / released.
+
+---The HUD: the engine's on-screen game log and item log (what quest, level and loot messages use).
+---@class RisenHudApi
+local hudApi = {}
+
+---Prints a line into the HUD's game log (`GUI2::PrintGameLog`).
+---@param text string
+---@param type? integer The engine's `gELogMessageType` (default 0; the game uses 1 for notes, 2 for experience and warnings).
+---@return boolean|nil ok
+---@return string|nil reason
+function hudApi.log(text, type) end
+
+---Prints an item line (icon, name, amount; `GUI2::PrintItemLog`).
+---@param item string|Entity A template name (`"It_Apple"`) or an item entity.
+---@param amount? integer Default 1.
+---@return boolean|nil ok
+---@return string|nil reason
+function hudApi.item_log(item, amount) end
+
+---What the GUI shows: `browsing` (`GUI2::IsBrowsing`: some page that is more than the plain game view is visible; the game's own use key is ignored while it is true), `game` (the plain
+---game view), `loot` (the loot window), `mode` (`gEHudMode`), `pages` (the visible `gEHudPage` numbers).
+---@return { browsing: boolean, game: boolean, loot: boolean, mode: integer, pages: integer[] }|nil state
+function hudApi.state() end
+
 ---------------------------------------------------------------------------------------------------------------------
 -- Quests
 ---------------------------------------------------------------------------------------------------------------------
@@ -2421,6 +2570,8 @@ function logApi.error(...) end
 ---@field spell RisenSpellApi
 ---@field recipe RisenRecipeApi
 ---@field interact RisenInteractApi
+---@field input RisenInputApi
+---@field hud RisenHudApi
 ---@field quest RisenQuestApi
 ---@field dialog RisenDialogApi
 ---@field script RisenScriptApi
@@ -2480,6 +2631,7 @@ local risen_ = {}
 ---@overload fun(event: "entity.damaged", handler: fun(entity: Entity|nil, attacker: Entity|nil, damage: integer, raw: integer), priority?: integer): EventHandle
 ---@overload fun(event: "entity.spawned", handler: fun(entity: Entity|nil, template: string), priority?: integer): EventHandle
 ---@overload fun(event: "entity.destroyed", handler: fun(name: string, kind: "npc"|"player"|"item"|"other", template: string), priority?: integer): EventHandle
+---@overload fun(event: "input.action", handler: fun(ev: InputActionEvent): boolean|nil, priority?: integer): EventHandle
 ---@overload fun(event: "crafting", handler: fun(crafter: Entity|nil, recipe: string, result: string, count: integer, ingredients: { item: string, count: integer }[]), priority?: integer): EventHandle
 ---@overload fun(event: "inventory.added", handler: fun(owner: Entity|nil, template: string, count: integer, total: integer, cause: InventoryCause, other: Entity|nil), priority?: integer): EventHandle
 ---@overload fun(event: "inventory.removed", handler: fun(owner: Entity|nil, template: string, count: integer, total: integer, cause: InventoryCause, other: Entity|nil), priority?: integer): EventHandle
@@ -2495,6 +2647,15 @@ function risen_.on(event, handler, priority) end
 ---Removes a handler.
 ---@param handle EventHandle
 function risen_.off(handle) end
+
+---The options of the calling mod: `defaults` is a table of default values that also fixes each option's type; the file `<mod dir>/config.toml` overrides them (an integer fits a number
+---default, a nested table merges). A wrong type, an unknown key or a parse error is ignored and listed in the second result (and in `spass.log`); a missing file is no problem.
+---`defaults` must not contain `nil` options (use `""`). The defaults table itself is not modified.
+---@generic T: table
+---@param defaults T
+---@return T options
+---@return string[] problems
+function risen_.config(defaults) end
 
 ---Emits a mod-to-mod event; the arguments are passed to the handlers unchanged.
 ---@param event string

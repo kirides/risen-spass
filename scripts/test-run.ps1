@@ -27,7 +27,8 @@
                     (default: -Seconds minus 10 with -WaitForResult). Catches a hang inside Lua, which the stall watchdog can only kill.
 .PARAMETER Scenario Name written to the result file.
 .PARAMETER Param    "key=value" strings for risen.test.param(key).
-.PARAMETER Trace    [debug] trace: channels such as "template,balance,save,events" or "all" (see docs/DEVELOPMENT.md).
+.PARAMETER Trace    [debug] trace: channels such as "template,balance,save,events,calls,hud" or "all" (see docs/DEVELOPMENT.md).
+.PARAMETER TraceScripts  [debug] trace_scripts: script name substrings for the `calls` channel, e.g. "Interact,Loot,Assess".
 #>
 param(
     [string]$GameDir = '',
@@ -63,6 +64,8 @@ param(
     [string]$Scenario = '',
     [string[]]$Param = @(),
     [string]$Trace = '',
+    # [debug] trace_scripts: substrings (comma separated) of the engine script names the `calls` trace channel reports, e.g. 'Interact,Loot,Assess'
+    [string]$TraceScripts = '',
     [switch]$TraceFile,
     # print every check of the result, not only the failed ones
     [switch]$ShowChecks
@@ -214,7 +217,7 @@ try {
     if ($Unsafe) { $cfg += '[lua]', 'unsafe = true' }
     $cfg += '[debug]', "app_data = `"$appData`""
     if ($Instance -ge 1) { $cfg += "instance = `"$Instance`"" }
-    $cfg += "trace_files = `"$TraceFiles`"", "trace = `"$Trace`""
+    $cfg += "trace_files = `"$TraceFiles`"", "trace = `"$Trace`"", "trace_scripts = `"$TraceScripts`""
     if ($TraceFile) { $cfg += 'trace_file = true' }
     if ($WaitForResult) {
         $deadline = if ($DeadlineSeconds -ge 0) { $DeadlineSeconds } else { [math]::Max($Seconds - 10, 10) }

@@ -88,6 +88,7 @@ void onProcessAttach(HMODULE self) {
     }
 
     game::registerBindings();
+    game::installCallTrace(g_config.traceScripts);  // before enableAll: the `calls` trace channel
     if (!game::installHooks() || !hooks::enableAll()) {
         spdlog::error("hook installation failed, mod layer disabled");
         return;

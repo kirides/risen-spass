@@ -57,6 +57,7 @@ add_library(spass_core STATIC
     src/common/trace.cpp
     src/game/abi.cpp
     src/game/bindings.cpp
+    src/game/call_trace.cpp
     src/game/entity_events.cpp
     src/game/event_bus.cpp
     src/game/events.cpp
@@ -72,6 +73,10 @@ add_library(spass_core STATIC
     src/game/lua_dialog.cpp
     src/game/lua_engine_info.cpp
     src/game/lua_entity.cpp
+    src/game/lua_config.cpp
+    src/game/lua_hud.cpp
+    src/game/lua_input.cpp
+    src/game/lua_interact.cpp
     src/game/lua_items.cpp
     src/game/lua_npc.cpp
     src/game/lua_npc_balance.cpp
@@ -140,5 +145,6 @@ if(SPASS_BUILD_TESTS)
     enable_testing()
     add_executable(spass_tests tests/test_main.cpp)
     target_link_libraries(spass_tests PRIVATE spass_core)
+    target_compile_definitions(spass_tests PRIVATE SPASS_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
     add_test(NAME spass_tests COMMAND spass_tests)
 endif()

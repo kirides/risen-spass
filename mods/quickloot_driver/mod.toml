@@ -1,0 +1,7 @@
+id          = "quickloot_driver"
+name        = "Quick Loot test driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "TEST ONLY: drives mods/quickloot and compares it with the engine path (risen.test scenario quickloot)."
+main        = "main.lua"
+load_after  = ["quickloot"]

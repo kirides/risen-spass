@@ -361,7 +361,43 @@
     X(loc_get_voice_language, L"Engine.dll", "?GetVoiceLanguage@eCLocAdmin2@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false) \
     X(rout_start_output, L"Game.dll", "?StartOutput@gCScriptRoutine_PS@@QEAA_NAEBVbCString@@W4gEOutputType@@@Z", bool (*)(void* self, const void* name, int type), false) \
     X(rout_stop_output, L"Game.dll", "?StopOutput@gCScriptRoutine_PS@@QEAA_NXZ", bool (*)(void* self), false) \
-    X(rout_is_output_playing, L"Game.dll", "?IsOutputPlaying@gCScriptRoutine_PS@@QEBA_NXZ", bool (*)(const void* self), false)
+    X(rout_is_output_playing, L"Game.dll", "?IsOutputPlaying@gCScriptRoutine_PS@@QEBA_NXZ", bool (*)(const void* self), false) \
+    /* ---- quick loot building blocks: focus, interaction lists, input, HUD log (docs/RE.md section 31) ---- */ \
+    X(focus_instance, L"Game.dll", "?GetInstance@gCFocusModule2@@SAAEAV1@XZ", void* (*)(), false) \
+    X(focus_get_entity, L"Game.dll", "?GetFocusEntity@gCFocusModule2@@QEBAPEAVeCEntity@@XZ", void* (*)(const void* self), false) \
+    X(focus_set_entity, L"Game.dll", "?SetFocusEntity@gCFocusModule2@@QEAAXPEAVeCEntity@@@Z", void (*)(void* self, void* entity), false) \
+    X(focus_enable_auto, L"Game.dll", "?EnableAutoUpdate@gCFocusModule2@@QEAAX_N@Z", void (*)(void* self, bool on), false) \
+    X(focus_auto_enabled, L"Game.dll", "?IsAutoUpdateEnabled@gCFocusModule2@@QEBA_NXZ", bool (*)(const void* self), false) \
+    X(inter_ps_count, L"Game.dll", "?GetInteractionCount@gCInteraction_PS@@QEBAHXZ", int (*)(const void* ps), false) \
+    X(inter_ps_at, L"Game.dll", "?GetInteractionAt@gCInteraction_PS@@QEBAPEAVgCInteraction@@H@Z", void* (*)(const void* ps, int index), false) \
+    X(inter_ps_target, L"Game.dll", "?GetCurrentTarget@gCInteraction_PS@@QEBAPEAVeCEntity@@XZ", void* (*)(const void* ps), false) \
+    X(inter_ps_user, L"Game.dll", "?GetCurrentUser@gCInteraction_PS@@QEBAPEAVeCEntity@@XZ", void* (*)(const void* ps), false) \
+    X(action_get_key, L"Game.dll", "?GetActionKey@gCActionAdmin@@SA?AW4gEActionKey@@AEBVbCString@@@Z", int (*)(const void* name), false) \
+    X(action_key_info, L"Game.dll", "?GetActionKeyInfo@gCActionAdmin@@SAAEBUgSActionKeyInfo@@W4gEActionKey@@@Z", const void* (*)(int key), false) \
+    X(action_for_scan, L"Game.dll", "?GetActionKey@gCActionAdmin@@SA?AW4gEActionKey@@W4eEScanCode@@@Z", int (*)(int scan), false) \
+    X(scan_description, L"Game.dll", "?GetScanCodeDescription@gCActionAdmin@@SA?AVbCUnicodeString@@W4eEScanCode@@@Z", void* (*)(void* ret, int scan), false) \
+    X(action_key_pressed, L"Game.dll", "?KeyPressed@gCActionAdmin@@UEAAXK@Z", void (*)(void* admin, unsigned long key), false) \
+    X(action_key_released, L"Game.dll", "?KeyReleased@gCActionAdmin@@UEAAXK@Z", void (*)(void* admin, unsigned long key), false) \
+    X(input_is_pressed, L"Script.dll", "?IsKeyPressed@Input@@QEBA_NW4gEActionKey@@@Z", bool (*)(const void* input, int key), false) \
+    X(input_was_pressed, L"Script.dll", "?WasKeyPressedThisFrame@Input@@QEBA_NW4gEActionKey@@@Z", bool (*)(const void* input, int key), false) \
+    X(input_press_duration, L"Script.dll", "?GetKeyPressDuration@Input@@QEBAMW4gEActionKey@@@Z", float (*)(const void* input, int key), false) \
+    X(input_current_event, L"Script.dll", "?GetCurrentActionEvent@Input@@QEBAAEBUgSAction@@XZ", const void* (*)(const void* input), false) \
+    X(input_object, L"Script.dll", "input", unsigned char*, false) \
+    X(gui2_object, L"Script.dll", "gui2", unsigned char*, false) \
+    X(gui_print_log, L"Script.dll", "?PrintGameLog@GUI2@@QEAAXAEBVbCUnicodeString@@W4gELogMessageType@@_NPEAD@Z", void (*)(void* gui, const void* text, int type, bool flag, char* extra), false) \
+    X(gui_print_item_log, L"Script.dll", "?PrintItemLog@GUI2@@QEAAXVEntity@@H@Z", void (*)(void* gui, void* byValueItem, int amount), false) \
+    X(gui_is_browsing, L"Script.dll", "?IsBrowsing@GUI2@@QEBA_NXZ", bool (*)(const void* gui), false) \
+    X(gui_is_browsing_loot, L"Script.dll", "?IsBrowsingLoot@GUI2@@QEAA_NXZ", bool (*)(void* gui), false) \
+    X(gui_is_browsing_game, L"Script.dll", "?IsBrowsingGame@GUI2@@QEBA_NXZ", bool (*)(const void* gui), false) \
+    X(gui_is_visible, L"Script.dll", "?IsVisible@GUI2@@QEBA_NW4gEHudPage@@@Z", bool (*)(const void* gui, int page), false) \
+    X(gui_get_mode, L"Script.dll", "?GetMode@GUI2@@QEBA?AW4gEHudMode@@XZ", int (*)(const void* gui), false) \
+    /* ---- trace of the engine's own script calls (the `calls` and `hud` trace channels) ---- */ \
+    X(script_proxy_call, L"Engine.dll", "??ReCScriptProxyScript@@QEBA_JPEAVeCEntity@@0_J@Z", std::int64_t (*)(const void* proxy, void* self, void* other, std::int64_t arg), false) \
+    X(script_proxy_name, L"Engine.dll", "?GetScriptName@eCScriptProxy@@QEBAAEBVbCString@@XZ", const void* (*)(const void* proxy), false) \
+    X(admin_run_function, L"Game.dll", "?RunScriptFunction@gCScriptAdmin@@IEAA_NAEBVbCString@@AEAV?$bTObjStack@UgScriptRunTimeSingleState@@@@PEAVgCScriptProcessingUnit@@@Z", bool (*)(void* admin, const void* name, void* stack, void* unit), false) \
+    X(unit_set_state, L"Game.dll", "?SetCurrentAIState@gCScriptProcessingUnit@@IEAA?AW4bEResult@@AEAVbCString@@@Z", int (*)(void* unit, void* name), false) \
+    X(ent_get_npcs, L"Script.dll", "?GetNPCs@Entity@@SA?AV?$bTObjArray@VEntity@@@@XZ", void* (*)(void* ret), false) \
+    X(action_send_event, L"Game.dll", "?SendActionEvent@gCActionAdmin@@IEAAXAEBUgSAction@@@Z", void (*)(void* admin, const void* action), false)
 
 namespace spass::game {
 

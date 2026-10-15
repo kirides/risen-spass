@@ -21,6 +21,7 @@ Config loadConfig(const std::filesystem::path& file) {
         cfg.traceFiles = t["debug"]["trace_files"].value_or(cfg.traceFiles);
         cfg.trace = t["debug"]["trace"].value_or(cfg.trace);
         cfg.traceFile = t["debug"]["trace_file"].value_or(cfg.traceFile);
+        cfg.traceScripts = t["debug"]["trace_scripts"].value_or(cfg.traceScripts);
         cfg.testEnabled = t["test"]["enabled"].value_or(cfg.testEnabled);
         cfg.testDeadline = t["test"]["deadline_s"].value_or(cfg.testDeadline);
         cfg.testScenario = t["test"]["scenario"].value_or(cfg.testScenario);

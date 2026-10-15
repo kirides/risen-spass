@@ -1,0 +1,19 @@
+# Quick Loot options. Delete a line to get its default; unknown or wrongly typed values are ignored (see spass.log).
+enabled     = true
+
+# The key: an action of the game's input map (SecondaryAction = right mouse button, PrimaryAction = left, Selection = the use key; the full list is
+# risen.input.actions()) or a Windows virtual-key name (RButton, MButton, V, F5, ...). The RMB does nothing in the game while no weapon is drawn
+# (unless a torch or carried item is lowered), so the default does not replace the use key.
+key         = "SecondaryAction"
+modifier    = "none"        # none | shift | ctrl | alt: must be held with the key
+
+items       = true          # items lying on the ground
+corpses     = true          # dead and knocked-out humans
+chests      = true          # chests, cupboards, sarcophagi
+keys        = true          # locked chests are opened with the key from the inventory (never lockpicked)
+print       = true          # HUD line for picked-up ground items (looted stacks are printed by the game itself)
+
+hold_repeat = true          # hold the key to take everything in reach, one target per repeat_ms
+repeat_ms   = 80
+witness_veto = 1000         # no quick pick-up / chest looting while a living human is within this many units (theft would be seen); 0 = never veto
+max_distance = 450          # the target must be this close (units)

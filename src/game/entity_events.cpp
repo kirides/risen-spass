@@ -132,16 +132,22 @@ void postSpawned(void* entity, const std::string& tpl) {
     }
 }
 
+thread_local int t_spawnNearDepth = 0;  // Spawn(near) is built on Spawn(at): the inner one must not report the same entity again
+
 void* detourSpawnAt(void* ret, void* tplObj, const float* pose, bool temporary) {
     const std::string tpl = bus::wanted("entity.spawned") ? templateOfProxy(tplObj) : std::string();
     void* r = g_spawnAt.original(ret, tplObj, pose, temporary);
-    guarded([&] { postSpawned(*static_cast<void**>(ret), tpl); });
+    if (t_spawnNearDepth == 0) {
+        guarded([&] { postSpawned(*static_cast<void**>(ret), tpl); });
+    }
     return r;
 }
 
 void* detourSpawnNear(void* ret, void* tplObj, void* entityByValue, bool temporary, int direction) {
     const std::string tpl = bus::wanted("entity.spawned") ? templateOfProxy(tplObj) : std::string();
+    ++t_spawnNearDepth;
     void* r = g_spawnNear.original(ret, tplObj, entityByValue, temporary, direction);
+    --t_spawnNearDepth;
     guarded([&] { postSpawned(*static_cast<void**>(ret), tpl); });
     return r;
 }
@@ -176,6 +182,7 @@ bool detourDoDamage(void* self, void* victim) {
 
 void detourEntityKill(void* self) {
     if (self != nullptr) {
+        focusEntityKilled(self);
         const bool wantDestroyed = bus::active() && bus::wanted("entity.destroyed");
         if (wantDestroyed || !g_died.empty()) {
             const std::string name = entityNameOf(self);

@@ -43,7 +43,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -139,6 +139,12 @@ $scenarios = [ordered]@{
     ex_spell          = @{ Est = 60; Title = 'example: spells (edit, new crystal and scroll)'; Kind = 'result'; Mods = @('example_spell'); Limit = 300 }
     # crafting recipes (M6b): the real smithing anvil and alchemy table are driven through the engine's interaction scripts (risen.interact.begin + the page's click script)
     recipes           = @{ Est = 75; Title = 'recipe balancing (M6b)'; Kind = 'result'; Mods = @('balance_recipes'); Limit = 300 }
+    # quick loot (M5d): the standalone mod `quickloot` against the engine's own interaction; phase `config` repeats the key path with another config.toml (items = false, key = PrimaryAction) copied into the mod
+    quickloot         = @{ Est = 120; Title = 'quick loot (M5d: default config, then config.toml options)'; Kind = 'result'; Mods = @('quickloot', 'quickloot_driver'); Limit = 300
+                           Phases = @(
+                               @{ Name = 'default'; Param = @('phase=default'); Start = 'new'; Keep = $false; Limit = 300 }
+                               @{ Name = 'config'; Param = @('phase=config'); Start = 'new'; Keep = $false; Limit = 200; CopyInto = @('quickloot', 'mods\quickloot_driver\fixtures\config') }
+                           ) }
     # one process per phase: "save" crafts at the anvil (twice) and saves, "load" crafts again in a fresh process, "load_missing" runs without the mod's content, "load_again" has it again
     ex_recipe         = @{ Est = 250; Title = 'example: a new smithing recipe (save, load, missing, again)'; Kind = 'result'; Mods = @('example_recipe'); Limit = 300
                            Phases = @(
@@ -279,6 +285,7 @@ foreach ($name in $selected) {
             if ($ph.Start -eq 'load') { $testArgs.Start = 'load' }
             if ($ph.Keep) { $testArgs.Keep = $true }
             if ($ph.VoiceLanguage) { $testArgs.VoiceLanguage = $ph.VoiceLanguage }
+            if ($ph.CopyInto) { $testArgs.CopyInto = "$($ph.CopyInto[0])=$(Join-Path (Split-Path -Parent $here) $ph.CopyInto[1])" }
         }
         $global:SpassRun = [pscustomobject]@{ Reason = 'error'; Result = $null }
         try { & (Join-Path $here 'test-run.ps1') @testArgs | Out-Null }

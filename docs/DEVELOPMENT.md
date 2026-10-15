@@ -12,9 +12,10 @@ How the project is organised and how to extend it. (`CLAUDE.md` holds the same r
 | `src/game/events.cpp`, `hooks.cpp` | lifecycle hooks that feed the Lua events |
 | `src/game/inventory_events.cpp`, `entity_events.cpp`, `event_bus.cpp` | gameplay events (inventory, items, deaths, spawns): scoped hooks + a queue dispatched at the end of the frame (RE.md §27) |
 | `src/game/lua_*.cpp`, `bindings.cpp`, `loc_*.cpp`, `script_bridge.cpp` | the Lua API |
+| `src/game/lua_interact.cpp`, `lua_input.cpp`, `lua_hud.cpp`, `lua_config.cpp`, `call_trace.cpp` | focus/interaction info, keys and the `input.action` event, HUD log, per-mod `config.toml`, the `calls`/`hud` trace channels (RE.md §31) |
 | `src/lua` | LuaJIT state, per-mod sandbox, events, mod discovery and load order |
 | `types/risen.d.lua` | LuaLS definitions of the API — **must always match the bindings** |
-| `mods/` | example mods; `*_driver`, `vfsprobe`, `templatedump`, `itemdump`, `npcdump`, `spelldump`, `recipedump`, `persistdemo` are development tools that drive or probe the game |
+| `mods/` | example mods and the real mod `quickloot` ([QUICKLOOT.md](QUICKLOOT.md));  `*_driver`, `vfsprobe`, `templatedump`, `itemdump`, `npcdump`, `spelldump`, `recipedump`, `persistdemo` are development tools that drive or probe the game |
 | `tests/` | unit tests that run without the game |
 | `tools/` | export dumping/demangling, Ghidra helpers (`ghidra/DumpDecomp.java`, `DumpVtable.java`), doc generators, API consistency check |
 | `docs/` | `LUA_API.md` (API), `RE.md` (findings per topic), `SYMBOLS.md`/`TEMPLATES.md`/`ITEM_PROPERTIES.md`/`NPC_PROPERTIES.md`/`SPELL_PROPERTIES.md`/`RECIPE_PROPERTIES.md` (generated), `NEXT_STEPS.md` (roadmap) |
@@ -64,7 +65,7 @@ property sets through the entity's vtable. The engine's own log function is an e
 * `scripts\test-run.ps1 -Mods <mod>[,<mod>] -Seconds 120 -Filter '<regex>'` deploys the build and the chosen mods into the copy, starts a new game
   (`-Start load` quick-loads, `-NoAutostart` stays in the menu), and prints the matching log lines. `config.toml [debug] app_data` (set by the script)
   keeps savegames and `ConfigUser.xml` inside the copy.
-* `scripts\smoke-test.ps1` runs every scenario (persistence, fetchquest, commands, branch, templates, balance, npcs, newtemplates, newassets, events, spells and the example scenarios (`recipes` and `ex_recipe` drive the real smithing anvil and the alchemy table; `ex_recipe` is four processes: save, load, load_missing, load_again; `ex_voice` plays the voice language English and then German; `spells` plays the player's real casts and then loads the save in a fresh process); each ends itself, about 10.8 minutes in all one after the other, was 14+; `-Parallel 3` about 4.5 minutes), prints a pass/fail table with timings and returns a
+* `scripts\smoke-test.ps1` runs every scenario (persistence, fetchquest, commands, branch, templates, balance, npcs, newtemplates, newassets, events, spells and the example scenarios (`quickloot` compares the standalone mod with the engine path in two processes, `recipes` and `ex_recipe` drive the real smithing anvil and the alchemy table; `ex_recipe` is four processes: save, load, load_missing, load_again; `ex_voice` plays the voice language English and then German; `spells` plays the player's real casts and then loads the save in a fresh process); each ends itself, about 10.8 minutes in all one after the other, was 14+; `-Parallel 3` about 4.5 minutes), prints a pass/fail table with timings and returns a
   nonzero exit code on failure: `-List`, `-Scenario templates,npcs`, `-FailFast`, `-TotalSeconds` (time budget), `-Parallel N` (N game instances at once, see "Parallel instances"). Run it before committing changes to events, saving,
   quests, dialogues or items. See "Testing and tracing" below.
 * Probe mods drive the game from `tick`: create a `mods/<name>` that logs what the engine reports, run it with `test-run.ps1`, read the log.
@@ -109,7 +110,7 @@ blocks on a hung game (`SetWindowPos` is asynchronous). Failure drills: `-Mods t
 
 **Trace channels** (opt-in, zero cost when off): `.\scripts\test-run.ps1 -Trace template,balance,save,events [-TraceFile]` or `config.toml [debug] trace = "..."`
 (`"all"`; `trace_file = true` also writes `trace.log`). Lines: `[12:31:09.513] [trace:events] session.start(new)`. Channels: `events` (every gameplay event the moment the hook queued it, with arguments, also when no mod listens), `template`, `balance`, `save`
-(save/load phases with durations), `spawn`, `script`, `lua` (errors with traceback), `test`, `voice` (every sample title the engine asks for, with the answer; M5c); mods add their own with `risen.trace("mymod", ...)`. Turn channels on
+(save/load phases with durations), `spawn`, `script`, `lua` (errors with traceback), `test`, `voice` (every sample title the engine asks for, with the answer; M5c), `calls` (the scripts, AI functions and AI states the ENGINE runs whose name contains one of the substrings of `-TraceScripts "^PreInteract,^Interact_,Unlock"` = `[debug] trace_scripts`; `^` = starts with; nothing without the list; M5d) and `hud` (every HUD game-log / item-log line, also the engine's own); mods add their own with `risen.trace("mymod", ...)`. Turn channels on
 instead of adding temporary `log.info` lines and rerunning.
 
 **Timings** (this machine, the same assertions): templates 53 s (was 240 s fixed), balance 53 s (240 s), npcs 61 s (300 s). The four older scenarios (persistence, fetchquest,

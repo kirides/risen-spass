@@ -1,0 +1,6 @@
+id          = "quickloot"
+name        = "Quick Loot"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Fast pick-up of items, bodies, chests and cupboards with the right mouse button (no animation, no loot window). Standalone: needs only the mod layer. See README.md."
+main        = "main.lua"

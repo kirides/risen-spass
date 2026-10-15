@@ -20,6 +20,7 @@ namespace spass {
 //   trace_files = ""        # log every file the engine opens whose path contains this text, from process start
 //   trace      = ""         # opt-in trace channels, e.g. "template,balance,save,events" or "all" (see common/trace.h)
 //   trace_file = false      # also write the trace lines to <bin>/spass/trace.log
+//   trace_scripts = ""      # substrings of script names (comma separated) the `calls` trace channel reports
 //   [test]                  # live verification (risen.test): scripts/test-run.ps1 -WaitForResult sets these
 //   enabled   = false       # finish() writes <bin>/spass/test-result.json and ends the process, the deadline applies
 //   deadline_s = 0          # > 0: the run is reported as FAIL "timeout" (with the unfinished checks) after this many seconds
@@ -35,6 +36,7 @@ struct Config {
     std::string traceFiles;
     std::string trace;
     bool traceFile = false;
+    std::string traceScripts;
     bool testEnabled = false;
     double testDeadline = 0;
     std::string testScenario;

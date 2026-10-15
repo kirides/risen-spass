@@ -5,6 +5,8 @@
 #include "game/abi.h"
 #include "game/loc_files.h"
 #include "game/loc_overlay.h"
+#include "game/lua_config.h"
+#include "game/lua_input.h"
 #include "game/lua_save.h"
 #include "game/lua_entity.h"
 #include "game/lua_test.h"
@@ -146,6 +148,10 @@ void registerBindings() {
     rt.addBinding(bindSpell);           // after bindTemplateCreate: risen.spell and the spells/new_spells sections
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo&) { installSpellModApi(lua, api); });  // after installBalanceModApi: per-mod shot overrides
     rt.addBinding(bindRecipe);          // after bindSpell: risen.recipe and the recipes/new_recipes sections
+    rt.addBinding(bindInteractExtras);  // after bindRecipe: risen.interact.focus/info/...
+    rt.addBinding(bindInput);           // risen.input
+    rt.addBinding(bindHud);             // risen.hud
+    rt.addModBinding(bindConfigModApi);  // risen.config(defaults) reads <mod dir>/config.toml
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo&) { installRecipeModApi(lua, api); });  // after installBalanceModApi: learn = true recipes
     rt.addBinding(bindDialog);
     rt.addModBinding(bindVoiceModApi);  // after bindAssetModApi and bindDialog: wraps risen.dialog.create per mod

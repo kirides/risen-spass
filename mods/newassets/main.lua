@@ -210,7 +210,7 @@ T.run(function()
     T.expect("new_items spec checks the names", report == nil and first:find("Spass_Nowhere._xmsh", 1, true) ~= nil, first)
 
     T.section("an item with a loose mesh and icon")
-    local p = risen.entity.player()
+    local p = assert(risen.entity.player())
     local x, y, z = p:position()
     x, y, z = x or 0, y or 0, z or 0
     local item = risen.entity.spawn("Spass_Loose_Sword", x + 150, y + 20, z)

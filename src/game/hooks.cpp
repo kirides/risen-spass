@@ -8,6 +8,7 @@
 #include "game/bindings.h"
 #include "game/event_bus.h"
 #include "game/events.h"
+#include "game/lua_input.h"
 #include "game/lua_test.h"
 #include "game/vfs_mount.h"
 #include "game/loc_overlay.h"
@@ -43,6 +44,8 @@ int detourScriptAdminPostInit(void* self) {
     scripts::selfTest();
     installScriptEventHooks();  // Script.dll / Script_Game.dll are loaded now
     installInventoryScriptHooks();
+    installInputHooks();  // the key script: the input.action event
+    installHudTrace();    // the `hud` trace channel
     hooks::enableAll();
     onGameReady();
     return result;
@@ -52,6 +55,7 @@ int detourScriptAdminPostInit(void* self) {
 void detourSessionProcess(void* self) {
     g_sessionProcess.original(self);
     test::onTick();  // risen.test: pending wait_for/sleep, heartbeat, first-tick mark
+    onInputFrame();  // risen.input: the key states of this frame
     bus::flush();    // the gameplay events queued during this frame (inventory.*, npc.killed, ...)
     auto& rt = lua::Runtime::instance();
     if (rt.running() && rt.hasHandlers("tick")) {
@@ -69,6 +73,7 @@ bool installHooks() {
     ok &= g_sessionProcess.install("gCSession::Process", s.session_process, &detourSessionProcess);
     ok &= installLocHooks();
     installEventHooks();
+    installFocusHook();
     installTemplateHooks();
     installFileTrace();
     installModMountHook();

@@ -29,6 +29,13 @@ Run one (about a minute; use your own test copy, never the real install, always 
 | 10 | `example_spell` | edit shipped spells (Fireball mana cost and damage, Light's rune and scroll cost) and add a **Strong Fireball** (double damage, double cost, needs Fireball 2) as a crystal and a scroll that is used up | `risen.balance.install` (`spells`, `new_spells`), `risen.spell.get/equipped/consume`, `risen.item.can_use` | `ex_spell`, 55 s | the player really casts (`PS_Magic` -> `PS_MagicBall_Shoot`): mana taken 10 / 20 / 10, projectile damage 140 / 280 / 280, the engine's hit script takes `damage + 25 * Fireball - protection` (191 / 331), the last scroll is gone, the edited rune cost (9 checks). **Not** the look of the fireball, NPC casters |
 | 11 | `example_recipe` | a **new smithing recipe**: a regular sword (`It_1H_Sword`) and two iron ore (`It_IronOre`) become a **Slightly Improved Sword** (a new item with its own numbers and a localized label) at the anvil; the plan item that is the recipe is given once; crafted items, the plan and the equipped sword survive a quick save and load in a fresh process, and a game without the mod keeps them dormant | `risen.balance.install` (`new_items`, `new_recipes`), `risen.recipe.info/known/can_craft/craft`, `risen.interact.begin`, the `crafting` event | `ex_recipe`, 4 processes ~190 s | real anvil twice with exact counts and events, refusal for a missing skill and for 1 ore, equipped sword, load / missing / again phases (see header of `test_recipe.lua`) |
 
+## A real mod, not an example: Quick Loot
+
+[`mods/quickloot`](../mods/quickloot) is a finished, distributable mod (standalone: install the mod layer and copy the folder, nothing else): the right mouse button takes the item, the body or the chest in front of you
+without walking, kneeling or the loot window. Its options live in its own `config.toml`, its documentation is [QUICKLOOT.md](QUICKLOOT.md). It is also the largest example of the layer's building blocks
+(`risen.interact.info/focus`, `risen.input`, the `input.action` event that consumes a key press, `risen.hud`, `risen.config`, `risen.script.call` of the game's own `AutoLoot`) and of how a test compares a shortcut with the
+engine path (`mods/quickloot_driver`, scenario `quickloot`, 42 + 6 checks, `-Trace events,calls,hud`). The test driver is separate and only exercises it.
+
 Timings are wall-clock on the development machine (engine start ~30 s of it). Each scenario ends itself the moment its checks are done.
 
 ## Patterns

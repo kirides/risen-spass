@@ -55,6 +55,7 @@ checks); see [`types/README.md`](../types/README.md).
 | `entity.damaged` | `entity, attacker, damage, raw` | a hit took hit points (`damage` = hit points lost; `raw` = the weapon's own damage before protection, 0 for monster bites) |
 | `entity.spawned` | `entity, template` | `Entity::Spawn` created an entity: `risen.entity.spawn`, `risen.npc.spawn` and the game's scripts |
 | `entity.destroyed` | `name, kind, template` | an entity was removed from the world (`eCEntity::Kill`: picked-up items, `Entity:kill()`, despawns); `kind` `"npc"`, `"player"`, `"item"`, `"other"`; the entity itself is gone, so only its name |
+| `input.action` | `ev` = `{ key, action, phase, value, duration }` | every action event the engine delivers (key press, hold each frame, release, analog look/move): **a handler that returns a value other than `nil`/`false` consumes it**, the engine never sees it (`phase` `"pressed"`, `"held"`, `"released"`, `"analog"`); see "Input" below |
 
 ```lua
 local h = risen.on("tick", function() ... end, 10)   -- optional priority, higher runs first
@@ -156,13 +157,13 @@ Return a number or boolean (nil = 0). Errors are logged and the original runs (f
 Limit: 1024 Lua scripts.
 
 ## risen.entity
-`risen.entity.get("UniqueName")`, `risen.entity.player()` → `Entity | nil`.
+`risen.entity.get("UniqueName")`, `risen.entity.player()` → `Entity | nil`, `risen.entity.npcs([center, radius])` → every NPC/monster (or those within `radius` of `center`).
 Entity methods: `name()`, `display_name()`, `set_name(s)`, `position()` → `x, y, z`, `distance_to(e)`,
 `is_npc()`, `is_player()`, `is_dead()`, `is_item()`, `is_character()`, `kill()`, `set_frozen(b)`,
 `enable_rendering(b)`, `teleport(name_or_entity)`, `valid()`, `address`. A handle remembers the entity's unique
 name: after a savegame load, a session start/stop or a world change it looks the entity up **by name again** instead of
 using the old pointer, so handles kept across loads either point at the right entity or fail with `nil`/`false`
-(`entity:valid()` tells which). Failures never crash the game. Entities without a unique name cannot be re-resolved
+(`entity:valid()` tells which; it looks the **name** up, so for items and other spawns named after their template (`It_Apple`) it may find another entity of that name: do not use it for those). Failures never crash the game. Entities without a unique name cannot be re-resolved
 and become invalid after such a change.
 
 ## risen.template / risen.entity.spawn / risen.item
@@ -430,6 +431,47 @@ local ok, result = risen.recipe.craft(risen.entity.player(), "Spass_Recipe_Impro
 * **Savegames** (verified, `ex_recipe`: four fresh processes): the recipe item and the crafted items are inventory stacks of templates with deterministic IDs, so they load again when the mod creates the templates on the first `tick` (`risen.balance.install` does); a crafted sword that was equipped stays equipped; the given-once flag is saved; without the mod's content the stacks stay dormant and the game runs.
 * **Not covered / limits**: only the anvil and the alchemy table were driven as real stations (forge, quench, grindstone and goldsmith use the same engine functions; scroll writing, cooking and frying only through the shared check); one result item per craft (a recipe cannot make several; make the result stack-able or craft in a loop); the stations' own rules (Smith/Alchemy >= 1, the hammer) are in the game's scripts; the NPC smiths were not looked at;
   nothing was looked at on screen (black screenshots).
+
+### Interaction, input and HUD building blocks (M5d, see [RE.md §31](RE.md); used by the standalone mod [`mods/quickloot`](QUICKLOOT.md))
+Generic pieces any mod can use; none of them knows what "quick loot" is.
+
+**Interaction** (`risen.interact`, additions to `can/begin/finish` of the recipe section)
+```lua
+local e = risen.interact.focus()                  -- the entity under the crosshair (what the use key acts on), or nil
+risen.interact.set_focus(e, true)                 -- test aid: pin the focus (until set_focus(nil) / the entity is removed); without `true` it lasts one frame
+local info = risen.interact.info(e)               -- { use_type, interactions = { { type, can, pre, interact, post, props }, ... }, user, target }
+risen.interact.current(player)                    -- the mob the character is interacting with right now (ZS_Interact_*), or nil
+for _, n in ipairs(risen.entity.npcs(player, 1000)) do ... end   -- NPCs and monsters within a radius (all of them without arguments)
+```
+`info` lists the `gCInteraction` objects of the mob, one per user kind. The use key runs the **first** interaction of type `gEInteractionType_Interact_Player` whose `can` script (a plain
+script: `risen.script.call(can, player, mob)`; empty = always) accepts. `pre`/`interact` are AI functions (walk, animation, loot window: resumable, not callable from Lua), `post` a plain script
+run when the interaction ends. `use_type` is `gEInteractionUseType_Chest`, `_Cupboard`, `_Item`, `_NPC`, `_Anvil`, ... Plain scripts (`CanInteract_*`, `AutoLoot`, `InvFilter_Loot`, `Unlock`'s
+effects ...) can be called with `risen.script.call`; calling a `CanInteract_*` script may print a HUD message ("the door is locked"), exactly as the use key does.
+
+**Input** (`risen.input`, [RE.md §31](RE.md))
+```lua
+risen.input.actions()                              -- the engine's action names (index = key number): "PrimaryAction", "SecondaryAction", "Selection", "WeaponMode", ...
+risen.input.pressed("SecondaryAction")             -- held now?   (also was_pressed / was_released / held_for(name) in seconds)
+risen.input.pressed("RButton")                     -- or a Windows virtual-key name: LButton RButton MButton V F5 Shift Ctrl Alt Space Num0 ... (OS state, only while the game window is in the foreground)
+risen.input.modifiers()                            -- { shift, ctrl, alt }
+risen.input.bindings("SecondaryAction")            -- what the current input map binds to it: { { scan = 513, text = "Right Mouse Button" } }
+risen.on("input.action", function(ev) if ev.action == "SecondaryAction" and ev.phase == "pressed" and want() then return true end end)   -- true = consume
+risen.input.simulate("SecondaryAction", true)      -- test aid: press as the input device does (the engine handles it next frame); false releases
+```
+The default map binds the left mouse button to `PrimaryAction` (the game's use key in normal mode together with `Selection`), the right one to `SecondaryAction` (in normal mode it only puts away
+an item held in the left hand), the middle one to `WeaponMode` (draw/sheathe). `input.action` runs for **every** action event including the analog mouse-look ones: filter by `ev.action` first.
+A consumed `pressed` should be followed by consuming the matching `held` and `released` events of that press.
+
+**HUD** (`risen.hud`): `risen.hud.log(text [, type])` prints a line into the game log, `risen.hud.item_log("It_Apple" | entity [, amount])` an item line (icon, name, amount),
+`risen.hud.state()` -> `{ browsing, game, loot, mode, pages }` (`loot` = the loot window is open; `browsing` is true in this test copy, which makes the game's own use key ignore the press).
+
+**Options** (`risen.config`): `local cfg, problems = risen.config({ key = "SecondaryAction", items = true, repeat_ms = 80 })` reads `<mod dir>/config.toml` on top of the defaults (the defaults fix
+each option's type; a wrong type, an unknown key or a broken file is ignored and reported in `problems` and the log).
+
+**Tracing the engine** (`-Trace calls,hud`, `test-run.ps1 -TraceScripts "^PreInteract,^Interact_,^Unlock,AutoLoot"`): the `calls` channel logs every script the engine calls through a script proxy
+(`script Name(self=.., other=.., arg=..)` and `-> result`), every AI function a character starts (`ai-function PreInteract_Player_Chest (unit of PC_Hero)`) and AI state change (`ai-state ZS_Interact_PreInteract`)
+whose name contains one of the comma separated substrings (`^` = starts with); nothing without the list. `hud` logs every HUD line the engine prints. With these and `-Trace events` the animated
+engine path and a shortcut can be compared line by line.
 
 ### New meshes, textures and icons — `risen.assets` (see `mods/newassets`, [RE.md §26](RE.md))
 A mod can bring its own **loose resource files** and use them for new items and creatures. The engine finds a resource by the bare, case-insensitive name of the *compiled* file in a cache of everything that is mounted

@@ -44,7 +44,7 @@ Copy-Item (Join-Path $repo 'README.md') $stage
 $mods = Join-Path $stage 'mods'
 New-Item -ItemType Directory -Force $mods | Out-Null
 Copy-Item (Join-Path $repo 'mods\.luarc.json') $mods
-foreach ($m in 'hello', 'fetchquest', 'stringsdemo', 'eventlog', '_template') {
+foreach ($m in 'hello', 'fetchquest', 'stringsdemo', 'eventlog', 'quickloot', '_template') {
     Copy-Item (Join-Path $repo "mods\$m") $mods -Recurse
 }
 

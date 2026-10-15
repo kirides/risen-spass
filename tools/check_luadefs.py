@@ -69,6 +69,7 @@ for path in sorted(list((root / 'src').rglob('*.cpp')) + [root / 'src/game/npc_b
 
 # runtime.cpp: per-mod api (risen.on/off/emit) and risen.log.*
 bound['risen.on'] = bound['risen.off'] = bound['risen.emit'] = 'src/lua/runtime.cpp'
+bound['risen.config'] = 'src/game/lua_config.cpp'   # per-mod: api.set_function("config", ...)
 for lvl in ('trace', 'debug', 'info', 'warn', 'error'):
     bound[f'log.{lvl}'] = 'src/lua/runtime.cpp'
 # per-mod risen.save (lua_save.cpp registers on the mod's api table)

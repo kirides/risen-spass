@@ -5,7 +5,7 @@ decorated export name (`GetProcAddress`), so nothing depends on addresses; the R
 see `risen.engine.build()`). **Required** symbols must resolve or the layer stays off; for an optional one only its own feature is
 disabled (`risen.engine.missing()` lists what failed). To add one: see the developer guide in `docs/DEVELOPMENT.md`.
 
-324 symbols, 153 required.
+358 symbols, 153 required.
 
 ## Engine.dll
 
@@ -71,8 +71,10 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `script_map_instance` | `class eCScriptFunctionMap & eCScriptFunctionMap::GetInstance(void)` | 0x6b5230 | yes |
 | `script_map_register` | `struct eSScriptBase * eCScriptFunctionMap::RegisterScript(class bCString const &)` | 0x6b48a0 | yes |
 | `script_proxy_assign` | `class eCScriptProxyScript & eCScriptProxyScript::operator=(class eCScriptProxyScript const &)` | 0x92c70 | yes |
+| `script_proxy_call` | `__int64 eCScriptProxyScript::operator()(class eCEntity *,class eCEntity *,__int64)const ` | 0x92cb0 | no |
 | `script_proxy_ctor_name` | `eCScriptProxyScript::eCScriptProxyScript(class bCString const &)` | 0x6b5b80 | yes |
 | `script_proxy_dtor` | `eCScriptProxyScript::~eCScriptProxyScript(void)` | 0x6b5b40 | yes |
+| `script_proxy_name` | `class bCString const & eCScriptProxy::GetScriptName(void)const ` | 0x6b5790 | no |
 | `tpl_proxy_get_entity` | `class eCTemplateEntity * eCTemplateEntityProxy::GetEntity(void)` | 0x6b46b0 | no |
 | `tple_create_copy` | `class eCTemplateEntity * eCTemplateEntity::CreateEntityCopy(class eCTemplateEntity *)` | 0x6aeae0 | no |
 | `tple_get_id` | `class bCPropertyID const & eCTemplateEntity::GetID(void)const ` | 0x6ae2d0 | no |
@@ -112,15 +114,27 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 
 | Field | Function | RVA | Required |
 |---|---|---|---|
+| `action_for_scan` | `enum gEActionKey gCActionAdmin::GetActionKey(enum eEScanCode)` | 0x7f9c20 | no |
+| `action_get_key` | `enum gEActionKey gCActionAdmin::GetActionKey(class bCString const &)` | 0x7f9bc0 | no |
+| `action_key_info` | `struct gSActionKeyInfo const & gCActionAdmin::GetActionKeyInfo(enum gEActionKey)` | 0x7f9320 | no |
+| `action_key_pressed` | `void gCActionAdmin::KeyPressed(unsigned long)` | 0x805200 | no |
+| `action_key_released` | `void gCActionAdmin::KeyReleased(unsigned long)` | 0x805300 | no |
+| `action_send_event` | `void gCActionAdmin::SendActionEvent(struct gSAction const &)` | 0x802b40 | no |
 | `addlog_access_quest` | `class bTPropertyContainer<enum gECombatAction> & gCCombatMoveMelee::AccessAction(void)` | 0x4ab150 | yes |
 | `addlog_access_text` | `class bCString & gCInfoCommandRunAIScript::AccessAIScriptName(void)` | 0x499bb0 | yes |
 | `addlog_create` | `class bCObjectBase * gCInfoCommandAddLogText::CreateObject(void)` | 0x884f50 | yes |
+| `admin_run_function` | `bool gCScriptAdmin::RunScriptFunction(class bCString const &,class bTObjStack<struct gScriptRunTimeSingleState> &,class gCScriptProcessingUnit *)` | 0x963cf0 | no |
 | `combat_admin_instance` | `class gCCombatAdmin * gCCombatAdmin::GetInstance(void)` | 0x7ca470 | no |
 | `combat_get_species` | `class gCCombatSpecies * gCCombatAdmin::GetSpecies(class bCString const &)const ` | 0x7ca3b0 | no |
 | `craft_ingredient_ctor` | `gCCraftIngredient::gCCraftIngredient(void)` | 0x9a1d90 | no |
 | `craft_ingredient_dtor` | `gCCraftIngredient::~gCCraftIngredient(void)` | 0x9a1dd0 | no |
 | `ctext_description` | `class bCString & gCInfoCommandRunAIScript::AccessAIScriptName(void)` | 0x499bb0 | no |
 | `ctext_saysvm` | `class bTPropertyContainer<enum gECombatAction> & gCCombatMoveMelee::AccessAction(void)` | 0x4ab150 | no |
+| `focus_auto_enabled` | `bool gCFocusModule2::IsAutoUpdateEnabled(void)const ` | 0x82ebb0 | no |
+| `focus_enable_auto` | `void gCFocusModule2::EnableAutoUpdate(bool)` | 0x82eba0 | no |
+| `focus_get_entity` | `class eCEntity * gCFocusModule2::GetFocusEntity(void)const ` | 0x82e3a0 | no |
+| `focus_instance` | `class gCFocusModule2 & gCFocusModule2::GetInstance(void)` | 0x82ebc0 | no |
+| `focus_set_entity` | `void gCFocusModule2::SetFocusEntity(class eCEntity *)` | 0x82e2a0 | no |
 | `gdmg_do_damage` | `bool gCDamage_PS::DoDamage(class eCEntity *)` | 0x8081b0 | no |
 | `gi_assure_items` | `int gCInventory_PS::AssureItems(class bCPropertyID const &,unsigned long,enum gEStackType)` | 0x8c32c0 | no |
 | `gi_consume_items` | `bool gCInventory_PS::ConsumeItems(int,unsigned long)` | 0x8c5140 | no |
@@ -161,6 +175,10 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `infocmd_create_item` | `bool gCInfoCommandCreateItem::Execute(class gCRuntimeInfo &,bool)` | 0x8882d0 | no |
 | `infocmd_destroy_item` | `bool gCInfoCommandDestroyItem::Execute(class gCRuntimeInfo &,bool)` | 0x888eb0 | no |
 | `infocmd_give` | `bool gCInfoCommandGive::Execute(class gCRuntimeInfo &,bool)` | 0x88b200 | no |
+| `inter_ps_at` | `class gCInteraction * gCInteraction_PS::GetInteractionAt(int)const ` | 0x8baea0 | no |
+| `inter_ps_count` | `int gCInteraction_PS::GetInteractionCount(void)const ` | 0x8baec0 | no |
+| `inter_ps_target` | `class eCEntity * gCInteraction_PS::GetCurrentTarget(void)const ` | 0x8bf270 | no |
+| `inter_ps_user` | `class eCEntity * gCInteraction_PS::GetCurrentUser(void)const ` | 0x8bf620 | no |
 | `interaction_focus_name` | `class bCUnicodeString gCInteraction_PS::GetPlainFocusName(void)const ` | 0x8ba3b0 | no |
 | `inv_insert_stack` | `int gCInventory_PS::InsertStack(class eCEntity *)` | 0x8c0cf0 | no |
 | `is_available_count` | `int gCInfoSystem::GetAvailableInfoCount(void)` | 0x8b3b00 | yes |
@@ -204,6 +222,7 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `say_access_text` | `unsigned long & gCInfoCommandCreateItem::AccessAmount(void)` | 0x499ce0 | yes |
 | `say_set_listener` | `void gCInfoCommandSay::SetListener(class bCString const &)` | 0x60e450 | yes |
 | `say_set_speaker` | `void gCInfoCommandSay::SetSpeaker(class bCString const &)` | 0x60e3f0 | yes |
+| `scan_description` | `class bCUnicodeString gCActionAdmin::GetScanCodeDescription(enum eEScanCode)` | 0x7f9340 | no |
 | `script_admin_call` | `__int64 gCScriptAdmin::CallScript(class bCString const &,class eCEntity *,class eCEntity *,__int64)` | 0x964460 | yes |
 | `script_admin_post_init` | `enum bEResult gCScriptAdmin::PostInitialize(void)` | 0x962450 | yes |
 | `session_process` | `void gCSession::Process(void)` | 0x9711e0 | yes |
@@ -219,6 +238,7 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `unit_get_arg` | `__int64 gCScriptProcessingUnit::GetIntParameter(void)` | 0x96d960 | yes |
 | `unit_get_other` | `class eCGeometryEntity * gCScriptProcessingUnit::GetOtherEntity(void)` | 0x96c740 | yes |
 | `unit_get_self` | `class eCGeometryEntity * gCScriptProcessingUnit::GetSelfEntity(void)` | 0x96c7c0 | yes |
+| `unit_set_state` | `enum bEResult gCScriptProcessingUnit::SetCurrentAIState(class bCString &)` | 0x96bed0 | no |
 | `world_activate` | `bool gCWorld::Activate(void)` | 0x994760 | no |
 ## Script.dll
 
@@ -232,6 +252,7 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `ent_get_display_name` | `class bCString Entity::GetDisplayName(void)const ` | 0x20c790 | yes |
 | `ent_get_entity` | `class Entity Entity::GetEntity(class bCString)` | 0x20f4c0 | yes |
 | `ent_get_name` | `class bCString Entity::GetName(void)const ` | 0x20c880 | yes |
+| `ent_get_npcs` | `class bTObjArray<class Entity> Entity::GetNPCs(void)` | 0x20e780 | no |
 | `ent_get_player` | `class Entity Entity::GetPlayer(void)` | 0x20f5d0 | yes |
 | `ent_get_position` | `class bCVector Entity::GetPosition(void)const ` | 0x20d1a0 | yes |
 | `ent_get_sample_title` | `class bCString Entity::GetSampleTitle(class bCString)const ` | 0x20a9e0 | no |
@@ -255,6 +276,19 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `gamevar_get` | `bool InfoSystem::GetGameVariable(class bCString const &,int &)` | 0x215140 | yes |
 | `gamevar_remove` | `bool InfoSystem::RemoveGameVariable(class bCString const &)` | 0x215100 | no |
 | `gamevar_set` | `bool InfoSystem::SetGameVariable(class bCString const &,int)` | 0x215a50 | yes |
+| `gui2_object` | `gui2` | 0x40e9e4 | no |
+| `gui_get_mode` | `enum gEHudMode GUI2::GetMode(void)const ` | 0x210520 | no |
+| `gui_is_browsing` | `bool GUI2::IsBrowsing(void)const ` | 0x2106a0 | no |
+| `gui_is_browsing_game` | `bool GUI2::IsBrowsingGame(void)const ` | 0x210620 | no |
+| `gui_is_browsing_loot` | `bool GUI2::IsBrowsingLoot(void)` | 0x210ed0 | no |
+| `gui_is_visible` | `bool GUI2::IsVisible(enum gEHudPage)const ` | 0x210740 | no |
+| `gui_print_item_log` | `void GUI2::PrintItemLog(class Entity,int)` | 0x20fd60 | no |
+| `gui_print_log` | `void GUI2::PrintGameLog(class bCUnicodeString const &,enum gELogMessageType,bool,char *)` | 0x213b10 | no |
+| `input_current_event` | `struct gSAction const & Input::GetCurrentActionEvent(void)const ` | 0x215fc0 | no |
+| `input_is_pressed` | `bool Input::IsKeyPressed(enum gEActionKey)const ` | 0x216100 | no |
+| `input_object` | `input` | 0x412b93 | no |
+| `input_press_duration` | `float Input::GetKeyPressDuration(enum gEActionKey)const ` | 0x2160a0 | no |
+| `input_was_pressed` | `bool Input::WasKeyPressedThisFrame(enum gEActionKey)const ` | 0x2160d0 | no |
 | `inv_consume_items` | `bool PSInventory::ConsumeItems(int,int)` | 0x224080 | no |
 | `inv_create_items` | `int PSInventory::CreateItems(class Template const &,int,enum gEStackType)` | 0x223820 | yes |
 | `inv_delete_items` | `bool PSInventory::DeleteItems(int,int)` | 0x223fe0 | no |
