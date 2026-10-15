@@ -71,6 +71,22 @@ void bindGameVars(sol::state_view lua, sol::table risen) {
         bool ok = false;
         return guarded([&] { ok = s.gamevar_set(key.get(), value); }) && ok;
     });
+    vars.set_function("exists", [&s](const std::string& name) {
+        bool r = false;
+        if (s.gamevar_exists != nullptr) {
+            const BString key(name);
+            guarded([&] { r = s.gamevar_exists(key.get()); });
+        }
+        return r;
+    });
+    vars.set_function("remove", [&s](const std::string& name) {
+        bool r = false;
+        if (s.gamevar_remove != nullptr) {
+            const BString key(name);
+            guarded([&] { r = s.gamevar_remove(key.get()); });
+        }
+        return r;
+    });
     risen["gamevar"] = vars;
 }
 

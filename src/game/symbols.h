@@ -231,6 +231,14 @@
     X(inv_delete_items, L"Script.dll", "?DeleteItems@PSInventory@@QEAA_NHH@Z", bool (*)(void* self, int stack, int count), false) \
     X(inv_stack_amount, L"Script.dll", "?GetAmount@PSInventory@@QEBAHH@Z", int (*)(const void* self, int stack), false) \
     X(ent_get_property_set, L"Engine.dll", "?GetPropertySet@eCEntity@@QEAAPEAVeCEntityPropertySet@@AEBVbCString@@@Z", void* (*)(void* self, const void* className), false) \
+    X(acc_ctor_object, L"SharedBase.dll", "??0bCAccessorProperty@@QEAA@PEBVbCObjectBase@@@Z", void* (*)(void* self, const void* obj), false) \
+    X(acc_next, L"SharedBase.dll", "??EbCAccessorProperty@@QEAAAEAV0@XZ", void* (*)(void* self), false) \
+    X(acc_name, L"SharedBase.dll", "?GetPropertyName@bCAccessorProperty@@QEBAAEBVbCString@@XZ", const void* (*)(const void* self), false) \
+    X(acc_type, L"SharedBase.dll", "?GetPropertyType@bCAccessorProperty@@QEBAAEBVbCString@@XZ", const void* (*)(const void* self), false) \
+    X(ctext_description, L"Game.dll", "?AccessText@gCInfoCommandDescription@@QEAAAEAVgCInfoLocString@@XZ", void* (*)(void* self), false) \
+    X(ctext_saysvm, L"Game.dll", "?AccessText@gCInfoCommandSaySVM@@QEAAAEAVgCInfoLocString@@XZ", void* (*)(void* self), false) \
+    X(gamevar_exists, L"Script.dll", "?ExistsGameVariable@InfoSystem@@SA_NAEBVbCString@@@Z", bool (*)(const void*), false) \
+    X(gamevar_remove, L"Script.dll", "?RemoveGameVariable@InfoSystem@@SA_NAEBVbCString@@@Z", bool (*)(const void*), false) \
     X(element_base_name, L"Engine.dll", "?GetFileBaseName@eCProcessibleElement@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false)
 
 namespace spass::game {

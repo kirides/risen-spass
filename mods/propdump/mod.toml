@@ -1,0 +1,4 @@
+id = "propdump"
+name = "Property dump"
+version = "1.0.0"
+description = "Logs the engine property names/types of entity property sets, quests and dialogue commands (development aid)."

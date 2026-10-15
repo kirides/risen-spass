@@ -27,10 +27,12 @@ Open: hot reload of `main.lua` (`restoreAll()` for script slots exists), `item.d
 `risen.dialog.create` / `risen.quest.define` validate everything first and return `nil, "reason"` (a quest-state condition with a missing quest is refused);
 entity handles remember the unique name and re-resolve after loads. Open: validate loc keys/command lists passed to the low-level `Info` methods.
 
-## 2. Dialogue features — open
-Not started (needs RE + live tests each): branching conversations (`Parent` infos, `AreChildInfosAvailable`), conditions beyond quest state
-(`gCInfoCondition*` objects, a Lua-script condition), exposing the remaining info commands' parameters (`Give`, `GiveXP`, `SetRoutine`, `MoveTo`, ...), voice/sound
-(`SaySound`), comment/news/hello infos, trade and teaching setup.
+## 2. Dialogue features — partly done
+Done: **every dialogue command by name with its parameters** (`{ command = "Give", ... }` lines in `risen.dialog.create`, validated against the engine's own parameter lists;
+reflection via `list_properties`; [`PROPERTIES.md`](PROPERTIES.md)); `risen.gamevar.exists/remove`; `Info:set_command_text`.
+Open (needs RE + live tests each): branching conversations (`Parent` infos, `AreChildInfosAvailable`), conditions beyond quest state
+(`gCInfoCondition*` objects, a Lua-script condition), voice/sound (`SaySound` needs the speech archives), comment/news/hello infos (setting `Type`/condition works,
+unverified), verifying `SetTradeEnabled`/`SetTeachEnabled` in a real trade.
 Learned: a quest-bound option makes the engine append the speakers' labels to the quest log (RE.md §18); `risen.item.take/give/count` and
 `Entity:item_*` exist for effects that need items.
 

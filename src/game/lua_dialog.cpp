@@ -69,6 +69,46 @@ void bindDialog(sol::state_view lua, sol::table risen) {
         // info:set_property("ConditionType", "gEInfoCondType_General") / info:get_property("Type")
         "set_property", [](const LuaInfo& i, const std::string& name, const std::string& value) { return propertySet(i.p, name, value); },
         "get_property", [](const LuaInfo& i, const std::string& name) { return propertyGet(i.p, name); },
+        "list_properties", [](sol::this_state ts, const LuaInfo& i) { return propertyListTable(ts, i.p); },
+        // Parameters of a command in the sequence (index from add_command): any property by name, e.g. a GiveXP's amount.
+        "list_command_properties", [&s](sol::this_state ts, const LuaInfo& i, int index) -> sol::object {
+            void* cmd = nullptr;
+            guarded([&] { cmd = s.info_get_command(i.p, index - 1); });
+            return cmd != nullptr ? sol::make_object(ts, propertyListTable(ts, cmd)) : sol::make_object(ts, sol::lua_nil);
+        },
+        "get_command_property", [&s](const LuaInfo& i, int index, const std::string& name) -> sol::optional<std::string> {
+            void* cmd = nullptr;
+            guarded([&] { cmd = s.info_get_command(i.p, index - 1); });
+            return cmd != nullptr ? propertyGet(cmd, name) : sol::nullopt;
+        },
+        // info:set_command_text(index, "ShowSubtitle", key): the localized text of a command that has one
+        // (Say, SaySVM, PickPocket, Description, ShowSubtitle, AddLogText); the text is the key of a risen.loc string.
+        "set_command_text", [&s](const LuaInfo& i, int index, const std::string& command, const std::string& key) {
+            void* cmd = nullptr;
+            guarded([&] { cmd = s.info_get_command(i.p, index - 1); });
+            if (cmd == nullptr) {
+                return false;
+            }
+            using AccessFn = void* (*)(void*);
+            AccessFn access = nullptr;
+            if (command == "Say") {
+                access = s.say_access_text;
+            } else if (command == "Description" || command == "ShowSubtitle") {
+                access = s.ctext_description;
+            } else if (command == "SaySVM" || command == "PickPocket") {
+                access = s.ctext_saysvm;
+            }
+            if (access == nullptr) {
+                return false;
+            }
+            const BString k(key);
+            return guarded([&] { s.locstr_set_key(locStringBase(access(cmd)), k.get()); });
+        },
+        "set_command_property", [&s](const LuaInfo& i, int index, const std::string& name, const std::string& value) {
+            void* cmd = nullptr;
+            guarded([&] { cmd = s.info_get_command(i.p, index - 1); });
+            return cmd != nullptr && propertySet(cmd, name, value);
+        },
         "set_owner", [&s](const LuaInfo& i, const std::string& v) { return tryDo("set_owner", [&] { setString(s.info_access_owner(i.p), v); }); },
         "set_parent", [&s](const LuaInfo& i, const std::string& v) { return tryDo("set_parent", [&] { setString(s.info_access_parent(i.p), v); }); },
         "set_quest", [&s](const LuaInfo& i, const std::string& v) { return tryDo("set_quest", [&] { setString(s.info_access_quest(i.p), v); }); },
@@ -297,6 +337,59 @@ local PLAIN_CONDITIONS = { General = true, Hello = true, End = true, Back = true
     FirstWarn = true, SecondWarn = true, PickPocket = true, MasterThief = true, Reactivator = true, Activator = true,
     Wait = true, LongTimeNoSee = true, NothingToSay = true, Finished = true, DoCancel = true }
 
+-- Parameters of every command that can be added by name (generated from the engine's reflection: docs/PROPERTIES.md).
+local COMMAND_PROPS = {
+    Attack = { Entity1 = true, Entity2 = true, Reason = true },
+    Back = {  },
+    BoostAttribs = { Entity1 = true, BoostTarget = true },
+    ClearGameEvent = { GameEvent = true },
+    CloseQuest = { QuestName = true },
+    Description = {  },
+    DoLoot = { Entity1 = true, Entity2 = true },
+    DoTrade = { Entity1 = true, Entity2 = true },
+    End = {  },
+    EndGame = {  },
+    FullStop = { Entity1 = true },
+    Give = { Entity1 = true, Entity2 = true, Item = true, Amount = true },
+    GiveXP = { Amount = true },
+    Heal = { Entity1 = true, Entity2 = true },
+    InfoWait = { Time = true },
+    MoveTo = { Entity1 = true, Entity2 = true },
+    PickPocket = { Difficulty = true, Speaker = true, Listener = true, SVMID = true, Gesture = true },
+    PlayMusic = { Situation = true },
+    RunInfo = { Info = true },
+    RunQuest = { QuestName = true },
+    Say = { Speaker = true, Listener = true, Gesture = true },
+    SayConfirm = { Speaker = true, Listener = true },
+    SayHoldingPosition = { Speaker = true, Listener = true },
+    SayKeepItUp = { Speaker = true, Listener = true },
+    SaySVM = { Speaker = true, Listener = true, SVMID = true, Gesture = true },
+    SaySound = { Speaker = true, SoundName = true },
+    SetGameEvent = { GameEvent = true },
+    SetGuardStatus = { Entity1 = true, GuardStatus = true },
+    SetMobEnabled = { Entity1 = true, MobEnabled = true },
+    SetPartyEnabled = { Entity1 = true, PartyEnabled = true },
+    SetRelaxingPoint = { Entity1 = true, Entity2 = true },
+    SetRoutine = { Entity1 = true, RoutineName = true },
+    SetSectorStatus = { SectorName = true, SectorEnabled = true },
+    SetSlaveryEnabled = { Entity1 = true, SlaveryEnabled = true },
+    SetSleepingPoint = { Entity1 = true, Entity2 = true },
+    SetTeachEnabled = { Entity1 = true, TeachEnabled = true },
+    SetTradeEnabled = { Entity1 = true, TradeEnabled = true },
+    SetWorkingPoint = { Entity1 = true, Entity2 = true },
+    ShowPicture = { FileName = true },
+    ShowSubtitle = {  },
+    Sleep = { Entity1 = true, TargetHour = true },
+    StartEffect = { Entity1 = true, EffectName = true },
+    SucceedQuest = { QuestName = true },
+    Trigger = { TargetEntity = true, DoUntrigger = true },
+    Use = { Entity1 = true, Item = true, UseAnimationName = true },
+    Wear = { Entity1 = true, Item = true },
+    RunScript = { Script = true, Self = true, Other = true, OtherType = true, Param = true },
+    AddLogText = { QuestName = true },
+}
+local TEXT_COMMANDS = { Say = true, SaySVM = true, PickPocket = true, Description = true, ShowSubtitle = true }
+
 local function nonempty(v) return type(v) == "string" and v ~= "" end
 
 -- Returns an error message for a spec the engine could not handle, nil when it is fine.
@@ -328,6 +421,24 @@ local function check_dialog(spec)
             if not nonempty(line.script) then return ("line %d: 'script' must be a script name"):format(n) end
             if not risen.script.exists(line.script) then
                 return ("line %d: script '%s' is not registered (risen.script.define it first)"):format(n, line.script)
+            end
+        elseif line.command ~= nil then
+            local props = COMMAND_PROPS[line.command]
+            if not props then
+                return ("line %d: unknown command '%s' (see docs/PROPERTIES.md; scripts and log entries have their own line forms)"):format(n, tostring(line.command))
+            end
+            for key, value in pairs(line) do
+                if key ~= "command" and key ~= "text" then
+                    if not props[key] then
+                        return ("line %d: command %s has no parameter '%s'"):format(n, line.command, tostring(key))
+                    end
+                    if type(value) ~= "string" and type(value) ~= "number" and type(value) ~= "boolean" then
+                        return ("line %d: parameter '%s' must be a string, number or boolean"):format(n, key)
+                    end
+                end
+            end
+            if line.text ~= nil and (type(line.text) ~= "string" or not TEXT_COMMANDS[line.command]) then
+                return ("line %d: command %s has no text"):format(n, line.command)
             end
         elseif line.log ~= nil then
             if type(line.log) ~= "table" or not nonempty(line.log.quest) or type(line.log.text) ~= "string" then
@@ -377,6 +488,23 @@ function risen.dialog.create(spec)
         if line.script then
             local idx = info:add_script_command()
             if not idx or not info:set_script(idx, line.script) then risen.log.warn("dialog: bad script line " .. n) end
+        elseif line.command then
+            local idx = info:add_command(line.command)
+            if not idx then
+                risen.log.warn(("dialog: the engine refused command %s on line %d"):format(line.command, n))
+            else
+                for key, value in pairs(line) do
+                    if key == "text" then
+                        local tkey = ("%s_%d"):format(spec.name, n)
+                        risen.loc.set(tkey, value)
+                        if not info:set_command_text(idx, line.command, tkey) then risen.log.warn("dialog: cannot set the text of line " .. n) end
+                    elseif key ~= "command" then
+                        if not info:set_command_property(idx, key, tostring(value)) then
+                            risen.log.warn(("dialog: cannot set %s.%s on line %d"):format(line.command, key, n))
+                        end
+                    end
+                end
+            end
         elseif line.log then
             local idx = info:add_log_command()
             local key = ("%s_%d"):format(spec.name, n)

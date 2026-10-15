@@ -1,0 +1,4 @@
+id = "dialogcmds"
+name = "Dialogue commands demo"
+version = "1.0.0"
+description = "An option made of engine commands: Give, GiveXP, SetGameEvent, ShowSubtitle."

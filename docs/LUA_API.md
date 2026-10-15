@@ -152,6 +152,12 @@ warning) for: an unknown type/condition, a quest-state condition without `quest`
 (the engine would block the game with a message box), an unregistered `script`, empty `lines`, non-string texts.
 It is **idempotent**: an info that already exists is returned as is, so the call can sit in a "create if missing" block.
 
+**Engine commands as lines:** a line `{ command = "<Name>", <Parameter> = value, ... }` adds any dialogue command by name with its parameters
+(names and types: [PROPERTIES.md](PROPERTIES.md)): `{ command = "Give", Entity1 = "npc", Entity2 = "player", Item = "It_Apple", Amount = 3 }`,
+`{ command = "GiveXP", Amount = 50 }`, `{ command = "SetGameEvent", GameEvent = "MyMod_Done" }`, `{ command = "ShowSubtitle", text = "..." }`.
+Unknown commands/parameters are refused with `nil, "reason"` before anything is created (see `mods/dialogcmds`). `info:list_properties()`,
+`info:list_command_properties(i)`, `entity:list_properties(set)` show what is available on a live object.
+
 Other calls: `risen.dialog.start(player, npc)` (open the conversation), `risen.dialog.available()` (options currently
 offered: list of `Info`), `risen.dialog.is_running()`, `risen.dialog.has_infos(npc)`, `risen.dialog.get(name)`,
 `risen.dialog.rebuild()`. `Info` methods: `name()`, `owner()`, `run()` (only works for infos the running conversation
@@ -192,6 +198,7 @@ risen.on("session.start", content)
 ```lua
 risen.quest.open|run|close|fail|succeed("Quest_Id")   risen.quest.is_running("Quest_Id")
 risen.gamevar.get("Name") -> int|nil                   risen.gamevar.set("Name", 1)
+risen.gamevar.exists("Name")   risen.gamevar.remove("Name")      -- dialogue commands SetGameEvent / ClearGameEvent create / remove a variable
 risen.world.is_game_running()  risen.world.new_game()  risen.world.quick_load()
 risen.world.quick_save()  risen.world.auto_save("name")  risen.world.is_save_allowed()
 ```

@@ -139,6 +139,16 @@ void addNpcMethods(sol::usertype<LuaEntity>& ut) {
         }
         return propertyGet(ps, name);
     };
+    ut["list_properties"] = [&s](sol::this_state ts, const LuaEntity& e, const std::string& set) -> sol::object {
+        void* ps = nullptr;
+        if (s.ent_get_property_set == nullptr || !guarded([&] {
+                const BString cls(set);
+                ps = s.ent_get_property_set(ptr(e), cls.get());
+            }) || ps == nullptr) {
+            return sol::make_object(ts, sol::lua_nil);
+        }
+        return sol::make_object(ts, propertyListTable(ts, ps));
+    };
     ut["set_property"] = [&s](const LuaEntity& e, const std::string& set, const std::string& name, const std::string& value) {
         void* ps = nullptr;
         if (s.ent_get_property_set == nullptr || !guarded([&] {

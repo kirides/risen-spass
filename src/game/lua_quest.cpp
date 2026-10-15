@@ -41,6 +41,7 @@ void bindQuestObjects(sol::state_view lua, sol::table risen) {
         sol::meta_function::to_string, [](const LuaQuest& q) { return fmt::format("Quest({})", q.p); },
         "set_property", [](const LuaQuest& q, const std::string& name, const std::string& value) { return propertySet(q.p, name, value); },
         "get_property", [](const LuaQuest& q, const std::string& name) { return propertyGet(q.p, name); },
+        "list_properties", [](sol::this_state ts, const LuaQuest& q) { return propertyListTable(ts, q.p); },
         "name", [](const LuaQuest& q) -> sol::optional<std::string> {
             std::string name;
             if (!guarded([&] {

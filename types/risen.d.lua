@@ -7,6 +7,11 @@
 -- Entities
 ---------------------------------------------------------------------------------------------------------------------
 
+---One property of an engine object, as listed by `list_properties`.
+---@class PropertyInfo
+---@field name string Property name for `get_property`/`set_property`.
+---@field type string The engine's type name: `"bool"`, `"long"`, `"float"`, `"bCString"`, `"bTPropertyContainer<enum gEGuild>"` (an enum, set it by value name), ...
+
 ---An engine entity (NPC, item, the player, ...). The handle remembers the entity's unique name: after a savegame load,
 ---a session start/stop or a world change it looks the entity up by name again, so a handle kept across those points
 ---either refers to the right entity or fails safely (methods return `nil`/`false`; see `Entity:valid`).
@@ -212,6 +217,11 @@ function Entity:equip_all() end
 ---@return string|nil value `nil` if the entity lacks the set or the property.
 function Entity:get_property(set, name) end
 
+---Lists the properties of one of the entity's property sets (names and types), so you can see what `get_property`/`set_property` accept.
+---@param set string
+---@return PropertyInfo[]|nil list `nil` if the entity lacks the set.
+function Entity:list_properties(set) end
+
 ---Writes a property of a property set by name (see `get_property`). Enum values must be spelled as the engine does
 ---(`"gEGuild_..."`); an invalid value is ignored by the engine.
 ---@param set string
@@ -340,6 +350,9 @@ function Quest:set_property(name, value) end
 ---@param name string
 ---@return string|nil
 function Quest:get_property(name) end
+---Lists the quest's properties (names and types).
+---@return PropertyInfo[]
+function Quest:list_properties() end
 
 ---@return string|nil
 function Quest:name() end
@@ -463,6 +476,25 @@ function Info:set_property(name, value) end
 ---@param name string
 ---@return string|nil
 function Info:get_property(name) end
+---Lists the info's properties (names and types).
+---@return PropertyInfo[]
+function Info:list_properties() end
+
+---Lists the parameters of a command of the info (names and types), e.g. what a `GiveXP` or `SetGameEvent` command takes.
+---@param index integer Command index returned by `add_command`.
+---@return PropertyInfo[]|nil
+function Info:list_command_properties(index) end
+---Reads a parameter of a command by name (enums as value names, numbers/bools as text).
+---@param index integer
+---@param name string
+---@return string|nil
+function Info:get_command_property(index, name) end
+---Sets a parameter of a command by name, e.g. `info:set_command_property(i, "Amount", "50")`.
+---@param index integer
+---@param name string
+---@param value string
+---@return boolean ok
+function Info:set_command_property(index, name, value) end
 
 ---@param owner string NPC entity name.
 ---@return boolean ok
@@ -586,13 +618,24 @@ function Info:run() end
 ---| "Delivery" # quest state
 ---| "PartDelivery" # quest state
 
----One line of a dialogue. Exactly one of `text`, `script` or `log`.
+---Configures the localized text of a command (`"Say"`, `"SaySVM"`, `"PickPocket"`, `"Description"`, `"ShowSubtitle"`).
+---@param index integer Command index returned by `add_command`.
+---@param command string The command's name, as given to `add_command`.
+---@param text_key string Localization key (serve its text with `risen.loc.set`).
+---@return boolean ok
+function Info:set_command_text(index, command, text_key) end
+
+---One line of a dialogue. One of: a spoken `text`; a `script`; a `log` entry; or an engine `command` with its parameters.
 ---@class DialogLine
 ---@field speaker? string `"player"`, `"npc"` (default) or an entity name.
 ---@field listener? string Default `"player"`.
 ---@field text? string The spoken text. The first line's text is the label of the option.
 ---@field script? string Name of a script registered with `risen.script.define`.
 ---@field log? {quest: string, text: string} Adds a quest log entry.
+---@field command? string Any engine dialogue command by name (`"Give"`, `"GiveXP"`, `"SetGameEvent"`, `"RunQuest"`, `"MoveTo"`, `"SetTradeEnabled"`, ...).
+---Its parameters are extra fields named as in docs/PROPERTIES.md, e.g. `{ command = "Give", Entity1 = "npc", Entity2 = "player", Item = "It_Apple", Amount = 3 }`
+---or `{ command = "GiveXP", Amount = 50 }`; `text` sets the text of commands that have one (`ShowSubtitle`, `Description`, ...). Unknown commands or
+---parameters make `risen.dialog.create` return `nil, "reason"`. Entity parameters accept `"player"`, `"npc"` or an entity name.
 
 ---@class DialogSpec
 ---@field name string Unique info name.
@@ -710,6 +753,14 @@ function gamevarApi.get(name) end
 ---@param value integer
 ---@return boolean ok
 function gamevarApi.set(name, value) end
+---Whether the variable exists. The dialogue command `SetGameEvent` creates the variable of that name (value 0).
+---@param name string
+---@return boolean
+function gamevarApi.exists(name) end
+---Removes the variable (what `ClearGameEvent` does).
+---@param name string
+---@return boolean removed
+function gamevarApi.remove(name) end
 
 ---Session-level actions. `new_game`, `quick_load`, `quick_save` and `auto_save` are requests the engine performs on its
 ---next processing step: watch `session.start`, `load.after`, `save.after`.

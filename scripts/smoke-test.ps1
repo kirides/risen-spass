@@ -15,8 +15,8 @@
 param(
     [string]$GameDir = 'B:\DevDrive\risen-test',
     [int]$Seconds = 200,
-    # persistence | fetchquest | all
-    [ValidateSet('persistence', 'fetchquest', 'all')][string]$Scenario = 'all'
+    # persistence | fetchquest | commands | all
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'all')][string]$Scenario = 'all'
 )
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
@@ -73,6 +73,19 @@ if ($Scenario -in 'fetchquest', 'all') {
         @('no Lua errors',                          '^(?!(?s).*\[error\])')
     )
     $totalFailed += Run-Checks 'fetch quest example' (Get-Content $log -Raw) $fetch
+}
+
+if ($Scenario -in 'commands', 'all') {
+    & (Join-Path $here 'test-run.ps1') -GameDir $GameDir -Mods dialogcmds -Seconds ($Seconds - 20) -Filter 'NOTHING' | Out-Null
+    $cmds = @(
+        @('invalid command lines are refused',     'cmds: invalid specs refused: true'),
+        @('unknown command names the problem',     'unknown command ''NoSuchCommand'''),
+        @('unknown parameter names the problem',   'command GiveXP has no parameter ''Count'''),
+        @('command parameters read back',          'cmds: command 2 Amount=2 Item=It_Apple'),
+        @('Give delivered the items',              'cmds: after: apples=2 event=true'),
+        @('no Lua errors',                         '^(?!(?s).*\[error\])')
+    )
+    $totalFailed += Run-Checks 'dialogue commands' (Get-Content $log -Raw) $cmds
 }
 
 if ($totalFailed -gt 0) { Write-Host "$totalFailed check(s) failed, see $log"; exit 1 }
