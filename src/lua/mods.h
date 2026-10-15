@@ -22,6 +22,8 @@ inline constexpr int kApiVersion = 1;
 //   requires    = ["base_mod"]        # optional hard dependencies (mod is skipped if missing)
 //   api_version = 1                   # optional: the Lua API generation the mod was written for (a newer one is refused)
 //   data_overlay = false              # experimental: mount the mod directory into the virtual file system at startup
+//   assets      = "assets"            # directory of loose resource files (meshes, materials, images ...) mounted at startup;
+//                                     # false = none (docs/LUA_API.md "New meshes, textures and icons")
 struct ModInfo {
     std::string id;
     std::string name;
@@ -32,6 +34,7 @@ struct ModInfo {
     std::vector<std::string> loadAfter;
     std::vector<std::string> requires_;
     bool dataOverlay = false;
+    std::string assets = "assets";  // directory (relative to the mod directory) of loose resource files; empty = none
     int apiVersion = 1;
     std::filesystem::path dir;
 };

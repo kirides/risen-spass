@@ -161,7 +161,7 @@ TEST(template_create_translates_friendly_keys_and_applies_overrides) {
     // other templates: only properties (and labels) are accepted
     CHECK(run("local t = assert(risen.template.create('My_Sign', 'Signpost', { mesh = 'x.xmsh', name = 'Sign' })) return tostring(t)") == "Template(My_Sign)");
     CHECK(run("local t, why = risen.template.create('My_Sign2', 'Signpost', { value = 3 }) return tostring(t) .. '|' .. why") ==
-          "nil|unknown setting 'value' (a template that is neither item nor NPC accepts: name, description, mesh, icon, material, properties)");
+          "nil|unknown setting 'value' (a template that is neither item nor NPC accepts: name, description, mesh, icon, material, check_assets, properties)");
 }
 
 TEST(template_create_refuses_bad_requests_before_cloning) {
@@ -224,4 +224,34 @@ TEST(template_create_sections_validate_everything_and_plan_names) {
     CHECK(run("local jobs = risen.balance.sections.new_items({ My_Sword = { base = 'It_Sword', value = 9, name = 'Sword Nine' } }) "
               "local ok = jobs[1].run({ instances = true }) return tostring(ok) .. '|' .. table.concat(log, ';')") ==
           "true|clone My_Sword It_Sword;items-run My_Sword value=9 mesh=nil icon=nil instances=true;loc FO_My_Sword=Sword Nine;loc ITEMDESC_My_Sword=A sword.");
+}
+
+TEST(template_create_checks_mesh_and_icon_names_against_the_assets) {
+    sol::state lua;
+    setupCreateMock(lua);
+    // a stand-in for risen.assets.check: only "Known.xmsh", "Known.xac" and the icon "IC_Known" exist
+    lua.script(R"LUA(
+        risen.assets = { check = function(kind, name)
+            if kind == "icon" then if name == "IC_Known" then return true end return nil, "'" .. name .. "' is not a GUI bitmap" end
+            if name == "Known.xmsh" and kind == "mesh" or name == "Known.xac" and kind == "actor" then return true end
+            return nil, "no file for '" .. name .. "' (" .. kind .. ")"
+        end }
+    )LUA");
+    auto run = [&](const char* code) { return lua.script(std::string("return tostring((function() ") + code + " end)())").get<std::string>(); };
+    CHECK(run("local t = risen.template.create('A1', 'It_Sword', { mesh = 'Known.xmsh', icon = 'IC_Known' }) return tostring(t)") == "Template(A1)");
+    CHECK(run("local t = risen.template.create('A2', 'Wolf', { mesh = 'Known.xac' }) return tostring(t)") == "Template(A2)");
+    CHECK(run("local t, why = risen.template.create('A3', 'It_Sword', { mesh = 'Nope.xmsh' }) return tostring(t) .. '|' .. why") ==
+          "nil|mesh: no file for 'Nope.xmsh' (mesh)");
+    CHECK(run("local t, why = risen.template.create('A4', 'Wolf', { mesh = 'Known.xmsh' }) return tostring(t) .. '|' .. why") ==
+          "nil|mesh: no file for 'Known.xmsh' (actor)");
+    CHECK(run("local t, why = risen.template.create('A5', 'It_Sword', { icon = 'IC_Nope' }) return tostring(t) .. '|' .. why") ==
+          "nil|icon: 'IC_Nope' is not a GUI bitmap");
+    // opt out: the names are used as given
+    CHECK(run("local t = risen.template.create('A6', 'It_Sword', { mesh = 'Nope.xmsh', icon = 'IC_Nope', check_assets = false }) return tostring(t)") == "Template(A6)");
+    CHECK(run("local t, why = risen.template.create('A7', 'It_Sword', { check_assets = 'no' }) return tostring(t) .. '|' .. why") == "nil|check_assets: expected true or false");
+    // refused requests cloned nothing
+    CHECK(run("return tostring(created_map.A3) .. tostring(created_map.A4) .. tostring(created_map.A5) .. tostring(created_map.A7)") == "nilnilnilnil");
+    // the declarative sections validate the same way
+    CHECK(run("local _, p = risen.balance.sections.new_items({ B1 = { base = 'It_Sword', mesh = 'Nope.xmsh' } }) return p[1]") == "new_items.B1: mesh: no file for 'Nope.xmsh' (mesh)");
+    CHECK(run("local j, p = risen.balance.sections.new_items({ B2 = { base = 'It_Sword', mesh = 'Nope.xmsh', check_assets = false } }) return #j .. ',' .. #p") == "1,0");
 }

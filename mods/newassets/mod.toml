@@ -1,0 +1,7 @@
+id          = "newassets"
+name        = "New assets demo"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "New meshes, textures and icons from loose files: derives assets from shipped ones, mounts them and builds an item and a creature from them (docs/RE.md section 26)."
+main        = "main.lua"
+# assets = "assets"   # a directory of loose resource files mounted at startup (this example writes its files with risen.assets.write instead)

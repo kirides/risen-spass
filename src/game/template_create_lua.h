@@ -23,8 +23,8 @@ end
 local planned = {}
 
 -- keys of an `overrides` table that only create handles (everything else goes to the item / NPC balancing sections)
-local CREATE_KEYS = { base = true, name = true, description = true, mesh = true, icon = true, material = true }
-local CREATE_KEY_LIST = "name, description, mesh, icon, material"
+local CREATE_KEYS = { base = true, name = true, description = true, mesh = true, icon = true, material = true, check_assets = true }
+local CREATE_KEY_LIST = "name, description, mesh, icon, material, check_assets"
 
 local function kind_of(tpl)
     local have = {}
@@ -108,15 +108,29 @@ local function plan_create(name, base_name, ov, want)
         if props[set][prop] ~= nil then bad(("%s sets %s.%s twice"):format(key, set, prop)) return end
         props[set][prop] = value
     end
+    -- mesh / icon names are looked up in the game archives and the mounted asset directories (docs/LUA_API.md "New meshes, textures and icons");
+    -- `check_assets = false` skips that (a name the engine cannot resolve is not an error here, it only fails to show)
+    local assets = risen.assets
+    local check = ov.check_assets ~= false and assets and assets.check or nil
+    if ov.check_assets ~= nil and type(ov.check_assets) ~= "boolean" then bad("check_assets: expected true or false") end
     if ov.mesh ~= nil then
         if type(ov.mesh) ~= "string" or ov.mesh == "" then bad("mesh: expected a mesh/actor file name such as It_Wpn_1H_Club.xmsh or Ani_Wolf_Monster_Wolf.xac")
-        elseif kind == "npc" then put("eCAnimation_PS", "ResourceFilePath", ov.mesh, "mesh")
-        else put("eCMesh_PS", "MeshFileName", ov.mesh, "mesh") end
+        else
+            local ok, why = true, nil
+            if check then ok, why = check(kind == "npc" and "actor" or "mesh", ov.mesh) end
+            if not ok then bad("mesh: " .. tostring(why))
+            elseif kind == "npc" then put("eCAnimation_PS", "ResourceFilePath", ov.mesh, "mesh")
+            else put("eCMesh_PS", "MeshFileName", ov.mesh, "mesh") end
+        end
     end
     if ov.icon ~= nil then
         if type(ov.icon) ~= "string" or ov.icon == "" then bad("icon: expected an icon image name such as ic_it_1h_club")
         elseif kind == "npc" then bad("icon: only items have an icon")
-        else put("gCItem_PS", "IconImage", ov.icon, "icon") end
+        else
+            local ok, why = true, nil
+            if check then ok, why = check("icon", ov.icon) end
+            if not ok then bad("icon: " .. tostring(why)) else put("gCItem_PS", "IconImage", ov.icon, "icon") end
+        end
     end
     if ov.material ~= nil then
         if type(ov.material) ~= "number" or ov.material ~= math.floor(ov.material) or ov.material < 0 then bad("material: expected a material switch number >= 0")

@@ -6,6 +6,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "common/asset_names.h"
 #include "common/paths.h"
 #include "game/abi.h"
 #include "game/symbols.h"
@@ -17,6 +18,7 @@ namespace {
 
 Hook<bool (*)(void*, const void*)> g_processMountList;
 std::vector<std::string> g_mounted;  // virtual names of the mod overlays currently mounted
+std::vector<AssetMount> g_assetMounts;
 
 // Mounts <mod>/ for every mod that asks for it (`data_overlay = true` in mod.toml), in load order (a later mod shadows an earlier one).
 // Called after every mount list the engine processes: earlier overlays are removed first, so the mods always sit on top.
@@ -25,8 +27,27 @@ void mountModDirectories() {
         unmountDirectory(v);
     }
     g_mounted.clear();
+    for (const auto& a : g_assetMounts) {
+        unmountDirectory(a.virtualPath);
+    }
+    g_assetMounts.clear();
     const auto mods = lua::resolveLoadOrder(lua::discoverMods(paths::modsDir()));
     for (const auto& m : mods) {
+        // Loose resource files: the mod's assets directory (when the whole mod directory is not mounted already) and the directory
+        // risen.assets.write fills. Their file names enter the engine's name cache, which is how resources are found (RE.md §26).
+        std::error_code ec;
+        if (!m.dataOverlay && !m.assets.empty()) {
+            const auto rel = assets::cleanRelativePath(m.assets);
+            if (rel && std::filesystem::is_directory(m.dir / *rel, ec)) {
+                const bool ok = mountAssetDirectory(m.id, "assets", (m.dir / *rel).string());
+                spdlog::info("vfs: mod '{}' assets directory {}", m.id, ok ? "mounted" : "FAILED to mount");
+            }
+        }
+        const auto generated = paths::dataDir() / "generated" / m.id;
+        if (std::filesystem::is_directory(generated, ec)) {
+            const bool ok = mountAssetDirectory(m.id, "generated", generated.string());
+            spdlog::info("vfs: mod '{}' generated assets {}", m.id, ok ? "mounted" : "FAILED to mount");
+        }
         if (!m.dataOverlay) {
             continue;
         }
@@ -71,6 +92,36 @@ bool mountDirectory(const std::string& virtualPath, const std::string& physicalP
     });
     return ok;
 }
+
+bool mountAssetDirectory(const std::string& mod, const std::string& kind, const std::string& physicalDir) {
+    for (const auto& a : g_assetMounts) {
+        if (a.mod == mod && a.physical == physicalDir) {
+            return true;
+        }
+    }
+    int n = 0;
+    for (const auto& a : g_assetMounts) {
+        n += a.mod == mod && a.kind == kind ? 1 : 0;
+    }
+    AssetMount m{mod, "mods/" + mod + "/" + kind + (n > 0 ? "_" + std::to_string(n) : std::string()), physicalDir, kind};
+    if (!mountDirectory(m.virtualPath, m.physical)) {
+        return false;
+    }
+    g_assetMounts.push_back(std::move(m));
+    return true;
+}
+
+bool remountAssetDirectory(const std::string& virtualPath) {
+    for (const auto& a : g_assetMounts) {
+        if (a.virtualPath == virtualPath) {
+            unmountDirectory(a.virtualPath);
+            return mountDirectory(a.virtualPath, a.physical);
+        }
+    }
+    return false;
+}
+
+const std::vector<AssetMount>& assetMounts() { return g_assetMounts; }
 
 bool unmountDirectory(const std::string& virtualPath) {
     const Symbols& s = sym();

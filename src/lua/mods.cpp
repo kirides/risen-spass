@@ -67,6 +67,13 @@ std::vector<ModInfo> discoverMods(const std::filesystem::path& root) {
             m.loadAfter = readStringArray(t, "load_after");
             m.requires_ = readStringArray(t, "requires");
             m.dataOverlay = t["data_overlay"].value_or(false);
+            if (const auto* av = t["assets"].as_boolean()) {
+                if (!av->get()) {
+                    m.assets.clear();  // assets = false
+                }
+            } else if (auto as = t["assets"].value<std::string>()) {
+                m.assets = *as;
+            }
             m.apiVersion = static_cast<int>(t["api_version"].value_or(std::int64_t{1}));
             if (m.apiVersion > kApiVersion) {
                 spdlog::error("mods: '{}' needs Lua API version {} but this build provides {}: update risen-spass, mod skipped", m.id,

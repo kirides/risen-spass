@@ -110,6 +110,7 @@ Helper chunks written in Lua live inside the `.cpp` file next to the binding (`c
   `session.start`; existing entities and savegame/new-game worlds keep their own property copies, inventory stacks and new spawns follow the template.
 - `risen.vfs` lists/reads the packed archives through the engine's own VFS; template names come from
   `data/common/templates/**/*.tple`.
+- Loose resource files work (meshes, materials, images, actors; RE.md §26): resources are found by the bare compiled file name (`X._xmsh`) in a name cache that every mounted directory feeds; `risen.assets` / `mod.toml` `assets` mount them, `risen.template.create` checks `mesh`/`icon` names. Entity templates themselves cannot be loose files.
 
 ## Tooling gotchas (this machine)
 

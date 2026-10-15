@@ -5,7 +5,7 @@ decorated export name (`GetProcAddress`), so nothing depends on addresses; the R
 see `risen.engine.build()`). **Required** symbols must resolve or the layer stays off; for an optional one only its own feature is
 disabled (`risen.engine.missing()` lists what failed). To add one: see the developer guide in `docs/DEVELOPMENT.md`.
 
-254 symbols, 153 required.
+266 symbols, 153 required.
 
 ## Engine.dll
 
@@ -35,6 +35,13 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `evfs_mount_dir` | `bool eCVirtualFileSystem::MountDirectory(class bCString const &,class bCString const &)` | 0x734390 | no |
 | `evfs_process_mountlist_file` | `bool eCVirtualFileSystem::ProcessMountList(class bCString const &)` | 0x735360 | no |
 | `evfs_unmount` | `bool eCVirtualFileSystem::Unmount(class bCString const &)` | 0x734310 | no |
+| `gui_collection_save_xml` | `bool eCGuiImageCollection2::SaveXml(char const *)` | 0x530140 | no |
+| `gui_deferred_bitmap` | `class eCGuiBitmap2 * eCDeferredGuiBitmap2::GetBitmap(void)const ` | 0x52a380 | no |
+| `gui_load_bitmap` | `class IFFGuiBitmap2 * eCGuiDevice2::LoadBitmapA(char const *,struct HINSTANCE__ *)` | 0x9ce50 | no |
+| `gui_load_collection` | `class eCGuiImageCollection2 * eCGuiDevice2::LoadImageCollectionA(char const *,struct HINSTANCE__ *)` | 0x5192b0 | no |
+| `gui_load_image_list` | `class IFFGuiImageList2 * eCGuiDevice2::LoadImageListA(char const *,struct HINSTANCE__ *)` | 0x9cf10 | no |
+| `gui_module_device` | `class eCGuiDevice2 * eCGuiModule2::GetDevice(void)` | 0x51a2c0 | no |
+| `gui_query_bitmap` | `class eCDeferredGuiBitmap2 * eCGuiDevice2::QueryBitmapA(char const *)` | 0x517720 | no |
 | `loc_exists_id` | `bool eCLocAdmin2::ExistsID(class bCString const &)const ` | 0x7376a0 | yes |
 | `loc_get_string` | `class bCUnicodeString eCLocAdmin2::GetString(class bCString const &)const ` | 0x7372f0 | yes |
 | `loc_get_text_language` | `class bCString eCLocAdmin2::GetTextLanguage(void)const ` | 0x7388a0 | yes |
@@ -50,6 +57,9 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `node_attach_child` | `bool eCNode::AttachChild(class eCNode *)` | 0x69d3e0 | no |
 | `ps_class_name` | `class bCString const & eCEntityPropertySet::GetPropertySetClassName(void)const ` | 0x6b0600 | no |
 | `ps_get_entity` | `class eCEntity * eCEntityPropertySet::GetEntity(void)` | 0x6b0470 | no |
+| `res_file_path` | `class bCString eCResource2::GetFilePath(void)const ` | 0x683cc0 | no |
+| `res_get` | `class eCResource2 * eCResource2::GetResource(class bCString const &)` | 0x684160 | no |
+| `res_state` | `int eCStatisticText::GetItemCount(void)const ` | 0x8d080 | no |
 | `scene_ctx_at` | `class eCEntityDynamicContext * eCSceneAdmin::GetDynamicEntityContext(int)const ` | 0x69a670 | no |
 | `scene_ctx_count` | `int eCSceneAdmin::GetDynamicEntityContextCount(void)const ` | 0x69a660 | no |
 | `scene_get_entity_by_id` | `class eCNode * eCSceneAdmin::GetEntity(class bCPropertyID const &,enum eEEntityType)` | 0x697b80 | no |
@@ -92,6 +102,8 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `table_lookup_value3` | `bool CFXTableMap::LookupValue(class bCUnicodeString const &,class bCUnicodeString const &,class bCUnicodeString &)const ` | 0x40200 | yes |
 | `vfs_file_size` | `unsigned __int64 CFXVirtualFileSystem::GetFileSize(class bCString const &)const ` | 0x38a80 | no |
 | `vfs_instance` | `class CFXVirtualFileSystem & CFXVirtualFileSystem::GetInstance(void)` | 0x37ed0 | no |
+| `vfs_lookup_physical` | `bool CFXVirtualFileSystem::LookupCachedPhysicalPath(class bCString const &,class bCString &)const ` | 0x37f80 | no |
+| `vfs_lookup_virtual` | `bool CFXVirtualFileSystem::LookupCachedVirtualPath(class bCString const &,class bCString &)const ` | 0x37fa0 | no |
 | `vfs_virtual_to_physical` | `bool CFXVirtualFileSystem::VirtualToPhysicalPath(class bCString const &,class bCString &)const ` | 0x392a0 | no |
 ## Game.dll
 

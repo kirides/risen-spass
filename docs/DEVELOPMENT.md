@@ -15,7 +15,7 @@ How the project is organised and how to extend it. (`CLAUDE.md` holds the same r
 | `types/risen.d.lua` | LuaLS definitions of the API — **must always match the bindings** |
 | `mods/` | example mods; `*_driver`, `vfsprobe`, `templatedump`, `itemdump`, `persistdemo` are development tools that drive or probe the game |
 | `tests/` | unit tests that run without the game |
-| `tools/` | export dumping/demangling, Ghidra helper, doc generators, API consistency check |
+| `tools/` | export dumping/demangling, Ghidra helpers (`ghidra/DumpDecomp.java`, `DumpVtable.java`), doc generators, API consistency check |
 | `docs/` | `LUA_API.md` (API), `RE.md` (findings per topic), `SYMBOLS.md`/`TEMPLATES.md`/`ITEM_PROPERTIES.md`/`NPC_PROPERTIES.md` (generated), `NEXT_STEPS.md` (roadmap) |
 
 ## Adding a Lua binding
@@ -63,11 +63,12 @@ property sets through the entity's vtable. The engine's own log function is an e
 * `scripts\test-run.ps1 -Mods <mod>[,<mod>] -Seconds 120 -Filter '<regex>'` deploys the build and the chosen mods into the copy, starts a new game
   (`-Start load` quick-loads, `-NoAutostart` stays in the menu), and prints the matching log lines. `config.toml [debug] app_data` (set by the script)
   keeps savegames and `ConfigUser.xml` inside the copy.
-* `scripts\smoke-test.ps1` runs every scenario (persistence, fetchquest, commands, branch, templates, balance, npcs, newtemplates; each ends itself, about 10.8 minutes in all one after the other, was 14+; `-Parallel 3` about 4.5 minutes), prints a pass/fail table with timings and returns a
+* `scripts\smoke-test.ps1` runs every scenario (persistence, fetchquest, commands, branch, templates, balance, npcs, newtemplates, newassets; each ends itself, about 10.8 minutes in all one after the other, was 14+; `-Parallel 3` about 4.5 minutes), prints a pass/fail table with timings and returns a
   nonzero exit code on failure: `-List`, `-Scenario templates,npcs`, `-FailFast`, `-TotalSeconds` (time budget), `-Parallel N` (N game instances at once, see "Parallel instances"). Run it before committing changes to events, saving,
   quests, dialogues or items. See "Testing and tracing" below.
 * Probe mods drive the game from `tick`: create a `mods/<name>` that logs what the engine reports, run it with `test-run.ps1`, read the log.
   `-Unsafe` lifts the Lua sandbox (to write fixture files), `-TraceFiles <text>` logs the engine's file opens from process start.
+  Files a mod makes at run time (`risen.assets.write`) live in `<Risen>\bin\spass\generated\<mod>`, which `test-run.ps1` does not clean: the `newassets` scenario relies on that for its second phase (`use`) and starts its first phase with `risen.assets.clear()`.
 
 ## Testing and tracing
 

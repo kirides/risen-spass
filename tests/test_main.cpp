@@ -17,6 +17,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "common/asset_names.h"
 #include "common/template_id.h"
 #include "common/test_run.h"
 #include "common/trace.h"
@@ -146,6 +147,18 @@ TEST(mods_data_overlay_flag) {
     CHECK(mods.size() == 2);
     for (const auto& m : mods) {
         CHECK(m.dataOverlay == (m.id == "overlay"));
+    }
+}
+
+TEST(mods_assets_key) {
+    TempDir t;
+    t.write("plain/mod.toml", "id = \"plain\"\n");
+    t.write("custom/mod.toml", "id = \"custom\"\nassets = \"files/res\"\n");
+    t.write("off/mod.toml", "id = \"off\"\nassets = false\n");
+    for (const auto& m : spass::lua::discoverMods(t.path)) {
+        if (m.id == "plain") CHECK(m.assets == "assets");
+        if (m.id == "custom") CHECK(m.assets == "files/res");
+        if (m.id == "off") CHECK(m.assets.empty());
     }
 }
 
@@ -437,6 +450,7 @@ TEST(balance_install_reports_each_application_to_on_applied) {
               "return tostring(lines[#lines]:find('E balance: on_applied: .*boom') ~= nil)") == "true");
 }
 
+#include "asset_tests.inc"
 #include "npc_tests.inc"
 #include "template_create_tests.inc"
 #include "test_risen_test.inc"

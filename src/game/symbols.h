@@ -213,6 +213,18 @@
     X(archive_file_read, L"Engine.dll", "?Read@eCArchiveFile@@UEAAKPEAXK@Z", unsigned long (*)(void* self, void* buffer, unsigned long count), false) \
     X(archive_file_close, L"Engine.dll", "?Close@eCArchiveFile@@QEAAXXZ", void (*)(void* self), false) \
     X(vfs_file_size, L"FFC.dll", "?GetFileSize@CFXVirtualFileSystem@@QEBA_KAEBVbCString@@@Z", unsigned long long (*)(const void* self, const void* path), false) \
+    X(vfs_lookup_virtual, L"FFC.dll", "?LookupCachedVirtualPath@CFXVirtualFileSystem@@QEBA_NAEBVbCString@@AEAV2@@Z", bool (*)(const void* self, const void* name, void* virtualOut), false) \
+    X(vfs_lookup_physical, L"FFC.dll", "?LookupCachedPhysicalPath@CFXVirtualFileSystem@@QEBA_NAEBVbCString@@AEAV2@@Z", bool (*)(const void* self, const void* name, void* physicalOut), false) \
+    X(res_get, L"Engine.dll", "?GetResource@eCResource2@@SAPEAV1@AEBVbCString@@@Z", void* (*)(const void* name), false) \
+    X(res_state, L"Engine.dll", "?GetResourceState@eCResource2@@QEBA?AW4eEResourceState@@XZ", int (*)(const void* self), false) \
+    X(res_file_path, L"Engine.dll", "?GetFilePath@eCResource2@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false) \
+    X(gui_module_device, L"Engine.dll", "?GetDevice@eCGuiModule2@@SAPEAVeCGuiDevice2@@XZ", void* (*)(), false) \
+    X(gui_load_bitmap, L"Engine.dll", "?LoadBitmapA@eCGuiDevice2@@QEAAPEAVIFFGuiBitmap2@@PEBDPEAUHINSTANCE__@@@Z", void* (*)(void* self, const char* name, void* hinst), false) \
+    X(gui_query_bitmap, L"Engine.dll", "?QueryBitmapA@eCGuiDevice2@@QEAAPEAVeCDeferredGuiBitmap2@@PEBD@Z", void* (*)(void* self, const char* name), false) \
+    X(gui_deferred_bitmap, L"Engine.dll", "?GetBitmap@eCDeferredGuiBitmap2@@QEBAPEAVeCGuiBitmap2@@XZ", void* (*)(const void* self), false) \
+    X(gui_load_image_list, L"Engine.dll", "?LoadImageListA@eCGuiDevice2@@QEAAPEAVIFFGuiImageList2@@PEBDPEAUHINSTANCE__@@@Z", void* (*)(void* self, const char* name, void* hinst), false) \
+    X(gui_load_collection, L"Engine.dll", "?LoadImageCollectionA@eCGuiDevice2@@QEAAPEAVeCGuiImageCollection2@@PEBDPEAUHINSTANCE__@@@Z", void* (*)(void* self, const char* name, void* hinst), false) \
+    X(gui_collection_save_xml, L"Engine.dll", "?SaveXml@eCGuiImageCollection2@@IEAA_NPEBD@Z", bool (*)(void* self, const char* path), false) \
     X(mem_free, L"SharedBase.dll", "?Free@bCMemoryAdmin@@QEAAXPEAX@Z", void (*)(void* self, void* ptr), false) \
     X(evfs_mount_dir, L"Engine.dll", "?MountDirectory@eCVirtualFileSystem@@IEAA_NAEBVbCString@@0@Z", bool (*)(void* self, const void* virtualPath, const void* physicalPath), false) \
     X(evfs_unmount, L"Engine.dll", "?Unmount@eCVirtualFileSystem@@IEAA_NAEBVbCString@@@Z", bool (*)(void* self, const void* virtualPath), false) \

@@ -12,6 +12,7 @@ load_after  = ["other_mod"]    # ordering only
 requires    = ["base_mod"]     # hard dependency (mod is skipped if missing)
 api_version = 1                # Lua API generation the mod was written for; a mod asking for a newer one is skipped with an error (risen.api_version)
 data_overlay = false           # experimental: mount the mod directory into the virtual file system at startup (docs/RE.md §17)
+assets       = "assets"        # directory of loose meshes/textures/... mounted at startup (false = none; see "New meshes, textures and icons")
 ```
 
 The Lua layer starts right after the game's script DLLs are loaded (`gCScriptAdmin::PostInitialize`), before any
@@ -288,7 +289,7 @@ entity:dependencies()                        -- the mesh/actor files the engine 
 ```
 * **Overrides**: for an item base the keys of the `items` section (`value`, `damage`, `requires`, `modifies`, `use_type`, `category`, `mana_cost`, `properties`), for an NPC/monster base those of the `npcs` section
   (`hp_max`, `level`, `skills`, `guild`, `loot`, `properties`, ...), for both `name`, `description` (items), `mesh` (item: `eCMesh_PS.MeshFileName`; NPC/monster: `eCAnimation_PS.ResourceFilePath`, the actor file, e.g. `Ani_Boar_Monster_Boar.xac`),
-  `icon` (`gCItem_PS.IconImage`) and `material` (`MaterialSwitch`). `properties` reaches everything else (e.g. `gCItem_PS = { ItemInventory = ... }`). **Everything is validated before anything is created** (names, base, setting names, types, skill
+  `icon` (`gCItem_PS.IconImage`) and `material` (`MaterialSwitch`, a number). `mesh` and `icon` are **checked** against the game archives and the mounted asset directories (`check_assets = false` opts out; new files: next section). `properties` reaches everything else (e.g. `gCItem_PS = { ItemInventory = ... }`). **Everything is validated before anything is created** (names, base, setting names, types, skill
   names, conflicts such as `mesh` plus `properties.eCMesh_PS.MeshFileName`); a bad request returns `nil, reason` and creates nothing. Names: letters, digits and `_`, not starting with a digit, at most 63 characters; a shipped template name is refused.
 * **Labels**: the engine shows `FO_<name>` for the focus label of an entity and for the inventory name of an item (a `focus_unique:FO_<name>` entry wins), `ITEMDESC_<name>` for an item's description. `name`/`description` set them with `risen.loc.set`;
   a mod's `strings/all.csv` with the same ids works too. A clone without `name` shows its base's label unless a mod already supplied one. A key set without table prefix (`FO_Bob`) now also answers the prefixed id the engine asks for (`focus:FO_Bob`).
@@ -298,7 +299,50 @@ entity:dependencies()                        -- the mesh/actor files the engine 
 * **A clone is a snapshot** of its base when it is created (later edits of the base do not reach it); creating again with the same base only re-applies the overrides. Existing entities keep their own values (`instances = true` writes them). The clone lives until the
   process ends; `remove` only gives the names back (refused while live entities of it exist) -- items already handed out keep working -- and `create` with the same base brings it back with the same ID.
 * **Timing**: items and NPC templates can be cloned from the first `tick` on, also while a world is loaded (a hook skips `gCNavigation_PS::OnPostCopy` during the copy: it crashed on templates once a world existed). The base is loaded on demand.
-* **Not covered**: new meshes/textures/icons (only existing ones can be referenced, M5), spells, appearance parts of humans (heads are `eCBodyPart_PS` item templates `Hero_Head_*`, not part of the NPC template), multi templates (refused).
+* **Not covered**: new meshes/textures/icons (see the next section), spells, appearance parts of humans (heads are `eCBodyPart_PS` item templates `Hero_Head_*`, not part of the NPC template), multi templates (refused).
+
+### New meshes, textures and icons — `risen.assets` (see `mods/newassets`, [RE.md §26](RE.md))
+A mod can bring its own **loose resource files** and use them for new items and creatures. The engine finds a resource by the bare, case-insensitive name of the *compiled* file in a cache of everything that is mounted
+(`X.xmsh` -> `X._xmsh`, `X.tga`/`.dds`/`.ximg` -> `X._ximg`, `X.xmat` -> `X._xmat`, `X.xac` -> `X._xmac`), so a file only has to sit in a mounted directory (any sub-directory):
+* `<mod>/assets/` is mounted at startup (`mod.toml`: `assets = "assets"` is the default, `assets = "files/res"` another directory, `assets = false` none).
+* `risen.assets.write(relpath, data)` writes into `<Risen>\bin\spass\generated\<mod>\` (the one place a sandboxed mod may write; mounted at startup in every later process): for assets a mod derives itself.
+* `risen.assets.mount("some/dir")` mounts another directory of the mod at run time (no restart needed; `risen.vfs.mount` does the same for any path).
+A loose file with the name of a shipped file **shadows** it (retexturing: ship `Item_Apple._xmsh` and the apple looks different; effective for resources not loaded yet).
+```lua
+-- 1. files (here derived at run time from shipped ones: nothing of the game has to be redistributed; see mods/newassets for the whole recipe)
+local club = assert(risen.assets.read("It_Wpn_1H_Club.xmsh"))                 -- bytes of a shipped resource, by its property name
+assert(risen.assets.write("meshes/Spass_Club._xmsh", club))                   -- or: ship <mod>/assets/meshes/Spass_Club._xmsh
+-- 2. icons: an XML image list + its texture, or a whole image file
+assert(risen.assets.load_icons("Spass_Icons"))                                -- Spass_Icons.ximl (+ Spass_IconAtlas._ximg) found like any asset; names its IC_* images
+risen.assets.load_bitmap("Spass_Icon.ximg")                                   -- a single image file as bitmap named by its file name
+-- 3. templates (on the first tick): names are checked, the request is refused with nil, reason for a name the engine cannot resolve
+local t, why = risen.template.create("Spass_Club2", "It_1H_Club", { mesh = "Spass_Club.xmsh", icon = "IC_Spass_Club" })
+risen.template.create("X", "Wolf", { mesh = "Spass_Wolf.xac" })               -- an NPC's `mesh` is its actor file (.xac, compiled ._xmac)
+risen.template.create("Y", "It_1H_Club", { mesh = "Spass_Nowhere.xmsh" })     -- nil, "mesh: no file 'Spass_Nowhere._xmsh' in the game archives or ..."
+risen.template.create("Z", "It_1H_Club", { mesh = "Spass_Nowhere.xmsh", check_assets = false })   -- opt out: the name is used as given
+risen.balance.install({ new_items = { Spass_Club3 = { base = "It_1H_Club", mesh = "Spass_Club.xmsh", icon = "IC_Spass_Club" } } })   -- the sections accept the same keys (and check_assets)
+```
+| Function | Notes |
+|---|---|
+| `risen.assets.info(name)` | `{ name, compiled, kind, found, virtual, physical, loose, source }` for a property-style name (`X.xmsh`); `source` is `"game"`, `"<mod>:assets"`, `"<mod>:generated"`, `"<mod>:runtime"` or `"loose"` |
+| `risen.assets.exists(name)`, `compiled_name(name)`, `read(name)` | `read` returns the bytes of the resolved file (packed or loose) for deriving new assets |
+| `risen.assets.check(kind, name)` | what `template.create` runs: `kind` `"mesh"`, `"actor"`, `"image"`, `"material"` or `"icon"`; `true, info` or `nil, reason` |
+| `risen.assets.resource(name)` | the engine's resource object: `{ exists, state, path }`, `state` 3 = data loaded (an entity that uses it must exist; wait a moment after spawning): the proof that a file was really loaded; a missing file gives state 0 |
+| `risen.assets.write(rel, data)`, `remove(rel)`, `clear()` | files below `<spass>\generated\<mod>`; `rel` has no `..`, drive or empty parts; the directory is remounted lazily (`refresh()` does it at once) |
+| `risen.assets.mount(reldir)`, `mounted()` | directories mounted for mods |
+| `risen.assets.load_icons(list)` | registers `<list>.ximl` (XML image list) as GUI bitmaps; `load_image_list`, `load_bitmap(file.ximg)`, `bitmap(name)` (`{ attached }`) are the engine calls behind it |
+| `risen.assets.dump_collection(name, rel)` | development aid: writes a stock collection (`IMC_Icons`) as XML to `<spass>\generated\_dump\<rel>` to show the `.ximl` format |
+| `risen.vfs.lookup(file_name)`, `lookup_physical(file_name)` | the engine's name cache: bare compiled file name (`It_Wpn_1H_Club._xmsh`) -> virtual / physical path |
+* **Chain**: a mesh names its material (`ItWpn_SwordMisc_01_Diffuse_01._xmat`), a material its images (`...tga`), so a new texture on a new item means a new mesh file that names a new material that names the new image (all three in the mounted directory). The names are stored as strings with length prefixes inside
+  the files: **rename to a name of the same length** (`mods/newassets` shows how) or use a tool that rewrites the file. `material = n` in `template.create` is only the *switch number* of the engine's material variants, not a name.
+* **Icons**: `icon` is a GUI bitmap name (case-insensitive): shipped icons are `IC_It_...` (cells of `GUI_IconSets01`); a mod registers its own with an image list (one texture, many named rectangles) or a whole image file (scaled into the slot). `risen.assets.load_icons` / `load_bitmap` must have run before `create` (the first `tick` is early enough, the GUI exists then).
+  The `.ximl` format is `<ImageList ClassName="eCGuiImageList2" ImageSize="0; 0" TextureName="Spass_IconAtlas.dds"><Images><Image ClassName="eCGuiImage2" ImageName="IC_Spass_Club" RectOnTexture="123; 534; 163; 574" BlendMode="eEImageBlend_AlphaBlend"></Image></Images></ImageList>`
+  (rectangle = `left; top; right; bottom`); the texture is `Spass_IconAtlas._ximg`.
+* **File formats** (RE.md §26): every `._x*` file is `GR01` + a content tag (`MS02` mesh, `SM01` material, `IM04` image) + header + a property stream; an image's payload is an ordinary DDS (DXT1 or A8R8G8B8) inside. There is no exporter here: take files from the game (`risen.assets.read`, or `risen.vfs.read` for any path), from the game's own tools,
+  or derive them as the example does (rename within a file, recolour the DDS payload of an image).
+* **Verified live**: loose mesh, material, texture and actor loaded (resource `state` 3 / 1), items and a creature spawned with them, icons registered from an image list and from a single image file, shadowing a shipped name and undoing it, startup mounts of `assets` and `generated`, the refusal of unknown names.
+  **Not verified**: how it looks on screen (screenshots of the D3D9 window are black), names of another length inside a patched file, the inventory drawing of a new icon, replacing a resource the engine has already loaded.
+* Entity **templates themselves** are still not loadable from files (RE.md §17); the new templates come from `risen.template.create`.
 
 ## NPCs — `risen.npc.spawn` and the Entity NPC methods
 Spawn a template and configure it in one call (see `mods/npcdemo`):
@@ -455,7 +499,8 @@ risen.vfs.dirs("data/common")                    -- sub-directory names
 risen.vfs.find("data/common/templates/Items", "*")   -- file names matching a pattern ("*.dll", "It_*", ...)
 risen.vfs.find_ext("ini", "xml")
 risen.vfs.walk("data/common/templates", "*.tple")   -- recursive: every file below a directory as "dir/sub/name"
-risen.vfs.mount("mymod", mod.dir)     -- mount a physical directory (files appear under mymod/..., and shadow packed files of the same relative path)
+risen.vfs.mount("mymod", mod.dir)     -- mount a physical directory (files appear under mymod/... and in the name cache that resources are found in; a loose file shadows a packed one of the same name)
+risen.vfs.lookup("It_Wpn_1H_Club._xmsh")        -- the engine's name cache: bare compiled file name -> virtual path (lookup_physical: path on disk)
 risen.vfs.unmount("mymod")
 risen.vfs.read("ini/loc.ini" [, max_bytes])      -- file contents as a string (nil if it cannot be opened); default limit 16 MiB
 risen.vfs.size(path)                             -- unreliable for packed files (often 0): read instead

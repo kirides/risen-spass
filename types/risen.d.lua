@@ -337,9 +337,10 @@ local templateApi = {}
 ---@field base? string Only in a balancing section: the template to clone.
 ---@field name? string|table<string,string> Label shown for the item/NPC (localization id `FO_<name>`): one text for every language or `{ English = "...", German = "..." }`.
 ---@field description? string|table<string,string> Item description (`ITEMDESC_<name>`), same forms. Items only.
----@field mesh? string Mesh of an item (`eCMesh_PS.MeshFileName`, `"It_Wpn_1H_Club.xmsh"`) or the actor file of an NPC (`eCAnimation_PS.ResourceFilePath`, `"Ani_Boar_Monster_Boar.xac"`).
----@field icon? string Inventory icon of an item (`gCItem_PS.IconImage`, `"ic_it_1h_club"`).
----@field material? integer Material switch of the mesh/actor (`MaterialSwitch`).
+---@field mesh? string Mesh of an item (`eCMesh_PS.MeshFileName`, `"It_Wpn_1H_Club.xmsh"`) or the actor file of an NPC (`eCAnimation_PS.ResourceFilePath`, `"Ani_Boar_Monster_Boar.xac"`). The file has to exist in the game archives or in a mounted asset directory (`risen.assets`), otherwise the request is refused (`check_assets = false` skips the check).
+---@field icon? string Inventory icon of an item (`gCItem_PS.IconImage`): the name of a registered GUI bitmap, `"ic_it_1h_club"` / `"IC_It_1H_Club"` or one a mod registered (`risen.assets.load_icons`, `risen.assets.load_bitmap`). Checked like `mesh`.
+---@field material? integer Material switch of the mesh/actor (`MaterialSwitch`), a number. New materials come with a new mesh file that names them (`risen.assets`).
+---@field check_assets? boolean Default `true`: refuse a `mesh` / `icon` that the engine cannot resolve. `false` uses the names as given.
 
 ---@class TemplateCreateOptions
 ---@field instances? boolean Also write the overrides into live entities of the clone (default `false`).
@@ -1481,6 +1482,16 @@ local vfsApi = {}
 ---@param path string
 ---@return string|nil
 function vfsApi.physical(path) end
+---The virtual path the engine's **name cache** resolves a bare file name to (`CFXVirtualFileSystem::LookupCachedVirtualPath`): resources are found this way, by the
+---case-insensitive name of the compiled file, whatever directory or `.pak` it is in. `lookup("It_Wpn_1H_Club._xmsh")` is `"#G3:/data/common/meshes/Items_Weapons_Swords_01/It_Wpn_1H_Club._xmsh"`;
+---paths and raw names (`.xmsh`) are not keys. See `risen.assets.info` for names as they appear in properties.
+---@param file_name string
+---@return string|nil
+function vfsApi.lookup(file_name) end
+---Like `lookup`, but the path on disk: inside `<...>.pak\...` for packed files, the loose file for mounted directories.
+---@param file_name string
+---@return string|nil
+function vfsApi.lookup_physical(file_name) end
 ---@param path string
 ---@return boolean
 function vfsApi.exists(path) end
@@ -1504,9 +1515,9 @@ function vfsApi.dirs(dir) end
 ---@return string[]
 function vfsApi.walk(dir, pattern) end
 ---Mounts a physical directory into the virtual file system (the engine's `MountDirectory`, as used for the entries of
----`mountlist_packed.ini`). Its files show up under `virtual_path`, and a file `<dir>/a/b.txt` is also what `read("a/b.txt")` returns
----(it shadows a packed file with that path until `unmount`). Not usable for entity templates: the engine terminates when it loads a
----loose template (docs/RE.md §17).
+---`mountlist_packed.ini`). Its files show up under `virtual_path` and in the name cache that resources are looked up in (`lookup`), where a loose file
+---shadows a packed file of the same name. Not usable for entity templates: the engine terminates when it loads a loose template (docs/RE.md §17).
+---Mods should prefer `risen.assets.mount` / the mod's `assets` directory (docs/RE.md §26).
 ---@param virtual_path string e.g. `"mymod"` or an existing virtual directory.
 ---@param physical_path string Absolute path of a directory (forward slashes are fine).
 ---@return boolean ok
@@ -1524,6 +1535,124 @@ function vfsApi.size(path) end
 ---@param max_bytes? number Default 16 MiB.
 ---@return string|nil
 function vfsApi.read(path, max_bytes) end
+
+---Loose resource files: new meshes, materials, textures, actors and icons (docs/RE.md §26, docs/LUA_API.md "New meshes, textures and icons").
+---
+---The engine turns a raw name (`X.xmsh`, `X.tga`, `X.xac`) into the compiled file name (`X._xmsh`, `X._ximg`, `X._xmac`) and finds it by that bare name, case
+---insensitive, in a cache of everything mounted. A mod's `assets` directory (`mod.toml` key `assets`, default `assets`) and the directory `risen.assets.write`
+---fills (`<Risen>\bin\spass\generated\<mod>`) are mounted at startup; `mount` adds a directory later. A loose file shadows a shipped file of the same name
+---(for resources that are not loaded yet). Item `mesh`/`icon` and NPC `mesh` (actor) names of `risen.template.create` are checked against all of this.
+---@class RisenAssetsApi
+local assetsApi = {}
+
+---Where a resource name comes from.
+---@class AssetInfo
+---@field name string The name asked for.
+---@field compiled? string File name the engine looks up (`It_Wpn_1H_Club._xmsh`); missing when `name` is not a resource name (`found` is `false`).
+---@field kind? string `"mesh"`, `"material"`, `"image"`, `"actor"`, `"motion"` or `"collision"`.
+---@field found boolean A file with that name exists in the game archives or a mounted directory.
+---@field virtual? string Virtual path (`#G3:/data/common/meshes/...`).
+---@field physical? string Path on disk (inside a `.pak` for packed files).
+---@field loose? boolean `true` for a real file (not inside a `.pak`).
+---@field source? string `"game"` for packed files, `"<mod>:assets"`, `"<mod>:generated"` or `"<mod>:runtime"` for the directories of this layer, `"loose"` otherwise.
+
+---The engine's resource object of a name (`eCResource2`).
+---@class AssetResource
+---@field exists boolean The engine knows the file (`state` is not 0).
+---@field state integer `0` missing or failed to load, `1` header known, `2` queued, `3` data loaded and cached (a mesh/material is loaded the first time something uses it).
+---@field path string Virtual path of the file it was loaded from.
+
+---A mounted asset directory.
+---@class AssetMountInfo
+---@field mod string
+---@field kind string `"assets"`, `"generated"` or `"runtime"`.
+---@field virtual string
+---@field physical string
+
+---Name mapping: `"It_Wpn_1H_Club.xmsh"` -> `"It_Wpn_1H_Club._xmsh"`, `.tga/.dds/.png/.ximg` -> `._ximg`, `.xmat` -> `._xmat`, `.xac` -> `._xmac`; an already compiled name stays.
+---@param name string A bare file name (no directory).
+---@return string|nil compiled
+---@return string kind The kind, or the reason when `compiled` is `nil`.
+function assetsApi.compiled_name(name) end
+---Looks a resource name up in the name cache. Pending files written by `write` are mounted first.
+---@param name string `"Spass_Club.xmsh"`, `"X.tga"`, `"X._ximg"`, ...
+---@return AssetInfo
+function assetsApi.info(name) end
+---`true` when `info(name).found`.
+---@param name string
+---@return boolean
+function assetsApi.exists(name) end
+---The bytes of the file a resource name resolves to (a packed or a loose one), for deriving new assets from existing ones:
+---`risen.assets.write("meshes/Mine._xmsh", risen.assets.read("It_Wpn_1H_Club.xmsh"))`.
+---@param name string
+---@return string|nil data
+---@return string|nil reason
+function assetsApi.read(name) end
+---Checks a name the way `risen.template.create` does: `kind` is `"mesh"`, `"actor"`, `"image"`, `"material"` or `"icon"` (a registered GUI bitmap). Returns `true` and the `AssetInfo`
+---(nothing for icons), or `nil, reason`.
+---@param kind string
+---@param name string
+---@return boolean|nil ok
+---@return AssetInfo|string|nil infoOrReason
+function assetsApi.check(kind, name) end
+---The engine's resource object for a name: registers it and loads its header when it is new (a missing file gives `exists = false`, the entry stays registered).
+---`state` 3 means the data was loaded, which happens when an entity that uses it exists (spawn an item, wait a moment).
+---@param name string
+---@return AssetResource|nil
+function assetsApi.resource(name) end
+---Directories mounted for mods (startup and runtime).
+---@return AssetMountInfo[]
+function assetsApi.mounted() end
+---Remounts generated directories that received or lost files since the last mount (the name cache is built when a directory is mounted). Done automatically by `info`, `resource`, `read`, `load_icons`.
+---@return integer remounted
+function assetsApi.refresh() end
+
+---Writes a file below `<Risen>\bin\spass\generated\<mod>\` (nothing else can be written; `relpath` has no `..`, drive or empty parts). Files of that directory are mounted at startup in every later
+---process, so a mod can derive assets once and keep them. A file whose name already exists shadows it.
+---@param relpath string e.g. `"meshes/Spass_Club._xmsh"`.
+---@param data string Binary-safe, up to 256 MB.
+---@return boolean|nil ok
+---@return string|nil reason
+function assetsApi.write(relpath, data) end
+---Deletes a file or directory tree that `write` created.
+---@param relpath string
+---@return integer|nil removed
+---@return string|nil reason
+function assetsApi.remove(relpath) end
+---Deletes everything this mod generated.
+---@return integer removed
+function assetsApi.clear() end
+---Mounts a directory of this mod (relative to the mod directory) so that its files are found as resources.
+---@param reldir string
+---@return string|nil virtual_name
+---@return string|nil reason
+function assetsApi.mount(reldir) end
+
+---Registers the images of the XML image list `<list>.ximl` (found like any asset file) as named GUI bitmaps, so that their `ImageName` values work as `icon`.
+---The file looks like `<ImageList ClassName="eCGuiImageList2" ImageSize="0; 0" TextureName="My_Atlas.dds"><Images><Image ClassName="eCGuiImage2" ImageName="IC_My_Sword"
+---RectOnTexture="123; 534; 163; 574" BlendMode="eEImageBlend_AlphaBlend"></Image></Images></ImageList>` with `My_Atlas._ximg` next to it (`dump_collection` shows the stock lists).
+---Safe to call again; do it before the templates that use the icons (the first `tick`).
+---@param list string e.g. `"Spass_Icons"`
+---@return boolean|nil ok
+---@return string|nil reason
+function assetsApi.load_icons(list) end
+---Lower level of `load_icons`: `eCGuiDevice2::LoadImageListA`.
+---@param list string
+---@return boolean ok
+function assetsApi.load_image_list(list) end
+---Registers a whole image file (`Spass_Icon.ximg`, a `_ximg` found as an asset) as a GUI bitmap whose name is the file name; use `icon = "Spass_Icon.ximg"`. The picture is scaled into the icon slot.
+---@param name string
+---@return boolean ok
+function assetsApi.load_bitmap(name) end
+---Whether the GUI knows a bitmap name (item icons are `IC_It_...`, case-insensitive); `attached` is `false` for a name nothing registered. Asking registers an empty placeholder for an unknown name.
+---@param name string
+---@return {attached: boolean}|nil
+function assetsApi.bitmap(name) end
+---Development aid: writes a stock image collection (`"IMC_Icons"`, `"IMC_GUI"`, ...) as XML to `<Risen>\bin\spass\generated\_dump\<relpath>`; shows the `.ximl` format.
+---@param collection string
+---@param relpath string
+---@return boolean ok
+function assetsApi.dump_collection(collection, relpath) end
 
 ---Development aids.
 ---@class RisenDebugApi
@@ -1722,6 +1851,7 @@ function logApi.error(...) end
 ---@field loc RisenLocApi
 ---@field save RisenSaveApi
 ---@field vfs RisenVfsApi
+---@field assets RisenAssetsApi
 ---@field debug RisenDebugApi
 ---@field engine RisenEngineApi
 local risen_ = {}

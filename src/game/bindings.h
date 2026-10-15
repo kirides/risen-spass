@@ -4,6 +4,8 @@
 
 #include <sol/sol.hpp>
 
+#include "lua/mods.h"
+
 namespace spass::game {
 
 // Registers the native `risen.*` API tables (quest, gamevar, ...) with the Lua runtime.
@@ -21,5 +23,9 @@ void bindEngineInfo(sol::state_view lua, sol::table risen);
 
 // risen.vfs.* (lua_vfs.cpp): the engine's virtual file system, including packed archives.
 void bindVfs(sol::state_view lua, sol::table risen);
+
+// risen.assets natives (lua_assets.cpp): resource state, GUI bitmaps.
+void bindAssetNatives(sol::state_view lua, sol::table risen);
+void bindAssetModApi(sol::state_view lua, sol::table api, const lua::ModInfo& mod);  // risen.assets.write/mount of the calling mod
 
 }  // namespace spass::game

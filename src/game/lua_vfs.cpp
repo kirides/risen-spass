@@ -84,6 +84,30 @@ void bindVfs(sol::state_view lua, sol::table risen) {
         return result;
     });
 
+    // risen.vfs.lookup("It_Wpn_1H_Club._xmsh") -> the virtual path the engine's name cache resolves a bare file name to
+    // (CFXVirtualFileSystem::LookupCachedVirtualPath: the way resources are found, docs/RE.md §26), or nil.
+    // lookup_physical gives the path on disk (the loose file for mounted directories, the .pak for packed files).
+    const auto lookupFn = [&s](auto fnPtr) {
+        return [&s, fnPtr](const std::string& name) -> sol::optional<std::string> {
+            if (s.vfs_instance == nullptr || s.*fnPtr == nullptr) {
+                return sol::nullopt;
+            }
+            std::string result;
+            bool ok = false;
+            guarded([&] {
+                const BString in(name);
+                BString out;
+                ok = (s.*fnPtr)(s.vfs_instance(), in.get(), out.raw());
+                result = out.str();
+            });
+            if (!ok) {
+                return sol::nullopt;
+            }
+            return result;
+        };
+    };
+    vfs.set_function("lookup", lookupFn(&Symbols::vfs_lookup_virtual));
+    vfs.set_function("lookup_physical", lookupFn(&Symbols::vfs_lookup_physical));
     vfs.set_function("exists", [&s](const std::string& path) {
         bool r = false;
         if (s.evfs_instance != nullptr && s.evfs_exists_file != nullptr) {

@@ -11,6 +11,7 @@
       npcs        - NPC balancing (mods/balance_npcs + balance_npcs_driver)                                                 [risen.test]
       newtemplates - new item/NPC templates (mods/newtemplates + newtemplates_driver); five runs: save, then four fresh-process loads
                      (templates created early / missing / early again / late)                                                [risen.test]
+      newassets    - new meshes, textures and icons from loose files (mods/newassets); two runs: build (derive + play), use (fresh process, files mounted at startup)
 
 .DESCRIPTION
     Needs a built sentry.dll and the test copy (see CLAUDE.md). The [risen.test] scenarios end as soon as they are done
@@ -37,7 +38,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -107,6 +108,14 @@ $scenarios = [ordered]@{
     templates   = @{ Est = 60; Title = 'template editing'; Kind = 'result'; Mods = @('templatepatch', 'templatepatch_driver'); Limit = 400 }
     balance     = @{ Est = 60; Title = 'item balancing'; Kind = 'result'; Mods = @('balance_items', 'balance_driver'); Limit = 400 }
     npcs        = @{ Est = 70; Title = 'NPC balancing'; Kind = 'result'; Mods = @('balance_npcs', 'balance_npcs_driver'); Limit = 500 }
+    # docs/EXAMPLES.md: the example mods, each one a self-contained risen.test scenario
+    ex_template_patch = @{ Est = 50; Title = 'example: patch templates'; Kind = 'result'; Mods = @('example_template_patch'); Limit = 300 }
+    ex_balance        = @{ Est = 45; Title = 'example: balancing'; Kind = 'result'; Mods = @('example_balance'); Limit = 300 }
+    ex_custom_npc     = @{ Est = 70; Title = 'example: custom NPC and quest'; Kind = 'result'; Mods = @('example_custom_npc'); Limit = 300 }
+    ex_fetch_turnin   = @{ Est = 80; Title = 'example: fetch quest, hand-in'; Kind = 'result'; Mods = @('example_fetch_turnin'); Limit = 300 }
+    ex_fetch_pickup   = @{ Est = 60; Title = 'example: fetch quest, collect'; Kind = 'result'; Mods = @('example_fetch_pickup'); Limit = 300 }
+    ex_kill_quest     = @{ Est = 75; Title = 'example: kill quests'; Kind = 'result'; Mods = @('example_kill_quest'); Limit = 300 }
+    ex_quest_rewards  = @{ Est = 100; Title = 'example: quest completion triggers'; Kind = 'result'; Mods = @('example_quest_rewards'); Limit = 300 }
     # one game process per phase (-Param phase=...): "save" plays the whole scenario in a new game and leaves a quick save, the others load it in a fresh process
     newtemplates = @{ Est = 210; Title = 'new templates'; Kind = 'result'; Mods = @('newtemplates', 'newtemplates_driver'); Limit = 200
                       Phases = @(
@@ -115,6 +124,13 @@ $scenarios = [ordered]@{
                           @{ Name = 'load_missing'; Param = @('phase=load_missing'); Start = 'load'; Keep = $true; Limit = 120 }
                           @{ Name = 'load_again'; Param = @('phase=load_again'); Start = 'load'; Keep = $true; Limit = 120 }
                           @{ Name = 'load_late'; Param = @('phase=load_late'); Start = 'load'; Keep = $true; Limit = 120 }
+                      ) }
+    # loose meshes/textures/icons: "build" derives the files from shipped ones (risen.assets.write) and plays the scenario, "use" starts a fresh process in which
+    # the generated directory is already mounted at startup (the files live in <Risen>\bin\spass\generated, which test-run.ps1 does not clean)
+    newassets   = @{ Est = 90; Title = 'new meshes, textures, icons'; Kind = 'result'; Mods = @('newassets'); Limit = 120
+                      Phases = @(
+                          @{ Name = 'build'; Param = @('phase=build'); Start = 'new'; Keep = $false; Limit = 120 }
+                          @{ Name = 'use'; Param = @('phase=use'); Start = 'new'; Keep = $false; Limit = 120 }
                       ) }
 }
 

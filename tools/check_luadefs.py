@@ -74,6 +74,10 @@ for lvl in ('trace', 'debug', 'info', 'warn', 'error'):
 # per-mod risen.save (lua_save.cpp registers on the mod's api table)
 for fn in re.findall(r'save\.set_function\("(\w+)"', (root / 'src/game/lua_save.cpp').read_text(encoding='utf-8')):
     bound[f'save.{fn}'] = 'src/game/lua_save.cpp'
+# per-mod risen.assets (write/remove/clear/mount on the mod's own table `own`) and the Lua helpers of lua_assets.cpp (`function A.<name>(`)
+assets_src = (root / 'src/game/lua_assets.cpp').read_text(encoding='utf-8')
+for fn in re.findall(r'own\.set_function\("(\w+)"', assets_src) + re.findall(r'^function A\.(\w+)\(', assets_src, flags=re.M):
+    bound[f'assets.{fn}'] = 'src/game/lua_assets.cpp'
 for fn in re.findall(r'loc\.set_function\("(\w+)"', (root / 'src/game/loc_files.cpp').read_text(encoding='utf-8')):
     bound[f'loc.{fn}'] = 'src/game/loc_files.cpp'
 # risen.trace.* (runtime.cpp) and the per-mod risen.test.wait_event (a chunk in lua_test.cpp: `function t.<name>(`)
