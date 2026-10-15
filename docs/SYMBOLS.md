@@ -5,7 +5,7 @@ decorated export name (`GetProcAddress`), so nothing depends on addresses; the R
 see `risen.engine.build()`). **Required** symbols must resolve or the layer stays off; for an optional one only its own feature is
 disabled (`risen.engine.missing()` lists what failed). To add one: see the developer guide in `docs/DEVELOPMENT.md`.
 
-266 symbols, 153 required.
+301 symbols, 153 required.
 
 ## Engine.dll
 
@@ -21,10 +21,12 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `archive_get_file` | `bool eCArchiveManager::GetFile(class bCString const &,class eCArchiveFile &)` | 0x724290 | no |
 | `archive_instance` | `class eCArchiveManager & eCArchiveManager::GetInstance(void)` | 0x724600 | no |
 | `bodypart_ps_dependencies` | `void eCBodyPart_PS::GetDependencies(class bTObjArray<class bCString> &,class bTObjArray<class bCString> &,class bTObjArray<class eCTemplateEntityProxy> &)` | 0x4daf60 | no |
+| `eent_kill` | `void eCEntity::Kill(void)` | 0x6a5dd0 | no |
 | `element_base_name` | `class bCString eCProcessibleElement::GetFileBaseName(void)const ` | 0x4ee900 | no |
 | `ent_get_property_set` | `class eCEntityPropertySet * eCEntity::GetPropertySet(class bCString const &)` | 0x21e4a0 | no |
 | `ent_ps_at` | `class eCEntityPropertySet * eCEntity::GetPropertySetAt(int)` | 0x21e430 | no |
 | `ent_ps_count` | `int eCEntity::GetPropertySetCount(void)const ` | 0x21e420 | no |
+| `eproxy_get_entity` | `class eCEntity * eCEntityProxy::GetEntity(void)` | 0x6b1ac0 | no |
 | `evfs_exists_file` | `bool eCVirtualFileSystem::ExistsFile(class bCString const &)` | 0x736790 | no |
 | `evfs_find_dirs` | `bool eCVirtualFileSystem::FindDirectories(class bCString const &,class bTObjArray<class bCString> &)` | 0x733e50 | no |
 | `evfs_find_ext` | `bool eCVirtualFileSystem::FindFilesWithExt(class bCString const &,class bCString const &,class bTObjArray<class bCString> &)` | 0x733f70 | no |
@@ -116,6 +118,28 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `combat_get_species` | `class gCCombatSpecies * gCCombatAdmin::GetSpecies(class bCString const &)const ` | 0x7ca3b0 | no |
 | `ctext_description` | `class bCString & gCInfoCommandRunAIScript::AccessAIScriptName(void)` | 0x499bb0 | no |
 | `ctext_saysvm` | `class bTPropertyContainer<enum gECombatAction> & gCCombatMoveMelee::AccessAction(void)` | 0x4ab150 | no |
+| `gdmg_do_damage` | `bool gCDamage_PS::DoDamage(class eCEntity *)` | 0x8081b0 | no |
+| `gi_assure_items` | `int gCInventory_PS::AssureItems(class bCPropertyID const &,unsigned long,enum gEStackType)` | 0x8c32c0 | no |
+| `gi_consume_items` | `bool gCInventory_PS::ConsumeItems(int,unsigned long)` | 0x8c5140 | no |
+| `gi_create_items_id` | `int gCInventory_PS::CreateItems(class bCPropertyID const &,unsigned long,enum gEStackType)` | 0x8c35a0 | no |
+| `gi_create_items_tpl` | `int gCInventory_PS::CreateItems(class eCTemplateEntity const *,unsigned long,enum gEStackType)` | 0x8c21f0 | no |
+| `gi_delete_items` | `bool gCInventory_PS::DeleteItems(int,unsigned long)` | 0x8c3550 | no |
+| `gi_delete_stack` | `bool gCInventory_PS::DeleteStack(int)` | 0x8c21b0 | no |
+| `gi_drop_items` | `class eCEntity * gCInventory_PS::DropItemsFromStack(int,int,class bCMatrix const *)` | 0x8c0aa0 | no |
+| `gi_drop_stack` | `class eCEntity * gCInventory_PS::DropStack(int,class bCMatrix const *)` | 0x8c0bb0 | no |
+| `gi_equip_to_slot` | `bool gCInventory_PS::EquipStackToSlot(int,enum gEEquipSlot)` | 0x8c4bc0 | no |
+| `gi_loot_selections` | `bool gCInventory_PS::LootSelections(class gCInventory_PS *)` | 0x8c3b80 | no |
+| `gi_merge_stacks` | `void gCInventory_PS::MergeStacks(void)` | 0x8c1ff0 | no |
+| `gi_on_stack_create` | `void gCInventory_PS::OnStackCreate(int,class gCInventoryStack const *)` | 0x8c11b0 | no |
+| `gi_on_stack_delete` | `void gCInventory_PS::OnStackDelete(int,class gCInventoryStack const *)` | 0x8c12f0 | no |
+| `gi_set_amount` | `void gCInventory_PS::SetAmount(int,int const &,bool)` | 0x8c3140 | no |
+| `gi_set_money` | `void gCInventory_PS::SetMoneyAmount(int)` | 0x8c3990 | no |
+| `gi_split_stack` | `bool gCInventory_PS::SplitStack(int,unsigned long,int &)` | 0x8c2000 | no |
+| `gi_trade_selections` | `bool gCInventory_PS::TradeSelections(class gCInventory_PS *)` | 0x8c3ce0 | no |
+| `gi_transfer_all` | `bool gCInventory_PS::TransferAllTo(class gCInventory_PS *,enum gEStackType)` | 0x8c4030 | no |
+| `gi_transfer_items` | `bool gCInventory_PS::TransferItemsTo(class gCInventory_PS *,int,int,enum gEStackType)` | 0x8c4100 | no |
+| `gi_transfer_stack` | `bool gCInventory_PS::TransferStackTo(class gCInventory_PS *,int,enum gEStackType)` | 0x8c3fe0 | no |
+| `gi_unequip` | `bool gCInventory_PS::UnEquipStack(int,bool)` | 0x8c4a70 | no |
 | `info_access_condition` | `class eCEntityProxy & gCCombatSystem_PS::AccessActiveAttacker(void)` | 0x49a130 | yes |
 | `info_access_given` | `class bCString & gCProject::AccessActiveWorld(void)` | 0x49a0c0 | yes |
 | `info_access_name` | `class gCQuestActor & gCInfoCommandAddQuestActor::AccessActor(void)` | 0x499c70 | yes |
@@ -131,6 +155,9 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `info_insert_command_ptr` | `int gCInfo::InsertComSeqItem(class gCInfoCommand *)` | 0x8ad150 | yes |
 | `info_insert_command_type` | `int gCInfo::InsertComSeqItem(enum gEInfoCommand)` | 0x8ac330 | yes |
 | `info_is_available` | `bool gCInfo::IsAvailable(void)` | 0x8a85e0 | yes |
+| `infocmd_create_item` | `bool gCInfoCommandCreateItem::Execute(class gCRuntimeInfo &,bool)` | 0x8882d0 | no |
+| `infocmd_destroy_item` | `bool gCInfoCommandDestroyItem::Execute(class gCRuntimeInfo &,bool)` | 0x888eb0 | no |
+| `infocmd_give` | `bool gCInfoCommandGive::Execute(class gCRuntimeInfo &,bool)` | 0x88b200 | no |
 | `interaction_focus_name` | `class bCUnicodeString gCInteraction_PS::GetPlainFocusName(void)const ` | 0x8ba3b0 | no |
 | `inv_insert_stack` | `int gCInventory_PS::InsertStack(class eCEntity *)` | 0x8c0cf0 | no |
 | `is_available_count` | `int gCInfoSystem::GetAvailableInfoCount(void)` | 0x8b3b00 | yes |
@@ -208,6 +235,7 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `ent_set_frozen` | `void Entity::SetFrozen(bool)` | 0x209c40 | yes |
 | `ent_set_name` | `void Entity::SetName(class bCString const &)` | 0x20c830 | yes |
 | `ent_spawn` | `class Entity Entity::Spawn(class Template,class bCMatrix const &,bool)` | 0x20e4d0 | yes |
+| `ent_spawn_near` | `class Entity Entity::Spawn(class Template,class Entity,bool,enum gEDirection)` | 0x20e240 | no |
 | `ent_stop_goto` | `void Entity::StopGoto(void)` | 0x208810 | yes |
 | `ent_teleport_entity` | `bool Entity::Teleport(class Entity const &)` | 0x20c9c0 | yes |
 | `ent_teleport_name` | `bool Entity::Teleport(class bCString const &)` | 0x20c8d0 | yes |
@@ -230,6 +258,12 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `npc_get_guild` | `PSNpc::PropertyGuild::operator enum gEGuild const (void)const ` | 0x22b750 | yes |
 | `npc_set_group` | `class PSNpc::PropertyGroup & PSNpc::PropertyGroup::operator=(class bCString const &)` | 0x22b640 | yes |
 | `npc_set_guild` | `class PSNpc::PropertyGuild & PSNpc::PropertyGuild::operator=(enum gEGuild const &)` | 0x22b6f0 | yes |
+| `psinv_insert_stack` | `int PSInventory::InsertStack(class Entity const &)` | 0x225550 | no |
+| `psinv_loot` | `bool PSInventory::LootSelections(class Entity &)` | 0x225ce0 | no |
+| `psinv_set_max_selection` | `void PSInventory::SetMaxSelection(void)` | 0x225e60 | no |
+| `psinv_set_selection` | `void PSInventory::SetSelection(int,int const &)` | 0x2260a0 | no |
+| `psinv_trade` | `bool PSInventory::TradeSelections(class Entity &)` | 0x225da0 | no |
+| `psinv_transfer_amount` | `bool PSInventory::TransferAmountTo(int,int,class Entity &)` | 0x225b50 | no |
 | `psitem_amount` | `unsigned long PSItem::GetAmount(void)const ` | 0x2270a0 | no |
 | `psitem_category` | `enum gEItemCategory PSItem::GetCategory(void)const ` | 0x226fe0 | no |
 | `psitem_gold_value` | `int PSItem::GetGoldValue(void)const ` | 0x227040 | no |
@@ -268,6 +302,11 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `world_new_game` | `void World::NewGame(void)` | 0x236810 | yes |
 | `world_quick_load` | `void World::QuickLoad(void)` | 0x236b90 | yes |
 | `world_quick_save` | `void World::QuickSave(void)` | 0x2367f0 | no |
+## Script_Game.dll
+
+| Field | Function | RVA | Required |
+|---|---|---|---|
+| `sg_cheat_kill` | `__int64 OnCheatKill(class gCScriptProcessingUnit *,void *,void *,__int64)` | 0xdc850 | no |
 ## SharedBase.dll
 
 | Field | Function | RVA | Required |

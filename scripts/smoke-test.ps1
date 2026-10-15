@@ -38,7 +38,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -107,6 +107,7 @@ $scenarios = [ordered]@{
     branch      = @{ Est = 80; Title = 'branching dialogue'; Kind = 'log'; Mods = @('dialogbranch'); Limit = $Seconds + 60; Checks = $branch }
     templates   = @{ Est = 60; Title = 'template editing'; Kind = 'result'; Mods = @('templatepatch', 'templatepatch_driver'); Limit = 400 }
     balance     = @{ Est = 60; Title = 'item balancing'; Kind = 'result'; Mods = @('balance_items', 'balance_driver'); Limit = 400 }
+    events      = @{ Est = 75; Title = 'gameplay events (M5b)'; Kind = 'result'; Mods = @('events_demo'); Limit = 400 }
     npcs        = @{ Est = 70; Title = 'NPC balancing'; Kind = 'result'; Mods = @('balance_npcs', 'balance_npcs_driver'); Limit = 500 }
     # docs/EXAMPLES.md: the example mods, each one a self-contained risen.test scenario
     ex_template_patch = @{ Est = 50; Title = 'example: patch templates'; Kind = 'result'; Mods = @('example_template_patch'); Limit = 300 }

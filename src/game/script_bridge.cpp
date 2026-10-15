@@ -39,6 +39,7 @@ struct Slot {
 
 std::array<Slot, kMaxSlots> g_slots;
 std::atomic<void*> g_admin{nullptr};
+thread_local int g_luaCallDepth = 0;  // risen.script.call in progress
 bool g_layoutOk = false;
 
 // What a Lua script receives.
@@ -176,6 +177,8 @@ std::string install(const std::string& name, sol::main_protected_function fn, bo
 
 void setAdmin(void* admin) { g_admin = admin; }
 
+bool inLuaScriptCall() { return g_luaCallDepth > 0; }
+
 bool selfTest() {
     // Compare the registry against the real Script_Game.dll export table for a handful of scripts.
     const HMODULE mod = GetModuleHandleW(L"Script_Game.dll");
@@ -279,11 +282,13 @@ void bindScripts(sol::state_view lua, sol::table risen) {
             throw sol::error("risen.script.call: script system is not initialised yet");
         }
         std::int64_t result = 0;
+        ++g_luaCallDepth;
         const bool ok = guarded([&] {
             const BString n(name);
             result = sym().script_admin_call(admin, n.get(), self ? ptr(*self) : nullptr, other ? ptr(*other) : nullptr,
                                              arg.value_or(0));
         });
+        --g_luaCallDepth;
         SPASS_TRACE(trace::Channel::Script, "call '{}' -> {}{}", name, result, ok ? "" : " (engine exception)");
         if (!ok) {
             throw sol::error("risen.script.call('" + name + "'): engine raised an exception");

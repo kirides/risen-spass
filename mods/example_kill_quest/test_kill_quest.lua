@@ -1,8 +1,7 @@
 -- Live check of example_kill_quest (only loaded in a test run).
 -- A script cannot make the player fight. The engine's own `Kill` script (killer = self, victim = other) calls the quest manager exactly like a
--- death in combat does (`npc.killed` fires with the victim) and takes the victim's hit points to 0, so it stands in for the fight here. A real
--- fight (a pirate against a wolf) fires the same event -- seen live while writing this example, but its AI is too erratic for a regression test
--- (the wolves "threaten" for a long time).
+-- death in combat does (`entity.died(victim, killer, cause)` fires once) and takes the victim's hit points to 0, so it stands in for the fight here.
+-- A real fight fires the same event (mods/events_demo drives one: a wolf kills the player with cause "combat"), but its AI is too erratic for this test.
 local T = risen.test
 
 return function(NPC, WOLVES, BOSS_QUEST, BOSS, WANTED)

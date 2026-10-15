@@ -4,13 +4,13 @@
 -- objectives from the engine's events and completes the quests:
 --
 --   Q_EX_Report  "talk"   completes when the dialogue option `EX_Bram_Report` finished playing             (event info.finished)
---   Q_EX_Apples  "items"  completes when the player carries 2 more apples than when the task started       (event item.picked_up + inventory poll)
---   Q_EX_Boars   "kills"  completes after 2 boars died                                                       (event npc.killed)
+--   Q_EX_Apples  "items"  completes when the player carries 2 more apples than when the task started       (event inventory.changed)
+--   Q_EX_Boars   "kills"  completes after 2 boars died                                                       (event entity.died)
 --
 -- What you learn
---   * The tracker is the answer to "which events do I need?": dialogue -> `info.finished(info_name, owner)`, kills -> `npc.killed(entity)` /
---     `npc.defeated(entity)` (knocked out humans), items -> `item.picked_up` for pickups from the ground plus a throttled inventory poll for the
---     other sources (loot, trade, gifts). All three feed the same `advance(quest, n)`, which writes progress to risen.save and succeeds the quest.
+--   * The tracker is the answer to "which events do I need?": dialogue -> `info.finished(info_name, owner)`, kills -> `entity.died(entity, killer, cause)` /
+--     `entity.defeated(entity, attacker)` (knocked out humans), items -> `inventory.changed(owner, template, delta, total, cause, other)` for every source
+--     (pickup, loot, trade, gifts); nothing is polled. All three feed the same `advance(quest, n)`, which writes progress to risen.save and succeeds the quest.
 --   * A reward for ANY of them hangs on `on_complete` (or on `quest.status_changed`, see example_quest_rewards): the completion path does not matter.
 --   * Progress persists with the savegame (risen.save), the quest status with the engine, runtime entities (Bram) are respawned.
 --

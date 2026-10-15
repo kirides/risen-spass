@@ -60,7 +60,7 @@ function Entity:is_item() end
 ---@return boolean
 function Entity:is_character() end
 
----Removes the entity from the world (destroys it; not a combat death, no `npc.killed` event).
+---Removes the entity from the world (destroys it; not a combat death: no `entity.died`/`npc.killed`, but `entity.destroyed` fires).
 ---@return boolean ok
 function Entity:kill() end
 
@@ -562,6 +562,59 @@ function itemApi.count(owner, template) end
 ---@param owner Entity
 ---@return number
 function itemApi.money(owner) end
+
+---Moves up to `count` items of a template from one inventory to another through the engine's own transfer (`PSInventory::TransferAmountTo`), stack by
+---stack (unequipped stacks). Fires `inventory.removed` for `from` and `inventory.added` for `to` (cause `"script"`, each with the other as `other`).
+---@param from Entity
+---@param to Entity
+---@param template string
+---@param count? integer Default 1.
+---@return integer moved The amount that was really moved.
+function itemApi.transfer(from, to, template, count) end
+
+---The engine's loot action (`PSInventory::LootSelections`): everything `container` holds (or `count` of one template when `template` is given) moves to
+---`looter`, as when the player loots a corpse or a chest. Events: `inventory.added`/`removed` with cause `"loot"` and `other` set on both.
+---@param looter Entity
+---@param container Entity
+---@param template? string Only this template.
+---@param count? integer With `template`: how many (default 1).
+---@return boolean ok
+function itemApi.loot(looter, container, template, count) end
+
+---The engine's trade action (`PSInventory::TradeSelections`) with `count` of a template selected in `a`: they move to `b` (no gold changes hands: the
+---price logic belongs to the trade screen). Events: `inventory.added`/`removed` with cause `"trade"`.
+---@param a Entity
+---@param b Entity
+---@param template string
+---@param count? integer Default 1.
+---@return boolean ok
+function itemApi.trade(a, b, template, count) end
+
+---Drops items of an unequipped stack into the world (`gCInventory_PS::DropItemsFromStack`). Fires `inventory.removed` with cause `"drop"`.
+---@param owner Entity
+---@param template string
+---@param count? integer Default 1 (at most the size of the stack).
+---@return Entity|nil item The item entity now lying in the world, `nil` when the owner has no such stack.
+function itemApi.drop(owner, template, count) end
+
+---The owner takes an item that lies in the world (`PSInventory::InsertStack`; the world entity is consumed). Fires `item.picked_up` and
+---`inventory.added` with cause `"pickup"`, and `entity.destroyed` for the world item.
+---@param owner Entity
+---@param item Entity An item entity (e.g. the result of `risen.item.drop` or `risen.entity.spawn`).
+---@return integer|nil stack Index of the stack the item went to, `nil` on failure.
+function itemApi.pick_up(owner, item) end
+
+---Equips the first stack of a template (`PSInventory::EquipStack`, what the inventory screen does). Fires `item.equipped` (and `item.unequipped` for what it replaces).
+---@param owner Entity
+---@param template string
+---@return boolean ok
+function itemApi.equip(owner, template) end
+
+---Takes the first stack of a template off (`PSInventory::UnEquipStack`). Fires `item.unequipped`.
+---@param owner Entity
+---@param template string
+---@return boolean ok
+function itemApi.unequip(owner, template) end
 
 -- Item balancing (docs/RE.md section 23). An item's numbers: `gCItem_PS.GoldValue`, weapon damage `gCDamage_PS.DamageAmount`, the equip
 -- condition `gCItem_PS.RequiredSkills` and the effects `gCItem_PS.ModifySkills` (armor protection, potion healing, ring bonuses) -- the
@@ -1856,12 +1909,26 @@ function logApi.error(...) end
 ---@field engine RisenEngineApi
 local risen_ = {}
 
+---Why an inventory changed (argument `cause` of `inventory.added/removed/changed`): `"script"` (CreateItems/DeleteItems/transfers made by the game's
+---scripts or a mod: `risen.item.give/take/transfer`, quest rewards, ...), `"dialogue"` (a dialogue `Give`/`CreateItem`/`DestroyItem` command),
+---`"pickup"` (an item taken from the ground), `"loot"` (corpse/chest), `"trade"`, `"drop"`, `"consume"` (food, potions), `"other"` (a change no hooked
+---engine operation announced; only the creation or deletion of a stack is seen then).
+---@alias InventoryCause "script"|"dialogue"|"pickup"|"loot"|"trade"|"drop"|"consume"|"other"
+
 ---Registers an event handler. Higher priority runs first. Handlers that raise are logged and skipped.
 ---
 ---Engine events: `session.start(mode)` (`"new"`, `"load"`, `"other"`), `session.stop()`, `world.changed(name)`,
 ---`save.before(name)`, `save.after(name, ok)`, `load.before(name)` (runs before the engine reads quests and infos),
----`load.after(name, ok)`, `quest.status_changed(quest, status, previous)`, `npc.killed(entity)`, `npc.defeated(entity)`,
----`info.started(info_name, owner)`, `info.finished(info_name, owner)`, `item.picked_up(owner, template, amount)`.
+---`load.after(name, ok)`, `quest.status_changed(quest, status, previous)`, `info.started(info_name, owner)`, `info.finished(info_name, owner)`.
+---
+---Gameplay events (docs/LUA_API.md "Gameplay events"): they are **queued** when the engine does the thing and dispatched at the end of the same frame,
+---right before `tick`, so a handler may call any API (also on the same inventory or entity) without disturbing the engine code that was running.
+---They are produced while a game session runs, and not for the NPC inventories the engine fills right after a session started (see `world.ready`).
+---`world.ready(mode)` (the player exists), `inventory.added/removed(owner, template, count, total, cause, other)`,
+---`inventory.changed(owner, template, delta, total, cause, other)`, `item.picked_up(owner, template, amount)`,
+---`item.equipped/unequipped(owner, template, slot)`, `item.consumed(owner, template, count)`, `entity.died(entity, killer, cause)`,
+---`entity.defeated(entity, attacker)`, `npc.killed(entity, killer)`, `npc.defeated(entity, attacker)`, `entity.damaged(entity, attacker, damage, raw)`,
+---`entity.spawned(entity, template)`, `entity.destroyed(name, kind, template)`.
 ---@param event string
 ---@param handler function
 ---@param priority? integer
@@ -1877,8 +1944,20 @@ local risen_ = {}
 ---@overload fun(event: "load.before", handler: fun(name: string), priority?: integer): EventHandle
 ---@overload fun(event: "load.after", handler: fun(name: string, ok: boolean), priority?: integer): EventHandle
 ---@overload fun(event: "quest.status_changed", handler: fun(quest: string, status: "Open"|"Running"|"Success"|"Failed"|"Obsolete"|"Cancelled"|"Lost"|"Won", previous: string), priority?: integer): EventHandle
----@overload fun(event: "npc.killed", handler: fun(entity: Entity|nil), priority?: integer): EventHandle
----@overload fun(event: "npc.defeated", handler: fun(entity: Entity|nil), priority?: integer): EventHandle
+---@overload fun(event: "world.ready", handler: fun(mode: "new"|"load"|"other"), priority?: integer): EventHandle
+---@overload fun(event: "npc.killed", handler: fun(entity: Entity|nil, killer: Entity|nil), priority?: integer): EventHandle
+---@overload fun(event: "npc.defeated", handler: fun(entity: Entity|nil, attacker: Entity|nil), priority?: integer): EventHandle
+---@overload fun(event: "entity.died", handler: fun(entity: Entity|nil, killer: Entity|nil, cause: "combat"|"script"|"cheat"|"other"), priority?: integer): EventHandle
+---@overload fun(event: "entity.defeated", handler: fun(entity: Entity|nil, attacker: Entity|nil), priority?: integer): EventHandle
+---@overload fun(event: "entity.damaged", handler: fun(entity: Entity|nil, attacker: Entity|nil, damage: integer, raw: integer), priority?: integer): EventHandle
+---@overload fun(event: "entity.spawned", handler: fun(entity: Entity|nil, template: string), priority?: integer): EventHandle
+---@overload fun(event: "entity.destroyed", handler: fun(name: string, kind: "npc"|"player"|"item"|"other", template: string), priority?: integer): EventHandle
+---@overload fun(event: "inventory.added", handler: fun(owner: Entity|nil, template: string, count: integer, total: integer, cause: InventoryCause, other: Entity|nil), priority?: integer): EventHandle
+---@overload fun(event: "inventory.removed", handler: fun(owner: Entity|nil, template: string, count: integer, total: integer, cause: InventoryCause, other: Entity|nil), priority?: integer): EventHandle
+---@overload fun(event: "inventory.changed", handler: fun(owner: Entity|nil, template: string, delta: integer, total: integer, cause: InventoryCause, other: Entity|nil), priority?: integer): EventHandle
+---@overload fun(event: "item.equipped", handler: fun(owner: Entity|nil, template: string, slot: integer), priority?: integer): EventHandle
+---@overload fun(event: "item.unequipped", handler: fun(owner: Entity|nil, template: string, slot: integer), priority?: integer): EventHandle
+---@overload fun(event: "item.consumed", handler: fun(owner: Entity|nil, template: string, count: integer), priority?: integer): EventHandle
 ---@overload fun(event: "info.started", handler: fun(info_name: string, owner: string), priority?: integer): EventHandle
 ---@overload fun(event: "info.finished", handler: fun(info_name: string, owner: string), priority?: integer): EventHandle
 ---@overload fun(event: "item.picked_up", handler: fun(owner: Entity|nil, template: string, amount: integer), priority?: integer): EventHandle

@@ -212,6 +212,31 @@ TEST(runtime_sandbox_events_and_isolation) {
     CHECK(!rt.running());
 }
 
+TEST(runtime_emit_list_passes_a_run_time_sized_argument_list) {
+    // the queued gameplay events (event_bus.cpp) are dispatched with an argument list built at run time, including nil and trailing nil values
+    TempDir t;
+    t.write("one/mod.toml", "id = \"one\"\n");
+    t.write("one/main.lua",
+            "got = nil\n"
+            "risen.on('test.list', function(...) got = { n = select('#', ...), ... } end)\n"
+            "risen.on('test.probe', function() return got.n, got[1], got[2], got[3], got[4] end)\n");
+    auto& rt = spass::lua::Runtime::instance();
+    CHECK(rt.start(t.path, /*unsafeLua=*/false));
+    {
+        auto lock = rt.lock();
+        std::vector<sol::object> args;
+        args.push_back(sol::make_object(rt.lua(), std::string("PC_Hero")));
+        args.push_back(sol::make_object(rt.lua(), sol::lua_nil));
+        args.push_back(sol::make_object(rt.lua(), 3.0));
+        args.push_back(sol::make_object(rt.lua(), sol::lua_nil));
+        rt.emitList("test.list", args);
+        rt.emitList("test.nobody", args);  // no handler: nothing happens
+        const sol::object r = rt.emitUntilHandled("test.probe");
+        CHECK(r.valid() && r.is<double>() && r.as<double>() == 4.0);  // all four arguments arrived, the trailing nil included
+    }
+    rt.stop();
+}
+
 TEST(runtime_unsafe_mode_opens_the_sandbox) {
     TempDir t;
     t.write("dev/mod.toml", "id = \"dev\"\n");

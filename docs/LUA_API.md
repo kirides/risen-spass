@@ -42,16 +42,63 @@ checks); see [`types/README.md`](../types/README.md).
 | `save.before` / `save.after` | `name` / `name, ok` | around every savegame write (manual, quick, auto) |
 | `load.before` / `load.after` | `name` / `name, ok` | around reading a savegame. `load.before` runs **before the engine reads quests and infos** |
 | `quest.status_changed` | `quest, status, previous` | any quest changed status (`"Open"`, `"Running"`, `"Success"`, `"Failed"`, `"Obsolete"`, `"Cancelled"`, `"Lost"`, `"Won"`) – including the game's own quests |
-| `npc.killed` / `npc.defeated` | `entity` | an NPC died / was knocked out in combat |
 | `info.started` / `info.finished` | `info_name, owner` | a dialogue option was chosen / finished playing |
+| `world.ready` | `mode` (as `session.start`) | the player entity exists in a new session (about a second after `session.start`): the world has settled, gameplay events are on for NPCs too |
+| `inventory.added` / `inventory.removed` | `owner, template, count, total, cause, other` | the amount of one template in `owner`'s inventory rose / fell by `count` (> 0); `total` is the new amount; see "Gameplay events" |
+| `inventory.changed` | `owner, template, delta, total, cause, other` | the same changes as one event with a signed `delta` |
 | `item.picked_up` | `owner, template, amount` | an inventory took an item entity from the world (`owner` is the entity whose inventory it is) |
+| `item.equipped` / `item.unequipped` | `owner, template, slot` | a stack was put on / taken off (`slot` is the engine's `gEEquipSlot` number) |
+| `item.consumed` | `owner, template, count` | the engine used items up (`gCInventory_PS::ConsumeItems`: potions, food; `risen.item.consume`) |
+| `entity.died` | `entity, killer, cause` | an entity **died**, once per entity; `cause` `"combat"`, `"script"`, `"cheat"` or `"other"`; `killer` may be `nil` |
+| `entity.defeated` | `entity, attacker` | a human was **knocked out** (unconscious, not dead) |
+| `npc.killed` / `npc.defeated` | `entity, killer` / `entity, attacker` | the engine's raw report behind `entity.died` / `entity.defeated` (may repeat for one entity; prefer the `entity.*` events) |
+| `entity.damaged` | `entity, attacker, damage, raw` | a hit took hit points (`damage` = hit points lost; `raw` = the weapon's own damage before protection, 0 for monster bites) |
+| `entity.spawned` | `entity, template` | `Entity::Spawn` created an entity: `risen.entity.spawn`, `risen.npc.spawn` and the game's scripts |
+| `entity.destroyed` | `name, kind, template` | an entity was removed from the world (`eCEntity::Kill`: picked-up items, `Entity:kill()`, despawns); `kind` `"npc"`, `"player"`, `"item"`, `"other"`; the entity itself is gone, so only its name |
 
 ```lua
 local h = risen.on("tick", function() ... end, 10)   -- optional priority, higher runs first
 risen.off(h)
 risen.emit("my_mod.event", a, b)                      -- mod-to-mod events
 ```
-`mods/eventlog` logs every event above with its arguments (development aid).
+`mods/eventlog` logs every event above with its arguments (development aid; `-Trace events` shows them too, with the engine-side timing).
+
+### Gameplay events (M5b, see [RE.md §27](RE.md))
+`inventory.*`, `item.*`, `entity.*`, `npc.*` and `world.ready` come from hooks on the engine's own operations, so a mod never has to poll an inventory or the entity list:
+every route that changes an inventory or kills / creates / removes an entity fires **exactly one** event per change. Live-verified in `mods/events_demo` (scenario `events`, 41 exact-count checks).
+
+* **Dispatch.** The hook runs inside engine code (an inventory loop, a script, the AI), so the event is only *queued* there, with everything it needs captured (names,
+  counts); the layer dispatches the queue at the end of the same frame, right before `tick`. A handler may therefore call every API (`risen.item.give` on the same inventory, `Entity:kill()`, ...)
+  without disturbing the code that was running. Events raised by handlers are dispatched in the same frame (up to four rounds). An `Entity` argument is a normal handle (re-resolved by name).
+* **When.** Only while a game session runs; nothing during a savegame load (the world is rebuilt). After `session.start` the engine fills the NPC inventories and creates their equipment:
+  until the player exists (`world.ready`) and for 30 frames after it, inventory and item events of anyone **but the player**, and `entity.destroyed`, are dropped, so the initial population
+  of the world is not reported. What the player gets or does is reported from the first frame.
+* **`inventory.added/removed/changed(owner, template, count|delta, total, cause, other)`.** `owner` is the Entity whose inventory changed, `template` the template name, `total` the new amount of that
+  template in the whole inventory (all stacks, equipped included), `other` the counterpart Entity of a transfer (the corpse, the trader, the giver) or `nil`. One event per inventory and template per engine
+  operation: a loot of ten different items is ten pairs of events (one `removed` for the container, one `added` for the looter, each with `other`). `cause`:
+
+| `cause` | what happened | triggered by (verified) |
+|---|---|---|
+| `"script"` | items created / deleted / moved by script code: the game's scripts (quest rewards, spawning an NPC's inventory) and mods | `risen.item.give/take/transfer`, `risen.npc.spawn` items |
+| `"dialogue"` | a dialogue command | `{ command = "Give", ... }` (`CreateItem` / `DestroyItem` are hooked the same way, but only `Give` was driven live) |
+| `"pickup"` | an item entity from the ground went into an inventory | `risen.item.pick_up` (the engine's `InsertStack`; also fires `item.picked_up` and `entity.destroyed` of the world item) |
+| `"loot"` | corpse / chest looting (`LootSelections`) | `risen.item.loot` |
+| `"trade"` | the trade screen's transfer (`TradeSelections`) | `risen.item.trade` |
+| `"drop"` | items dropped into the world | `risen.item.drop` |
+| `"consume"` | items used up (`ConsumeItems`), together with `item.consumed` | `risen.item.consume` |
+| `"other"` | a stack appeared / vanished without a hooked operation announcing it (a fallback; only creations and deletions are seen) | not seen in the tests |
+
+  Gold is the item `It_Gold`. *Not seen / limits:* crafting, brewing and smithing use the same create/delete operations, so they appear as `"script"` (there is no separate cause); the trade screen's buy/sell
+  and the player's interactive loot/pick-up are the same engine operations as the Lua functions above (checked in the decompilation), but cannot be driven from a script, so they are not run live.
+* **`entity.died(entity, killer, cause)`** fires **once per entity** (`npc.killed` repeats when something hits a corpse again). The engine kills through its `Kill` script
+  (`self` = the killer, `other` = the victim): `killer` is its `self` (`nil` for `risen.script.call("Kill", nil, victim)`). `cause`: `"script"` (a `Kill` called through `risen.script.call`), `"cheat"` (the `OnCheatKill` script),
+  `"combat"` (the engine's own death with an attacker), `"other"`. Humans that lose all hit points in a fight are **knocked out**, not killed: `entity.defeated` (and `npc.defeated`) fire for them and `entity.died` does not,
+  until something really kills them. `Entity:set_hp(0)` does not kill (the AI keeps fighting) and fires nothing; `Entity:kill()` removes the entity (`entity.destroyed`, no death). Verified: `Kill` with and without killer, twice on one victim,
+  `Defeat`, `OnCheatKill`, a real fight (a wolf kills the player: `entity.died(PC_Hero, wolf, "combat")` with the `entity.damaged` before it).
+* **`entity.spawned`** is raised by `Entity::Spawn` (what `risen.entity.spawn`, `risen.npc.spawn` and the game's own spawn scripts call); entities the engine creates internally (items dropped from an inventory,
+  equipment copies, effects) are not reported. **`entity.destroyed`** comes from `eCEntity::Kill`; effect entities (`VFX_*`) are skipped. **`entity.damaged`** only fires for hits that took hit points.
+* **Not covered:** "container opened" (opening a chest is a dialogue-less interaction that moves nothing by itself; its loot is reported as `"loot"`), `item.used` for food (the use scripts call `ConsumeItems`, reported as
+  `item.consumed`; not driven live: `risen.item.consume` is), per-item property changes.
 
 ## risen.log / risen.version
 `risen.log.trace|debug|info|warn|error(...)` (arguments are `tostring`-ed and joined by spaces).
@@ -125,6 +172,12 @@ risen.item.give(player, "It_1H_Machete", 2)               -- index of the stack 
 risen.item.count(player, "It_1H_Machete")                 -- integer
 risen.item.take(player, "It_Apple", 3)                    -- removes up to 3, returns how many were removed
 risen.item.money(player)                                  -- number
+risen.item.transfer(npc, player, "It_Apple", 2)           -- moved amount (the engine's own transfer); events: removed for npc, added for player (cause "script")
+risen.item.loot(player, corpse [, "It_Apple", 2])         -- the engine's loot action (everything, or a part of one stack); cause "loot"
+risen.item.trade(npc, player, "It_Apple", 1)              -- the engine's trade transfer (no gold); cause "trade"
+local e = risen.item.drop(player, "It_Apple", 1)          -- Entity of the item lying in the world; cause "drop"
+risen.item.pick_up(player, e)                             -- takes a world item (item.picked_up, cause "pickup"); returns the stack index
+risen.item.equip(player, "It_1H_Sword"); risen.item.unequip(player, "It_1H_Sword")   -- item.equipped / item.unequipped
 ```
 
 ### Editing templates — `risen.template.get / patch` (see `mods/templatepatch`, [RE.md §22](RE.md))

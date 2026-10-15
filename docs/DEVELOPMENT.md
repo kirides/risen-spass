@@ -10,6 +10,7 @@ How the project is organised and how to extend it. (`CLAUDE.md` holds the same r
 | `src/game/symbols.h` | the table of **every engine function** the layer calls or hooks (X-macro: field, module, decorated name, type, required) |
 | `src/game/abi.h` | helpers for the MSVC-x64 conventions of the engine's classes (`bCString`, hidden return pointers, by-value parameters the callee destroys) and `guarded()` (SEH) |
 | `src/game/events.cpp`, `hooks.cpp` | lifecycle hooks that feed the Lua events |
+| `src/game/inventory_events.cpp`, `entity_events.cpp`, `event_bus.cpp` | gameplay events (inventory, items, deaths, spawns): scoped hooks + a queue dispatched at the end of the frame (RE.md §27) |
 | `src/game/lua_*.cpp`, `bindings.cpp`, `loc_*.cpp`, `script_bridge.cpp` | the Lua API |
 | `src/lua` | LuaJIT state, per-mod sandbox, events, mod discovery and load order |
 | `types/risen.d.lua` | LuaLS definitions of the API — **must always match the bindings** |
@@ -63,7 +64,7 @@ property sets through the entity's vtable. The engine's own log function is an e
 * `scripts\test-run.ps1 -Mods <mod>[,<mod>] -Seconds 120 -Filter '<regex>'` deploys the build and the chosen mods into the copy, starts a new game
   (`-Start load` quick-loads, `-NoAutostart` stays in the menu), and prints the matching log lines. `config.toml [debug] app_data` (set by the script)
   keeps savegames and `ConfigUser.xml` inside the copy.
-* `scripts\smoke-test.ps1` runs every scenario (persistence, fetchquest, commands, branch, templates, balance, npcs, newtemplates, newassets; each ends itself, about 10.8 minutes in all one after the other, was 14+; `-Parallel 3` about 4.5 minutes), prints a pass/fail table with timings and returns a
+* `scripts\smoke-test.ps1` runs every scenario (persistence, fetchquest, commands, branch, templates, balance, npcs, newtemplates, newassets, events and the example scenarios; each ends itself, about 10.8 minutes in all one after the other, was 14+; `-Parallel 3` about 4.5 minutes), prints a pass/fail table with timings and returns a
   nonzero exit code on failure: `-List`, `-Scenario templates,npcs`, `-FailFast`, `-TotalSeconds` (time budget), `-Parallel N` (N game instances at once, see "Parallel instances"). Run it before committing changes to events, saving,
   quests, dialogues or items. See "Testing and tracing" below.
 * Probe mods drive the game from `tick`: create a `mods/<name>` that logs what the engine reports, run it with `test-run.ps1`, read the log.
@@ -107,7 +108,7 @@ are quiet for up to ~20-30 s here, the layer logs a `[test] alive` heartbeat eve
 blocks on a hung game (`SetWindowPos` is asynchronous). Failure drills: `-Mods testdemo -Param mode=fail|never|hang`.
 
 **Trace channels** (opt-in, zero cost when off): `.\scripts\test-run.ps1 -Trace template,balance,save,events [-TraceFile]` or `config.toml [debug] trace = "..."`
-(`"all"`; `trace_file = true` also writes `trace.log`). Lines: `[12:31:09.513] [trace:events] session.start(new)`. Channels: `events`, `template`, `balance`, `save`
+(`"all"`; `trace_file = true` also writes `trace.log`). Lines: `[12:31:09.513] [trace:events] session.start(new)`. Channels: `events` (every gameplay event the moment the hook queued it, with arguments, also when no mod listens), `template`, `balance`, `save`
 (save/load phases with durations), `spawn`, `script`, `lua` (errors with traceback), `test`; mods add their own with `risen.trace("mymod", ...)`. Turn channels on
 instead of adding temporary `log.info` lines and rerunning.
 

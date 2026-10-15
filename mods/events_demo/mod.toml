@@ -1,0 +1,6 @@
+id          = "events_demo"
+name        = "Events demo / live test of the gameplay events"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Logs inventory.*, item.*, npc.* and entity.* events and verifies each route live (risen.test scenario `events`). See docs/LUA_API.md Events."
+main        = "main.lua"

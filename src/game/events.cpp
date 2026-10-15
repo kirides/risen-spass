@@ -7,6 +7,7 @@
 
 #include "common/trace.h"
 #include "game/abi.h"
+#include "game/event_bus.h"
 #include "game/lua_entity.h"
 #include "game/lua_save.h"
 #include "game/lua_test.h"
@@ -25,9 +26,10 @@
 //   load.before(name) / load.after(name, ok)   gCSaveGameManager::Load: *before* the engine reads quests/infos, so
 //                                                             this is where runtime quests/infos must be recreated
 //   quest.status_changed(name, status, previous)   gCQuest::SetStatus
-//   npc.killed(entity) / npc.defeated(entity)      gCQuestManager::OnNPCKilled / OnNPCDefeated
+//   npc.killed(entity, killer) / npc.defeated(entity, attacker)   gCQuestManager::OnNPCKilled / OnNPCDefeated (the attacker comes from the
+//                                                             game scripts Kill / Defeat, entity_events.cpp); queued, see event_bus.h
 //   info.started(name, owner) / info.finished(name, owner)   gCInfoSystem::ExecuteDialogInfo / OnInfoFinished
-//   item.picked_up(owner, template, amount)        gCInventory_PS::InsertStack (an item entity from the world)
+//   item.picked_up, inventory.*, item.equipped/unequipped/consumed   inventory_events.cpp;  entity.spawned/destroyed   entity_events.cpp
 
 namespace spass::game {
 namespace {
@@ -42,7 +44,6 @@ Hook<bool (*)(void*, void*)> g_npcKilled;
 Hook<bool (*)(void*, void*)> g_npcDefeated;
 Hook<void (*)(void*, const void*)> g_infoFinished;
 Hook<bool (*)(void*, void*)> g_infoStarted;
-Hook<int (*)(void*, void*)> g_itemPickedUp;
 
 constexpr const char* kQuestStatus[] = {"Open", "Running", "Success", "Failed", "Obsolete", "Cancelled", "Lost", "Won"};
 
@@ -134,6 +135,9 @@ bool detourLoad(void* self, const void* name, void* stream) {
     const auto t0 = std::chrono::steady_clock::now();
     SPASS_TRACE(trace::Channel::Save, "load '{}': begin", n);
     bumpEntityGeneration();
+    const bool wasActive = bus::active();
+    bus::setActive(false);
+    resetEntityEvents();  // the world is rebuilt: no gameplay events until the session starts again
     savestore::beginLoad(n);   // mods already see the data of the savegame in load.before
     fire("load.before", n);
     const double tBefore = msSince(t0);
@@ -146,6 +150,9 @@ bool detourLoad(void* self, const void* name, void* stream) {
     } else {
         savestore::restoreBackup();
         spdlog::warn("load: '{}' failed, mod data restored", n);
+        if (wasActive) {
+            bus::resume();  // no session start follows a failed load
+        }
     }
     fire("load.after", n, ok);
     SPASS_TRACE(trace::Channel::Save, "load '{}': done in {:.0f} ms", n, msSince(t0));
@@ -163,12 +170,16 @@ void detourSessionStart(void* self, int mode) {
     bumpEntityGeneration();
     const char* name = mode == 0 ? "new" : mode == 1 ? "load" : "other";
     spdlog::info("session: start ({})", name);
+    bus::setActive(true, name);
+    resetEntityEvents();
     test::mark("session.start");
     fire("session.start", std::string(name));
 }
 
 void detourSessionStop(void* self) {
     fire("session.stop");
+    bus::setActive(false);
+    resetEntityEvents();
     g_sessionStop.original(self);
     bumpEntityGeneration();
 }
@@ -207,32 +218,15 @@ bool detourQuestStatus(void* self, const int* status, bool a, bool b) {
     return ok;
 }
 
-// Entity events hand the entity itself to Lua, so the handle object is made under the Lua lock.
-void fireEntity(const char* event, void* entity) {
-    auto& rt = lua::Runtime::instance();
-    if (trace::enabled(trace::Channel::Events) && rt.running()) {
-        auto lock = rt.lock();
-        sol::object e = makeEntityObject(rt.lua(), entity);
-        sol::protected_function tostring = rt.lua()["tostring"];
-        traceEvent(event, tostring(e).get<std::string>());
-    }
-    if (!rt.running() || !rt.hasHandlers(event)) {
-        return;
-    }
-    auto lock = rt.lock();
-    sol::object e = makeEntityObject(rt.lua(), entity);
-    rt.emit(event, e);
-}
-
 bool detourNpcKilled(void* self, void* entity) {
     const bool r = g_npcKilled.original(self, entity);
-    fireEntity("npc.killed", entity);
+    reportNpcKilled(entity);
     return r;
 }
 
 bool detourNpcDefeated(void* self, void* entity) {
     const bool r = g_npcDefeated.original(self, entity);
-    fireEntity("npc.defeated", entity);
+    reportNpcDefeated(entity);
     return r;
 }
 
@@ -264,42 +258,6 @@ bool detourInfoStarted(void* self, void* info) {
     return ok;
 }
 
-// gCInventory_PS::InsertStack(item entity): the inventory takes the entity and kills it, so everything the
-// event reports is read beforehand. Template name: entity vtable +0x170 (template entity) -> GetName (+0x178);
-// amount: gCItem_PS (property set 0x27) +0x20.
-int detourItemPickedUp(void* self, void* item) {
-    std::string tpl;
-    int amount = 0;
-    void* owner = nullptr;
-    guarded([&] {
-        if (item == nullptr) {
-            return;
-        }
-        void** vt = *reinterpret_cast<void***>(item);
-        if (void* tplEntity = reinterpret_cast<void* (*)(void*)>(vt[0x170 / 8])(item)) {
-            void** tvt = *reinterpret_cast<void***>(tplEntity);
-            tpl = bstr(reinterpret_cast<const void* (*)(void*)>(tvt[0x178 / 8])(tplEntity));
-        }
-        if (void* ps = reinterpret_cast<void* (*)(void*, int)>(vt[0x198 / 8])(item, 0x27)) {
-            amount = *reinterpret_cast<int*>(static_cast<char*>(ps) + 0x20);
-        }
-        if (sym().ps_get_entity != nullptr) {
-            owner = sym().ps_get_entity(self);
-        }
-    });
-    const int index = g_itemPickedUp.original(self, item);
-    auto& rt = lua::Runtime::instance();
-    if (index >= 0 && trace::enabled(trace::Channel::Events)) {
-        traceEvent("item.picked_up", fmt::format("<owner {}>, {}, {}", fmt::ptr(owner), tpl, amount));
-    }
-    if (index >= 0 && rt.running() && rt.hasHandlers("item.picked_up")) {
-        auto lock = rt.lock();
-        sol::object o = makeEntityObject(rt.lua(), owner);
-        rt.emit("item.picked_up", o, tpl, amount);
-    }
-    return index;
-}
-
 template <class H, class Fn>
 void installOptional(H& hook, const char* name, Fn target, Fn detour) {
     if (target == nullptr) {
@@ -325,7 +283,8 @@ void installEventHooks() {
     installOptional(g_npcDefeated, "gCQuestManager::OnNPCDefeated", s.qm_on_npc_defeated, &detourNpcDefeated);
     installOptional(g_infoFinished, "gCInfoSystem::OnInfoFinished", s.is_on_info_finished, &detourInfoFinished);
     installOptional(g_infoStarted, "gCInfoSystem::ExecuteDialogInfo", s.is_execute_info, &detourInfoStarted);
-    installOptional(g_itemPickedUp, "gCInventory_PS::InsertStack", s.inv_insert_stack, &detourItemPickedUp);
+    installInventoryEventHooks();
+    installEntityEventHooks();
 }
 
 }  // namespace spass::game

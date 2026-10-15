@@ -1,5 +1,5 @@
--- Live check of example_quest_tracker (only loaded in a test run). Kills use the game's `Kill` script (it fires npc.killed like a death in combat
--- does, see example_kill_quest); items arrive through risen.item.give (the poll counts them).
+-- Live check of example_quest_tracker (only loaded in a test run). Kills use the game's `Kill` script (it fires entity.died like a death in combat
+-- does, see example_kill_quest); items arrive through risen.item.give (inventory.changed counts them).
 local T = risen.test
 
 return function(NPC, tracker)

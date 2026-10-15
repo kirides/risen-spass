@@ -21,10 +21,10 @@ Run one (about a minute; use your own test copy, never the real install, always 
 | 3 | `example_material` | (A) other material variant of an existing mesh: `MaterialSwitch` on the health potion, a new black wolf; (B) a texture file that **shadows** a shipped one (red/blue swapped sword blades, written with `risen.assets.write`) | `risen.template.patch/create(material=)`, `risen.assets.read/write/info/resource` | `ex_material`, 40 s | switch values equal the shipped `It_Po_Mana_01` / `Wolf_Black`; the engine resolved and loaded (resource state 3) the loose file; shadow removed again (11 checks). **Not** how it looks: screenshots of the game window are black |
 | 4 | `example_custom_npc` | a new NPC template (`Spass_Hob`) and reward item (`Spass_Hob_Knife`), the NPC placed at the start, three dialogue options, a quest started by one option and finished by another that is only offered while it runs | `risen.balance.install{new_npcs,new_items}`, `risen.npc.spawn`, `risen.dialog.create`, `risen.script.define`, `risen.quest.define/succeed` | `ex_custom_npc`, 65 s | NPC uses the new template and label, quest runs, option offered only while running, quest succeeds, reward item of the new template (12 checks) |
 | 5a | `example_fetch_turnin` | fetch quest: the NPC asks for 3 berries, a permanent hand-in option checks the inventory (too few: log line, nothing taken; enough: items taken, gold paid, quest succeeds) | `risen.item.count/take/give/money`, `condition = "Running"`, `permanent = true` | `ex_fetch_turnin`, 75 s | both hand-ins incl. the failed one (9 checks) |
-| 5b | `example_fetch_pickup` | fetch quest that completes **by itself** when the player carries 3 more berries than at the start (baseline in `risen.save`), progress log lines, berries scattered around the NPC, reward, items kept | `item.picked_up` event **plus** inventory poll, `risen.save` | `ex_fetch_pickup`, 60 s | progress and completion via the poll; the items arrive through `risen.item.give` (see Gaps: a script cannot pick up for the player) (10 checks) |
-| 6 | `example_kill_quest` | kill 3 `Wolf` (counter in `risen.save`, log "Wolves: 2/3", duplicate death counted once, a clone of Wolf does not count), then a `Success`-conditioned option unlocks the boss quest: kill one named entity (`EX_DireWolf`, template `Spass_Dire_Wolf`) | `npc.killed`, `Entity:template():name()`, `Entity:name()` | `ex_kill_quest`, 75 s | counting, negative cases, unlock, boss spawn and kill (12 checks); kills are driven with the game's `Kill` script (see Gaps) |
+| 5b | `example_fetch_pickup` | fetch quest that completes **by itself** when the player carries 3 more berries than at the start (baseline in `risen.save`), progress log lines, berries scattered around the NPC, reward, items kept | `inventory.changed` event, `risen.save` | `ex_fetch_pickup`, 60 s | progress and completion through the event; the items arrive through `risen.item.give` (see Gaps: a script cannot pick up for the player; `risen.item.pick_up` exists for tests) (10 checks) |
+| 6 | `example_kill_quest` | kill 3 `Wolf` (counter in `risen.save`, log "Wolves: 2/3", duplicate death counted once, a clone of Wolf does not count), then a `Success`-conditioned option unlocks the boss quest: kill one named entity (`EX_DireWolf`, template `Spass_Dire_Wolf`) | `entity.died(entity, killer, cause)`, `Entity:template():name()`, `Entity:name()` | `ex_kill_quest`, 75 s | counting, negative cases, unlock, boss spawn and kill (12 checks); kills are driven with the game's `Kill` script (see Gaps) |
 | 7 | `example_quest_rewards` | what happens when a quest completes: gold, a spawned guard, a game variable, an unlocked option; **idempotent after save/load** | `quest.status_changed`, `risen.save`, `risen.gamevar`, `risen.world.quick_save/quick_load`, `condition = "Success"` | `ex_quest_rewards`, 100 s | trigger ran once, gold paid once across a real quick save + quick load, guard respawned at the same spot, variable and unlocked option survive (17 checks) |
-| 8 | `example_quest_tracker` | one reusable `tracker.lua` completing quests by **dialogue** (`info.finished`), by **items** (inventory poll + `item.picked_up`) and by **kills** (`npc.killed`), progress in `risen.save`, rewards on completion | `info.finished`, `item.picked_up`, `npc.killed`, `tick` | `ex_quest_tracker`, 90 s | all three completion paths, other templates ignored, repeated death counted once, rewards (15 checks) |
+| 8 | `example_quest_tracker` | one reusable `tracker.lua` completing quests by **dialogue** (`info.finished`), by **items** (`inventory.changed`) and by **kills** (`entity.died`), progress in `risen.save`, rewards on completion | `info.finished`, `inventory.changed`, `entity.died` | `ex_quest_tracker`, 90 s | all three completion paths, other templates ignored, repeated death counted once, rewards (15 checks) |
 
 Timings are wall-clock on the development machine (engine start ~30 s of it). Each scenario ends itself the moment its checks are done.
 
@@ -51,6 +51,12 @@ them on the first tick, before a load), values written into world entities (`ins
 **Triggers must be idempotent.** `quest.status_changed` may be seen again after a load. Check a flag in `risen.save` first, set it, then act (`example_quest_rewards`); count
 deaths by entity name in a set, because the engine can report one death twice (`example_kill_quest`, `tracker.lua`).
 
+**Events instead of polling (M5b).** Never look at inventories or the entity list every few frames: react to `inventory.changed(owner, template, delta, total, cause, other)` (filter `owner:is_player()` and
+the template; `total` is the new amount, `cause` tells pickup / loot / trade / script / dialogue / drop / consume), `entity.died(entity, killer, cause)` (once per entity; `killer:is_player()` for "the player killed it"),
+`entity.defeated` (knocked out humans), `entity.spawned/destroyed`, `world.ready` ("the player exists", the moment to spawn runtime NPCs) and `item.equipped/consumed`. They are dispatched at the end of the frame, so a
+handler may do anything (give items to the same inventory, kill, spawn) without disturbing the engine. `example_fetch_pickup`, `example_kill_quest` and `tracker.lua` show the three shapes (count a template, count kills, a table-driven tracker);
+`mods/events_demo` is the executable reference of every event and cause.
+
 **Ordering.** Items given with `risen.item.give` (or `loot`) must name templates that exist; mods that create templates (`new_items`) should load before mods that use them
 (`load_after` in `mod.toml`). `risen.balance.install` applies its spec on the first tick and every `session.start`; `risen.npc.spawn` after that sees the edited templates. Set the
 hit point maximum before the hit points (`risen.npc.spawn` options do it for you).
@@ -69,49 +75,30 @@ stand in for the player's actions where a script cannot do them (below), assert 
 `risen.world.quick_save()`, wait `save.after`, `risen.world.quick_load()`, wait `session.start` with mode `"load"`. Several scenarios at once: `-Instance 2/3/4` (own game copies).
 A scenario that writes loose assets must remove them again (`example_material` does), generated files live in the test copy and later scenarios would see them.
 
-## Gaps / not possible yet (this is also the specification for M5b, "reliable engine events")
+## Gaps / not possible yet
 
-The examples contain two kinds of workaround. Each is marked in the source with `>>> EVENT BLOCK` / `>>> POLLING ...` comments so it can be swapped for an event later.
+**Resolved by M5b ("reliable engine events", [LUA_API.md "Gameplay events"](LUA_API.md), live-verified in `mods/events_demo`).** The first version of the examples polled inventories and worked around
+missing death events; the three examples that did (`example_fetch_pickup`, `example_kill_quest`, `example_quest_tracker`) now use the events and poll nothing:
 
-### Polling that an event should replace
+| What the examples wanted | Now |
+|---|---|
+| "the player's inventory changed" for every source | `inventory.changed(owner, template, delta, total, cause, other)` (and `inventory.added/removed`): script give/take/transfer, dialogue `Give`, loot, trade, drop, ground pick-up, consume; `cause` says which, `other` is the corpse / trader / giver |
+| a death exactly once, with the killer | `entity.died(entity, killer, cause)` (`"script"`, `"cheat"`, `"combat"`, `"other"`), deduplicated per entity; `entity.defeated(entity, attacker)` for knocked-out humans; `npc.killed/defeated` carry the killer too (raw, may repeat) |
+| `Kill` leaves the victim not dead, a second `npc.killed` follows | `risen.script.call("Kill", killer, victim)` (killer = `self`, victim = `other`) gives one `entity.died(victim, killer, "script")`; a second call on the same victim fires nothing new. In the live run the victim was dead (`is_dead()`) at once; the examples agent saw a victim in combat that was not, the event is only posted when the engine says the victim is dead, so a later death reports it |
+| `Entity:kill()` | `entity.destroyed(name, kind, template)` (no death) |
+| `entity.spawned` / `entity.destroyed` | `entity.spawned(entity, template)` for `Entity::Spawn` (script API, game scripts), `entity.destroyed` for every removal; `world.ready(mode)` when the player exists |
+| `item.used/equipped/unequipped/consumed` | `item.equipped/unequipped(owner, template, slot)`, `item.consumed(owner, template, count)` (`item.used` for food is `item.consumed`) |
+| the player cannot be made to pick up / loot / trade from a script | `risen.item.pick_up/loot/trade/drop/transfer/equip/unequip` run the engine's own operations, so the events can be tested; the *interactive* paths (buy/sell screen, looting with the mouse) end in the same engine functions but are not run live |
 
-| Where | Workaround today | Wanted event (name, payload) |
-|---|---|---|
-| `example_fetch_pickup/main.lua` `on_item_count_changed`, `tracker.lua` `items_changed` | every 20 frames `risen.item.count(player, item)`; `item.picked_up` only as an accelerator | `inventory.changed(owner, template, delta, count, source, other)`: `owner` Entity whose inventory changed, `template` name, `delta` signed amount, `count` the new total of that template, `source` string (table below), `other` the counterparty Entity (corpse, chest, trader, giver) or `nil` |
-| `example_kill_quest`, `tracker.lua` kills | `npc.killed` works for real deaths, but nothing for scripted kills, and the quest author cannot tell who killed | `entity.died(entity, killer, cause)`: `killer` Entity or `nil`, `cause` `"combat"`, `"script"` (`Kill` command / `risen.script.call("Kill")`), `"damage"` (hp 0), `"other"`; fired exactly once per entity; plus `entity.defeated(entity, attacker)` for humans that were knocked out |
-| `example_*` NPC/boss respawn after loads | every mod re-implements "after `session.start` wait 60 frames, then spawn if missing" | `entity.spawned(entity, template)` / `entity.destroyed(name, template)` for every entity of the world incl. savegame loads (so a mod sees "the world is built now" per entity), and a `world.ready` event when the player exists |
-| (not used by the examples, same problem) | `risen.item.can_use` polling for equipment | `item.used/equipped/unequipped/consumed(owner, template)` |
-
-### Which engine action should trigger which event
-
-Today's behaviour in the first column ("does not fire" / "no event" were seen live by the examples agent with `-Trace events`/probes; "unknown" and "not tested" were not tried), the wish in the second.
-
-| Engine action | `item.picked_up` today | `inventory.changed` wanted (`source`) |
-|---|---|---|
-| Player (or an NPC) takes an item from the ground | fires (`owner, template, amount`) | `"pickup"`, `other` = nil |
-| Script gives: `risen.item.give`, `PSInventory::CreateItems` | **does not fire** (probe: `give` of two apples, no event) | `"script"`, delta +n |
-| Script takes: `risen.item.take` | not tested (the same path as `give`, no event expected) | `"script"`, delta -n |
-| Dialogue `Give` command (NPC to player or from nowhere) / `Take` | not tested | `"dialogue"`, `other` = the NPC |
-| Looting a corpse or chest (items move from its inventory to the player's) | unknown; the examples cannot perform it (interactive) | `"loot"`, two events: -n for the container, +n for the looter, `other` set on both |
-| Buying from / selling to a trader | unknown, not testable from a script | `"trade"`, both sides |
-| Crafting, brewing, smithing (ingredients consumed, product created) | unknown | `"craft"` (-ingredients, +product) |
-| Dropping an item into the world | unknown | `"drop"`, delta -n (then a world item exists) |
-| Using up a potion/food (`risen.item.consume`) | not tested | `"consume"`, delta -1 (plus `item.used`) |
-
-| Engine action | `npc.killed` / `npc.defeated` today | `entity.died` / `entity.defeated` wanted |
-|---|---|---|
-| Monster dies in a fight (pirate vs wolf, seen live) | `npc.killed(victim)`, once | `died(victim, killer, "combat")` once |
-| Human loses all hit points in a fight (peasants against a pirate) | **`npc.defeated`** (knocked out, `ZS_Unconscious`), not `killed` | `defeated(victim, attacker)`; `died` only if it really dies |
-| `risen.script.call("Kill", killer, victim)` (`self` = killer, `other` = victim; the arguments in the other order kill the *player* in the quest manager's eyes: `npc.killed(PC_Hero)`, hit points 0, `is_dead() == true`) | `npc.killed(victim)` at once, but the victim only has 0 hit points (`is_dead()` still false after 100 frames, the AI keeps attacking); a **second** `npc.killed` follows when something really finishes it | `died(victim, killer, "script")` exactly once, when the victim is dead |
-| `Entity:set_hp(0)` | nothing (documented in RE.md) | `died(victim, nil, "damage")` if the engine treats it as death, else nothing |
-| `Entity:kill()` (removes the entity) | nothing | `destroyed(name, template)` |
+Still open: `Entity:set_hp(0)` is no death (the AI keeps fighting, no event: use `Kill`); crafting has no cause of its own (it shows as `"script"` create/delete); container-opened and `item.used` for non-consumables
+are not events; a mod that must not poll for *positions* ("an NPC came near") still has to.
 
 ### Other gaps found
 
 * **A script cannot act for the player.** No API makes the player pick something up, loot, fight or walk to a place, so `example_fetch_pickup` stands in with `risen.item.give`
   and the kill examples with the `Kill` script. `Entity:set_state("ZS_FetchItem")` on an NPC did not make it fetch an item. Real combat works but is not deterministic (a pirate against
-  wolves: killed within seconds in one run, "threatening" for over two minutes in the next), so it is no regression test. Wanted: a way to run the engine's pickup/loot/attack
-  actions on the player or an NPC (`risen.player.pickup(item_entity)`, `Entity:attack(target)`), or the M5b events driven by test doubles.
+  wolves: killed within seconds in one run, "threatening" for over two minutes in the next), so it is no regression test. Since M5b `risen.item.pick_up/loot/trade/drop` run the engine's pickup/loot actions
+  on any inventory, which the event tests use; there is still no `Entity:attack(target)`.
 * **Quest types do nothing by themselves.** `type = "Kill"` / `"HasItems"` etc. are labels in the quest log; nothing in the examples relied on the engine evaluating them, and none was
   observed to (not investigated). All completion logic lives in Lua.
 * **Dialogue conditions beyond quest state** (has item, game variable, level) do not exist; the examples check inside the script and answer "not enough" (`example_fetch_turnin`).
@@ -120,7 +107,7 @@ Today's behaviour in the first column ("does not fire" / "no event" were seen li
   artwork needs a converter to the compiled `._ximg`/`._xmsh` formats (RE.md §26) and puts the files into `<mod>/assets/`. A texture the engine already loaded is not replaced,
   and the checks stop at "the engine loaded the loose file": there is no way to look at the rendered result (screenshots of the D3D9 window are black). Material variants
   (`MaterialSwitch`) are only numbers; which numbers are valid for a mesh has to be found by scanning shipped templates (see Patterns).
-* **No killer identity, no position filter on events.** `npc.killed` reports every death in the world, also those far away from the player.
+* **No position filter on events.** `entity.died` reports every death in the world, also those far away from the player (the killer is given: compare it with the player, `entity:distance_to(player)` filters by distance).
 * **Per-entity "create if missing" boilerplate** (`ensure_npc`) is repeated in every example; a `risen.npc.persistent(name, template, pos, opts)` helper that respawns on every
   session start would remove it (positions are kept in `risen.save` by hand today).
 * **Combat-driven scenarios are slow and flaky; item pick-up scenarios are impossible** (see above), so the examples are verified with stand-ins. What the stand-ins do not prove is

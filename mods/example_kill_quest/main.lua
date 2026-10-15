@@ -8,15 +8,13 @@
 --      exactly that entity completes the quest.
 --
 -- What you learn
---   * `npc.killed(entity)` fires when the quest manager is told that an NPC or monster DIED (a real death in a fight). The argument is the
---     dead entity: `entity:name()` is its unique name, `entity:template():name()` the template it was made from ("Wolf", "Spass_Dire_Wolf").
---     Count by template ("any wolf") or by unique entity name ("this boss").
---   * Humans are usually knocked out instead of killed: that is `npc.defeated(entity)` (same argument). Listen to both for "beat" objectives.
---   * The event does NOT say who killed: kills by other NPCs count too (use entity:distance_to(player) if only kills near the player
---     should count). The engine can report the same death twice within seconds, so remember which entities were counted.
---   * Entity:kill() removes an entity without a death and fires nothing. Setting hit points to 0 fires nothing either. The game's own
---     script `risen.script.call("Kill", killer, victim)` does tell the quest manager (the event fires) and zeroes the victim's hit points:
---     the scenario of this example uses it as a stand-in for a fight. A real fight fires the same event (a pirate against a wolf, seen live).
+--   * `entity.died(entity, killer, cause)` fires ONCE for every entity that really died: in a fight (`cause` "combat"), through the game's
+--     `Kill` script ("script"), the kill cheat ("cheat"). `entity:name()` is its unique name, `entity:template():name()` the template it was
+--     made from ("Wolf", "Spass_Dire_Wolf"); count by template ("any wolf") or by unique entity name ("this boss"). `killer` is the Entity that did
+--     it or nil: only kills by the player count here (`killer:is_player()`).
+--   * Humans are usually knocked out instead of killed: that is `entity.defeated(entity, attacker)`. Listen to both for "beat" objectives.
+--   * Entity:kill() removes an entity without a death (`entity.destroyed` fires, not `entity.died`). Setting hit points to 0 fires nothing either.
+--     The game's own script `risen.script.call("Kill", killer, victim)` is what the scenario of this example uses as a stand-in for a fight.
 --   * The boss (runtime entity) is not saved: it is spawned again after a load while its quest runs and it was not killed yet.
 --
 -- Run the live check (about a minute and a half; see docs/EXAMPLES.md):
@@ -38,11 +36,8 @@ risen.balance.install({
 })
 
 -- ---- objective 1: count the wolves ---------------------------------------------------------------------------------------------
-local counted = {}   -- unique names of the entities already counted (the engine may report one death twice)
-
 local function wolf_killed(entity)
-    if counted[entity:name()] or not risen.quest.is_running(WOLVES) then return end
-    counted[entity:name()] = true
+    if not risen.quest.is_running(WOLVES) then return end
     local n = risen.save.get("wolf_kills", 0) + 1
     risen.save.set("wolf_kills", n)
     risen.quest.add_log(WOLVES, ("Wolves: %d/%d"):format(math.min(n, WANTED), WANTED))
@@ -62,14 +57,13 @@ local function boss_killed()
     risen.quest.succeed(BOSS_QUEST)
 end
 
--- >>> EVENT BLOCK: everything the kill objectives need; no polling workaround is required for deaths in combat.
-risen.on("npc.killed", function(entity)
-    if not entity then return end
+-- Everything the kill objectives need. entity.died fires once per entity (no duplicate bookkeeping) and names the killer.
+risen.on("entity.died", function(entity, killer)
+    if not entity or not (killer and killer:is_player()) then return end
     if entity:name() == BOSS then return boss_killed() end          -- one specific entity (by unique name)
     local template = entity:template()
     if template and template:name() == "Wolf" then wolf_killed(entity) end   -- any entity of a template
 end)
--- <<<
 
 -- ---- spawning the boss -------------------------------------------------------------------------------------------------------------
 local function spawn_boss()
@@ -84,7 +78,6 @@ end
 -- ---- dialogue -------------------------------------------------------------------------------------------------------------------------
 risen.script.define("EX_Garrick_StartWolves", function()
     risen.save.set("wolf_kills", 0)
-    counted = {}
     risen.quest.open(WOLVES)
     risen.quest.run(WOLVES)
     risen.quest.add_log(WOLVES, ("Garrick wants %d wolves dead."):format(WANTED))
@@ -143,7 +136,6 @@ end
 risen.on("load.before", define_content)
 risen.on("session.start", function()
     define_content()
-    counted = {}
     local waited, handle = 0, nil
     handle = risen.on("tick", function()
         waited = waited + 1

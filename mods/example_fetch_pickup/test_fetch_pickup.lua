@@ -1,6 +1,6 @@
 -- Live check of example_fetch_pickup (only loaded in a test run).
--- The player's pick-up itself cannot be performed by a script, so the items arrive through risen.item.give: the poll in the mod counts the
--- inventory whatever the source (the `item.picked_up` handler is the instant path for a real pick-up by a human player).
+-- The player's pick-up itself cannot be performed by a script, so the items arrive through risen.item.give: the `inventory.changed` handler of the
+-- mod reacts to every source alike (a real pick-up by a human player fires it with cause "pickup", see mods/events_demo).
 local T = risen.test
 
 return function(NPC, QUEST, ITEM, WANTED, collected)

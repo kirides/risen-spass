@@ -23,6 +23,11 @@ void* ptr(const LuaEntity& h);
 // Advances the world generation (called by the lifecycle hooks); every older handle revalidates on next use.
 void bumpEntityGeneration();
 
+// The current world generation (a handle made with another one re-resolves by name), and an entity's unique name read straight from the engine
+// (empty when it cannot be read).
+unsigned currentEntityGeneration();
+std::string entityNameOf(void* entity);
+
 // Registers risen.entity.* and the Entity usertype.
 void bindEntity(sol::state_view lua, sol::table risen);
 

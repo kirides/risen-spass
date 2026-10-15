@@ -75,6 +75,7 @@ install. Screenshots of the D3D9 window are black: verify through engine state a
 | `game/symbols.h` | **X-macro table of every engine function** (module, decorated name, pointer type, required). Add engine calls here |
 | `game/abi.h` | `BString`, `ByValueString`, `OutString`, `EntityHolder`, `guarded()` (SEH) – the MSVC-x64 conventions, see RE.md §6 |
 | `game/hooks.cpp`, `events.cpp` | lifecycle hooks -> Lua events (`session.*`, `save.*`, `load.*`, `quest.status_changed`, ...) |
+| `game/inventory_events.cpp`, `entity_events.cpp`, `event_bus.cpp` | gameplay events (`inventory.*`, `item.*`, `entity.died/spawned/...`, `world.ready`): scoped hooks on the engine operations, queued and dispatched at the end of the frame (RE.md §27, scenario `events`) |
 | `game/lua_*.cpp`, `bindings.cpp`, `loc_overlay.cpp`, `script_bridge.cpp` | the Lua API (`risen.*`) |
 | `common/trace.*`, `common/test_run.*`, `game/lua_test.cpp` | opt-in trace channels (`SPASS_TRACE`), test-run bookkeeping + result JSON, `risen.test` |
 | `lua/runtime.*`, `lua/mods.*` | LuaJIT state, sandboxed per-mod environments, event dispatch, mod discovery/load order |

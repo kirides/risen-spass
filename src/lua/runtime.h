@@ -54,6 +54,30 @@ public:
         return dispatch<true>(event, args...);
     }
 
+    // Like emit() with an argument list whose length is only known at run time (the queued gameplay events).
+    sol::object emitList(const std::string& event, const std::vector<sol::object>& args) {
+        std::unique_lock lock(mutex_);
+        if (!state_) {
+            return sol::object{};
+        }
+        const auto it = handlers_.find(event);
+        if (it == handlers_.end()) {
+            return sol::object{};
+        }
+        const std::vector<Handler> snapshot = it->second;
+        for (const Handler& h : snapshot) {
+            try {
+                sol::protected_function_result r = h.fn(sol::as_args(args));
+                if (!r.valid()) {
+                    logHandlerError(h, event, r.get<sol::error>());
+                }
+            } catch (const std::exception& e) {
+                spdlog::error("lua: [{}] handler for '{}' threw: {}", h.mod, event, e.what());
+            }
+        }
+        return sol::object{};
+    }
+
     // Cheap check so hot paths (per-frame events) cost nothing when no mod listens.
     bool hasHandlers(const std::string& event) {
         std::lock_guard lock(mutex_);

@@ -299,7 +299,43 @@
     X(nav_post_copy, L"Game.dll", "?OnPostCopy@gCNavigation_PS@@UEAAXAEBVeCEntityPropertySet@@@Z", void (*)(void* self, const void* source), false) \
     X(node_attach_child, L"Engine.dll", "?AttachChild@eCNode@@QEAA_NPEAV1@@Z", bool (*)(void* self, void* child), false) \
     X(scene_unregister_tpl_name, L"Engine.dll", "?UnregisterNameInfo@eCSceneAdmin@@QEAA_NAEAVeCTemplateEntity@@@Z", bool (*)(void* self, void* tpl), false) \
-    X(scene_ctx_at, L"Engine.dll", "?GetDynamicEntityContext@eCSceneAdmin@@QEBAPEAVeCEntityDynamicContext@@H@Z", void* (*)(const void* self, int index), false)
+    X(scene_ctx_at, L"Engine.dll", "?GetDynamicEntityContext@eCSceneAdmin@@QEBAPEAVeCEntityDynamicContext@@H@Z", void* (*)(const void* self, int index), false) \
+    /* ---- reliable gameplay events (docs/RE.md section 27): gCInventory_PS operations, listener callbacks, dialogue item commands ---- */ \
+    X(gi_create_items_id, L"Game.dll", "?CreateItems@gCInventory_PS@@QEAAHAEBVbCPropertyID@@KW4gEStackType@@@Z", int (*)(void* self, const void* id, unsigned long count, int stackType), false) \
+    X(gi_create_items_tpl, L"Game.dll", "?CreateItems@gCInventory_PS@@QEAAHPEBVeCTemplateEntity@@KW4gEStackType@@@Z", int (*)(void* self, const void* tpl, unsigned long count, int stackType), false) \
+    X(gi_assure_items, L"Game.dll", "?AssureItems@gCInventory_PS@@QEAAHAEBVbCPropertyID@@KW4gEStackType@@@Z", int (*)(void* self, const void* id, unsigned long count, int stackType), false) \
+    X(gi_delete_items, L"Game.dll", "?DeleteItems@gCInventory_PS@@QEAA_NHK@Z", bool (*)(void* self, int stack, unsigned long count), false) \
+    X(gi_consume_items, L"Game.dll", "?ConsumeItems@gCInventory_PS@@QEAA_NHK@Z", bool (*)(void* self, int stack, unsigned long count), false) \
+    X(gi_delete_stack, L"Game.dll", "?DeleteStack@gCInventory_PS@@QEAA_NH@Z", bool (*)(void* self, int stack), false) \
+    X(gi_set_amount, L"Game.dll", "?SetAmount@gCInventory_PS@@QEAAXHAEBH_N@Z", void (*)(void* self, int stack, const int* amount, bool notify), false) \
+    X(gi_set_money, L"Game.dll", "?SetMoneyAmount@gCInventory_PS@@QEAAXH@Z", void (*)(void* self, int amount), false) \
+    X(gi_transfer_items, L"Game.dll", "?TransferItemsTo@gCInventory_PS@@QEAA_NPEAV1@HHW4gEStackType@@@Z", bool (*)(void* self, void* target, int stack, int count, int stackType), false) \
+    X(gi_transfer_stack, L"Game.dll", "?TransferStackTo@gCInventory_PS@@QEAA_NPEAV1@HW4gEStackType@@@Z", bool (*)(void* self, void* target, int stack, int stackType), false) \
+    X(gi_transfer_all, L"Game.dll", "?TransferAllTo@gCInventory_PS@@QEAA_NPEAV1@W4gEStackType@@@Z", bool (*)(void* self, void* target, int stackType), false) \
+    X(gi_loot_selections, L"Game.dll", "?LootSelections@gCInventory_PS@@QEAA_NPEAV1@@Z", bool (*)(void* self, void* from), false) \
+    X(gi_trade_selections, L"Game.dll", "?TradeSelections@gCInventory_PS@@QEAA_NPEAV1@@Z", bool (*)(void* self, void* with), false) \
+    X(gi_drop_items, L"Game.dll", "?DropItemsFromStack@gCInventory_PS@@QEAAPEAVeCEntity@@HHPEBVbCMatrix@@@Z", void* (*)(void* self, int stack, int count, const float* pose), false) \
+    X(gi_drop_stack, L"Game.dll", "?DropStack@gCInventory_PS@@QEAAPEAVeCEntity@@HPEBVbCMatrix@@@Z", void* (*)(void* self, int stack, const float* pose), false) \
+    X(gi_equip_to_slot, L"Game.dll", "?EquipStackToSlot@gCInventory_PS@@QEAA_NHW4gEEquipSlot@@@Z", bool (*)(void* self, int stack, int slot), false) \
+    X(gi_unequip, L"Game.dll", "?UnEquipStack@gCInventory_PS@@QEAA_NH_N@Z", bool (*)(void* self, int stack, bool unlink), false) \
+    X(gi_on_stack_create, L"Game.dll", "?OnStackCreate@gCInventory_PS@@UEAAXHPEBVgCInventoryStack@@@Z", void (*)(void* listener, int index, const void* stack), false) \
+    X(gi_on_stack_delete, L"Game.dll", "?OnStackDelete@gCInventory_PS@@UEAAXHPEBVgCInventoryStack@@@Z", void (*)(void* listener, int index, const void* stack), false) \
+    X(gi_merge_stacks, L"Game.dll", "?MergeStacks@gCInventory_PS@@QEAAXXZ", void (*)(void* self), false) \
+    X(gi_split_stack, L"Game.dll", "?SplitStack@gCInventory_PS@@QEAA_NHKAEAH@Z", bool (*)(void* self, int stack, unsigned long count, int* newStack), false) \
+    X(infocmd_create_item, L"Game.dll", "?Execute@gCInfoCommandCreateItem@@UEAA_NAEAVgCRuntimeInfo@@_N@Z", bool (*)(void* self, void* runtimeInfo, bool flag), false) \
+    X(infocmd_destroy_item, L"Game.dll", "?Execute@gCInfoCommandDestroyItem@@UEAA_NAEAVgCRuntimeInfo@@_N@Z", bool (*)(void* self, void* runtimeInfo, bool flag), false) \
+    X(infocmd_give, L"Game.dll", "?Execute@gCInfoCommandGive@@UEAA_NAEAVgCRuntimeInfo@@_N@Z", bool (*)(void* self, void* runtimeInfo, bool flag), false) \
+    X(eproxy_get_entity, L"Engine.dll", "?GetEntity@eCEntityProxy@@QEAAPEAVeCEntity@@XZ", void* (*)(void* proxy), false) \
+    X(eent_kill, L"Engine.dll", "?Kill@eCEntity@@QEAAXXZ", void (*)(void* self), false) \
+    X(gdmg_do_damage, L"Game.dll", "?DoDamage@gCDamage_PS@@QEAA_NPEAVeCEntity@@@Z", bool (*)(void* self, void* victim), false)     X(sg_kill, L"Script_Game.dll", "?Kill@@YA_JPEAVgCScriptProcessingUnit@@PEAX1_J@Z", std::int64_t (*)(void* unit, void* self, void* other, std::int64_t arg), false) \
+    X(sg_cheat_kill, L"Script_Game.dll", "?OnCheatKill@@YA_JPEAVgCScriptProcessingUnit@@PEAX1_J@Z", std::int64_t (*)(void* unit, void* self, void* other, std::int64_t arg), false)     X(sg_defeat, L"Script_Game.dll", "?Defeat@@YA_JPEAVgCScriptProcessingUnit@@PEAX1_J@Z", std::int64_t (*)(void* unit, void* self, void* other, std::int64_t arg), false) \
+    X(ent_spawn_near, L"Script.dll", "?Spawn@Entity@@SA?AV1@VTemplate@@V1@_NW4gEDirection@@@Z", void* (*)(void* ret, void* byValueTemplate, void* byValueEntity, bool temporary, int direction), false) \
+    X(psinv_transfer_amount, L"Script.dll", "?TransferAmountTo@PSInventory@@QEAA_NHHAEAVEntity@@@Z", bool (*)(void* self, int stack, int count, void* target), false) \
+    X(psinv_loot, L"Script.dll", "?LootSelections@PSInventory@@QEAA_NAEAVEntity@@@Z", bool (*)(void* self, void* from), false) \
+    X(psinv_trade, L"Script.dll", "?TradeSelections@PSInventory@@QEAA_NAEAVEntity@@@Z", bool (*)(void* self, void* with), false) \
+    X(psinv_set_max_selection, L"Script.dll", "?SetMaxSelection@PSInventory@@QEAAXXZ", void (*)(void* self), false) \
+    X(psinv_insert_stack, L"Script.dll", "?InsertStack@PSInventory@@QEAAHAEBVEntity@@@Z", int (*)(void* self, const void* item), false) \
+    X(psinv_set_selection, L"Script.dll", "?SetSelection@PSInventory@@QEAAXHAEBH@Z", void (*)(void* self, int stack, const int* amount), false)     X(psinv_unequip_stack, L"Script.dll", "?UnEquipStack@PSInventory@@QEAA_NH@Z", bool (*)(void* self, int stack), false)     X(psinv_set_max_select_limit, L"Script.dll", "?SetMaxSelectLimit@PSInventory@@QEAAXXZ", void (*)(void* self), false)     X(psinv_drop_stack, L"Script.dll", "?DropStack@PSInventory@@QEAA?AVEntity@@HAEBVbCMatrix@@@Z", void* (*)(void* self, void* ret, int stack, const float* pose), false)
 
 namespace spass::game {
 

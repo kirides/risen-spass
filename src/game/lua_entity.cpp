@@ -64,6 +64,10 @@ void* lookupByName(const std::string& name) {
 
 void bumpEntityGeneration() { ++g_generation; }
 
+unsigned currentEntityGeneration() { return g_generation.load(); }
+
+std::string entityNameOf(void* entity) { return nameOf(entity); }
+
 void* ptr(const LuaEntity& h) {
     const unsigned now = g_generation.load();
     if (h.generation == now) {

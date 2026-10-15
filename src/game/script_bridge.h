@@ -15,6 +15,9 @@ void setAdmin(void* admin);
 // match, in which case define()/override() refuse to touch the registry.
 bool selfTest();
 
+// True while a script started with risen.script.call runs (the hooks use it to tell a scripted kill from a combat death).
+bool inLuaScriptCall();
+
 // Registers risen.script.* (define, override, exists, call) with the Lua state.
 void bindScripts(sol::state_view lua, sol::table risen);
 

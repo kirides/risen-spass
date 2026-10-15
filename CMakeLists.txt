@@ -57,11 +57,14 @@ add_library(spass_core STATIC
     src/common/trace.cpp
     src/game/abi.cpp
     src/game/bindings.cpp
+    src/game/entity_events.cpp
+    src/game/event_bus.cpp
     src/game/events.cpp
     src/game/file_trace.cpp
     src/game/folder_redirect.cpp
     src/game/hooks.cpp
     src/game/instance_mutex.cpp
+    src/game/inventory_events.cpp
     src/game/lua_assets.cpp
     src/game/lua_balance.cpp
     src/game/loc_files.cpp

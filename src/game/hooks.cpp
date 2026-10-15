@@ -6,6 +6,7 @@
 
 #include "bootstrap.h"
 #include "game/bindings.h"
+#include "game/event_bus.h"
 #include "game/events.h"
 #include "game/lua_test.h"
 #include "game/vfs_mount.h"
@@ -40,6 +41,8 @@ int detourScriptAdminPostInit(void* self) {
     }
     scripts::setAdmin(self);
     scripts::selfTest();
+    installScriptEventHooks();  // Script.dll / Script_Game.dll are loaded now
+    hooks::enableAll();
     onGameReady();
     return result;
 }
@@ -48,6 +51,7 @@ int detourScriptAdminPostInit(void* self) {
 void detourSessionProcess(void* self) {
     g_sessionProcess.original(self);
     test::onTick();  // risen.test: pending wait_for/sleep, heartbeat, first-tick mark
+    bus::flush();    // the gameplay events queued during this frame (inventory.*, npc.killed, ...)
     auto& rt = lua::Runtime::instance();
     if (rt.running() && rt.hasHandlers("tick")) {
         rt.emit("tick");

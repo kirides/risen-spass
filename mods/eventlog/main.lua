@@ -2,6 +2,8 @@
 local EVENTS = {
     "session.start", "session.stop", "world.changed", "save.before", "save.after", "load.before", "load.after",
     "quest.status_changed", "npc.killed", "npc.defeated", "info.started", "info.finished", "item.picked_up",
+    "world.ready", "inventory.added", "inventory.removed", "inventory.changed", "item.equipped", "item.unequipped", "item.consumed",
+    "entity.died", "entity.defeated", "entity.damaged", "entity.spawned", "entity.destroyed",
 }
 for _, ev in ipairs(EVENTS) do
     risen.on(ev, function(...)

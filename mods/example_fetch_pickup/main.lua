@@ -4,10 +4,9 @@
 -- adds a quest log line ("Berries: 1/3"), the third one completes the quest and pays the reward. The berries stay in the inventory.
 --
 -- What you learn
---   * There is no "inventory changed" event. What exists: `item.picked_up(owner, template, amount)` -- an inventory took an item entity
---     from the world (picked up by the player; owner = the entity whose inventory it is). Items that arrive any other way (looted from a
---     corpse or chest, bought, given by a script/dialogue) do not fire it. So the robust pattern is the one below: ask for the count in
---     BOTH the event (instant feedback) and a throttled `tick` poll (catches every other source). risen.item.count is cheap.
+--   * `inventory.changed(owner, template, delta, total, cause, other)` fires for EVERY change of an inventory, whatever its source: picked up
+--     from the ground (`cause` "pickup"), looted from a corpse or chest ("loot"), bought ("trade"), given by a script or a dialogue ("script",
+--     "dialogue"). No polling: the handler below just asks the engine for the count whenever the player's berries changed.
 --   * Count relative to a baseline taken when the quest starts (the player may already carry berries) and keep the baseline in risen.save
 --     so it survives saving and loading (the Lua state itself is not saved).
 --   * Entities spawned from Lua are not saved: the scattered berries are spawned again when a saved game with this quest running is loaded.
@@ -44,21 +43,11 @@ local function on_item_count_changed()
     end
 end
 
--- >>> EVENT BLOCK: the instant path. `item.picked_up` only covers items taken from the ground by an inventory (the player picking
---     something up). A future engine-level "inventory changed" event (see docs/EXAMPLES.md "Gaps") would replace the poll below.
-risen.on("item.picked_up", function(owner, template)
+-- Every source of berries: ground pickup, loot, trade, scripts, dialogues (the event is queued by the engine hook and dispatched at the end of
+-- the frame, so calling the quest API from here is safe).
+risen.on("inventory.changed", function(owner, template)
     if template == ITEM and owner and owner:is_player() then on_item_count_changed() end
 end)
--- <<<
-
--- >>> POLLING FALLBACK: items that arrive any other way (looted, bought, given by a script or dialogue) fire no event: look every
---     20 frames (~1/4 s). risen.item.count is cheap. Delete this block once an inventory-change event exists.
-local frames = 0
-risen.on("tick", function()
-    frames = frames + 1
-    if frames % 20 == 0 then on_item_count_changed() end
-end)
--- <<<
 
 -- ---- scatter the berries around the scout (runtime entities: respawned after a load) -----------------------------------------------
 local function scatter(count)

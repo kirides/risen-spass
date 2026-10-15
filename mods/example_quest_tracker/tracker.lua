@@ -7,12 +7,10 @@
 --   { quest = "Q_C", kind = "kills", template = "Wolf", count = 5 }             completes after `count` deaths of entities made from that template
 --
 -- Progress lives in risen.save (key "tracker.<quest>"), so it is part of every savegame. The quest status itself is the engine's.
--- Each objective kind has ONE small handler (`talk_finished`, `items_changed`, `entity_killed`) fed by an event block and, where the engine has
--- no event yet, a polling block -- see the markers below. `tracker.on_progress(fn(quest, n, wanted))` and `tracker.on_complete(fn(quest))` register the mod's reactions.
+-- Each objective kind has ONE small handler (`talk_finished`, `items_changed`, `entity_killed`) fed by one engine event -- no polling. `tracker.on_progress(fn(quest, n, wanted))` and `tracker.on_complete(fn(quest))` register the mod's reactions.
 local M = {}
 
 local objectives = {}     -- quest name -> objective table
-local counted = {}        -- quest name -> { [entity name] = true }: a death may be reported twice, count it once
 local callbacks = {
     progress = function(quest, n, wanted) end,   -- set with M.on_progress(fn)
     complete = function(quest) end,              -- set with M.on_complete(fn)
@@ -50,7 +48,6 @@ function M.start(quest)
     local o = assert(objectives[quest], "tracker: unknown quest " .. quest)
     local player = risen.entity.player()
     risen.save.set(key(quest), { n = 0, base = (o.kind == "items" and player) and risen.item.count(player, o.item) or 0, done = false })
-    counted[quest] = {}
     risen.quest.open(quest)
     risen.quest.run(quest)
 end
@@ -64,11 +61,11 @@ local function talk_finished(info_name)
     end
 end
 
-local function items_changed()
+local function items_changed(template)
     local player = risen.entity.player()
     if not player then return end
     for quest, o in pairs(objectives) do
-        if o.kind == "items" and running(quest) then
+        if o.kind == "items" and o.item == template and running(quest) then
             advance(quest, math.max(0, risen.item.count(player, o.item) - state(quest).base))
         end
     end
@@ -76,33 +73,18 @@ end
 
 local function entity_killed(entity)
     local template = entity:template()
-    local tname, ename = template and template:name(), entity:name()
-    if not (tname and ename) then return end
+    local tname = template and template:name()
+    if not tname then return end
     for quest, o in pairs(objectives) do
-        local seen = counted[quest]
-        if o.kind == "kills" and o.template == tname and running(quest) and seen and not seen[ename] then
-            seen[ename] = true
-            advance(quest, state(quest).n + 1)
-        end
+        if o.kind == "kills" and o.template == tname and running(quest) then advance(quest, state(quest).n + 1) end
     end
 end
 
--- >>> EVENT BLOCK: the engine tells us.
+-- The engine tells us; nothing is polled.
 risen.on("info.finished", function(info_name) talk_finished(info_name) end)   -- a dialogue option finished playing (any NPC)
-risen.on("npc.killed", function(entity) if entity then entity_killed(entity) end end)   -- a real death
--- <<<
-
--- >>> POLLING BLOCK: no event exists for "the player's inventory changed" that also covers loot, trade and scripted gifts
---     (item.picked_up only covers pickups from the ground), so look every 20 frames. Delete it once such an event exists.
-local frames = 0
-risen.on("tick", function()
-    frames = frames + 1
-    if frames % 20 == 0 then items_changed() end
+risen.on("entity.died", function(entity) if entity then entity_killed(entity) end end)   -- a real death, once per entity (no duplicate bookkeeping)
+risen.on("inventory.changed", function(owner, template)   -- any change of any inventory: pickup, loot, trade, scripts, dialogues
+    if owner and owner:is_player() then items_changed(template) end
 end)
-risen.on("item.picked_up", function() items_changed() end)   -- instant feedback for the common case
--- <<<
-
--- After a load the Lua-side kill dedupe table is gone: quests that run keep their saved progress, counted names start empty.
-risen.on("session.start", function() counted = {} for quest in pairs(objectives) do counted[quest] = {} end end)
 
 return M
