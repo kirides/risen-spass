@@ -220,6 +220,19 @@ void* templatePropertySet(const std::string& templateName, const std::string& se
     return ps;
 }
 
+void* templateEntityPtr(const std::string& templateName, std::string& error) {
+    const Resolved r = resolveTemplate(templateName);
+    if (r.tpl == nullptr) {
+        error = r.error;
+        return nullptr;
+    }
+    if (!ensureLoaded(r.tpl)) {
+        error = "the template content could not be loaded";
+        return nullptr;
+    }
+    return r.tpl;
+}
+
 // entity:template() -> Template | nil, reason
 void addTemplateMethods(sol::usertype<LuaEntity>& ut) {
     ut["template"] = [](sol::this_state ts, const LuaEntity& e) -> Two {

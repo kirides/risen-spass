@@ -409,6 +409,8 @@ TEST(balance_install_registers_handlers_once_per_spec) {
     CHECK(lua.script("return pcall(api.balance.install, 5)").get<bool>() == false);
 }
 
+#include "npc_tests.inc"
+
 }  // namespace
 
 // Prints the faulting stack with symbol names when a test crashes (the PDB is next to the exe).

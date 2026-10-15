@@ -585,9 +585,13 @@ local balanceApi = {}
 ---@field mana_cost? integer `gCCastInfo_PS.ManaCost` (runes and scrolls).
 ---@field properties? TemplateEdits Any other property: `{ gCDamage_PS = { DamageMultiplier = 1.2 } }`; validated like `risen.template.patch`.
 
----A balancing spec. `items` is `{ [template name] = BalanceItem }`; other sections are registered with `risen.balance.register_section`.
+---A balancing spec. `items` is `{ [template name] = BalanceItem }`, `npcs` is `{ [template name] = BalanceNpc }`; `npc_groups` and `item_groups` apply relative or
+---absolute settings to every template a selector matches; other sections are registered with `risen.balance.register_section`.
 ---@class BalanceSpec
 ---@field items? table<string, BalanceItem>
+---@field npcs? table<string, BalanceNpc> NPC and monster templates (see `BalanceNpc`, docs/NPC_PROPERTIES.md).
+---@field npc_groups? BalanceNpcGroup[] `{ { match = "^Wolf", hp_mult = 1.5 }, { group = "Monster/Kapitel 2", level_add = 2 } }`
+---@field item_groups? BalanceItemGroup[] `{ { group = "Items/Potions", value_mult = 0.5 } }`
 
 ---@class BalanceOptions
 ---@field instances? boolean Also write the values into the live entities of each template (default `true`).
@@ -628,9 +632,23 @@ function balanceApi.install(spec, opts) end
 ---@param handler fun(data: any, opts: BalanceOptions): table[], string[]
 function balanceApi.register_section(name, handler) end
 
----Names of the registered sections (`{ "items" }`).
+---Names of the registered sections (`{ "item_groups", "items", "npc_groups", "npcs" }`).
 ---@return string[]
 function balanceApi.section_names() end
+
+---One-call relative balancing of NPCs (`risen.balance.apply` with an `npc_groups` entry). Factors: `hp`, `mana`, `level`, `xp` (reward), `damage`
+---(Strength and the NPC's own damage), `skills = { Strength = 1.2 }`. `filter` is a template group (`"Monster"`, `"NPC/Harbour"`, `"Monster/Kapitel 2"`) or else a Lua
+---pattern on the name; `group`, `match`, `exclude`, `names` work as in `BalanceNpcGroup`. Factors are relative to the shipped values: calling it twice does not compound.
+---`instances` (default `true`) also writes the live NPCs.
+---```lua
+---risen.balance.scale_npcs{ filter = "Monster", hp = 1.5, damage = 1.2 }
+---```
+---@param opts { filter?: string, group?: string, match?: string, exclude?: string, names?: string[], hp?: number, mana?: number, level?: number, xp?: number, damage?: number, skills?: table<SkillName, number>, instances?: boolean }
+---@param apply_opts? BalanceOptions
+---@return BalanceReport|nil report
+---@return string|nil reason
+---@return string[]|nil problems
+function balanceApi.scale_npcs(opts, apply_opts) end
 
 ---The valid skill names for requirements and modifiers: `Strength`, `Dexterity`, `Intelligence`, `MaxHitPoints`, `MaxManaPoints`, `LearnPoints`,
 ---`Experience`, `Level`, `HitPoints`, `ManaPoints` (current values: potions heal), `Axe`, `Sword`, `Staff`, `Bow`, `CrossBow`, `ProtEdge`, `ProtBlunt`,
@@ -672,6 +690,171 @@ npcApi.guilds = {}
 ---@param opts? NpcSpawnOptions
 ---@return Entity|nil
 function npcApi.spawn(template, x, y, z, opts) end
+
+---------------------------------------------------------------------------------------------------------------------
+-- NPC and monster balancing (docs/RE.md section 24, docs/NPC_PROPERTIES.md)
+---------------------------------------------------------------------------------------------------------------------
+
+---Settings of one NPC or monster template (`risen.balance` section `npcs`, `risen.npc.set_stats`). Every key is optional. **Numbers are base values**
+---(what the template stores); relative keys (`*_mult`, `*_add`) are computed from the template's *shipped* values and written as absolutes, so applying
+---a spec again (first tick, every `session.start`, on live NPCs that were saved with the first result) never compounds. An absolute and a relative key of
+---the same quantity exclude each other.
+---@class BalanceNpc
+---@field hp_max? integer Maximum hit points (a template/NPC at full health stays at full health; a damaged NPC keeps its hit points, clamped to the new maximum).
+---@field hp? integer Starting/current hit points (`<= hp_max`). Written to templates; to live NPCs only when they are at full health (a single entity named by the caller: always).
+---@field hp_mult? number Factor on the shipped maximum hit points.
+---@field mana_max? integer
+---@field mana? integer
+---@field mana_mult? number
+---@field level? integer Level (1 or more). The level only drives the experience reward of a kill.
+---@field level_mult? number
+---@field level_add? integer
+---@field xp? integer Experience reward of a kill, set through the level: the engine pays `10 * level`, at least 50 (exactly `10 * level` for the species Chicken and Nautilus).
+---@field xp_mult? number Same as `level_mult` (the reward is proportional to the level).
+---@field skills? table<SkillName, integer> Base values: attributes (`Strength` 0..200, `Dexterity`, `Intelligence`), protection (`ProtEdge` ...), combat skills (`Sword`, `Axe`, `Staff`, `Bow`, `CrossBow` 0..10), magic. Out-of-range absolutes are errors.
+---@field skills_mult? table<SkillName, number> Factors on the shipped values (clamped to the skill's range, noted in the report).
+---@field skills_add? table<SkillName, integer> Added to the shipped values.
+---@field damage_mult? number Scales the NPC-side terms of the melee damage formula: `Strength` and, if the NPC has one, its own `gCDamage_PS.DamageAmount`. Animals and monsters hit with fist items of damage 0 (`It_Fist_Monster`), so their bite equals Strength; for armed NPCs scale the weapon through `items`.
+---@field damage? integer `gCDamage_PS.DamageAmount` of the NPC itself (only special monsters such as Titan and Inferno use it).
+---@field damage_type? string `gCDamage_PS.DamageType`: `"Edge"`, `"Blunt"`, `"Point"`, `"Fire"`, `"Ice"`, `"Magic"`, `"Physics"`, `"None"`.
+---@field guild? integer|string `"None"`, `"Don"`, `"Dig"`, `"Grd"`, `"Cit"`, `"Inq"`, `"Mag"`, `"Pir"` (or the number).
+---@field species? string `gCNPC_PS.Species` (`"Human"`, `"Wolf"`, `"Lizard"`, `"Skeleton"`, ...).
+---@field attitude? string `gCNPC_PS.AttitudeLock`: `"None"`, `"Neutral"`, `"Friendly"`, `"Angry"`, `"Hostile"`.
+---@field bravery? string `gCNPC_PS.BraveryOverride`: `"None"`, `"Brave"`, `"Coward"`.
+---@field damage_calc? string `gCNPC_PS.DamageCalculationType`: `"Normal"`, `"Monster"`, `"Immortal"` (damage 0 per the decompiled scripts, untested in a fight).
+---@field combat_species? string `gCCombatSystem_PS.CombatSpecies` (the move set and fist items, see `risen.npc.combat_species`).
+---@field ai_group? string `gCNPC_PS.Group` (the free-form group name AI uses to find allies).
+---@field loot? table<string, integer> Items the template carries: `{ It_Apple = 3 }` is a *target amount* (idempotent; 0 removes). Reaches NPCs spawned afterwards, not existing ones.
+---@field properties? TemplateEdits Any other property: `{ gCNPC_PS = { RoleDescription = "x" } }`; validated like `risen.template.patch`.
+
+---Selects NPC templates for `npc_groups` (and items for `item_groups`). Without `group`, `match`, `exclude` and `names` it selects every template below
+---`NPC` and `Monster` (never `PC_Hero`, the player's template, unless named in `names`; templates that are no NPCs are skipped).
+---@class BalanceGroupSelector
+---@field group? string A template group path (`"Monster"`, `"Monster/Kapitel 2"`, `"NPC/Harbour"`, `"Items/Potions"`; see docs/TEMPLATES.md).
+---@field match? string Lua pattern on the template name (`"^Wolf"`).
+---@field exclude? string Lua pattern; matching names are dropped.
+---@field names? string[] Exact template names (added whatever the patterns say).
+
+---@class BalanceNpcGroup : BalanceGroupSelector, BalanceNpc
+
+---@class BalanceItemGroup : BalanceGroupSelector
+---@field value_mult? number Factor on the shipped `gCItem_PS.GoldValue`.
+---@field damage_mult? number Factor on the shipped `gCDamage_PS.DamageAmount` (items that have one).
+
+---The numbers of an NPC: `risen.npc.stats`.
+---@class NpcStats
+---@field template? string The template (name) the NPC/template belongs to.
+---@field base boolean Whether `base` values were requested (no worn-item bonuses).
+---@field hp integer Current hit points.
+---@field hp_max integer
+---@field mana integer
+---@field mana_max integer
+---@field level integer
+---@field experience integer The experience the character itself holds (`Stat_XP`).
+---@field xp_reward integer What killing it gives: `10 * level`, at least 50 (exactly `10 * level` for the species Chicken and Nautilus).
+---@field skills table<string, integer> `Strength`, `Dexterity`, `Intelligence`, `ProtEdge` ... (names of `risen.balance.skills()` without hit/mana/level/experience).
+---@field guild string `"Pir"`, `"Cit"`, ...
+---@field species string
+---@field bravery string
+---@field attitude string
+---@field damage_calc string
+---@field ai_group string
+---@field damage { amount: integer, type: string } The NPC's own `gCDamage_PS`.
+---@field combat { species?: string, right_fist?: string, left_fist?: string } The combat species and the fist item templates it hits with (their `gCDamage_PS.DamageAmount` is added to Strength).
+---@field loot? { item: string, amount: integer }[] Templates: the starting inventory.
+---@field stacks? integer Entities: the number of inventory stacks.
+
+---@class NpcStatsOptions
+---@field base? boolean Report base values instead of totals (the numbers `set_stats` writes).
+
+---@class NpcSetStatsOptions
+---@field instances? boolean With a template target: also write into every live NPC made from it (default `false`).
+---@field dry_run? boolean Only validate.
+
+---@class NpcSetStatsReport
+---@field template boolean `true` when a template was written.
+---@field written integer Values written into the template or entity.
+---@field instances integer Live NPCs written.
+---@field notes string[] Clamped values and other remarks.
+---@field dry_run boolean
+
+---Everything readable about an NPC or monster: hit points, mana, level, the experience a kill gives, attributes, protection and combat skills, guild,
+---species, bravery, damage, combat species and fist items, inventory/loot. `target` is a template name, a `Template` handle or an NPC entity.
+---(hit points, level, attributes and skills are not reflected properties: the engine's `gCSkills_PS` storage is read natively.)
+---@param target string|Template|Entity
+---@param opts? NpcStatsOptions
+---@return NpcStats|nil stats
+---@return string|nil reason
+function npcApi.stats(target, opts) end
+
+---Writes settings (see `BalanceNpc`) into an NPC template (every future spawn gets them; `instances = true` also the live NPCs of that template: only the
+---listed values, damaged NPCs keep their hit points) or into one NPC entity (relative keys relative to its own values; explicit `hp` always written).
+---Validated first: on any problem nothing is written. Template edits are runtime-only (see `risen.balance.install`); values written into entities are saved with the game.
+---```lua
+---risen.npc.set_stats("Wolf", { hp_max = 300, xp = 120, skills = { Strength = 60 } }, { instances = true })
+---```
+---@param target string|Template|Entity
+---@param spec BalanceNpc
+---@param opts? NpcSetStatsOptions
+---@return NpcSetStatsReport|nil report
+---@return string|nil reason
+function npcApi.set_stats(target, spec, opts) end
+
+---Low level: the stored base value, modification (worn items/effects), total (clamped), minimum and maximum of one skill (`gESkill` 0..33, RE.md section 23).
+---`max <= 0` means unlimited. `target` is a template name (its `gCSkills_PS` storage) or an entity.
+---@param target string|Entity
+---@param skill integer
+---@return integer|nil base
+---@return integer|string|nil modification The reason when `base` is `nil`.
+---@return integer|nil total
+---@return integer|nil min
+---@return integer|nil max
+function npcApi.skill_raw(target, skill) end
+
+---Low level: writes the BASE value of a skill. A template name writes the template's storage (clamped to the skill's range); an entity goes through the engine's
+---`gCSkills_PS::SetSkillBaseValue` (range, hit/mana point coupling, change callback). Returns the stored base and the resulting total.
+---@param target string|Entity
+---@param skill integer
+---@param value number
+---@return integer|nil base
+---@return integer|string|nil total The reason when `base` is `nil`.
+function npcApi.set_skill_base(target, skill, value) end
+
+---The properties of a combat species (`gCCombatAdmin`): attack/strafe distances, animations and the fist items (`RightFistItem`, `LeftFistItem`) monsters hit with.
+---@param name string `"Human"`, `"Wolf"`, `"Boar"`, `"Lizard"`, `"Ogre"`, `"Goblin"`, ...
+---@return { name: string, type: string, value: string }[]|nil properties
+---@return string|nil reason
+function npcApi.combat_species(name) end
+
+---Edits one property of a combat species (shared by every NPC that uses it).
+---@param name string
+---@param property string
+---@param value string
+---@return boolean|nil ok
+---@return string|nil reason
+function npcApi.set_combat_species_property(name, property, value) end
+
+---The inventory of an NPC template (what each new spawn starts with): `{ { item = "It_Apple", amount = 3 } }`.
+---@param name string
+---@return { item: string, amount: integer }[]|nil stacks
+---@return string|nil reason
+function npcApi.template_inventory(name) end
+
+---Puts `count` items (default 1) into the inventory of an NPC template: NPCs spawned afterwards carry them. (`loot` in a spec is the idempotent form.)
+---@param name string
+---@param item string
+---@param count? integer
+---@return boolean|nil ok
+---@return string|nil reason
+function npcApi.template_give(name, item, count) end
+
+---Removes up to `count` items (default all) of a template from an NPC template's inventory.
+---@param name string
+---@param item string
+---@param count? integer
+---@return integer|nil removed
+---@return string|nil reason
+function npcApi.template_take(name, item, count) end
 
 ---------------------------------------------------------------------------------------------------------------------
 -- Quests

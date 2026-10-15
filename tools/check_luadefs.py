@@ -3,7 +3,7 @@
 
     python tools/check_luadefs.py          # exit code 1 and a list of differences when out of sync
 
-Sources scanned (src/game/*.cpp, src/lua/runtime.cpp):
+Sources scanned (src/game/*.cpp, src/game/npc_balance_lua.h, src/lua/runtime.cpp):
   * `<table>.set_function("fn", ...)` where the table is published with `risen["ns"] = <table>;`
   * Lua helper chunks:  `function risen.ns.fn(`
   * usertype members:   `new_usertype<LuaX>("Type", ..., "member", ...)` and `ut["member"] = ...`
@@ -23,7 +23,7 @@ members = {}    # "Type.member" -> source
 
 USERTYPES = {'LuaEntity': 'Entity', 'LuaTemplate': 'Template', 'LuaQuest': 'Quest', 'LuaInfo': 'Info', 'ScriptContext': 'ScriptContext'}
 
-for path in sorted((root / 'src').rglob('*.cpp')):
+for path in sorted(list((root / 'src').rglob('*.cpp')) + [root / 'src/game/npc_balance_lua.h']):   # the .h holds the Lua chunk of NPC balancing
     text = path.read_text(encoding='utf-8', errors='replace')
     rel = path.relative_to(root).as_posix()
     # table variables published in `risen`

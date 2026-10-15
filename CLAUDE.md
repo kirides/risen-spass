@@ -3,7 +3,7 @@
 A hook-based **Lua (LuaJIT) modding layer for Risen Enhanced (x64)**: a proxy `sentry.dll` is loaded by `Risen.exe`, binds the
 game's exported C++ API by decorated name, hooks lifecycle functions and runs mods from `<Risen>\bin\spass\mods`.
 Docs: `docs/RE.md` (reverse-engineering findings, by section), `docs/LUA_API.md` (API), `docs/NEXT_STEPS.md` (roadmap),
-`docs/TEMPLATES.md` (entity template names), `docs/ITEM_PROPERTIES.md` (where item numbers live), `types/README.md` (editor support).
+`docs/TEMPLATES.md` (entity template names), `docs/ITEM_PROPERTIES.md` (where item numbers live), `docs/NPC_PROPERTIES.md` (where NPC/monster numbers live), `types/README.md` (editor support).
 
 ## Hard rules
 

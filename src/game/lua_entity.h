@@ -43,6 +43,10 @@ void installTemplatePatchHelper(sol::state_view lua, sol::table risen);
 // nullptr and a reason in `error` when the template or the set does not exist. (lua_template.cpp)
 void* templatePropertySet(const std::string& templateName, const std::string& set, std::string& error);
 
+// The eCTemplateEntity of the template `templateName` (content loaded), usable as the `this` holder of the PS* wrappers (Script.dll);
+// nullptr and a reason in `error` otherwise. (lua_template.cpp)
+void* templateEntityPtr(const std::string& templateName, std::string& error);
+
 // Registers risen.item.skill_array/set_skill_array/can_use (native access to the RequiredSkills / ModifySkills arrays of items)
 // and Entity:skill_total. Must run after bindItems(). (lua_balance.cpp)
 void bindBalance(sol::state_view lua, sol::table risen);
@@ -68,6 +72,13 @@ void addItemMethods(sol::usertype<LuaEntity>& ut);
 
 // Adds the NPC methods (guild, hp, level, set_state, goto_*, equip_all, ...) to the Entity usertype.
 void addNpcMethods(sol::usertype<LuaEntity>& ut);
+
+// Registers the native NPC balancing functions risen.npc.skill_raw/set_skill_base/combat_species. Must run after bindNpcHelpers(). (lua_npc_balance.cpp)
+void bindNpcBalance(sol::state_view lua, sol::table risen);
+
+// Defines risen.npc.stats/set_stats and the npcs / npc_groups / item_groups sections of risen.balance (pure Lua on top of the native functions and
+// risen.balance.register_section). Split out so the unit tests can run it against mocks. (lua_npc_balance.cpp)
+void installNpcBalanceHelpers(sol::state_view lua, sol::table risen);
 
 // Registers risen.npc.spawn (Lua helper built on the primitives). Must run after bindItems().
 void bindNpcHelpers(sol::state_view lua, sol::table risen);

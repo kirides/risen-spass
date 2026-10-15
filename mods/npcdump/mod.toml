@@ -1,0 +1,6 @@
+id          = "npcdump"
+name        = "NPC template dump"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Development aid: logs every property of every property set of the NPC and monster templates (docs/NPC_PROPERTIES.md)."
+main        = "main.lua"

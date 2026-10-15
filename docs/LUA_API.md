@@ -130,7 +130,7 @@ local first = true
 risen.on("tick", function() if first then first = false; apply(false) end end)   -- earliest moment
 risen.on("session.start", function() apply(true) end)                            -- new game and load: update the world's entities too
 ```
-NPC and monster templates are loaded lazily by the engine; the template methods load them on demand. `gCSkills_PS` (hit points, skills) has no reflected properties.
+NPC and monster templates are loaded lazily by the engine; the template methods load them on demand. `gCSkills_PS` (hit points, level, attributes, skills) has no reflected properties: use `risen.npc.stats/set_stats` ("Balancing NPCs" below).
 Entity methods added with this API: `Entity:template()`, `Entity:stack_item(index)` (inventory stack `index`'s item: the template entity, handy for `item_value()` of what a character carries).
 
 ### Balancing items — `risen.balance`, `risen.item.requirements / modifiers` (see `mods/balance_items`, [RE.md §23](RE.md), [ITEM_PROPERTIES.md](ITEM_PROPERTIES.md))
@@ -171,7 +171,7 @@ risen.item.consume(player, "It_Po_Health_01")                   -- what using a 
   (`gESkill_Stat_STR`) are accepted too. An unknown name is an error that lists the valid ones.
 * **Modifier modes** (`risen.balance.modes()`): `add` (default; the shipped value of every item), `set`, `max`, `percent`. Amounts are integers (negative allowed).
 * **`items` settings**: `value`, `damage`, `requires`, `modifies`, `use_type`, `category`, `mana_cost` and `properties = { Set = { Property = value } }` (anything else, validated like `risen.template.patch`);
-  an unknown setting or template is an error listing the valid settings. Other sections (`npcs`, `spells`, ...) are registered by later features with `risen.balance.register_section`.
+  an unknown setting or template is an error listing the valid settings. More sections: `npcs`, `npc_groups` and `item_groups` (see "Balancing NPCs"); later features register theirs (`spells`, ...) with `risen.balance.register_section`.
 * **`instances`**: `risen.balance.apply`/`install` write into the live entities of each template by default (world items; **existing entities keep their own copies**, RE.md §22);
   `set_requirements`/`set_modifiers` and `risen.template.patch` default to templates only. Values written into entities are saved with the game.
 * **Timing**: edits are runtime-only; `install` applies them on the first `tick` and on every `session.start`. In a savegame the world's items keep the *saved* values until a mod writes them again
@@ -180,6 +180,55 @@ risen.item.consume(player, "It_Po_Health_01")                   -- what using a 
   modifiers to the wearer when equipped and subtract the **current** list when unequipped: change modifiers before anything is worn (first `tick`), otherwise a character that already wears the item
   drifts by the difference when it takes the item off. Potions/food apply their modifiers to the base value when used up (`HitPoints` heals, `MaxHitPoints` raises the maximum). Melee damage is
   `DamageMultiplier * (DamageAmount + the attacker's Strength)` (+50 while Berserker).
+
+### Balancing NPCs and monsters — `risen.npc.stats / set_stats`, `risen.balance` sections `npcs`, `npc_groups`, `item_groups` (see `mods/balance_npcs`, [RE.md §24](RE.md), [NPC_PROPERTIES.md](NPC_PROPERTIES.md))
+Where an NPC's numbers live: hit points, mana, **level, attributes, protection and combat skills** in the engine's `gCSkills_PS` (not reflected: the API reads and writes its
+storage natively, for templates and live entities); guild, species, attitude, bravery, damage calculation in `gCNPC_PS`; the starting inventory in `gCInventory_PS`;
+the fight style in the combat species of `gCCombatSystem_PS`. Derived values: a kill pays `10 * level` experience (at least 50; exactly `10 * level` for Chicken and
+Nautilus), a melee hit does `weapon DamageMultiplier * (DamageAmount + attacker Strength) - victim's protection`, and animals/monsters hit with fist items of damage 0
+(`It_Fist_Monster`), i.e. **a bite = Strength** (verified in a fight: Strength 30 vs Prot_Edge 20 = 10, Strength 90 = 70).
+```lua
+-- declarative: validated first (templates, setting names, skill names, ranges, enum names, patterns); nothing is written when anything is wrong
+risen.balance.install({                                    -- or risen.balance.apply(spec): templates on the first tick, live NPCs on every session.start
+    npcs = {
+        Wolf = { hp_max = 500, xp = 200, skills = { Strength = 90, ProtEdge = 60 }, bravery = "Brave" },   -- absolute
+        Boar = { hp_mult = 2, level_add = 2 },                                                              -- relative to the SHIPPED values
+        Peasant_1_01 = { guild = "Cit", skills = { Strength = 50, Sword = 3 }, loot = { It_Apple = 3 } },
+        Gnome = { properties = { gCNPC_PS = { RoleDescription = "x" } } },                                 -- any other property
+    },
+    npc_groups = {                                         -- every template a selector matches (Lua pattern, template group path, names)
+        { match = "^Stingrat", hp_mult = 1.5, damage_mult = 2 },
+        { group = "Monster/Kapitel 2", level_add = 1, skills_mult = { ProtEdge = 1.1 } },
+    },
+    item_groups = { { group = "Items/Potions", value_mult = 0.5 } },   -- relative gold value / weapon damage of items
+})
+
+risen.balance.scale_npcs{ filter = "Monster", hp = 1.5, damage = 1.2 }          -- one-call bulk form (filter: a template group, else a Lua pattern)
+local s = risen.npc.stats("Wolf")                         -- { hp, hp_max, mana, mana_max, level, xp_reward, skills = { Strength = 30, ProtEdge = 24, ... },
+                                                          --   guild, species, bravery, attitude, damage_calc, ai_group, damage, combat = { species, right_fist }, loot }
+risen.npc.stats(entity); risen.npc.stats(template_handle, { base = true })
+risen.npc.set_stats("Wolf", { hp_max = 300 }, { instances = true })     -- template (+ live NPCs of it); or an entity: risen.npc.set_stats(e, { level = 3 })
+```
+* **Settings** of an `npcs` entry / `npc_groups` entry / `set_stats` spec (all optional; numbers are **base values**, what the template stores): `hp_max`, `hp`, `hp_mult`, `mana_max`, `mana`, `mana_mult`, `level`,
+  `level_mult`, `level_add`, `xp` (reward, set through the level: `level = xp / 10`; the engine's minimum is 50), `xp_mult`, `skills` / `skills_mult` / `skills_add` (`{ Strength = 40 }`, names of `risen.balance.skills()`;
+  attributes 0..200, combat skills 0..10), `damage_mult` (Strength and the NPC's own `gCDamage_PS.DamageAmount`), `damage`, `damage_type`, `guild`, `species`, `attitude`, `bravery`, `damage_calc`
+  (`"Immortal"`: makes the damage 0 according to the decompiled damage scripts, not tried in a fight), `combat_species`, `ai_group`, `loot = { It_Apple = 3 }`, `properties = { Set = { Property = value } }`. An unknown key lists the valid ones; an absolute and a relative
+  setting of the same quantity, out-of-range absolutes (Strength 999), unknown enum names and templates that are no NPCs are errors; relative results are clamped to the skill's range (noted in the report).
+* **Selectors** of `npc_groups` / `item_groups`: `group = "Monster/Kapitel 2"` (any path of [TEMPLATES.md](TEMPLATES.md); `risen.template.list`), `match = "^Wolf"` (Lua pattern on the name), `exclude = "..."`, `names = { ... }`.
+  Without a selector: all templates below `NPC` and `Monster` (never `PC_Hero`, the player's template; heads and other non-NPCs are skipped). A selector that matches nothing is an error.
+* **Relative settings never compound.** `*_mult`, `*_add` and `damage_mult` are computed from the values the template had *when the API first touched it in this process* and written as absolutes, so applying the same spec on the first
+  tick, on every `session.start` and onto NPCs that were already saved with the first result gives the same numbers. (On a single entity, `set_stats(entity, ...)` relative settings are relative to that entity.)
+* **Hit points.** `hp_max` changes the maximum; an NPC that is at full health stays at full health (its hit points follow), a **damaged or dead NPC keeps its hit points** (the engine only clamps them to a lower maximum).
+  `hp` (starting hit points, `<= hp_max`) is written into templates, and into live NPCs only when they are at full health; `set_stats(entity, { hp = 50 })` on one entity is written always. Same for mana.
+* **What an edit reaches** (verified in the game): new spawns at once (hit points, level, attributes, protection, guild, loot; the template edit survives the spawn's init scripts and the first AI ticks), `instances = true` (the
+  default of `apply`/`install`) also every live NPC of the template (only the listed values), a world restored from a savegame keeps the *saved* values until a mod writes them again (a template edited back after the save
+  did not change the loaded world), the world of a **new game** has the shipped values (propagate on `session.start`: `install` does). Values written into entities are saved with the game. `loot` reaches NPCs spawned afterwards only.
+* Low level: `risen.npc.skill_raw(target, skill)` (base, modification, total, min, max; `skill` = `gESkill` 0..33), `risen.npc.set_skill_base(target, skill, value)` (template storage or the engine's `SetSkillBaseValue`),
+  `risen.npc.template_inventory/template_give/template_take(name, ...)` (the inventory of an NPC template), `risen.npc.combat_species(name)` / `set_combat_species_property(name, prop, value)` (the combat species object:
+  `RightFistItem` / `LeftFistItem` are the item templates monsters hit with: balance their damage with the `items` section, e.g. `It_Fist_Monster = { damage = 20 }`; shared by every monster that uses them).
+* **Cost:** NPC templates are loaded lazily by the engine; a spec or `scale_npcs` that selects every NPC template (several hundred below `NPC`/`Monster`) loads them all once on first use (not timed), later applications reuse the loaded templates.
+* **Not measured / open:** the effect of `set_combat_species_property` on running fights (only read back), kill experience through a real combat death (the `GiveXP` script that the kill calls was run directly: 200 for level 20),
+  ranged damage chains, `Dexterity`/`Intelligence`/magic skills of NPCs (stored and clamped, no consumer checked), changing the inventory of NPCs that already exist (use `risen.item.give/take` on them).
 
 ## NPCs — `risen.npc.spawn` and the Entity NPC methods
 Spawn a template and configure it in one call (see `mods/npcdemo`):

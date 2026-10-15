@@ -10,13 +10,13 @@
 
 .PARAMETER GameDir   Test copy of Risen (never the real install).
 .PARAMETER Seconds   How long the game runs per scenario (fetchquest gets 60 s more).
-.PARAMETER Scenario  persistence, fetchquest, commands, branch, templates, balance or all.
+.PARAMETER Scenario  persistence, fetchquest, commands, branch, templates, balance, npcs or all.
 #>
 param(
     [string]$GameDir = 'B:\DevDrive\risen-test',
     [int]$Seconds = 200,
-    # persistence | fetchquest | commands | branch | templates | balance | all
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'all')][string]$Scenario = 'all'
+    # persistence | fetchquest | commands | branch | templates | balance | npcs | all
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'all')][string]$Scenario = 'all'
 )
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
@@ -148,6 +148,50 @@ if ($Scenario -in 'balance', 'all') {
         @('no Lua errors',                                '^(?!(?s).*\[error\])')
     )
     $totalFailed += Run-Checks 'item balancing' (Get-Content $log -Raw) $bal
+}
+
+if ($Scenario -in 'npcs', 'all') {
+    & (Join-Path $here 'test-run.ps1') -GameDir $GameDir -Mods balance_npcs, balance_npcs_driver -Seconds ($Seconds + 100) -Filter 'NOTHING' | Out-Null
+    $npc = @(
+        @('the spec is applied on the first tick',          'balance: first tick: applied 7 of 7 entries'),
+        @('session.start writes the live NPCs',             'balance: session\.start \(new\): applied 7 of 7 entries, \d+ live entities written'),
+        @('absolute settings reach the template',           'balance_npcs: template Wolf hp=500/500 level=20 str=90 prot_edge=60 xp=200 guild=None bravery=Brave'),
+        @('relative settings are computed from the shipped values', 'balance_npcs: template Boar hp=360/360 level=8 str=30 prot_edge=24 xp=80 guild=None bravery=None \(shipped hp 180 level 6\)'),
+        @('a pattern group scales hit points and damage',   'balance_npcs: template Stingrat hp=180/180 level=4 str=40 .*\(shipped str 20\)'),
+        @('a template group path works',                    'balance_npcs: template Ghul hp=390/390 level=14 .*\(shipped level 13\)'),
+        @('guild, attributes and loot of a human',          'balance_npcs: template Peasant_1_01 hp=300/300 level=5 str=50 prot_edge=20 xp=50 guild=Cit'),
+        @('the template inventory carries the loot',        'balance_npcs: template loot Peasant_1_01: It_Applex3'),
+        @('any property by name',                           'balance_npcs: template Gnome role: balanced by balance_npcs'),
+        @('item groups scale the shipped gold value',       'balance_npcs: potion value 15 shipped 30 expected 15'),
+        @('a new spawn has the template numbers',           'balance_npcs: spawn Wolf hp=500/500 level=20 str=90 prot_edge=60 xp=200 guild=None bravery=Brave'),
+        @('...also through the entity API',                 'balance_npcs: spawn wolf \(entity API\) hp 500 / 500 level 20 str 90 90'),
+        @('the engine pays 10 * level for a kill',          'balance_npcs: GiveXP wolf: 1 experience 0 -> 200 200'),
+        @('spawns carry the loot',                          'balance_npcs: spawn peasant guild 4 apples 3 hp 300'),
+        @('every world wolf was rewritten',                 'balance_npcs: world Wolf n=(\d+) \{500/20/90\}x\1\b'),
+        @('every world boar was rewritten',                 'balance_npcs: world Boar n=(\d+) \{360/8/30\}x\1\b'),
+        @('every world stingrat was rewritten',             'balance_npcs: world Stingrat n=(\d+) \{180/4/40\}x\1\b'),
+        @('applying again keeps a damaged NPC damaged',     'balance_npcs: damaged wolf after second apply hp 7 / 500 full wolf 500 / 500'),
+        @('applying again does not compound (template)',    'balance_npcs: after second apply Boar template hp 360 level 8'),
+        @('applying again does not compound (world)',       'balance_npcs: after second apply world Boar n=(\d+) \{360/8/30\}x\1\b'),
+        @('set_stats on an entity touches only it',         'balance_npcs: entity set_stats: 1 nil boar hp 77 / 77 level 3 prot_fire 5 template Boar hp 360'),
+        @('conflicting settings are refused',               'bad spec conflict: true npcs\.Wolf: hp_max and hp_mult exclude each other'),
+        @('unknown settings are refused',                   "bad spec unknown key: true npcs\.Wolf: unknown setting 'health' \(valid: ai_group, attitude"),
+        @('unknown skills are refused with the list',       "bad spec unknown skill: true npcs\.Wolf: skills: unknown skill 'Strenght' \(valid: HitPoints"),
+        @('out-of-range values are refused',                'bad spec range: true npcs\.Wolf: Strength: 999 is outside the allowed range 0\.\.200'),
+        @('non-NPC templates are refused',                  'bad spec not an NPC: true npcs\.It_1H_Sword: not an NPC template'),
+        @('unknown enum names are refused',                 "bad spec unknown guild: true npcs\.Wolf: guild: unknown value 'Pirates' \(valid: None, Don"),
+        @('an empty group is refused',                      'bad spec empty group: true npc_groups\[1\]: matches no NPC template'),
+        @('rejected specs write nothing',                   'balance_npcs: wolf template hp after the rejected specs 500 \(was 500\)'),
+        @('combat: the shipped wolf bites for Strength - protection', 'balance_npcs: fight shipped: first bite 10 \(wolf strength 30 - victim ProtEdge 20 = 10\)'),
+        @('combat: the balanced wolf bites harder',         'balance_npcs: fight balanced: first bite 70 \(wolf strength 90 - victim ProtEdge 20 = 70\)'),
+        @('the edit survives spawn init and AI ticks',      'balance_npcs: later spawn wolf hp 500 / 500 level 20 str 90 state ZS_'),
+        @('driver: set_stats writes the live NPCs',         'npcdriver after set_stats \(one NPC damaged to 3\) \S+ n=(\d+) instances=\{3/(\d+)\|(\d+)\|(\d+)\}x1,\{\2/\2\|\3\|\4\}x\d+ template=\{\2\|\3\|\4\}'),
+        @('driver: saved values win over a reverted template', 'npcdriver after load \(saved values vs the reverted template\) \S+ n=\d+ instances=\{3/(\d+)\|[^}]*\}x1,\{\1/\1\|[^}]*\}x\d+ template=\{(?!\1\|)\d+\|'),
+        @('driver: a new game world keeps the shipped values', 'npcdriver second new game .*instances=\{(\d+)/\1\|\d+\|\d+\}x\d+ template=\{(?!\1\|)\d+\|'),
+        @('driver: propagation fixes the new world',        'npcdriver propagated into the new world (\d+) \S+ n=\1 instances=\{(\d+)/\2\|\d+\|\d+\}x\1 template=\{\2\|'),
+        @('no Lua errors',                                  '^(?!(?s).*\[error\])')
+    )
+    $totalFailed += Run-Checks 'NPC balancing' (Get-Content $log -Raw) $npc
 }
 
 if ($totalFailed -gt 0) { Write-Host "$totalFailed check(s) failed, see $log"; exit 1 }

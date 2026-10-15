@@ -1,0 +1,6 @@
+id          = "balance_npcs_driver"
+name        = "NPC balancing save/load driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Test driver for the NPC balancing save/load scenario (docs/RE.md section 24); run with balance_npcs by scripts/smoke-test.ps1 -Scenario npcs."
+main        = "main.lua"

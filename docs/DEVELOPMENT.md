@@ -16,7 +16,7 @@ How the project is organised and how to extend it. (`CLAUDE.md` holds the same r
 | `mods/` | example mods; `*_driver`, `vfsprobe`, `templatedump`, `itemdump`, `persistdemo` are development tools that drive or probe the game |
 | `tests/` | unit tests that run without the game |
 | `tools/` | export dumping/demangling, Ghidra helper, doc generators, API consistency check |
-| `docs/` | `LUA_API.md` (API), `RE.md` (findings per topic), `SYMBOLS.md`/`TEMPLATES.md`/`ITEM_PROPERTIES.md` (generated), `NEXT_STEPS.md` (roadmap) |
+| `docs/` | `LUA_API.md` (API), `RE.md` (findings per topic), `SYMBOLS.md`/`TEMPLATES.md`/`ITEM_PROPERTIES.md`/`NPC_PROPERTIES.md` (generated), `NEXT_STEPS.md` (roadmap) |
 
 ## Adding a Lua binding
 

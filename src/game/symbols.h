@@ -266,6 +266,13 @@
     X(inv_consume_items, L"Script.dll", "?ConsumeItems@PSInventory@@QEAA_NHH@Z", bool (*)(void* self, int stack, int count), false) \
     X(sk_get_total, L"Script.dll", "?GetTotal@PSSkills@@QEBAHW4gESkill@@@Z", int (*)(const void* holder, int skill), false) \
     X(sk_get_base, L"Script.dll", "?GetBase@PSSkills@@QEBAHW4gESkill@@@Z", int (*)(const void* holder, int skill), false) \
+    /* ---- NPC skills: gCSkills_PS storage and combat species (docs/RE.md section 24) ---- */ \
+    X(skills_set_base, L"Game.dll", "?SetSkillBaseValue@gCSkills_PS@@QEAAXW4gESkill@@J@Z", void (*)(void* skillsPs, int skill, std::int32_t value), false) \
+    X(skills_get_value, L"Game.dll", "?GetSkillValue@gCSkills_PS@@QEBAJW4gESkill@@@Z", std::int32_t (*)(const void* skillsPs, int skill), false) \
+    X(skills_get_max, L"Game.dll", "?GetSkillMaxValue@gCSkills_PS@@QEBAJW4gESkill@@@Z", std::int32_t (*)(const void* skillsPs, int skill), false) \
+    X(skills_infos, L"Game.dll", "?ms_arrSkillInfos@gCSkills_PS@@2PAUgSSkillInfo@@A", unsigned char*, false) \
+    X(combat_admin_instance, L"Game.dll", "?GetInstance@gCCombatAdmin@@SAPEAV1@XZ", void* (*)(), false) \
+    X(combat_get_species, L"Game.dll", "?GetSpecies@gCCombatAdmin@@QEBAPEAVgCCombatSpecies@@AEBVbCString@@@Z", void* (*)(const void* self, const void* name), false) \
     X(scene_ctx_at, L"Engine.dll", "?GetDynamicEntityContext@eCSceneAdmin@@QEBAPEAVeCEntityDynamicContext@@H@Z", void* (*)(const void* self, int index), false)
 
 namespace spass::game {
