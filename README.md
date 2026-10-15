@@ -33,7 +33,7 @@ engine's lifecycle, and exposes it to Lua with a sandbox per mod.
 | Scripts | define or override the game's native scripts from Lua |
 | Tooling | editor completion and type checks (LuaLS `types/risen.d.lua`), virtual file system access, template list ([docs/TEMPLATES.md](docs/TEMPLATES.md)) |
 
-Reference: [Lua API](docs/LUA_API.md) · [entity templates](docs/TEMPLATES.md) · [engine notes](docs/RE.md) ·
+Reference: [Lua API](docs/LUA_API.md) · [entity templates](docs/TEMPLATES.md) · [item properties](docs/ITEM_PROPERTIES.md) · [engine notes](docs/RE.md) ·
 [developer guide](docs/DEVELOPMENT.md) · [roadmap](docs/NEXT_STEPS.md). Examples: `mods/fetchquest` (a complete, savegame-safe
 quest), `mods/stringsdemo`, `mods/_template`.
 

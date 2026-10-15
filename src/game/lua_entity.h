@@ -39,6 +39,24 @@ void bindTemplates(sol::state_view lua, sol::table risen);
 // unit tests can run it against a mock risen.template.get without the game.
 void installTemplatePatchHelper(sol::state_view lua, sol::table risen);
 
+// The property set `set` (class name, e.g. "gCItem_PS") of the entity template `templateName`, loading the template content first;
+// nullptr and a reason in `error` when the template or the set does not exist. (lua_template.cpp)
+void* templatePropertySet(const std::string& templateName, const std::string& set, std::string& error);
+
+// Registers risen.item.skill_array/set_skill_array/can_use (native access to the RequiredSkills / ModifySkills arrays of items)
+// and Entity:skill_total. Must run after bindItems(). (lua_balance.cpp)
+void bindBalance(sol::state_view lua, sol::table risen);
+
+// Defines the Lua part of the balancing API (risen.item.requirements/modifiers/..., risen.balance.apply) on top of the native
+// skill-array functions and risen.template.patch. Split out so the unit tests can run it against mocks.
+void installBalanceHelpers(sol::state_view lua, sol::table risen);
+
+// Defines the per-mod part (risen.balance.install, which registers event handlers for the calling mod) in `api`.
+void installBalanceModApi(sol::state_view lua, sol::table api);
+
+// Adds Entity:skill_total() and the item balancing methods to the Entity usertype. (lua_balance.cpp)
+void addBalanceMethods(sol::usertype<LuaEntity>& ut);
+
 // Adds Entity:template() (the template an entity was created from) to the Entity usertype.
 void addTemplateMethods(sol::usertype<LuaEntity>& ut);
 

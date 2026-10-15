@@ -25,7 +25,7 @@ live entity -- no file shadowing needed (that path is a dead end, §17). Reachab
 | # | Milestone | Status |
 |---|---|---|
 | M1 | **Template access and editing**: `risen.template.get(name)` handle, property sets/properties by name (get/set/list), `patch_instances()`; effect on new spawns, inventories and world entities; declarative `risen.template.patch`. | **done** (RE.md §22, `mods/templatepatch`, smoke test `-Scenario templates`). Also added: `Template:instances/instance_count/patch_entity`, `risen.template.census`, `Entity:template()`, `Entity:stack_item(i)`. Notes for later milestones below. |
-| M2 | **Item balancing**: gold value, required skills ("conditions"), skill modifiers, damage/armor values, use type, weight-like fields; helpers for the array properties (`RequiredSkills`, `ModifySkills`); `risen.balance.apply{...}` tables. | open |
+| M2 | **Item balancing**: gold value, required skills ("conditions"), skill modifiers, damage/armor values, use type, weight-like fields; helpers for the array properties (`RequiredSkills`, `ModifySkills`); `risen.balance.apply{...}` tables. | **done** (RE.md §23, [`ITEM_PROPERTIES.md`](ITEM_PROPERTIES.md), `mods/balance_items` + `mods/balance_driver`, smoke test `-Scenario balance`). `risen.item.requirements/set_requirements/modifiers/set_modifiers/can_use/consume/skill_total`, `risen.balance.apply/install/register_section`, `Entity:requirements/modifiers/skill_total/...`. Notes below. |
 | M3 | **NPC/monster balancing**: skills, hit points, level, guild/species, combat values on templates (`gCNPC_PS`, `gCSkills_PS`, ...) and propagation to instances already in the world. | open |
 | M4 | **New templates**: `risen.template.create(name, base, overrides)` (clone + rename + deterministic GUID + registration) for items and NPCs; savegame-safe because the ID derives from the name; new items reusing meshes/textures/icons. | open |
 | M5 | **New meshes, textures, icons**: whether loose files from a mounted mod directory load for `eCMesh_PS.MeshFileName`, materials, icon images (the open question of 4.2); a minimal "new asset" path. | open |
@@ -43,8 +43,17 @@ M1 findings the later milestones build on (details RE.md §22):
 * Inventory stacks are references to templates: edits to items show in every inventory at once (no propagation needed there). `Template:patch_instances()` (whole-template copy) resets hit points, group and item amounts: use the targeted
   `patch(... instances = true)`.
 * NPC/monster templates are lazy-loaded (handled by the API). **`gCSkills_PS` has no reflected properties** (M3 must find another way for hit points/skills, e.g. `PSSkills` setters on instances plus a raw layout of the template's set);
-  array properties (`RequiredSkills`, `ModifySkills`, M2) show only as `Array[n]` through the text format.
+  array properties (`RequiredSkills`, `ModifySkills`) show only as `Array[n]` through the text format (solved natively in M2, see below).
 * `CreateEntityCopy` (M4) was decompiled only; the scene walk (`Template:instances`, `census`) is available for M7/M8 bookkeeping.
+
+M2 findings the later milestones build on (details RE.md §23):
+* **Array properties are natively editable**: `bTObjArray<T>` = `{ data*, int count, int capacity }` with inline elements; an element (`gCSkillValue`, `gCModifySkill`) is a reflected `bCObjectBase` (`Skill`, `Amount`, `Modifier`), so read through `bCAccessorProperty` on `data + i * stride` and write by
+  building elements with the exported constructors and calling the owner's `Set<Array>` export (`gCItem_PS::SetRequiredSkills/SetModifySkills`). The same recipe works for `gCRecipe_PS.RequiredSkills`/`CraftIngredients`, `gCQuest.ModifySkillsSuccess`, `gCInteraction_PS.Slots` once the owner's setter is found (M4/M6/M7).
+* `risen.balance` has a **section registry** (`risen.balance.register_section(name, handler)`; a handler validates its data and returns jobs `{ label, run(opts) }`): M3 registers `npcs`, M6 `spells`; `apply` validates all sections before writing anything, `install` calls `apply` on the first `tick` and on every `session.start`.
+* skill ids (`gESkill` 0..33, names in RE.md §23) and `Entity:skill_total(name)` are available for M3; the engine's own skill writers are `gCSkills_PS::ModifySkillValue(gCModifySkill, bool)` and `PSSkills::SetBase(skill, value, modifier)`.
+* Only the player is held to equip requirements (NPCs always pass `CanEquipHasRequieredStats`); modifiers of *worn* items drift when edited (see RE.md §23): edit before anything is worn.
+* Verified live: weapon requirement edits block/allow the engine's equip, armor edits change the wearer's protection skills, potion edits change the heal, world items and inventory stacks follow; saved worlds keep the saved arrays (`mods/balance_driver`).
+* Not covered: measuring weapon damage in an actual fight (formula decompiled: `DamageMultiplier * (DamageAmount + attacker Strength)`), ranged damage chain, recipes' arrays, the HUD tooltip texts of items.
 
 Process rules for this plan: one fresh sub-agent per milestone, run strictly one after another; each one reads this section, `docs/RE.md`, `CLAUDE.md`, verifies in the
 isolated windowed test copy, records findings in `docs/RE.md`, updates `types/risen.d.lua`/`docs/LUA_API.md`, runs `check_luadefs.py`, the unit tests and (when events,

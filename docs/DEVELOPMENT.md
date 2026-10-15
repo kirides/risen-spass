@@ -13,10 +13,10 @@ How the project is organised and how to extend it. (`CLAUDE.md` holds the same r
 | `src/game/lua_*.cpp`, `bindings.cpp`, `loc_*.cpp`, `script_bridge.cpp` | the Lua API |
 | `src/lua` | LuaJIT state, per-mod sandbox, events, mod discovery and load order |
 | `types/risen.d.lua` | LuaLS definitions of the API — **must always match the bindings** |
-| `mods/` | example mods; `*_driver`, `vfsprobe`, `templatedump`, `persistdemo` are development tools that drive or probe the game |
+| `mods/` | example mods; `*_driver`, `vfsprobe`, `templatedump`, `itemdump`, `persistdemo` are development tools that drive or probe the game |
 | `tests/` | unit tests that run without the game |
 | `tools/` | export dumping/demangling, Ghidra helper, doc generators, API consistency check |
-| `docs/` | `LUA_API.md` (API), `RE.md` (findings per topic), `SYMBOLS.md`/`TEMPLATES.md` (generated), `NEXT_STEPS.md` (roadmap) |
+| `docs/` | `LUA_API.md` (API), `RE.md` (findings per topic), `SYMBOLS.md`/`TEMPLATES.md`/`ITEM_PROPERTIES.md` (generated), `NEXT_STEPS.md` (roadmap) |
 
 ## Adding a Lua binding
 

@@ -133,6 +133,54 @@ risen.on("session.start", function() apply(true) end)                           
 NPC and monster templates are loaded lazily by the engine; the template methods load them on demand. `gCSkills_PS` (hit points, skills) has no reflected properties.
 Entity methods added with this API: `Entity:template()`, `Entity:stack_item(index)` (inventory stack `index`'s item: the template entity, handy for `item_value()` of what a character carries).
 
+### Balancing items — `risen.balance`, `risen.item.requirements / modifiers` (see `mods/balance_items`, [RE.md §23](RE.md), [ITEM_PROPERTIES.md](ITEM_PROPERTIES.md))
+Where an item's numbers live: gold value `gCItem_PS.GoldValue`, weapon damage `gCDamage_PS.DamageAmount`, the **equip condition** `gCItem_PS.RequiredSkills` and the **effects** of wearing or
+using the item `gCItem_PS.ModifySkills` (armor and ring protection, potion healing, attribute bonuses). The two arrays show up as `Array[n]` in the property text format, so they have their
+own functions; everything else is a normal property (`risen.template.patch`).
+```lua
+-- declarative: one table, everything validated first (nothing is written when anything is wrong), applied to templates and live entities
+local report, why, problems = risen.balance.apply({
+    items = {
+        It_1H_Sword    = { value = 120, damage = 25, requires = { Strength = 5 } },
+        It_Armor_Guard = { requires = { Strength = 8 }, modifies = { ProtEdge = 35, ProtBlunt = 25, ProtPoint = 20 } },
+        It_Po_Health_01 = { modifies = { HitPoints = 40 } },
+        It_Ri_STR_Small = { modifies = { Strength = 4 }, properties = { gCItem_PS = { SortValue = 5 } } },
+    },
+}, { instances = true })                      -- report = { ok, applied = {...}, failed = {...}, values, instances }  |  nil, "reason", { problems }
+
+-- at the right moments, idempotent, with a log summary (first `tick` into the templates, every `session.start` including live entities)
+risen.balance.install(SPEC)                   -- the recommended one-liner of a balancing mod
+
+-- single items (template name, Template handle or an item Entity), friendly skill names (risen.balance.skills())
+risen.item.requirements("It_1H_Sword")                          -- { Strength = 10 }
+risen.item.set_requirements("It_1H_Sword", { Strength = 5 })     -- replaces the whole list; {} removes every requirement
+risen.item.modifiers("It_Armor_Guard")                          -- { { skill = "ProtBlunt", amount = 20, mode = "add" }, ... }
+risen.item.set_modifiers("It_Armor_Guard", { ProtEdge = 35 })    -- or { { skill=, amount=, mode= } } / { ProtEdge = { amount = 5, mode = "set" } }
+risen.item.set_modifiers("It_Plant_Berry", { ManaPoints = 9 }, { instances = true })   -- also the live entities of the template
+local sword = risen.entity.spawn("It_1H_Sword", x, y, z)
+sword:set_requirements({ Dexterity = 3 }); sword:requirements() -- one entity only: Entity:requirements/set_requirements/modifiers/set_modifiers
+
+-- the engine's own checks and effects (used to verify a balance)
+risen.item.can_use(player, "It_1H_Sword")                       -- does the character meet the item's requirements right now? (gCSkills_PS::HasRequiredSkills)
+player:skill_total("ProtEdge")                                  -- total, base: current skill value incl. worn items (risen.item.skill_total)
+risen.item.consume(player, "It_Po_Health_01")                   -- what using a potion does: applies the modifiers, removes one item
+```
+* **Skill names** (`risen.balance.skills()`): attributes `Strength`, `Dexterity`, `Intelligence`; `HitPoints`, `ManaPoints` (the *current* values: a potion with `HitPoints = 75` heals), `MaxHitPoints`,
+  `MaxManaPoints`, `LearnPoints`, `Experience`, `Level`; weapon skills `Axe`, `Sword`, `Staff`, `Bow`, `CrossBow`; protection `ProtEdge`, `ProtBlunt`, `ProtPoint`, `ProtFire`, `ProtIce`, `ProtMagic`;
+  magic `Missile`, `Frost`, `Fireball`, `Circle`; `Scribe`, `Trophy`, `Acrobat`, `Pickpocket`, `Lockpick`, `Sneak`, `Mining`, `Smith`, `Alchemy`. The engine suffix (`Stat_STR`) and the full enum name
+  (`gESkill_Stat_STR`) are accepted too. An unknown name is an error that lists the valid ones.
+* **Modifier modes** (`risen.balance.modes()`): `add` (default; the shipped value of every item), `set`, `max`, `percent`. Amounts are integers (negative allowed).
+* **`items` settings**: `value`, `damage`, `requires`, `modifies`, `use_type`, `category`, `mana_cost` and `properties = { Set = { Property = value } }` (anything else, validated like `risen.template.patch`);
+  an unknown setting or template is an error listing the valid settings. Other sections (`npcs`, `spells`, ...) are registered by later features with `risen.balance.register_section`.
+* **`instances`**: `risen.balance.apply`/`install` write into the live entities of each template by default (world items; **existing entities keep their own copies**, RE.md §22);
+  `set_requirements`/`set_modifiers` and `risen.template.patch` default to templates only. Values written into entities are saved with the game.
+* **Timing**: edits are runtime-only; `install` applies them on the first `tick` and on every `session.start`. In a savegame the world's items keep the *saved* values until a mod writes them again
+  (verified: a template edited back after the save did not change the loaded world, `mods/balance_driver`).
+* **Gotchas.** Only the **player** is held to `requires` (the `CanEquipHasRequieredStats` script lets NPCs equip anything; the HUD says which skill is missing). Armor and rings apply their
+  modifiers to the wearer when equipped and subtract the **current** list when unequipped: change modifiers before anything is worn (first `tick`), otherwise a character that already wears the item
+  drifts by the difference when it takes the item off. Potions/food apply their modifiers to the base value when used up (`HitPoints` heals, `MaxHitPoints` raises the maximum). Melee damage is
+  `DamageMultiplier * (DamageAmount + the attacker's Strength)` (+50 while Berserker).
+
 ## NPCs — `risen.npc.spawn` and the Entity NPC methods
 Spawn a template and configure it in one call (see `mods/npcdemo`):
 ```lua

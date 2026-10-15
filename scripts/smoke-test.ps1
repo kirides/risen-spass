@@ -10,13 +10,13 @@
 
 .PARAMETER GameDir   Test copy of Risen (never the real install).
 .PARAMETER Seconds   How long the game runs per scenario (fetchquest gets 60 s more).
-.PARAMETER Scenario  persistence, fetchquest or all.
+.PARAMETER Scenario  persistence, fetchquest, commands, branch, templates, balance or all.
 #>
 param(
     [string]$GameDir = 'B:\DevDrive\risen-test',
     [int]$Seconds = 200,
-    # persistence | fetchquest | commands | branch | templates | all
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'all')][string]$Scenario = 'all'
+    # persistence | fetchquest | commands | branch | templates | balance | all
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'all')][string]$Scenario = 'all'
 )
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
@@ -118,6 +118,36 @@ if ($Scenario -in 'templates', 'all') {
         @('no Lua errors',                              '^(?!(?s).*\[error\])')
     )
     $totalFailed += Run-Checks 'template editing' (Get-Content $log -Raw) $tpl
+}
+
+if ($Scenario -in 'balance', 'all') {
+    & (Join-Path $here 'test-run.ps1') -GameDir $GameDir -Mods balance_items, balance_driver -Seconds ($Seconds + 40) -Filter 'NOTHING' | Out-Null
+    $bal = @(
+        @('the spec is applied on the first tick',        'balance: first tick: applied 7 of 7 entries'),
+        @('session.start writes the live entities',       'balance: session\.start \(new\): applied 7 of 7 entries, \d+ live entities written'),
+        @('the template carries the new numbers',         'balance_items: template sword: requires Strength=5 value 120 damage 25'),
+        @('the armor modifiers read back by name',        'balance_items: template armor: modifies ProtBlunt\+25,ProtEdge\+35,ProtFire\+10,ProtIce\+10,ProtMagic\+10,ProtPoint\+20'),
+        @('a rune: mana cost property and circle requirement', 'balance_items: template rune: mana 60 requires Circle=3'),
+        @('a new spawn uses the new numbers',             'balance_items: spawn sword: requires Strength=5 value 120 damage 25'),
+        @('an inventory stack follows the template',      'balance_items: inventory armor: requires Strength=5 modifies ProtBlunt\+25,ProtEdge\+35.* value 1500'),
+        @('every world berry was rewritten',              'balance_items: world berries: n=(\d+) patched=\1\b'),
+        @('the engine check passes with enough Strength', 'balance_items: can_use sword \(needs 5\): true'),
+        @('the engine check fails for 999 Strength',      'balance_items: can_use two-hander \(needs 999\): false'),
+        @('raising the requirement fails the check',      'balance_items: can_use sword after requires Strength=500: false'),
+        @('lowering the requirement passes the check',    'balance_items: can_use sword after requires Strength=1: true'),
+        @('wearing armor applies its modifiers',          'balance_items: equip: equip_all=1 ProtEdge after 35 delta 35'),
+        @('a lowered requirement lets the engine equip it', 'balance_items: equip: after lowering the two-hander requirement equip_all=2'),
+        @('an entity-level edit leaves the template alone', 'balance_items: entity edit: true entity Dexterity=3 template Strength=5'),
+        @('using a potion applies its modifiers',         'balance_items: potion: hp 10 -> 50 max 80 potions left 0'),
+        @('a bad skill name is refused with the list',    "balance_items: bad spec: true items\.It_1H_Sword: requires: unknown skill 'Strenght' \(valid: Strength, Dexterity"),
+        @('an unknown template and section are refused',  "balance_items: bad spec 2: true items\.It_Nope: unknown template .*unknown section 'spells'"),
+        @('a rejected spec writes nothing',               'balance_items: sword value after the rejected specs 120'),
+        @('apply with instances rewrites the world',      'baldriver after apply \S+ n=\d+ instances=\{77\|Strength\+7\}x\d+ template=\{77\|Strength\+7\}'),
+        @('saved values win over an edited template',     'baldriver after load .*instances=\{77\|Strength\+7\}x\d+ template=\{1\|\}'),
+        @('a new game world keeps the shipped values',    'baldriver second new game .*instances=\{(?!77)[^}]*\}x\d+ template=\{1\|\}'),
+        @('no Lua errors',                                '^(?!(?s).*\[error\])')
+    )
+    $totalFailed += Run-Checks 'item balancing' (Get-Content $log -Raw) $bal
 }
 
 if ($totalFailed -gt 0) { Write-Host "$totalFailed check(s) failed, see $log"; exit 1 }

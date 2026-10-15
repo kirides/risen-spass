@@ -203,6 +203,23 @@ Two failResult(sol::state_view lua, const std::string& reason) {
 
 }  // namespace
 
+void* templatePropertySet(const std::string& templateName, const std::string& set, std::string& error) {
+    const Resolved r = resolveTemplate(templateName);
+    if (r.tpl == nullptr) {
+        error = r.error;
+        return nullptr;
+    }
+    if (!ensureLoaded(r.tpl)) {
+        error = "the template content could not be loaded";
+        return nullptr;
+    }
+    void* ps = findSet(r.tpl, set);
+    if (ps == nullptr) {
+        error = "template '" + templateName + "' has no property set '" + set + "'";
+    }
+    return ps;
+}
+
 // entity:template() -> Template | nil, reason
 void addTemplateMethods(sol::usertype<LuaEntity>& ut) {
     ut["template"] = [](sol::this_state ts, const LuaEntity& e) -> Two {
@@ -466,10 +483,11 @@ void bindTemplates(sol::state_view lua, sol::table risen) {
 }
 
 void installTemplatePatchHelper(sol::state_view lua, sol::table risen) {
-    // risen.template.patch(name, { gCItem_PS = { GoldValue = 100 } } [, { instances = true }]) -> true, count [, instance_count] | nil, reason
+    // risen.template.patch(name, { gCItem_PS = { GoldValue = 100 } } [, { instances = true, dry_run = true }]) -> true, count [, instance_count] | nil, reason
     // Everything is validated (template, property sets, properties) before the first value is written. With `instances = true` the
     // same values are also written into every live entity created from the template (only the listed properties: per-instance state
-    // such as hit points, amount or inventory stays untouched, unlike Template:patch_instances()).
+    // such as hit points, amount or inventory stays untouched, unlike Template:patch_instances()). `dry_run = true` only validates (returns
+    // true, number of values that would be written).
     const char* chunk = R"LUA(
 local risen = ...
 
@@ -518,6 +536,7 @@ function risen.template.patch(name, sets, opts)
         end
     end
     if #problems > 0 then return nil, table.concat(problems, "; ") end
+    if opts.dry_run then return true, #jobs end
     local applied, failed = 0, {}
     for _, job in ipairs(jobs) do
         local ok, err = tpl:set_property(job[1], job[2], job[3])

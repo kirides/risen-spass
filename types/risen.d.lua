@@ -247,6 +247,43 @@ function Entity:stack_item(index) end
 ---@return string|nil reason
 function Entity:template() end
 
+---The equip requirements of this item entity (or a template entity such as `stack_item(i)`), same as `risen.item.requirements`:
+---`{ Strength = 10 }`. Only the player is held to them: NPCs equip anything.
+---@return table<string, integer>|nil requirements
+---@return string|nil reason
+function Entity:requirements() end
+
+---Replaces the equip requirements of this item entity only (the template and other entities are untouched), same as `risen.item.set_requirements`.
+---@param spec ItemRequirements
+---@return boolean|nil ok
+---@return string|nil reason
+function Entity:set_requirements(spec) end
+
+---The skill modifiers of this item entity (armor protection, potion effects, ring bonuses), same as `risen.item.modifiers`.
+---@return ItemModifier[]|nil modifiers
+---@return string|nil reason
+function Entity:modifiers() end
+
+---Replaces the skill modifiers of this item entity only, same as `risen.item.set_modifiers`.
+---@param spec ItemModifiers
+---@return boolean|nil ok
+---@return string|nil reason
+function Entity:set_modifiers(spec) end
+
+---The engine's own equip-condition check for this character: does it meet the requirements of `item` (a template name or an item entity)?
+---Same as `risen.item.can_use(self, item)`.
+---@param item string|Entity
+---@return boolean|nil can
+---@return string|nil reason
+function Entity:can_use(item) end
+
+---The character's current value of a skill or attribute (`"Strength"`, `"ProtEdge"`, `"HitPoints"`, ... see `risen.balance.skills()`), including
+---bonuses of equipped items. Same as `risen.item.skill_total(self, skill)`.
+---@param skill string
+---@return integer|nil total
+---@return integer|string|nil base The base value without item/temporary modifications (or the reason when `total` is `nil`).
+function Entity:skill_total(skill) end
+
 ---------------------------------------------------------------------------------------------------------------------
 -- risen.entity / risen.template / risen.item / risen.npc
 ---------------------------------------------------------------------------------------------------------------------
@@ -370,6 +407,7 @@ function templateApi.get(name) end
 
 ---@class TemplatePatchOptions
 ---@field instances? boolean Also write the listed properties into every live entity created from the template (default `false`).
+---@field dry_run? boolean Only validate: returns `true, <number of values that would be written>` and writes nothing (default `false`).
 
 ---Edits several template properties declaratively. Everything is validated first (the template, every property set, every property,
 ---the value types): on any problem nothing is written and `nil, reason` is returned (all problems, separated by `;`). With
@@ -420,6 +458,190 @@ function itemApi.count(owner, template) end
 ---@param owner Entity
 ---@return number
 function itemApi.money(owner) end
+
+-- Item balancing (docs/RE.md section 23). An item's numbers: `gCItem_PS.GoldValue`, weapon damage `gCDamage_PS.DamageAmount`, the equip
+-- condition `gCItem_PS.RequiredSkills` and the effects `gCItem_PS.ModifySkills` (armor protection, potion healing, ring bonuses) -- the
+-- two arrays are handled by the functions below, everything else by `risen.template.patch`. See docs/ITEM_PROPERTIES.md.
+
+---Friendly skill name (`risen.balance.skills()`), the engine suffix (`"Stat_STR"`) or the full enum name (`"gESkill_Stat_STR"`).
+---@alias SkillName string
+
+---`{ Strength = 15, Dexterity = 10 }`, or a list `{ { skill = "Strength", amount = 15 } }`.
+---@alias ItemRequirements table<SkillName, integer>|{ skill: SkillName, amount: integer }[]
+
+---One skill modifier of an item. `mode`: `"add"` (adds `amount`; the engine's `gESkillModifier_AddValue`), `"set"` (sets the value), `"max"`
+---(sets it to the maximum), `"percent"` (adds a percentage of the maximum).
+---@class ItemModifier
+---@field skill SkillName
+---@field amount integer
+---@field mode? "add"|"set"|"max"|"percent" Default `"add"`.
+
+---`{ ProtEdge = 35, ProtBlunt = 25 }` (all `"add"`), values may be `{ amount = 5, mode = "set" }`, or a list of `ItemModifier`.
+---@alias ItemModifiers table<SkillName, integer|{ amount: integer, mode?: string }>|ItemModifier[]
+
+---@class ItemWriteOptions
+---@field instances? boolean Also write into every live entity created from the template (default `false`; `risen.balance.apply` defaults to `true`).
+
+---@alias ItemTarget string|Template|Entity Template name, `Template` handle or item entity (a template entity from `stack_item` works too).
+
+---The equip requirements of an item (`gCItem_PS.RequiredSkills`): `{ Strength = 10 }`. Only the **player** is held to them (the engine's
+---`CanEquipHasRequieredStats` lets NPCs equip anything).
+---@param item ItemTarget
+---@return table<string, integer>|nil requirements
+---@return string|nil reason
+function itemApi.requirements(item) end
+
+---Replaces the whole requirement list (`{}` removes every requirement). Validated before anything is written: unknown skill names are
+---reported together with the list of valid ones. Writing a template affects new spawns and inventory stacks at once; `instances = true`
+---also rewrites the live entities of the template.
+---@param item ItemTarget
+---@param spec ItemRequirements
+---@param opts? ItemWriteOptions
+---@return boolean|nil ok
+---@return integer|string|nil touched Number of live entities written (or the reason when `ok` is `nil`).
+function itemApi.set_requirements(item, spec, opts) end
+
+---The skill modifiers of an item (`gCItem_PS.ModifySkills`). Armor: the six `Prot*` skills. Potions/food: `HitPoints`/`ManaPoints` (heal on
+---consume), `MaxHitPoints`/`MaxManaPoints`, `Strength`, `Experience`. Rings/amulets: attributes or protection while worn.
+---@param item ItemTarget
+---@return ItemModifier[]|nil modifiers
+---@return string|nil reason
+function itemApi.modifiers(item) end
+
+---Replaces the whole modifier list. Worn items apply their modifiers when equipped and subtract the *current* list when unequipped: change
+---modifiers before anything is worn (first `tick`), or characters that already wear the item drift by the difference (docs/RE.md section 23).
+---@param item ItemTarget
+---@param spec ItemModifiers
+---@param opts? ItemWriteOptions
+---@return boolean|nil ok
+---@return integer|string|nil touched Number of live entities written (or the reason when `ok` is `nil`).
+function itemApi.set_modifiers(item, spec, opts) end
+
+---Raw array access (engine enum names): `{ { skill = "gESkill_Stat_STR", amount = 10, modifier = "gESkillModifier_AddValue" } }`. `kind` is
+---`"required"` (RequiredSkills) or `"modifiers"` (ModifySkills); `modifier` is only present for `"modifiers"`.
+---@param target string|Entity Template name or item entity.
+---@param kind "required"|"modifiers"
+---@return { skill: string, amount: integer, modifier?: string }[]|nil entries
+---@return string|nil reason
+function itemApi.skill_array(target, kind) end
+
+---Raw write of the whole array (engine enum names; `modifier` defaults to `"gESkillModifier_AddValue"`). Names are checked through the engine's
+---own enum parser before the item is touched.
+---@param target string|Entity Template name or item entity.
+---@param kind "required"|"modifiers"
+---@param entries { skill: string, amount: integer, modifier?: string }[]
+---@return boolean|nil ok
+---@return string|nil reason
+function itemApi.set_skill_array(target, kind, entries) end
+
+---The engine's own equip check (`gCSkills_PS::HasRequiredSkills`, the first step of `CanEquipHasRequieredStats`): does `who` meet the item's
+---requirements right now? Unlike the equip scripts it also answers for NPCs.
+---@param who Entity A character.
+---@param item string|Entity Template name or item entity.
+---@return boolean|nil can
+---@return string|nil reason
+function itemApi.can_use(who, item) end
+
+---What the engine does when an item is used up (`gCInventory_PS::ConsumeItems`): applies the item's modifiers to the owner (for `AddValue` as a
+---permanent change of the base value: `HitPoints +75` heals, `MaxHitPoints +10` raises the maximum) and removes `count` items from the first
+---unequipped stack of that template.
+---@param owner Entity
+---@param template string
+---@param count? integer Default 1.
+---@return boolean|nil ok
+---@return string|nil reason
+function itemApi.consume(owner, template, count) end
+
+---A character's current value of a skill (`"Strength"`, `"ProtEdge"`, ...; names as in `risen.balance.skills()`).
+---@param who Entity
+---@param skill SkillName
+---@return integer|nil total Includes bonuses of worn items.
+---@return integer|string|nil base The base value (or the reason when `total` is `nil`).
+function itemApi.skill_total(who, skill) end
+
+---Same with an engine enum name (`"gESkill_Stat_STR"`).
+---@param who Entity
+---@param skill string
+---@return integer|nil total
+---@return integer|string|nil base
+function itemApi.skill_total_raw(who, skill) end
+
+---The numeric `gESkill` value of an engine enum name (diagnostics).
+---@param name string
+---@return integer|nil
+function itemApi.skill_id(name) end
+
+---@class RisenBalanceApi
+local balanceApi = {}
+
+---One entry of `items` in a balancing spec. Every key is optional.
+---@class BalanceItem
+---@field value? integer `gCItem_PS.GoldValue`.
+---@field damage? integer `gCDamage_PS.DamageAmount` (weapons; melee damage = multiplier * (DamageAmount + the attacker's Strength)).
+---@field requires? ItemRequirements Replaces the equip requirements.
+---@field modifies? ItemModifiers Replaces the skill modifiers.
+---@field use_type? string `gCItem_PS.UseType` (`"gEItemUseType_1H"`, ...).
+---@field category? string `gCItem_PS.Category` (`"gEItemCategory_Weapon"`, ...).
+---@field mana_cost? integer `gCCastInfo_PS.ManaCost` (runes and scrolls).
+---@field properties? TemplateEdits Any other property: `{ gCDamage_PS = { DamageMultiplier = 1.2 } }`; validated like `risen.template.patch`.
+
+---A balancing spec. `items` is `{ [template name] = BalanceItem }`; other sections are registered with `risen.balance.register_section`.
+---@class BalanceSpec
+---@field items? table<string, BalanceItem>
+
+---@class BalanceOptions
+---@field instances? boolean Also write the values into the live entities of each template (default `true`).
+---@field dry_run? boolean Only validate and report what would be applied (default `false`).
+
+---@class BalanceReport
+---@field ok boolean `false` when an entry could not be written (see `failed`).
+---@field applied string[] One label per applied entry (`"It_1H_Sword (damage, requires, value)"`).
+---@field failed string[] `"label: reason"` for entries the engine refused.
+---@field values integer Number of entries applied.
+---@field instances integer Number of live entities written.
+---@field dry_run boolean
+
+---Applies a whole balancing spec. Everything in every section is validated first (templates, setting names, skill names, amounts, property sets
+---and properties); on any problem nothing is written and `nil, reason, problems` is returned (unknown names come with the list of valid ones).
+---Edits are runtime-only: call it on the first `tick` (templates) and on every `session.start` (live entities) -- or use `risen.balance.install`.
+---```lua
+---risen.balance.apply({ items = { It_1H_Sword = { value = 120, requires = { Strength = 15 } } } })
+---```
+---@param spec BalanceSpec
+---@param opts? BalanceOptions
+---@return BalanceReport|nil report
+---@return string|nil reason
+---@return string[]|nil problems
+function balanceApi.apply(spec, opts) end
+
+---Applies `spec` for you at the right moments and logs a summary (`balance: first tick: applied 6 of 6 entries`): on the first `tick` into the
+---templates, and on every `session.start` again including the live entities (`instances = false` in `opts` to skip the latter). Idempotent
+---per spec table. Problems are logged as errors. Per mod: handlers are registered for the calling mod.
+---@param spec BalanceSpec
+---@param opts? { instances?: boolean }
+---@return boolean installed `false` when this spec table was installed before.
+function balanceApi.install(spec, opts) end
+
+---Registers a handler for another section of the spec (later milestones add `npcs`, `spells`). `handler(data, opts)` returns
+---`jobs, problems`: validated jobs `{ label = string, run = function(opts) -> ok, err, touched end }` and a list of problem strings.
+---@param name string
+---@param handler fun(data: any, opts: BalanceOptions): table[], string[]
+function balanceApi.register_section(name, handler) end
+
+---Names of the registered sections (`{ "items" }`).
+---@return string[]
+function balanceApi.section_names() end
+
+---The valid skill names for requirements and modifiers: `Strength`, `Dexterity`, `Intelligence`, `MaxHitPoints`, `MaxManaPoints`, `LearnPoints`,
+---`Experience`, `Level`, `HitPoints`, `ManaPoints` (current values: potions heal), `Axe`, `Sword`, `Staff`, `Bow`, `CrossBow`, `ProtEdge`, `ProtBlunt`,
+---`ProtPoint`, `ProtFire`, `ProtIce`, `ProtMagic`, `Missile`, `Frost`, `Fireball`, `Circle`, `Scribe`, `Trophy`, `Acrobat`, `Pickpocket`, `Lockpick`,
+---`Sneak`, `Mining`, `Smith`, `Alchemy`.
+---@return string[]
+function balanceApi.skills() end
+
+---The valid modifier modes: `add`, `set`, `max`, `percent`.
+---@return string[]
+function balanceApi.modes() end
 
 ---@class NpcSpawnOptions
 ---@field name? string Unique entity name; also the key of its label (`FO_<name>`).
@@ -1059,6 +1281,7 @@ function logApi.error(...) end
 ---@field entity RisenEntityApi
 ---@field template RisenTemplateApi
 ---@field item RisenItemApi
+---@field balance RisenBalanceApi
 ---@field npc RisenNpcApi
 ---@field quest RisenQuestApi
 ---@field dialog RisenDialogApi

@@ -1,0 +1,6 @@
+id          = "balance_driver"
+name        = "Item balancing driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Development aid: plays the item balancing save/load scenario unattended (docs/RE.md section 23) and logs 'baldriver' lines for scripts/smoke-test.ps1."
+main        = "main.lua"

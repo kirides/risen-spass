@@ -76,6 +76,9 @@ for fn in re.findall(r'save\.set_function\("(\w+)"', (root / 'src/game/lua_save.
     bound[f'save.{fn}'] = 'src/game/lua_save.cpp'
 for fn in re.findall(r'loc\.set_function\("(\w+)"', (root / 'src/game/loc_files.cpp').read_text(encoding='utf-8')):
     bound[f'loc.{fn}'] = 'src/game/loc_files.cpp'
+# per-mod risen.balance.install (a Lua chunk in lua_balance.cpp that defines `function b.<name>(` on the mod's balance table)
+for fn in re.findall(r'^function b\.(\w+)\(', (root / 'src/game/lua_balance.cpp').read_text(encoding='utf-8'), flags=re.M):
+    bound[f'balance.{fn}'] = 'src/game/lua_balance.cpp'
 # spec-less sol properties of usertypes use `"name", sol::property(` : include them
 for path in (root / 'src/game/script_bridge.cpp', root / 'src/game/lua_entity.cpp'):
     text = path.read_text(encoding='utf-8')

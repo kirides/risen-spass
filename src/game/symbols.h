@@ -255,6 +255,17 @@
     X(scene_ctx_count, L"Engine.dll", "?GetDynamicEntityContextCount@eCSceneAdmin@@QEBAHXZ", int (*)(const void* self), false) \
     X(inv_template_item, L"Script.dll", "?GetTemplateItem@PSInventory@@QEBA?AVEntity@@H@Z", void* (*)(const void* self, void* ret, int stack), false) \
     X(tple_patch_entity, L"Engine.dll", "?PatchEntity@eCTemplateEntity@@QEBA?AW4bEResult@@PEAVeCEntity@@_N1@Z", int (*)(const void* self, void* entity, bool replaceAll, bool arg), false) \
+    /* ---- item skill arrays: gCSkillValue (requirements) / gCModifySkill (modifiers), docs/RE.md section 23 ---- */ \
+    X(skillvalue_ctor, L"Game.dll", "??0gCSkillValue@@QEAA@XZ", void* (*)(void* self), false) \
+    X(skillvalue_dtor, L"Game.dll", "??1gCSkillValue@@UEAA@XZ", void (*)(void* self), false) \
+    X(modifyskill_ctor, L"Game.dll", "??0gCModifySkill@@QEAA@XZ", void* (*)(void* self), false) \
+    X(modifyskill_dtor, L"Game.dll", "??1gCModifySkill@@UEAA@XZ", void (*)(void* self), false) \
+    X(item_set_required_skills, L"Game.dll", "?SetRequiredSkills@gCItem_PS@@QEAAXAEBV?$bTObjArray@VgCSkillValue@@@@@Z", void (*)(void* itemPs, const void* array), false) \
+    X(item_set_modify_skills, L"Game.dll", "?SetModifySkills@gCItem_PS@@QEAAXAEBV?$bTObjArray@VgCModifySkill@@@@@Z", void (*)(void* itemPs, const void* array), false) \
+    X(skills_has_required, L"Game.dll", "?HasRequiredSkills@gCSkills_PS@@QEBA_NAEBV?$bTObjArray@VgCSkillValue@@@@PEAV?$bTObjArray@UgSMissingSkill@@@@@Z", bool (*)(const void* skillsPs, const void* required, void* missing), false) \
+    X(inv_consume_items, L"Script.dll", "?ConsumeItems@PSInventory@@QEAA_NHH@Z", bool (*)(void* self, int stack, int count), false) \
+    X(sk_get_total, L"Script.dll", "?GetTotal@PSSkills@@QEBAHW4gESkill@@@Z", int (*)(const void* holder, int skill), false) \
+    X(sk_get_base, L"Script.dll", "?GetBase@PSSkills@@QEBAHW4gESkill@@@Z", int (*)(const void* holder, int skill), false) \
     X(scene_ctx_at, L"Engine.dll", "?GetDynamicEntityContext@eCSceneAdmin@@QEBAPEAVeCEntityDynamicContext@@H@Z", void* (*)(const void* self, int index), false)
 
 namespace spass::game {

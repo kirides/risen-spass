@@ -1,0 +1,4 @@
+id = "itemdump"
+name = "Item property dump"
+version = "1.0.0"
+description = "Logs the property sets and values of item templates (development aid; see docs/ITEM_PROPERTIES.md and tools/gen_item_properties_doc.py)."

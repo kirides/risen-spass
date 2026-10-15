@@ -1,0 +1,6 @@
+id          = "balance_items"
+name        = "Item balancing demo"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Rebalances a few items (gold value, weapon damage, equip requirements, skill modifiers) with risen.balance.install and logs what that changes (docs/RE.md section 23)."
+main        = "main.lua"

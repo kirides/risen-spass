@@ -269,6 +269,146 @@ TEST(template_patch_validates_before_writing) {
           "true,1,2,It_Sword.gCItem_PS.GoldValue=true;inst.gCItem_PS.GoldValue=true;inst.gCItem_PS.GoldValue=true");
 }
 
+// ---- risen.item requirements/modifiers and risen.balance (Lua helpers; the native skill-array functions are mocked) ----------------------------
+
+namespace {
+
+// A fake item database: It_Sword (template, one live instance) and It_Potion. `store[name][kind]` holds the engine-style entries, `log`
+// records every array write ("target:kind:SKILL=amount[/modifier]|...").
+void setupBalanceMock(sol::state& lua) {
+    lua.open_libraries(sol::lib::base, sol::lib::string, sol::lib::table, sol::lib::math);
+    lua.script(R"LUA(
+        log = {}
+        store = {
+            It_Sword = { required = { { skill = "gESkill_Stat_STR", amount = 10 } }, modifiers = {} },
+            It_Potion = { required = {}, modifiers = { { skill = "gESkill_Atrib_HP", amount = 75, modifier = "gESkillModifier_AddValue" } } },
+        }
+        instance = { store = { required = {}, modifiers = {} } }
+        local function describe(entries)
+            local parts = {}
+            for _, e in ipairs(entries) do parts[#parts + 1] = e.skill .. "=" .. e.amount .. (e.modifier and ("/" .. e.modifier) or "") end
+            return table.concat(parts, "|")
+        end
+        risen = { item = {}, template = {}, log = {} }
+        function risen.item.skill_array(target, kind)
+            local s = target == instance and instance.store or store[target]
+            if not s then return nil, "unknown template '" .. tostring(target) .. "'" end
+            return s[kind]
+        end
+        function risen.item.set_skill_array(target, kind, entries)
+            local name = target == instance and "instance" or target
+            local s = target == instance and instance.store or store[target]
+            if not s then return nil, "unknown template '" .. tostring(target) .. "'" end
+            log[#log + 1] = name .. ":" .. kind .. ":" .. describe(entries)
+            s[kind] = entries
+            return true
+        end
+        function risen.item.skill_total_raw(who, name) return 7, 5 end
+        function risen.template.get(name)
+            if not store[name] then return nil, "unknown template '" .. name .. "'" end
+            local t = { sets = { gCItem_PS = { GoldValue = "50" }, gCDamage_PS = { DamageAmount = "10" } } }
+            function t:property_sets() local l = {} for k in pairs(self.sets) do l[#l + 1] = k end return l end
+            function t:list_properties(set) local l = {} for k in pairs(self.sets[set]) do l[#l + 1] = { name = k, type = "long" } end return l end
+            function t:set_property(set, prop, value) log[#log + 1] = name .. "." .. set .. "." .. prop .. "=" .. value return true end
+            function t:instances() if name == "It_Sword" then return { instance } end return {} end
+            return setmetatable(t, { __tostring = function() return "Template(" .. name .. ")" end })
+        end
+        instance.set_property = function(_, set, prop, value) log[#log + 1] = "instance." .. set .. "." .. prop .. "=" .. value return true end
+    )LUA");
+    spass::game::installTemplatePatchHelper(lua, lua["risen"]);
+    spass::game::installBalanceHelpers(lua, lua["risen"]);
+}
+
+}  // namespace
+
+TEST(balance_requirements_and_modifiers_convert_names_and_validate) {
+    sol::state lua;
+    setupBalanceMock(lua);
+    auto run = [&](const char* code) { return lua.script(code).get<std::string>(); };
+    // friendly names -> engine enums, in a deterministic order; the read-back uses the friendly names again
+    CHECK(run("local ok = risen.item.set_requirements('It_Sword', { Strength = 15, Dexterity = 12 }) return tostring(ok) .. ';' .. log[#log]") ==
+          "true;It_Sword:required:gESkill_Stat_DEX=12|gESkill_Stat_STR=15");
+    CHECK(run("local r = risen.item.requirements('It_Sword') return r.Strength .. ',' .. r.Dexterity") == "15,12");
+    // a Template handle and the engine suffix / full enum names work too; {} clears the list
+    CHECK(run("risen.item.set_requirements(risen.template.get('It_Sword'), { Stat_STR = 3, gESkill_Prot_Edge = 1 }) return log[#log]") ==
+          "It_Sword:required:gESkill_Stat_STR=3|gESkill_Prot_Edge=1");
+    CHECK(run("risen.item.set_requirements('It_Sword', {}) return log[#log]") == "It_Sword:required:");
+    // modifiers: default mode add, explicit modes, list form
+    CHECK(run("risen.item.set_modifiers('It_Potion', { HitPoints = 40, ProtEdge = { amount = 5, mode = 'set' } }) return log[#log]") ==
+          "It_Potion:modifiers:gESkill_Atrib_HP=40/gESkillModifier_AddValue|gESkill_Prot_Edge=5/gESkillModifier_SetToValue");
+    CHECK(run("risen.item.set_modifiers('It_Potion', { { skill = 'Strength', amount = -2, mode = 'percent' } }) return log[#log]") ==
+          "It_Potion:modifiers:gESkill_Stat_STR=-2/gESkillModifier_AddPercentOfMax");
+    CHECK(run("local m = risen.item.modifiers('It_Potion') return m[1].skill .. ',' .. m[1].amount .. ',' .. m[1].mode") == "Strength,-2,percent");
+    // invalid input: nil + a reason (valid names listed), nothing written
+    lua.script("log = {}");
+    CHECK(run("local ok, why = risen.item.set_requirements('It_Sword', { Strenght = 5 }) return tostring(ok) .. '|' .. why") .find("nil|requirements: unknown skill 'Strenght' (valid: Strength, Dexterity") == 0);
+    CHECK(run("local ok, why = risen.item.set_requirements('It_Sword', { Strength = 1.5 }) return tostring(ok) .. '|' .. why") ==
+          "nil|requirements.Strength: the amount must be an integer, got 1.5");
+    CHECK(run("local ok, why = risen.item.set_modifiers('It_Sword', { ProtEdge = { amount = 1, mode = 'bogus' } }) return tostring(ok) .. '|' .. why").find("unknown mode 'bogus' (valid: add, set, max, percent)") != std::string::npos);
+    CHECK(run("local ok, why = risen.item.set_requirements('It_Sword', 5) return tostring(ok)") == "nil");
+    CHECK(run("local ok, why = risen.item.set_requirements('It_Nope', { Strength = 1 }) return tostring(ok) .. '|' .. why") == "nil|unknown template 'It_Nope'");
+    CHECK(run("return tostring(#log)") == "0");
+    // instances = true also writes the live entities of the template
+    CHECK(run("local ok, n = risen.item.set_requirements('It_Sword', { Strength = 9 }, { instances = true }) return tostring(ok) .. ',' .. n .. ';' .. table.concat(log, ';')") ==
+          "true,1;It_Sword:required:gESkill_Stat_STR=9;instance:required:gESkill_Stat_STR=9");
+    // the character's skill: friendly names are mapped, unknown ones reported
+    CHECK(run("local t, b = risen.item.skill_total({}, 'Strength') return t .. ',' .. b") == "7,5");
+    CHECK(run("local t, why = risen.item.skill_total({}, 'Nope') return tostring(t) .. '|' .. why").find("nil|unknown skill 'Nope'") == 0);
+}
+
+TEST(balance_apply_validates_everything_before_writing) {
+    sol::state lua;
+    setupBalanceMock(lua);
+    auto run = [&](const char* code) { return lua.script(code).get<std::string>(); };
+    // a spec with several problems: all reported, nothing written (not even the valid entry)
+    CHECK(run("local rep, why, problems = risen.balance.apply({ items = { It_Sword = { value = 5, requires = { Strenght = 1 } }, It_Nope = { value = 1 }, "
+              "It_Potion = { weight = 3 } }, spells = {} }) log[#log + 1] = '' return tostring(rep) .. '|' .. #problems .. '|' .. #log") == "nil|4|1");
+    CHECK(run("local _, why = risen.balance.apply({ items = { It_Potion = { value = 'x', properties = { gCItem_PS = { Nope = 1 } } } } }) return why")
+              .find("has no property 'Nope'") != std::string::npos);
+    CHECK(run("local _, why = risen.balance.apply({ bogus = {} }) return why") == "unknown section 'bogus' (valid: items)");
+    CHECK(run("local _, why = risen.balance.apply({ items = { It_Potion = { weight = 3 } } }) return why")
+              .find("unknown setting 'weight' (valid: category, damage, mana_cost, modifies, properties, requires, use_type, value)") != std::string::npos);
+    // a valid spec: plain properties go through risen.template.patch, arrays through the skill-array writer, instances included
+    lua.script("log = {}");
+    CHECK(run("local rep = assert(risen.balance.apply({ items = { It_Sword = { value = 120, damage = 25, requires = { Strength = 5 }, modifies = { ProtEdge = 2 } } } })) "
+              "table.sort(log) return tostring(rep.ok) .. ',' .. #rep.applied .. ',' .. rep.instances .. ';' .. table.concat(log, ';')") ==
+          "true,1,3;It_Sword.gCDamage_PS.DamageAmount=25;It_Sword.gCItem_PS.GoldValue=120;It_Sword:modifiers:gESkill_Prot_Edge=2/gESkillModifier_AddValue;"
+          "It_Sword:required:gESkill_Stat_STR=5;instance.gCDamage_PS.DamageAmount=25;instance.gCItem_PS.GoldValue=120;"
+          "instance:modifiers:gESkill_Prot_Edge=2/gESkillModifier_AddValue;instance:required:gESkill_Stat_STR=5");
+    // instances = false and dry_run
+    lua.script("log = {}");
+    CHECK(run("local rep = assert(risen.balance.apply({ items = { It_Sword = { value = 1 } } }, { instances = false })) return rep.instances .. ';' .. table.concat(log, ';')") ==
+          "0;It_Sword.gCItem_PS.GoldValue=1");
+    lua.script("log = {}");
+    CHECK(run("local rep = assert(risen.balance.apply({ items = { It_Sword = { value = 1 } } }, { dry_run = true })) return tostring(rep.dry_run) .. ';' .. #log") == "true;0");
+    // other milestones add sections
+    CHECK(run("risen.balance.register_section('npcs', function(data) return { { label = 'npc ' .. tostring(data.x), run = function() return true, nil, 3 end } }, {} end) "
+              "local rep = assert(risen.balance.apply({ npcs = { x = 1 } })) return rep.applied[1] .. ',' .. rep.instances .. ',' .. table.concat(risen.balance.section_names(), '/')") ==
+          "npc 1,3,items/npcs");
+}
+
+TEST(balance_install_registers_handlers_once_per_spec) {
+    sol::state lua;
+    setupBalanceMock(lua);
+    lua.script(R"LUA(
+        handlers, lines = {}, {}
+        api = setmetatable({ log = { info = function(m) lines[#lines + 1] = "I " .. m end, warn = function(m) lines[#lines + 1] = "W " .. m end,
+                                     error = function(m) lines[#lines + 1] = "E " .. m end },
+                              on = function(event, fn) handlers[#handlers + 1] = { event = event, fn = fn } end }, { __index = risen })
+    )LUA");
+    spass::game::installBalanceModApi(lua, lua["api"]);
+    auto run = [&](const char* code) { return lua.script(code).get<std::string>(); };
+    CHECK(run("spec = { items = { It_Sword = { value = 9 } } } return tostring(api.balance.install(spec)) .. ',' .. tostring(api.balance.install(spec)) .. ',' .. #handlers") == "true,false,2");
+    // first tick: templates only; session.start: with the live entities (the mock's instance counts one written entity per array/property)
+    CHECK(run("for _, h in ipairs(handlers) do if h.event == 'tick' then h.fn() h.fn() end end return lines[1] .. '|' .. #lines") == "I balance: first tick: applied 1 of 1 entries|1");
+    CHECK(run("for _, h in ipairs(handlers) do if h.event == 'session.start' then h.fn('new') end end return lines[2]") ==
+          "I balance: session.start (new): applied 1 of 1 entries, 1 live entities written");
+    // a broken spec is reported as errors, not thrown
+    CHECK(run("api.balance.install({ items = { It_Nope = { value = 1 } } }) for _, h in ipairs(handlers) do if h.event == 'tick' then h.fn() end end "
+              "return tostring(lines[#lines]):sub(1, 30)") == "E balance: items.It_Nope: unkn");
+    CHECK(lua.script("return pcall(api.balance.install, 5)").get<bool>() == false);
+}
+
 }  // namespace
 
 // Prints the faulting stack with symbol names when a test crashes (the PDB is next to the exe).

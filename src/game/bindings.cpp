@@ -131,6 +131,8 @@ void registerBindings() {
     rt.addBinding(bindEntity);
     rt.addBinding(bindItems);
     rt.addBinding(bindTemplates);  // after bindItems: extends risen.template
+    rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo&) { installBalanceModApi(lua, api); });  // risen.balance.install
+    rt.addBinding(bindBalance);  // after bindItems/bindTemplates: extends risen.item, uses risen.template.patch
     rt.addBinding(bindVfs);  // after bindItems: adds risen.template.list
     rt.addBinding(bindNpcHelpers);
     rt.addBinding(bindDialog);

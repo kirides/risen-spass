@@ -586,7 +586,7 @@ eCRigidBody_PS, eCCollisionShape_PS, gCCharacterMovement_PS, gCNPC_PS, gCInvento
 gCParty_PS, gCEffect_PS, eCAnimation_PS, gCSkills_PS, gCCombatSystem_PS`. `gCItem_PS` properties: `Amount, GoldValue, MissionItem, Permanent, SortValue, Category, IconImage,
 HoldOffset, Dropped, ItemWorld, ItemInventory, Spell, RequiredSkills (bTObjArray<gCSkillValue>), ModifySkills (bTObjArray<gCModifySkill>), UseType, CanEquipScript, EquipScript,
 UnEquipScript, EffectMaterial, HoldType, IsDangerousWeapon, CombatHitRangeOffset`. **`gCSkills_PS` has no reflected properties** (hit points, level and skills cannot be edited through the
-property mechanism; M3 needs another route). Array properties read back only as `Array[n]` (not explored yet, M2).
+property mechanism; M3 needs another route). Array properties read back only as `Array[n]` (solved natively in M2: section 23).
 
 **What an edit affects** (all verified with `It_1H_Sword.GoldValue` 50 -> 777 and the `gCNPC_PS.Guild` of `Peasant_1_01`/`Wolf`):
 * **new spawns** (`Entity::Spawn`): yes, at once.
@@ -626,5 +626,70 @@ contexts saw only part of the world: never cap the contexts.) Without a world th
 loaded from the menu), and again with `{ instances = true }` on every `session.start` (new game *and* load: the world entities of both carry their own copies). `mods.loaded` is too early.
 
 **Not done / inferred:** `eCTemplateEntity::CreateEntityCopy/SetName/SetID` (cloning a template under a new name, M4) are decompiled (tpl1_dump) but were not called; array properties
-(`RequiredSkills`, `ModifySkills`) and non-reflected sets are untested; which property sets a savegame persists is only known for `gCItem_PS` and `gCNPC_PS`; multi templates
+(`RequiredSkills`, `ModifySkills`: section 23) and non-reflected sets are untested; which property sets a savegame persists is only known for `gCItem_PS` and `gCNPC_PS`; multi templates
 (`GetEntity` null) are refused with a message.
+
+
+## 23. Item balancing: skill arrays, equip conditions, damage [confirmed in-game unless marked]
+
+Driven by `src/game/lua_balance.cpp`; live tests `mods/balance_items` (the recommended pattern, verification lines) and `mods/balance_driver` (save/load), run by
+`scripts/smoke-test.ps1 -Scenario balance`; the full per-property catalogue of all 606 item templates is [`ITEM_PROPERTIES.md`](ITEM_PROPERTIES.md)
+(`mods/itemdump` + `tools/gen_item_properties_doc.py`). RVAs are of the 64-bit Risen Enhanced build.
+
+**Where an item's numbers live** (every item template: `gCItem_PS` + `gCInteraction_PS` + visual/physics sets; weapons add `gCDamage_PS`, runes/scrolls `gCCastInfo_PS`, recipes `gCRecipe_PS`):
+
+| What | Where |
+|---|---|
+| gold value | `gCItem_PS.GoldValue` (long) |
+| weapon damage | `gCDamage_PS.DamageAmount` (long; 10..100 on the shipped weapons, arrows 20) + `DamageMultiplier` (float, always 1) + `DamageBonus` (0) + `DamageType` (`gEDamageType_Edge/Blunt/Point`...) + `DamageScript` (`DoSwordDamage`, `DoAxeDamage`, `DoStaffDamage`, `DoFistDamage`, `DoProjectileDamage`) |
+| equip condition | `gCItem_PS.RequiredSkills` (array of `gCSkillValue`: weapons Strength 5..100, bows Dexterity 10..80, runes `Circle` 1..4) + `CanEquipScript` (`CanEquipMeleeWeapon`, `CanEquipRangedWeapon`, `CanEquipShield`, `CanEquipHasRequieredStats`) |
+| armor/shield/helmet/ring/amulet protection and bonuses | `gCItem_PS.ModifySkills` (array of `gCModifySkill`): `Prot_Edge/Blunt/Point/Fire/Ice/Magic` (armor 5..80, shield 2..10, helmet 1..10), attributes, `Combat_*` |
+| potion/food effect | `gCItem_PS.ModifySkills`: `Atrib_HP`/`Atrib_MP` = **current** hit/mana points (heal: potions 50..300, food 5..200), `Stat_HP`/`Stat_MP` = **maximum** (permanent potions +10/+5), `Stat_STR`, `Stat_XP`... |
+| spell cost | `gCCastInfo_PS.ManaCost` (runes 0..80, teleport runes 0; scrolls about half of the rune) |
+| use type / category / hold type | `gCItem_PS.UseType`, `Category`, `HoldType` (enums); `EquipScript`/`UnEquipScript` (`OnEquipApplayStats`, `OnEquipRing`, `OnEquipMeleeWeapon`, ...) |
+
+There is **no durability and no weight** property on any item. All 606 `Items/*` templates were read through `Template:list_properties` (`mods/itemdump`, 53 872 property lines): 598 have `gCItem_PS`
+(the 8 without are `It_Cast_Light` and the `It_Projectile_*` objects), 107 `gCDamage_PS`, 71 `gCCastInfo_PS`, 86 `gCRecipe_PS`, 17 `gCProjectile2_PS`; the rest is visual/physics (`eCMesh_PS`, ...).
+
+**The arrays** (Game.dll). `bTObjArray<T>` is `{ T* data; int count; int capacity; }` with the elements stored **inline** (no pointers). `gCItem_PS` layout: `RequiredSkills` at `+0x70`, `ModifySkills` at `+0x80`
+(`GetRequiredSkills` `0x4a7aa0` / `GetModifySkills` `0x4a8c60` just return `this + offset`; `gCRecipe_PS` and `gCQuest.ModifySkillsSuccess` use the same element types).
+* `gCSkillValue` (size `0x20`): vftable `+0`, `bTPropertyContainer<gESkill>` sub-object vftable `+8`, `Skill` (int) `+0x10`, `Amount` (int) `+0x18`. `gCModifySkill` (size `0x30`): the same plus a `bTPropertyContainer<gESkillModifier>` vftable `+0x20` and `Modifier` (int) `+0x28`.
+  Constructors/destructors are exported (`gCSkillValue::gCSkillValue()` `0x976a60`, `~` `0x4b0630`, `gCModifySkill()` `0x976ab0`, `~` `0x4b0990`; also `(skill, amount[, modifier])` constructors).
+  Both are `bCObjectBase`s with the reflected properties **`Skill`, `Amount`** (and **`Modifier`**), so `bCAccessorProperty` reads/writes an element's fields and **parses/prints the enum names** (`gESkill_Stat_STR`, `gESkillModifier_AddValue`) -- no enum table is needed.
+  The text format of the array property itself (`Array[n]`) is read-only; there is no element syntax.
+* **Reading**: take `data`/`count` from `gCItem_PS + offset` and run the accessor on `data + i * stride`. **Writing**: build the elements in a scratch buffer with the engine's own constructors (default ctor + accessor `Skill`/`Amount`/`Modifier`, then read back to validate the names),
+  put `{ data, count, count }` in a stack `bTObjArray` header and call **`gCItem_PS::SetRequiredSkills`** (`0x4fd310`) / **`SetModifySkills`** (`0x4fd360`): they call the property-set change hooks (vtable `+0xb0`/`+0xb8` with the property name) around the array copy-assignment
+  (`FUN_18050b1a0` for `gCSkillValue` is decompiled: resizes the destination, re-constructs each element in place and copies `Skill`/`Amount`; `FUN_1804b7f00` for `gCModifySkill` has the same shape, not read, and round-trips `Modifier` in the tests). The source array is only read, so a fake header over our buffer works; afterwards our elements are destroyed with the exported destructors.
+  Verified on templates, on spawned item entities and on every live entity of a template (149 berries).
+* `gESkill` values (read back through the accessor: `risen.item.skill_id`): 0 `Atrib_HP` (current hit points), 1 `Atrib_MP` (current mana), 2 `Stat_LV`, 3 `Stat_XP`, 4 `Stat_LP`, 5 `Stat_HP` (maximum), 6 `Stat_MP`, 7 `Stat_STR`, 8 `Stat_DEX`, 9 `Stat_INT`,
+  10 `Prot_Edge`, 11 `Prot_Blunt`, 12 `Prot_Point`, 13 `Prot_Fire`, 14 `Prot_Ice`, 15 `Prot_Magic`, 16 `Combat_Sword`, 17 `Combat_Axe`, 18 `Combat_Staff`, 19 `Combat_Bow`, 20 `Combat_CrossBow`, 21 `Magic_Circle`, 22 `Magic_Fireball`, 23 `Magic_Frost`,
+  24 `Magic_Missile`, 25 `Misc_Smith`, 26 `Misc_Mining`, 27 `Misc_Lockpick`, 28 `Misc_Pickpocket`, 29 `Misc_Sneak`, 30 `Misc_Acrobat`, 31 `Misc_Alchemy`, 32 `Misc_Scribe`, 33 `Misc_Trophy`; `gESkill_None` = -1 (the engine rejects anything `>= 0x22`).
+  Names found as strings in Game.dll `0xc29c08..`. `gESkillModifier`: 0 `AddValue`, 1 `SetToMax`, 2 `SetToValue`, 3 `AddPercentOfMax` (`gCSkills_PS::ModifySkillValue` `0x977d30`: `AddValue` adds `Amount` to the skill's base value, `SetToMax` the maximum, `SetToValue` the amount, `AddPercentOfMax` percent of the maximum).
+* `gCSkills_PS` keeps per skill a base value (`+0x20 + 4*skill`) and a "modification" value (`+0xa8 + 4*skill`); `PSSkills::GetTotal(skill)` (`0x2350f0`, Script.dll) = base + modification (`gCSkills_PS::GetSkillValue`; `HasRequiredSkills` additionally clamps to the skill's min/max from `ms_arrSkillInfos`). `PSSkills::GetHitPoints` is `GetTotal(0)`, `GetHitPointsMax` `GetTotal(5)`, `GetStrength` `GetTotal(7)`,
+  `GetProtection(damageType)` `GetTotal(10..15)`. This is what `Entity:skill_total(name)` returns (total, base via `GetBase`).
+
+**How the numbers are used** (decompiled, Game.dll / Script.dll / Script_Game.dll -- the third was imported into its own Ghidra project `B:\DevDrive\risen-ghidra\ScriptGame`, helper `run-dump-sg.ps1`):
+* *Equip check*: `gCSkills_PS::HasRequiredSkills(required array, missing*)` (`0x977960`): for each element `skill < 0x22`, total = clamp(base + modification, min, max); missing when `Amount - total > 0`; `missing == nullptr` makes it a plain bool. `gCItem_PS::HasRequiredSkills(entity, missing&)` (`0x8c5540`)
+  forwards `this + 0x70`; Script.dll `PSItem::HasRequiredSkills` (`0x226b60`) wraps it. The script `CanEquipHasRequieredStats` (Script_Game `0xf2190`; `CanEquipMeleeWeapon`/`CanEquipRangedWeapon`/`CanEquipShield` delegate to it) runs the check **only for the player**
+  (`Entity::IsPlayer`) and prints the HUD message `HUD_MissingSkill` ("$(name)") per missing skill; **NPCs always pass**. `gCInventory_PS::CanEquipStackToSlot` (`0x8c4d70`) calls the item's `CanEquipScript`. Verified live: the same `risen.item.can_use(player, item)` flips with the edited requirement
+  (500 -> false, 1 -> true, none -> true) and `Entity:equip_all()` (which goes through the CanEquip scripts) skips a two-hander that needs 999 Strength and equips it (+1) once the requirement is lowered.
+* *Equip effect*: `OnEquipApplayStats` / `OnEquipRing` etc. call `PSItem::ApplyModSkills` -> `gCItem_PS::ApplyModSkills(entity)` (`0x8c54a0`): for every `ModifySkills` element `SetSkillModifyValue(skill, modification[skill] + Amount)` (the `Modifier` is ignored here); `OnUnEquipUnApplayStats` -> `UnApplyModSkills` (`0x8c5400`) **subtracts the item's current
+  amounts**. Hence editing the modifiers of an item that is currently worn makes the next unequip drift by the difference (the world keeps the applied sums in the character's skill values, which are saved): change modifiers before anything is worn (first `tick`), or take the item off and put it on again around the edit. Verified: wearing the edited
+  `It_Armor_Guard` (`ProtEdge 35`) raised the player's `Prot_Edge` total from 0 to 35.
+* *Use effect*: `gCInventory_PS::ConsumeItems(stack, count)` (`0x8c5140`) calls `gCSkills_PS::ModifySkillValues(item ModifySkills, true)` (`0x977f30`; base value changes with the `Modifier` semantics above, HUD game-log line for the player) and then `DeleteItems`. `PSInventory::UseStack` (`0x224120`) is only the equip/unequip
+  toggle; the player's "use" from the inventory goes through `PSInteraction::PlayerUseStack` (`0x221c40`, `gCInteraction_PS::BeginInteraction(item, 2, stack)`). `risen.item.consume` calls `PSInventory::ConsumeItems`: a potion edited to `HitPoints = 40` healed 10 -> 50 (max 80), shipped value 75.
+* *Weapon damage*: `DoSwordDamage` (Script_Game `0xd90c0`), `DoAxeDamage` (`0xd92c0`), `DoStaffDamage` (`0xd94c0`), `DoFistDamage` (`0xd96c0`) all compute `int(DamageMultiplier * (DamageAmount + attacker.GetTotal(Strength)))` with +50 (`0x32`) while the attacker has the "Berserker" status effect, then pass it on to the generic damage script
+  (which applies the protection skill of the `DamageType`: `PSSkills::GetProtection`). `DoProjectileDamage` (`0xdacc0`) forwards through script chains using the projectile's `DamageMultiplier` and the shot strength (`(arg + 400) * 5`); the ranged formula is **not fully decoded** (inferred: bow `DamageAmount` + arrow `DamageAmount`, Dexterity-related).
+  The damage numbers themselves were **not** measured in a fight (only the template/instance values were read back).
+
+**Behaviour of edits** (same as RE.md §22 because the arrays are just more properties of the template's `gCItem_PS`): new spawns, items given and inventory stacks follow the template at once (stack items are the template entity); existing entities, savegame worlds and new-game level data keep their own copies,
+so `instances = true` rewrites them. Round trip verified with `mods/balance_driver` (`It_Plant`, 144 world instances, `ModifySkills` `HitPoints +5` -> `Strength +7` and value 10 -> 77 on template and instances): after a quick save, editing the **template back** and quick-loading, the loaded world still holds the saved values
+(`77 | Strength+7` x144, template `1 | -`): arrays are saved with the entities like plain properties; a new game afterwards has the level's shipped values (`10 | HitPoints+5` x144) while the template keeps the edit. So a balancing mod must write the instances on every `session.start`, and a removed mod leaves its values in old saves.
+`risen.balance.install` does exactly this (first `tick` templates, every `session.start` instances); `mods/balance_items` shows it end to end (spawn, inventory stack, 149 world berries, engine check, equip, consume).
+
+**Implementation notes.** Entity handle → `gCItem_PS` via `eCEntity::GetPropertySet("gCItem_PS")`, template name → `templatePropertySet` (lua_template.cpp). `SetRequiredSkills` takes the array by const reference, so the scratch header lives on the stack; maximum 64 entries (scratch buffer).
+`sol::variadic_args` must not be default-constructed (iterating it crashes). New symbols: `skillvalue_ctor/dtor`, `modifyskill_ctor/dtor`, `item_set_required_skills/modify_skills`, `skills_has_required`, `inv_consume_items`, `sk_get_total/base` (all optional).
+
+**For the next milestones.** M3 (NPCs): `gCSkills_PS` is not reflected, but the same skill ids apply: `PSSkills::GetTotal/GetBase/SetBase`-style functions exist in Script.dll (`SetBase(skill, value, modifier)` `0x235180`, `SetCombatSword...`), `gCSkills_PS::SetSkillBaseValue`/`ModifySkillValue(gCModifySkill, bool)` (Game.dll, `0x977d30`) take a `gCModifySkill` element,
+which the element construction here can build; `Entity:skill_total` is the read side. Quests (`gCQuest.ModifySkillsSuccess`) and recipes (`gCRecipe_PS.RequiredSkills` at a different offset, `SetRequiredSkills` `0x5d17a0`) use the same array types. M6 (spells): `gCCastInfo_PS.ManaCost` is a plain property (`mana_cost` in the items section);
+the required circle of a rune is its `RequiredSkills` (`Circle`). The `risen.balance.register_section` hook is where `npcs`/`spells` plug in.
