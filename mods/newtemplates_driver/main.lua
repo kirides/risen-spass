@@ -169,6 +169,7 @@ if phase == "load_missing" then
         L("quick_save", risen.world.quick_save())
         T.wait_until(function() return saved end, 120, "save.after")
         T.expect("a save without the templates succeeds", saved, tostring(saved))
+        T.sleep(200)   -- the engine keeps writing the savegame after save.after: a kill within ~1 s leaves a file that never loads (found with a 0.1 s poll in run-windowed.ps1)
         T.finish("load_missing done")
     end, "newtemplates")
     return

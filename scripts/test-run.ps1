@@ -46,6 +46,8 @@ param(
     [string]$TraceFiles = '',
     # What the "autostart" helper mod does on the first tick: start a new game, or quick-load the last quick save.
     [ValidateSet('new', 'load')][string]$Start = 'new',
+    # extra Risen.exe command line switches, e.g. '-noaudio', '-res=640x360' (see docs/DEVELOPMENT.md "Startup time")
+    [string[]]$ExtraArgs = @(),
     [switch]$WaitForResult,
     [int]$StallSeconds = 90,
     [int]$DeadlineSeconds = -1,
@@ -64,6 +66,17 @@ $log = Join-Path $bin 'spass\spass.log'
 $resultFile = Join-Path $bin 'spass\test-result.json'
 if (-not (Test-Path (Join-Path $bin 'Risen.exe'))) { throw "no Risen.exe in $bin" }
 if ($GameDir -like 'B:\SteamLibrary*') { throw 'refusing to touch the real install' }
+
+# The test copy plays no intro videos: data\extern is a junction to the real install, so give the copy its own data\externideos
+# with an empty logo.ini (what PlayIntros reads). Only the junction itself is removed, never its target.
+$externDir = Join-Path $GameDir 'data\extern'
+if ((Test-Path $externDir) -and ((Get-Item $externDir -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+    & cmd.exe /c rmdir "`"$externDir`"" | Out-Null
+}
+if (-not (Test-Path (Join-Path $externDir 'videos\logo.ini'))) {
+    New-Item -ItemType Directory -Force (Join-Path $externDir 'videos') | Out-Null
+    [IO.File]::WriteAllText((Join-Path $externDir 'videos\logo.ini'), '')
+}
 
 function Stop-Risen {
     Get-Process Risen -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -161,6 +174,7 @@ try {
     }
 
     $windowed = @{ GameDir = $GameDir; Seconds = $Seconds; KeepRunning = $KeepRunning; StallSeconds = $StallSeconds }
+    if ($ExtraArgs.Count -gt 0) { $windowed.ExtraArgs = $ExtraArgs }
     if ($WaitForResult) { $windowed.ResultFile = $resultFile }
     & (Join-Path $PSScriptRoot 'run-windowed.ps1') @windowed 6>&1 |
         Select-String -Pattern $Filter | ForEach-Object { $_.Line }

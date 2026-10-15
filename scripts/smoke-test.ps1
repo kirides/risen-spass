@@ -15,12 +15,13 @@
 .DESCRIPTION
     Needs a built sentry.dll and the test copy (see CLAUDE.md). The [risen.test] scenarios end as soon as they are done
     (the mod layer writes spass\test-result.json, see docs/DEVELOPMENT.md "Testing and tracing"): about a minute each. The
-    [log checks] scenarios still run for a fixed time and assert on regexes over spass.log (~3 minutes each).
+    [log checks] scenarios end themselves too (the driver mod calls risen.test.finish after its last step) and additionally assert on
+    regexes over spass.log: 60-90 s each.
     Every scenario runs under the watchdog of test-run.ps1 (no new log line for -StallSeconds, or over its time limit: the
     game is killed and the last log lines and "where it stopped" are printed). Exit code 0 = every selected scenario passed.
 
 .PARAMETER GameDir   Test copy of Risen (never the real install).
-.PARAMETER Seconds   Time limit of the [log checks] scenarios (fetchquest and branch get 60 s more, commands 20 s less).
+.PARAMETER Seconds   Upper time limit of the [log checks] scenarios (fetchquest and branch get 60 s more, commands 20 s less).
 .PARAMETER Scenario  One or more scenario names (comma separated), or all.
 .PARAMETER List      Print the scenarios and exit.
 .PARAMETER FailFast  Stop after the first failing scenario.
@@ -139,8 +140,9 @@ foreach ($name in $selected) {
         $label = if ($ph.Name) { "$name/$($ph.Name)" } else { $name }
         if ($ph.Name) { Write-Host "-- phase $($ph.Name), limit $phLimit s" }
         $testArgs = @{ GameDir = $GameDir; Mods = $s.Mods; Seconds = $phLimit; Filter = 'NOTHING'; StallSeconds = $StallSeconds }
+        # every scenario ends itself (risen.test.finish writes the result file); the [log checks] ones additionally assert on the log below
+        $testArgs.WaitForResult = $true; $testArgs.Scenario = $name
         if ($s.Kind -eq 'result') {
-            $testArgs.WaitForResult = $true; $testArgs.Scenario = $name
             if ($ph.Param -and $ph.Param.Count -gt 0) { $testArgs.Param = $ph.Param }
             if ($ph.Start -eq 'load') { $testArgs.Start = 'load' }
             if ($ph.Keep) { $testArgs.Keep = $true }
@@ -174,11 +176,13 @@ foreach ($name in $selected) {
                 else { Write-Host ("  FAIL  " + $c[0]) -ForegroundColor Red; $failed++ }
             }
             $passedChecks = $s.Checks.Count - $failed; $totalChecks = $s.Checks.Count
-            # these scenarios end quietly: the stall watchdog only cuts the fixed wait short, the checks decide
-            if ($failed -eq 0) { if ($run.Reason -eq 'stall') { $notes += 'quiet after the last step: ended by the watchdog' } }
-            else {
+            # the driver mod ends the run with risen.test.finish; the log regexes decide. A missing result only gets a note, a failed one fails the scenario.
+            $resultBad = $null -ne $run.Result -and $run.Result.status -ne 'pass'
+            if ($null -eq $run.Result) { $notes += "no result file (run ended by '$($run.Reason)', the driver did not finish)" }
+            elseif ($resultBad) { $notes += "result: $($run.Result.reason)" }
+            if ($failed -gt 0 -or $resultBad) {
                 $badPhases += $label
-                $notes += $(if ($run.Reason -eq 'stall') { "$failed check(s) failed; the run stalled (no log line for $StallSeconds s) and was killed" } else { "$failed check(s) failed, see $log" })
+                if ($failed -gt 0) { $notes += $(if ($run.Reason -eq 'stall') { "$failed check(s) failed; the run stalled (no log line for $StallSeconds s) and was killed" } else { "$failed check(s) failed, see $log" }) }
             }
             Write-Host ("{0} of {1} checks passed" -f ($s.Checks.Count - $failed), $s.Checks.Count)
         }

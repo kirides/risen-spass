@@ -54,12 +54,15 @@ property sets through the entity's vtable. The engine's own log function is an e
 ## Testing
 
 * **Unit tests** (no game): `build\RelWithDebInfo\spass_tests.exe` — string-file parser, mod discovery/order, Lua sandbox and events.
-* **Test copy**: never test in the real install. Make a copy of `bin\` next to a junction to the real `data\`, with a private `data\ini` whose `ConfigLocal.xml`
+* **Test copy**: never test in the real install. Make a copy of `bin\` next to junctions to the real `data\common` and `data\compiled`, with a private `data\ini` whose `ConfigLocal.xml`
   has `FullScreen="false"` (the game is always started windowed), and keep the stock `$(localappdata)/Risen/...` lines in its `mountlist_packed.ini`.
+  `data\extern` is a real directory of the copy, not a junction: `test-run.ps1` creates it with an **empty** `videos\logo.ini` (the file `PlayIntros` reads), so no intro video can ever
+  add start-up time or block a run (the real install keeps its own `logo.ini`; its `.bik` files are renamed `.off`, so nothing plays there today either). The junction itself is
+  removed with `rmdir`, the real install is never touched.
 * `scripts\test-run.ps1 -Mods <mod>[,<mod>] -Seconds 120 -Filter '<regex>'` deploys the build and the chosen mods into the copy, starts a new game
   (`-Start load` quick-loads, `-NoAutostart` stays in the menu), and prints the matching log lines. `config.toml [debug] app_data` (set by the script)
   keeps savegames and `ConfigUser.xml` inside the copy.
-* `scripts\smoke-test.ps1` runs every scenario (persistence, fetchquest, commands, branch, templates, balance, npcs, newtemplates), prints a pass/fail table with timings and returns a
+* `scripts\smoke-test.ps1` runs every scenario (persistence, fetchquest, commands, branch, templates, balance, npcs, newtemplates; each ends itself, about 11 minutes in all, was 14+), prints a pass/fail table with timings and returns a
   nonzero exit code on failure: `-List`, `-Scenario templates,npcs`, `-FailFast`, `-TotalSeconds` (time budget). Run it before committing changes to events, saving,
   quests, dialogues or items. See "Testing and tracing" below.
 * Probe mods drive the game from `tick`: create a `mods/<name>` that logs what the engine reports, run it with `test-run.ps1`, read the log.
@@ -106,9 +109,12 @@ blocks on a hung game (`SetWindowPos` is asynchronous). Failure drills: `-Mods t
 (save/load phases with durations), `spawn`, `script`, `lua` (errors with traceback), `test`; mods add their own with `risen.trace("mymod", ...)`. Turn channels on
 instead of adding temporary `log.info` lines and rerunning.
 
-**Timings** (this machine, the same assertions): templates 53 s (was 240 s fixed), balance 53 s (240 s), npcs 61 s (300 s); the whole smoke test 14 min instead of ~28 min (the four log-regex scenarios also end 30-100 s early when the stall watchdog sees their quiet tail). A new game loads in ~5 s here; the engine
-start up to `session.start` is ~30 s, so a scenario is bounded by its own settle times (ticks), not by fixed waits. The legacy log-regex scenarios (persistence,
-fetchquest, commands, branch) still run for a fixed time; migrating one means moving its `driver:` lines into `risen.test` checks as done for the other three.
+**Timings** (this machine, the same assertions): templates 53 s (was 240 s fixed), balance 53 s (240 s), npcs 61 s (300 s). The four older scenarios (persistence, fetchquest,
+commands, branch) still assert on regexes over `spass.log` (`smoke-test.ps1` evaluates them after the run), but their driver mods end the run themselves: after the last step they call
+`if risen.test.is_active() then risen.test.expect(...); risen.test.finish(...) end` (a no-op in a normal game), and `smoke-test.ps1` runs them with `-WaitForResult`. That removed the
+90 s quiet tail the stall watchdog had to wait out: 170 s per scenario became persistence 47 s, fetchquest 94 s, commands 51 s, branch 95 s (M4b); the whole smoke test took 678 s (11.3 min) with templates 53, balance 53, npcs 75 and newtemplates 210 s (five processes). A new game loads in ~4 s here; the engine
+start up to `session.start` is ~30 s, so a scenario is bounded by its own settle times (ticks), not by fixed waits. A new scenario should be a `risen.test` scenario from the start; a
+driver that still wants log regexes only needs the `finish` call.
 `-Start load` (quick-load the last quick save instead of a new game) skips the new game but needs a prepared savegame in the copy and cannot test new-game behaviour;
 no clean-quit function was needed: `finish` ends the process itself (`TerminateProcess` after 1.5 s unless the script was faster).
 
@@ -116,6 +122,31 @@ no clean-quit function was needed: `finish` ends the process itself (`TerminateP
 (`@{ Name; Param = @('phase=load'); Start = 'load'; Keep = $true }`): each phase is a `test-run.ps1 -WaitForResult -Param phase=... -Start load -Keep` run of the same mods, the first one leaves the quick save the others load; the mods switch on `risen.test.param("phase")`
 (`mods/newtemplates` + `newtemplates_driver`: `save`, `load`, `load_missing`, `load_again`, `load_late`, about 3.5 minutes in all). A phase of your own is run by hand like this:
 `.\scripts\test-run.ps1 -Mods a,b -WaitForResult -Seconds 150 -Scenario name -Param phase=load -Start load -Keep` (`-Keep` keeps the savegames; call it from PowerShell, a `-File` call passes `-Mods a,b` as one string).
+
+## Startup time (M4b measurements)
+
+`scripts\measure-startup.ps1 -Variant baseline,noaudio,... -Repeat 2` runs `mods/startupprobe` (a `risen.test` scenario that logs `[probe] ... game_fps=`) once per variant and repetition, strictly one game at a time and
+alternating the variants (A B A B), and prints the times in seconds since the layer loaded (about the process start). `test-run.ps1 -ExtraArgs '-noaudio','-res=640x360'` passes switches to `Risen.exe`.
+Where the ~30 s to `session.start(new)` go (file trace `-TraceFiles .` plus CPU sampling): ~1.6 s exe, DLLs and VFS; ~13 s in the **AMD D3D9 driver** (`\.\AmdLog`, `AMD\DxcCache\*.parc` shader cache
+reads/writes, `amdsc.ini`; CPU is below one core there, the file reads of the whole start are only ~100 MB, so it is not disk bound); then ~2 s config and achievements, a burst of ~40 CPU-seconds over ~3 s on many
+threads (data loading), ~6 s menu world (`G3_Startup`), ~3.5 s for the new game. `gCScriptAdmin::PostInitialize` returns at ~19.5 s, the first `tick` is at ~25.6 s, `session.start(new)` at ~29.3 s.
+
+| Variant (2 alternating runs each, 4 for the baseline) | session.start | result of the probe | game ticks/s | verdict |
+|---|---|---|---|---|
+| baseline (2560x1440 window override in ConfigUser.xml, ConfigLocal 1280x720 window, audio on) | 29.3-32.6 (mean 30.4) | 40.4-44.4 | 79.4-79.8 | |
+| `-noaudio` | 29.0-30.3, earlier pair 29.2-29.3 | 40.7-42.4 | 79.5-79.8 | no gain (a first pair seemed 3 s faster, the interleaved repeat did not confirm it) |
+| `-res=640x360` | 30.3, 30.3 | 42.4 | 79.4-79.5 | no gain |
+| `<Window>` override removed from ConfigUser.xml | 30.1, 30.2 | 41.8-42.4 | 79.3-79.6 | no gain |
+| `<Timer MaxFPS="1000" MinFPS="2"/>` in ConfigLocal.xml | 30.0, 32.0 | 41.9-44.0 | 79.2-79.7 | no gain |
+| `<Timer MaxFPS="30"/>` in ConfigLocal.xml or ConfigUser.xml (control) | 28.7, 29.1 | 39.9 | 79.8 | the key is **not honoured**: the tick rate does not change |
+| low graphics (ViewDistance 1, all `Quality="Low"` in ConfigUser.xml) | 28.7-33.5 | 40.3-45.6 | 79.7-79.8 | no gain |
+
+The run-to-run noise (about +-2 s, one variant ranged 28.7-33.5 s) is larger than every effect, so **nothing was kept** except the private videos directory (it removes a risk, not time). The frame rate is
+~80 `tick`s per second whatever the resolution, window or Timer keys (`gCSession::Process`, once per frame): a tick-based `T.sleep(1200)` costs ~15 s; shortening it means either fewer ticks (risky: the engine needs the
+frames to settle) or the turbo work of M4d (time scale + reduced rendering). `run-windowed.ps1` polls every 0.1 s (was 0.5 s) for the result file, the exit and the watchdog.
+
+**Do not end a run right after a save.** With the 0.1 s poll the game was killed so soon after `save.after` that the savegame written by `newtemplates/load_missing` could not be loaded any more (the next two phases
+hung without `session.start(load)`; 0.5 s happened to be long enough). The engine keeps writing after `save.after`; a scenario that saves as its last step must `T.sleep(200)` (~2.5 s) before it finishes (`newtemplates_driver` does).
 
 ## Releases
 

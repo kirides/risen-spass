@@ -27,6 +27,8 @@ param(
     [int]$Height = 720,
     [switch]$KeepRunning,
     [switch]$NoResize,
+    # extra Risen.exe command line switches (e.g. '-noaudio', '-res=640x360')
+    [string[]]$ExtraArgs = @(),
     [string]$ResultFile = '',
     [int]$StallSeconds = 0,
     # Save a PNG of the game window N seconds after this regex first appears in spass.log
@@ -64,7 +66,7 @@ $log = Join-Path $bin 'spass\spass.log'
 $env:SteamAppId = '40300'
 $env:SteamGameId = '40300'
 $started = Get-Date
-$p = Start-Process -FilePath (Join-Path $bin 'Risen.exe') -ArgumentList '-nosplash' -WorkingDirectory $bin -PassThru
+$p = Start-Process -FilePath (Join-Path $bin 'Risen.exe') -ArgumentList (@('-nosplash') + $ExtraArgs) -WorkingDirectory $bin -PassThru
 $global:SpassRun = [pscustomobject]@{ Reason = 'seconds'; Seconds = 0.0; Pid = $p.Id }
 
 Add-Type -AssemblyName System.Drawing
@@ -77,7 +79,7 @@ $lastGrowth = Get-Date
 $reason = 'seconds'
 try {
     while ($true) {
-        Start-Sleep -Milliseconds 500
+        Start-Sleep -Milliseconds 100   # poll: the result file / exit is noticed within 0.1 s
         $p.Refresh()
         $now = Get-Date
         if ($p.HasExited) { $reason = 'exited'; break }

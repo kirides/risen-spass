@@ -116,5 +116,9 @@ risen.on("tick", function()
             log.info("driver: TIMEOUT waiting for success, status=" .. quest_status())
             go("done")
         end
+    elseif step == "done" and wait == 60 and risen.test.is_active() then
+        -- the run ends here instead of waiting out the stall watchdog; the assertions are the regexes over spass.log
+        risen.test.expect("quest was completed by the hand-in", quest_status():find("Success") ~= nil, "status = " .. quest_status())
+        risen.test.finish("fetchquest driver done")
     end
 end)

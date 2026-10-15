@@ -78,5 +78,9 @@ risen.on("tick", function()
             log.info("branch: back at the top level: " .. options())
             go("end")
         end
+    elseif step == "end" and wait == 60 and risen.test.is_active() then
+        -- the run ends here instead of waiting out the stall watchdog; the assertions are the regexes over spass.log
+        risen.test.expect("branching dialogue ran to its last step", true)
+        risen.test.finish("dialogbranch done")
     end
 end)

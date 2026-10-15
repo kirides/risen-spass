@@ -1,0 +1,6 @@
+id          = "startupprobe"
+name        = "Startup probe"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Measures engine start-up and frame rate for scripts/test-run.ps1 -Mods startupprobe -WaitForResult (docs/DEVELOPMENT.md 'Startup time')."
+main        = "main.lua"

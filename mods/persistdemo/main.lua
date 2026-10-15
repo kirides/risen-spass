@@ -52,6 +52,14 @@ local os_new_game_after_load = true
 local frames, phase, phase_at = 0, "wait", 0
 local function go(p) phase, phase_at = p, frames end
 
+-- Under the test harness (scripts/smoke-test.ps1) the run ends here instead of waiting out the stall watchdog;
+-- the scenario's assertions are the regexes over spass.log. Does nothing in a normal game.
+local function finish_run(ok, detail)
+    if not risen.test.is_active() then return end
+    risen.test.expect("persistdemo reached its last step", ok, detail)
+    risen.test.finish("persistdemo done")
+end
+
 risen.on("session.start", function(mode)
     report("session.start(" .. mode .. ") before ensure")
     risen.debug.trace_files("save")
@@ -59,6 +67,7 @@ risen.on("session.start", function(mode)
     ensure_quest_and_dialog()
     if mode == "new" and phase == "done" then
         report("new game after a loaded game")   -- what did the engine reset?
+        go("finish")
     elseif mode == "new" then
         risen.save.set("runs", (risen.save.get("runs", 0)) + 1)
         risen.save.set("marker", "from-first-session")
@@ -94,7 +103,11 @@ risen.on("tick", function()
         go("newgame")
     elseif phase == "newgame" and waited == 100 and os_new_game_after_load then
         log.info("persistdemo: new_game after load -> " .. tostring(risen.world.new_game()))
-        phase = "done"
+        go("done")
+    elseif phase == "done" and waited == 1800 then
+        finish_run(false, "the new game after the load never started")
+    elseif phase == "finish" and waited == 60 then
+        finish_run(true, "last step reached: the new game after the load removed the runtime content")
     end
 end)
 

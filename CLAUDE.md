@@ -60,7 +60,8 @@ failed) or 2 (no result). A watchdog kills the game after `-StallSeconds` (90) w
 `[test] deadline_s` reports a hang inside Lua as FAIL `timeout` with the unfinished checks. `-Trace` turns on timestamped `[trace:channel]` lines (events, template, balance, save, spawn, script, lua): use it
 instead of rerunning with extra logging. Always run with a limit; if a run exceeds twice its expected time, kill `Risen.exe` and read the log tail.
 `scripts\smoke-test.ps1` (`-List`, `-Scenario templates,npcs`, `-FailFast`; per-scenario timings, pass/fail table, nonzero exit code) replays all scenarios: run it before committing changes that touch events,
-saving, quests, dialogues, items or templates (~14 minutes: templates/balance/npcs are `risen.test` scenarios of about a minute, the four older ones still assert on log regexes for ~3 minutes each).
+saving, quests, dialogues, items or templates (~11 minutes: every scenario ends itself, 45-95 s each, newtemplates 3.5 minutes in five processes; the four older ones also assert on log regexes, their driver mods call `risen.test.finish`).
+The test copy has its own empty `data\extern\videos\logo.ini` (no intro videos); `test-run.ps1 -ExtraArgs` passes switches to `Risen.exe`; `scripts\measure-startup.ps1` measures start-up variants (nothing helped, DEVELOPMENT.md "Startup time").
 `Risen.exe` calls `SteamAPI_RestartAppIfNecessary`; `run-windowed.ps1` sets `SteamAppId` to prevent a relaunch of the real
 install. Screenshots of the D3D9 window are black: verify through engine state and log lines.
 

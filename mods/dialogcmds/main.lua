@@ -64,5 +64,9 @@ risen.on("tick", function()
     elseif step == "check" and wait == 900 then
         log.info(("cmds: after: apples=%d event=%s"):format(player and risen.item.count(player, "It_Apple") or -1, tostring(risen.gamevar.exists("SPASS_Cmds_Gifted"))))
         go("done")
+    elseif step == "done" and wait == 60 and risen.test.is_active() then
+        -- the run ends here instead of waiting out the stall watchdog; the assertions are the regexes over spass.log
+        risen.test.expect("dialogue commands ran to the check step", true)
+        risen.test.finish("dialogcmds done")
     end
 end)
