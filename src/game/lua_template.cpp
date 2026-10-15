@@ -5,6 +5,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "common/trace.h"
 #include "game/abi.h"
 #include "game/lua_entity.h"
 #include "game/properties.h"
@@ -397,6 +398,7 @@ void bindTemplates(sol::state_view lua, sol::table risen) {
                     ++patched;
                 }
             }
+            SPASS_TRACE(trace::Channel::Template, "patch_instances '{}': {} of {} live entities patched", t.name, patched, found.size());
             return okResult(lua, sol::make_object(lua, patched));
         },
         // template:patch_entity(entity) -> true | nil, reason: copies the template into one entity right now
@@ -463,8 +465,10 @@ void bindTemplates(sol::state_view lua, sol::table risen) {
         sol::state_view lua(ts);
         const Resolved r = resolveTemplate(name);
         if (r.tpl == nullptr) {
+            SPASS_TRACE(trace::Channel::Template, "get '{}' -> {}", name, r.error);
             return failResult(lua, r.error);
         }
+        SPASS_TRACE(trace::Channel::Template, "get '{}' -> ok", name);
         const std::string real = templateNameOf(r.tpl);
         return okResult(lua, sol::make_object(lua, LuaTemplate{real.empty() ? name : real}));
     });
@@ -503,6 +507,7 @@ void installTemplatePatchHelper(sol::state_view lua, sol::table risen) {
     // true, number of values that would be written).
     const char* chunk = R"LUA(
 local risen = ...
+local function tr(...) local t = risen.trace if t and t.enabled("template") then t("template", ...) end end
 
 -- Lua value -> the engine's text format
 local function as_text(v)
@@ -548,14 +553,14 @@ function risen.template.patch(name, sets, opts)
             end
         end
     end
-    if #problems > 0 then return nil, table.concat(problems, "; ") end
+    if #problems > 0 then tr("patch", name, "refused:", table.concat(problems, "; ")) return nil, table.concat(problems, "; ") end
     if opts.dry_run then return true, #jobs end
     local applied, failed = 0, {}
     for _, job in ipairs(jobs) do
         local ok, err = tpl:set_property(job[1], job[2], job[3])
         if ok then applied = applied + 1 else failed[#failed + 1] = err or (job[1] .. "." .. job[2]) end
     end
-    if #failed > 0 then return nil, table.concat(failed, "; ") end
+    if #failed > 0 then tr("patch", name, "failed:", table.concat(failed, "; ")) return nil, table.concat(failed, "; ") end
     if opts.instances then
         local touched = 0
         for _, e in ipairs(tpl:instances(1000000) or {}) do
@@ -565,8 +570,10 @@ function risen.template.patch(name, sets, opts)
             end
             if any then touched = touched + 1 end
         end
+        tr("patch", name, applied .. " value(s) written, " .. touched .. " live entit(ies) updated")
         return true, applied, touched
     end
+    tr("patch", name, applied .. " value(s) written (template only)")
     return true, applied
 end
 )LUA";

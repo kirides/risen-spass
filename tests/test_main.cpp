@@ -8,13 +8,18 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <chrono>
 #include <functional>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <spdlog/spdlog.h>
 
+#include "common/test_run.h"
+#include "common/trace.h"
 #include "game/loc_files.h"
+#include "game/lua_test.h"
 #include "game/lua_entity.h"
 #include "lua/mods.h"
 #include "lua/runtime.h"
@@ -409,7 +414,29 @@ TEST(balance_install_registers_handlers_once_per_spec) {
     CHECK(lua.script("return pcall(api.balance.install, 5)").get<bool>() == false);
 }
 
+TEST(balance_install_reports_each_application_to_on_applied) {
+    sol::state lua;
+    setupBalanceMock(lua);
+    lua.script(R"LUA(
+        handlers, lines = {}, {}
+        api = setmetatable({ log = { info = function(m) lines[#lines + 1] = "I " .. m end, warn = function(m) lines[#lines + 1] = "W " .. m end,
+                                     error = function(m) lines[#lines + 1] = "E " .. m end },
+                              on = function(event, fn) handlers[#handlers + 1] = { event = event, fn = fn } end }, { __index = risen })
+    )LUA");
+    spass::game::installBalanceModApi(lua, lua["api"]);
+    auto run = [&](const char* code) { return lua.script(code).get<std::string>(); };
+    CHECK(run("seen = {} api.balance.install({ items = { It_Sword = { value = 4 } } }, { on_applied = function(when, report) seen[#seen + 1] = when .. ':' .. #report.applied end }) "
+              "for _, h in ipairs(handlers) do if h.event == 'tick' then h.fn() end end "
+              "for _, h in ipairs(handlers) do if h.event == 'session.start' then h.fn('load') end end "
+              "return table.concat(seen, ',')") == "first tick:1,session.start (load):1");
+    // a callback that raises is logged, never thrown into the engine event
+    CHECK(run("api.balance.install({ items = { It_Sword = { value = 5 } } }, { on_applied = function() error('boom') end }) "
+              "for _, h in ipairs(handlers) do if h.event == 'tick' then h.fn() end end "
+              "return tostring(lines[#lines]:find('E balance: on_applied: .*boom') ~= nil)") == "true");
+}
+
 #include "npc_tests.inc"
+#include "test_risen_test.inc"
 
 }  // namespace
 

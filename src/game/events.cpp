@@ -1,12 +1,15 @@
 #include "game/events.h"
 
+#include <chrono>
 #include <string>
 
 #include <spdlog/spdlog.h>
 
+#include "common/trace.h"
 #include "game/abi.h"
 #include "game/lua_entity.h"
 #include "game/lua_save.h"
+#include "game/lua_test.h"
 #include "game/symbols.h"
 #include "hook/hook_manager.h"
 #include "lua/runtime.h"
@@ -45,9 +48,26 @@ constexpr const char* kQuestStatus[] = {"Open", "Running", "Success", "Failed", 
 
 const char* questStatusName(int s) { return s >= 0 && s < 8 ? kQuestStatus[s] : "Unknown"; }
 
+double msSince(std::chrono::steady_clock::time_point t0) {
+    return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+}
+
+// trace channel "events": every event the layer emits, with its arguments, also when no mod listens
+void traceEvent(const std::string& event, const std::string& args) {
+    auto& rt = lua::Runtime::instance();
+    const bool handled = rt.running() && rt.hasHandlers(event);
+    trace::emit(trace::Channel::Events, event + "(" + args + ")" + (handled ? "" : "  [no handler]"));
+}
+
 template <class... Args>
 void fire(const char* event, Args&&... args) {
     auto& rt = lua::Runtime::instance();
+    if (trace::enabled(trace::Channel::Events)) {
+        std::string joined;
+        const char* sep = "";
+        ((joined += sep + fmt::format("{}", args), sep = ", "), ...);
+        traceEvent(event, joined);
+    }
     if (rt.running() && rt.hasHandlers(event)) {
         rt.emit(event, args...);
     }
@@ -81,14 +101,20 @@ std::string infoOwner(void* info) {
 
 bool detourSave(void* self, const void* name, const void* title, unsigned long flags, bool overwrite, void* saveGame) {
     const std::string n = bstr(name);
+    const auto t0 = std::chrono::steady_clock::now();
+    SPASS_TRACE(trace::Channel::Save, "save '{}': begin", n);
     fire("save.before", n);
+    const double tBefore = msSince(t0);
     std::string data;
     try {
         data = savestore::serialize();  // after save.before: handlers may still update their data
     } catch (const std::exception& e) {
         spdlog::error("save: serializing mod data failed: {}", e.what());
     }
+    const double tSerialized = msSince(t0);
     const bool ok = g_save.original(self, name, title, flags, overwrite, saveGame);
+    SPASS_TRACE(trace::Channel::Save, "save '{}': engine save {} after {:.0f} ms (save.before handlers {:.0f} ms, mod data {} bytes serialized by {:.0f} ms)", n,
+                ok ? "ok" : "FAILED", msSince(t0), tBefore, data.size(), tSerialized);
     if (ok) {
         if (data.empty()) {
             savestore::removeSidecar(n);  // never leave the data of an older save with the same name behind
@@ -98,16 +124,22 @@ bool detourSave(void* self, const void* name, const void* title, unsigned long f
         spdlog::info("save: saved '{}'", n);
     }
     fire("save.after", n, ok);
+    SPASS_TRACE(trace::Channel::Save, "save '{}': done in {:.0f} ms", n, msSince(t0));
     return ok;
 }
 
 bool detourLoad(void* self, const void* name, void* stream) {
     const std::string n = bstr(name);
     spdlog::info("load: loading '{}'", n);
+    const auto t0 = std::chrono::steady_clock::now();
+    SPASS_TRACE(trace::Channel::Save, "load '{}': begin", n);
     bumpEntityGeneration();
     savestore::beginLoad(n);   // mods already see the data of the savegame in load.before
     fire("load.before", n);
+    const double tBefore = msSince(t0);
     const bool ok = g_load.original(self, name, stream);
+    SPASS_TRACE(trace::Channel::Save, "load '{}': engine load {} after {:.0f} ms (load.before handlers {:.0f} ms)", n, ok ? "ok" : "FAILED",
+                msSince(t0), tBefore);
     bumpEntityGeneration();
     if (ok) {
         savestore::commitLoad();
@@ -116,6 +148,7 @@ bool detourLoad(void* self, const void* name, void* stream) {
         spdlog::warn("load: '{}' failed, mod data restored", n);
     }
     fire("load.after", n, ok);
+    SPASS_TRACE(trace::Channel::Save, "load '{}': done in {:.0f} ms", n, msSince(t0));
     return ok;
 }
 
@@ -130,6 +163,7 @@ void detourSessionStart(void* self, int mode) {
     bumpEntityGeneration();
     const char* name = mode == 0 ? "new" : mode == 1 ? "load" : "other";
     spdlog::info("session: start ({})", name);
+    test::mark("session.start");
     fire("session.start", std::string(name));
 }
 
@@ -176,6 +210,12 @@ bool detourQuestStatus(void* self, const int* status, bool a, bool b) {
 // Entity events hand the entity itself to Lua, so the handle object is made under the Lua lock.
 void fireEntity(const char* event, void* entity) {
     auto& rt = lua::Runtime::instance();
+    if (trace::enabled(trace::Channel::Events) && rt.running()) {
+        auto lock = rt.lock();
+        sol::object e = makeEntityObject(rt.lua(), entity);
+        sol::protected_function tostring = rt.lua()["tostring"];
+        traceEvent(event, tostring(e).get<std::string>());
+    }
     if (!rt.running() || !rt.hasHandlers(event)) {
         return;
     }
@@ -249,6 +289,9 @@ int detourItemPickedUp(void* self, void* item) {
     });
     const int index = g_itemPickedUp.original(self, item);
     auto& rt = lua::Runtime::instance();
+    if (index >= 0 && trace::enabled(trace::Channel::Events)) {
+        traceEvent("item.picked_up", fmt::format("<owner {}>, {}, {}", fmt::ptr(owner), tpl, amount));
+    }
     if (index >= 0 && rt.running() && rt.hasHandlers("item.picked_up")) {
         auto lock = rt.lock();
         sol::object o = makeEntityObject(rt.lua(), owner);

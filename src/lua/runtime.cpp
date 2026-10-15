@@ -4,6 +4,8 @@
 #include <fstream>
 #include <sstream>
 
+#include "common/trace.h"
+
 namespace spass::lua {
 namespace {
 
@@ -82,12 +84,13 @@ bool Runtime::start(const std::filesystem::path& modsDir, bool unsafeLua) {
         state_ = std::make_unique<sol::state>();
         sol::state& lua = *state_;
         lua.open_libraries(sol::lib::base, sol::lib::string, sol::lib::table, sol::lib::math, sol::lib::os,
-                           sol::lib::bit32, sol::lib::jit);
+                           sol::lib::bit32, sol::lib::jit, sol::lib::debug);  // debug: tracebacks only, never in a mod environment
         if (unsafeLua) {
             lua.open_libraries(sol::lib::package, sol::lib::io, sol::lib::debug, sol::lib::ffi);
             spdlog::warn("lua: unsafe_lua is enabled, mods can use io/ffi/debug/package");
         }
         sol::protected_function::set_default_handler(lua["debug"]["traceback"]);
+        sol::main_protected_function::set_default_handler(lua["debug"]["traceback"]);
 
         base_ = makeBaseEnv(unsafeLua);
 
@@ -107,6 +110,27 @@ bool Runtime::start(const std::filesystem::path& modsDir, bool unsafeLua) {
         bindLevel("error", spdlog::level::err);
         risen_["log"] = log;
 
+        // risen.trace(channel, ...) writes "[trace:channel] ..." when the channel is on; risen.trace.enable("a,b") / disable / enabled(ch)
+        sol::table tr = lua.create_table();
+        tr.set_function("enable", [](const std::string& list) {
+            trace::enable(list);
+            return trace::enabledList();
+        });
+        tr.set_function("disable", [](const std::string& list) {
+            trace::disable(list);
+            return trace::enabledList();
+        });
+        tr.set_function("enabled", [](const std::string& channel) { return trace::enabledName(channel); });
+        tr.set_function("channels", [] { return trace::enabledList(); });
+        sol::table trMeta = lua.create_table();
+        trMeta.set_function("__call", [](sol::this_state ts, sol::table, const std::string& channel, sol::variadic_args va) {
+            if (trace::enabledName(channel)) {
+                trace::emitNamed(channel, joinArgs(ts, va));
+            }
+        });
+        tr[sol::metatable_key] = trMeta;
+        risen_["trace"] = tr;
+
         for (const auto& b : bindings_) {
             b(lua, risen_);
         }
@@ -118,6 +142,7 @@ bool Runtime::start(const std::filesystem::path& modsDir, bool unsafeLua) {
                 loaded_.push_back(m);
             }
         }
+        SPASS_TRACE(trace::Channel::Events, "mods.loaded()");
         emit("mods.loaded");
         return true;
     } catch (const std::exception& e) {
@@ -133,6 +158,7 @@ void Runtime::stop() {
     if (!state_) {
         return;
     }
+    SPASS_TRACE(trace::Channel::Events, "shutdown()");
     emit("shutdown");
     handlers_.clear();
     loaded_.clear();
@@ -169,13 +195,16 @@ sol::table Runtime::makeModApi(const ModInfo& mod) {
     meta["__index"] = risen_;
     api[sol::metatable_key] = meta;
 
-    api.set_function("on", [this, id = mod.id](const std::string& event, sol::protected_function fn,
+    api.set_function("on", [this, id = mod.id](const std::string& event, sol::main_protected_function fn,
                                                sol::optional<int> priority) {
         return addHandler(id, event, std::move(fn), priority.value_or(0));
     });
     api.set_function("off", [this](std::uint64_t handle) { removeHandler(handle); });
-    api.set_function("emit", [this](const std::string& event, sol::variadic_args va) {
+    api.set_function("emit", [this, id = mod.id](sol::this_state ts, const std::string& event, sol::variadic_args va) {
         std::vector<sol::object> args(va.begin(), va.end());
+        if (trace::enabled(trace::Channel::Events)) {
+            trace::emit(trace::Channel::Events, "mod event " + event + "(" + joinArgs(ts, va) + ") from '" + id + "'");
+        }
         // Mod-to-mod events: forward the arguments verbatim.
         std::lock_guard lock(mutex_);
         const auto it = handlers_.find(event);
@@ -196,7 +225,7 @@ sol::table Runtime::makeModApi(const ModInfo& mod) {
     return api;
 }
 
-std::uint64_t Runtime::addHandler(const std::string& mod, const std::string& event, sol::protected_function fn,
+std::uint64_t Runtime::addHandler(const std::string& mod, const std::string& event, sol::main_protected_function fn,
                                   int prio) {
     std::lock_guard lock(mutex_);
     const std::uint64_t id = nextHandle_++;
@@ -215,6 +244,7 @@ void Runtime::removeHandler(std::uint64_t id) {
 
 void Runtime::logHandlerError(const Handler& h, const std::string& event, const sol::error& err) {
     spdlog::error("lua: [{}] error in handler for '{}': {}", h.mod, event, err.what());
+    SPASS_TRACE(trace::Channel::Lua, "error in handler for '{}' of mod '{}': {}", event, h.mod, err.what());
 }
 
 bool Runtime::loadMod(const ModInfo& mod) {
@@ -300,6 +330,7 @@ bool Runtime::loadMod(const ModInfo& mod) {
     sol::protected_function_result r = fn();
     if (!r.valid()) {
         spdlog::error("lua: [{}] error while loading: {}", mod.id, r.get<sol::error>().what());
+        SPASS_TRACE(trace::Channel::Lua, "mod '{}' failed to load: {}", mod.id, r.get<sol::error>().what());
         return false;
     }
     spdlog::info("lua: loaded mod '{}' {} ({})", mod.id, mod.version, mod.name);

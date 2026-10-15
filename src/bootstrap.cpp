@@ -7,10 +7,12 @@
 
 #include "common/log.h"
 #include "common/paths.h"
+#include "common/trace.h"
 #include "config.h"
 #include "game/bindings.h"
 #include "game/folder_redirect.h"
 #include "game/hooks.h"
+#include "game/lua_test.h"
 #include "game/symbols.h"
 #include "hook/hook_manager.h"
 #include "lua/runtime.h"
@@ -38,6 +40,21 @@ void onProcessAttach(HMODULE self) {
     g_config = loadConfig(paths::dataDir() / "config.toml");
     spdlog::set_level(parseLevel(g_config.logLevel));
     spdlog::info("risen-spass {} loaded in {}", SPASS_VERSION, paths::binDir().string());
+
+    if (!g_config.trace.empty() || g_config.traceFile) {
+        trace::init(g_config.trace, g_config.traceFile ? paths::dataDir() / "trace.log" : std::filesystem::path());
+        spdlog::info("trace channels enabled: {}", trace::enabledList().empty() ? "(none)" : trace::enabledList());
+    }
+    {
+        game::test::Settings ts;
+        ts.active = g_config.testEnabled || g_config.unsafeLua;
+        ts.exitOnFinish = g_config.testEnabled && g_config.testExit;
+        ts.deadlineSeconds = g_config.testDeadline;
+        ts.scenario = g_config.testScenario;
+        ts.params = g_config.testParams;
+        ts.resultFile = paths::dataDir() / "test-result.json";
+        game::test::configure(std::move(ts));
+    }
 
     if (!g_config.enabled) {
         spdlog::warn("disabled by config.toml (enabled = false)");
@@ -76,6 +93,7 @@ void onProcessAttach(HMODULE self) {
 
 void onProcessDetach() {
     if (g_active) {
+        game::test::shutdown();
         lua::Runtime::instance().stop();
         hooks::shutdown();
     }
@@ -85,6 +103,7 @@ void onProcessDetach() {
 void onGameReady() {
     std::call_once(g_readyFlag, [] {
         spdlog::info("game ready: starting Lua runtime");
+        game::test::startWatchdog();
         lua::Runtime::instance().start(paths::modsDir(), g_config.unsafeLua);
     });
 }

@@ -76,6 +76,11 @@ for fn in re.findall(r'save\.set_function\("(\w+)"', (root / 'src/game/lua_save.
     bound[f'save.{fn}'] = 'src/game/lua_save.cpp'
 for fn in re.findall(r'loc\.set_function\("(\w+)"', (root / 'src/game/loc_files.cpp').read_text(encoding='utf-8')):
     bound[f'loc.{fn}'] = 'src/game/loc_files.cpp'
+# risen.trace.* (runtime.cpp) and the per-mod risen.test.wait_event (a chunk in lua_test.cpp: `function t.<name>(`)
+for fn in ('enable', 'disable', 'enabled', 'channels'):
+    bound[f'trace.{fn}'] = 'src/lua/runtime.cpp'
+for fn in re.findall(r'^function t\.(\w+)\(', (root / 'src/game/lua_test.cpp').read_text(encoding='utf-8'), flags=re.M):
+    bound[f'test.{fn}'] = 'src/game/lua_test.cpp'
 # per-mod risen.balance.install (a Lua chunk in lua_balance.cpp that defines `function b.<name>(` on the mod's balance table)
 for fn in re.findall(r'^function b\.(\w+)\(', (root / 'src/game/lua_balance.cpp').read_text(encoding='utf-8'), flags=re.M):
     bound[f'balance.{fn}'] = 'src/game/lua_balance.cpp'

@@ -49,9 +49,18 @@ A `sol::object` returned from `Runtime::emit*` must not outlive `Runtime::stop()
 # -Start load   quick-loads the last quick save instead of starting a new game   -Keep  keep log+saves
 # -NoAutostart  stay at the main menu (the `tick` event then fires only once)
 ```
-The log is `B:\DevDrive\risen-test\bin\spass\spass.log`. `scripts\smoke-test.ps1` replays the persistence and fetch-quest scenarios
-and asserts on the log (run it before committing changes that touch events, saving, quests, dialogues or items; ~6 minutes). Kill stray `Risen.exe` processes before a run. A new game takes
-~60 s to load, so give runs 90-300 s. The tick-driven demos in `mods/` show how to script a whole scenario unattended.
+The log is `B:\DevDrive\risen-test\bin\spass\spass.log`. **Verify with a `risen.test` scenario, not with a fixed `-Seconds` and log regexes**
+(`mods/testdemo`, docs/DEVELOPMENT.md "Testing and tracing"): the mod plans its checks and runs as `risen.test.run(function() ... end)`, and
+
+```powershell
+.\scripts\test-run.ps1 -Mods mymod -WaitForResult -Seconds 240 -Scenario mymod [-Trace template,save,events] [-ShowChecks] [-Param k=v]
+```
+returns the moment `risen.test.finish()` has written `spass\test-result.json` (about a minute: the engine starts in ~30 s, a new game in ~5 s), prints the failed checks and exits 0 (pass), 1 (checks
+failed) or 2 (no result). A watchdog kills the game after `-StallSeconds` (90) without a new log line or when `-Seconds` ran out, prints the last 25 log lines and where it stopped; the layer's own
+`[test] deadline_s` reports a hang inside Lua as FAIL `timeout` with the unfinished checks. `-Trace` turns on timestamped `[trace:channel]` lines (events, template, balance, save, spawn, script, lua): use it
+instead of rerunning with extra logging. Always run with a limit; if a run exceeds twice its expected time, kill `Risen.exe` and read the log tail.
+`scripts\smoke-test.ps1` (`-List`, `-Scenario templates,npcs`, `-FailFast`; per-scenario timings, pass/fail table, nonzero exit code) replays all scenarios: run it before committing changes that touch events,
+saving, quests, dialogues, items or templates (~14 minutes: templates/balance/npcs are `risen.test` scenarios of about a minute, the four older ones still assert on log regexes for ~3 minutes each).
 `Risen.exe` calls `SteamAPI_RestartAppIfNecessary`; `run-windowed.ps1` sets `SteamAppId` to prevent a relaunch of the real
 install. Screenshots of the D3D9 window are black: verify through engine state and log lines.
 
@@ -64,6 +73,7 @@ install. Screenshots of the D3D9 window are black: verify through engine state a
 | `game/abi.h` | `BString`, `ByValueString`, `OutString`, `EntityHolder`, `guarded()` (SEH) – the MSVC-x64 conventions, see RE.md §6 |
 | `game/hooks.cpp`, `events.cpp` | lifecycle hooks -> Lua events (`session.*`, `save.*`, `load.*`, `quest.status_changed`, ...) |
 | `game/lua_*.cpp`, `bindings.cpp`, `loc_overlay.cpp`, `script_bridge.cpp` | the Lua API (`risen.*`) |
+| `common/trace.*`, `common/test_run.*`, `game/lua_test.cpp` | opt-in trace channels (`SPASS_TRACE`), test-run bookkeeping + result JSON, `risen.test` |
 | `lua/runtime.*`, `lua/mods.*` | LuaJIT state, sandboxed per-mod environments, event dispatch, mod discovery/load order |
 | `hook/` | MinHook wrapper (`Hook<Fn>`), export resolution by name |
 | `types/risen.d.lua` | LuaLS definitions (see rule 1) |

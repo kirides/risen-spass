@@ -1,0 +1,6 @@
+id          = "testdemo"
+name        = "Test demo"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Minimal risen.test scenario: new game, a few checks, finish. Run with scripts/test-run.ps1 -Mods testdemo -WaitForResult."
+main        = "main.lua"

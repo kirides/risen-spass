@@ -7,6 +7,11 @@
 #include <spdlog/sinks/msvc_sink.h>
 
 namespace spass::log {
+namespace {
+std::vector<spdlog::sink_ptr> g_sinks;
+}
+
+const std::vector<spdlog::sink_ptr>& sinks() { return g_sinks; }
 
 void init(const std::filesystem::path& file) {
     std::vector<spdlog::sink_ptr> sinks;
@@ -18,6 +23,7 @@ void init(const std::filesystem::path& file) {
     }
     sinks.push_back(std::make_shared<spdlog::sinks::msvc_sink_mt>());
 
+    g_sinks = sinks;
     auto logger = std::make_shared<spdlog::logger>("spass", sinks.begin(), sinks.end());
     logger->set_pattern("[%H:%M:%S.%e] [%^%l%$] [t%t] %v");
     logger->set_level(spdlog::level::debug);

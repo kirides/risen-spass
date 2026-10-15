@@ -5,12 +5,24 @@
 -- first `tick` (new spawns) and again, now also into the live NPCs of each template, on every `session.start` (a world keeps its own copies).
 -- Relative settings (hp_mult, level_add, damage_mult, ...) are computed from the SHIPPED values, so the repeated application does not compound.
 --
--- Every `balance_npcs:` line is checked by scripts/smoke-test.ps1.
+-- Every verification below is a risen.test check (scripts/smoke-test.ps1 -Scenario npcs collects them; outside a test run they only log);
+-- the `balance_npcs:` lines stay as the narrative.
 local log = risen.log
+local T = risen.test
 local function L(...)
     local t = {}
     for i = 1, select("#", ...) do t[#t + 1] = tostring((select(i, ...))) end
     log.info("balance_npcs: " .. table.concat(t, " "))
+end
+
+-- the numbers of an NPC (risen.npc.stats) that the checks compare
+local function fields(s)
+    return { hp = s.hp, hp_max = s.hp_max, level = s.level, str = s.skills.Strength, prot_edge = s.skills.ProtEdge, xp = s.xp_reward, guild = s.guild, bravery = s.bravery }
+end
+local function pick(t, ...)
+    local r = {}
+    for _, k in ipairs({ ... }) do r[k] = t[k] end
+    return r
 end
 
 -- LuaLS: these calls return nil on failure; a balancing demo wants to stop there
@@ -53,7 +65,18 @@ risen.on("tick", function()
     before.potion = tonumber(tpl_of("It_Po_Health_01"):get_property("gCItem_PS", "GoldValue"))
 end)
 
-risen.balance.install(SPEC)
+-- on_applied: the report of every application (first tick: templates; session.start: with the live NPCs)
+risen.balance.install(SPEC, {
+    on_applied = function(when, report)
+        if when == "first tick" then
+            T.expect("the spec is applied on the first tick", report.ok and #report.applied == 7 and #report.failed == 0,
+                ("applied %d, failed %d"):format(#report.applied, #report.failed))
+        elseif when == "session.start (new)" then
+            T.expect("session.start writes the live NPCs", report.ok and #report.applied == 7 and #report.failed == 0 and report.instances > 0,
+                ("applied %d, failed %d, %d live entities written"):format(#report.applied, #report.failed, report.instances))
+        end
+    end,
+})
 
 local function line(name, s)
     return ("%s hp=%d/%d level=%d str=%d prot_edge=%d xp=%d guild=%s bravery=%s"):format(name, s.hp, s.hp_max, s.level, s.skills.Strength,
@@ -114,31 +137,58 @@ risen.on("tick", function()
     if step == "verify" then
         -- 1. the templates
         L("template", line("Wolf", stats("Wolf")))
+        T.eq("absolute settings reach the template", fields(stats("Wolf")), { hp = 500, hp_max = 500, level = 20, str = 90, prot_edge = 60, xp = 200, guild = "None", bravery = "Brave" })
         L("template", line("Boar", stats("Boar")), "(shipped hp", before.Boar.hp_max, "level", before.Boar.level .. ")")
+        local boar_fields = fields(stats("Boar"))
+        boar_fields.shipped_hp, boar_fields.shipped_level = before.Boar.hp_max, before.Boar.level
+        T.eq("relative settings are computed from the shipped values", boar_fields,
+            { hp = 360, hp_max = 360, level = 8, str = 30, prot_edge = 24, xp = 80, guild = "None", bravery = "None", shipped_hp = 180, shipped_level = 6 })
         L("template", line("Stingrat", stats("Stingrat")), "(shipped str", before.Stingrat.skills.Strength .. ")")
+        local rat = pick(fields(stats("Stingrat")), "hp", "hp_max", "level", "str")
+        rat.shipped_str = before.Stingrat.skills.Strength
+        T.eq("a pattern group scales hit points and damage", rat, { hp = 180, hp_max = 180, level = 4, str = 40, shipped_str = 20 })
         L("template", line("Ghul", stats("Ghul")), "(shipped level", before.Ghul.level .. ")")
+        local ghul = pick(fields(stats("Ghul")), "hp", "hp_max", "level")
+        ghul.shipped_level = before.Ghul.level
+        T.eq("a template group path works", ghul, { hp = 390, hp_max = 390, level = 14, shipped_level = 13 })
         L("template", line("Peasant_1_01", stats("Peasant_1_01")))
+        T.eq("guild, attributes and loot of a human", pick(fields(stats("Peasant_1_01")), "hp", "hp_max", "level", "str", "prot_edge", "xp", "guild"),
+            { hp = 300, hp_max = 300, level = 5, str = 50, prot_edge = 20, xp = 50, guild = "Cit" })
         local loot = risen.npc.template_inventory("Peasant_1_01") or {}
         local first = loot[1]
         L("template loot Peasant_1_01:", first and (first.item .. "x" .. first.amount) or "-")
+        T.eq("the template inventory carries the loot", first and (first.item .. "x" .. first.amount) or "-", "It_Applex3")
         L("template Gnome role:", (tpl_of("Gnome"):get_property("gCNPC_PS", "RoleDescription")))
+        T.eq("any property by name", tostring((tpl_of("Gnome"):get_property("gCNPC_PS", "RoleDescription"))), "balanced by balance_npcs")
         local potion = tonumber(tpl_of("It_Po_Health_01"):get_property("gCItem_PS", "GoldValue"))
         L("potion value", potion, "shipped", before.potion, "expected", math.floor(before.potion * 0.5 + 0.5))
+        T.eq("item groups scale the shipped gold value", { potion, before.potion, math.floor(before.potion * 0.5 + 0.5) }, { 15, 30, 15 })
 
         -- 2. new spawns (template values) and the experience a kill gives
         wolf = spawn("Wolf", x + 300, y, z)
         L("spawn", line("Wolf", stats(wolf)))
-        L("spawn wolf (entity API) hp", wolf:hp(), "/", wolf:hp_max(), "level", wolf:level(), "str", wolf:skill_total("Strength"))
+        T.eq("a new spawn has the template numbers", fields(stats(wolf)), { hp = 500, hp_max = 500, level = 20, str = 90, prot_edge = 60, xp = 200, guild = "None", bravery = "Brave" })
+        local w_str, w_str_base = wolf:skill_total("Strength")
+        L("spawn wolf (entity API) hp", wolf:hp(), "/", wolf:hp_max(), "level", wolf:level(), "str", w_str, w_str_base)
+        T.eq("...also through the entity API", { wolf:hp(), wolf:hp_max(), wolf:level(), w_str, w_str_base }, { 500, 500, 20, 90, 90 })
         local xp0 = player:skill_total("Experience")
-        L("GiveXP wolf:", risen.script.call("GiveXP", wolf, player, -1), "experience", xp0, "->", player:skill_total("Experience"))
+        local gave = risen.script.call("GiveXP", wolf, player, -1)
+        local xp1, xp1_base = player:skill_total("Experience")
+        L("GiveXP wolf:", gave, "experience", xp0, "->", xp1, xp1_base)
+        T.eq("the engine pays 10 * level for a kill", { gave, xp0, xp1, xp1_base }, { 1, 0, 200, 200 })
         local peasant = spawn("Peasant_1_01", x + 400, y, z)
-        L("spawn peasant guild", peasant:guild(), "apples", risen.item.count(peasant, "It_Apple"), "hp", peasant:hp_max())
+        local apples = risen.item.count(peasant, "It_Apple")
+        L("spawn peasant guild", peasant:guild(), "apples", apples, "hp", peasant:hp_max())
+        T.eq("spawns carry the loot", { peasant:guild(), apples, peasant:hp_max() }, { 4, 3, 300 })
         peasant:kill()
 
         -- 3. the world's NPCs (written by session.start)
+        local world_names = { Wolf = { "every world wolf was rewritten", "{500/20/90}" }, Boar = { "every world boar was rewritten", "{360/8/30}" },
+                              Stingrat = { "every world stingrat was rewritten", "{180/4/40}" } }
         for _, n in ipairs({ "Wolf", "Boar", "Stingrat" }) do
             local count, h = histogram(n)
             L("world", n, "n=" .. count, h)
+            T.expect(world_names[n][1], count >= 1 and h == world_names[n][2] .. "x" .. count, ("n=%d %s"):format(count, h))
         end
 
         -- 4. applying again must not compound the relative values nor refill a damaged NPC
@@ -151,34 +201,43 @@ risen.on("tick", function()
         local rep = risen.balance.apply(SPEC, { instances = true })
         L("second apply:", rep and rep.ok, rep and #rep.applied, "live", rep and rep.instances)
         L("after second apply Boar template hp", stats("Boar").hp_max, "level", stats("Boar").level)
+        T.eq("applying again does not compound (template)", { stats("Boar").hp_max, stats("Boar").level }, { 360, 8 })
         local count, h = histogram("Boar")
         L("after second apply world Boar", "n=" .. count, h)
+        T.expect("applying again does not compound (world)", count >= 1 and h == "{360/8/30}x" .. count, ("n=%d %s"):format(count, h))
         if damaged and healthy then
             L("damaged wolf after second apply hp", damaged:hp(), "/", damaged:hp_max(), "full wolf", healthy:hp(), "/", healthy:hp_max())
         end
+        T.eq("applying again keeps a damaged NPC damaged", { damaged and damaged:hp(), damaged and damaged:hp_max(), healthy and healthy:hp(), healthy and healthy:hp_max() },
+            { 7, 500, 500, 500 })
 
         -- 5. a single entity: set_stats on an entity touches only that entity
         local boar = spawn("Boar", x + 500, y, z)
         local r, why = risen.npc.set_stats(boar, { hp_max = 77, level = 3, skills = { ProtFire = 5 } })
         L("entity set_stats:", r and r.written, why, "boar hp", boar:hp(), "/", boar:hp_max(), "level", boar:level(), "prot_fire", boar:skill_total("ProtFire"),
             "template Boar hp", stats("Boar").hp_max)
+        T.eq("set_stats on an entity touches only it", { r and r.written, why, boar:hp(), boar:hp_max(), boar:level(), (boar:skill_total("ProtFire")), stats("Boar").hp_max },
+            { 1, nil, 77, 77, 3, 5, 360 })
         boar:kill()
         wolf:kill()
 
         -- 6. rejected specs write nothing
         local wolf_hp = stats("Wolf").hp_max
-        local function bad(label, spec)
+        local function bad(label, spec, check, needle)
             local ok, why2 = risen.balance.apply(spec)
             L("bad spec " .. label .. ":", ok == nil, why2)
+            T.expect(check, ok == nil and why2 ~= nil and why2:find(needle, 1, true) ~= nil, why2)
         end
-        bad("conflict", { npcs = { Wolf = { hp_max = 10, hp_mult = 2 } } })
-        bad("unknown key", { npcs = { Wolf = { health = 10 } } })
-        bad("unknown skill", { npcs = { Wolf = { skills = { Strenght = 10 } } } })
-        bad("range", { npcs = { Wolf = { skills = { Strength = 999 } } } })
-        bad("not an NPC", { npcs = { It_1H_Sword = { hp_max = 10 } } })
-        bad("unknown guild", { npcs = { Wolf = { hp_max = 10, guild = "Pirates" } } })
-        bad("empty group", { npc_groups = { { match = "^NoSuchNpc", hp_mult = 2 } } })
+        bad("conflict", { npcs = { Wolf = { hp_max = 10, hp_mult = 2 } } }, "conflicting settings are refused", "npcs.Wolf: hp_max and hp_mult exclude each other")
+        bad("unknown key", { npcs = { Wolf = { health = 10 } } }, "unknown settings are refused", "npcs.Wolf: unknown setting 'health' (valid: ai_group, attitude")
+        bad("unknown skill", { npcs = { Wolf = { skills = { Strenght = 10 } } } }, "unknown skills are refused with the list",
+            "npcs.Wolf: skills: unknown skill 'Strenght' (valid: HitPoints")
+        bad("range", { npcs = { Wolf = { skills = { Strength = 999 } } } }, "out-of-range values are refused", "npcs.Wolf: Strength: 999 is outside the allowed range 0..200")
+        bad("not an NPC", { npcs = { It_1H_Sword = { hp_max = 10 } } }, "non-NPC templates are refused", "npcs.It_1H_Sword: not an NPC template")
+        bad("unknown guild", { npcs = { Wolf = { hp_max = 10, guild = "Pirates" } } }, "unknown enum names are refused", "npcs.Wolf: guild: unknown value 'Pirates' (valid: None, Don")
+        bad("empty group", { npc_groups = { { match = "^NoSuchNpc", hp_mult = 2 } } }, "an empty group is refused", "npc_groups[1]: matches no NPC template")
         L("wolf template hp after the rejected specs", stats("Wolf").hp_max, "(was", wolf_hp .. ")")
+        T.eq("rejected specs write nothing", { stats("Wolf").hp_max, wolf_hp }, { 500, 500 })
 
         -- 7. combat, first round: a wolf with the shipped Strength
         start_fight("shipped", true)
@@ -192,6 +251,8 @@ risen.on("tick", function()
         if fight.first_bite or wait >= 1500 then
             L(("fight %s: first bite %s (wolf strength %d - victim ProtEdge %d = %d) victim hp %s -> %s"):format(fight.label, tostring(fight.first_bite),
                 fight.str, fight.prot, fight.str - fight.prot, fight.start_hp, tostring(hp)))
+            T.eq(fight.label == "shipped" and "combat: the shipped wolf bites for Strength - protection" or "combat: the balanced wolf bites harder",
+                { fight.first_bite, fight.str, fight.prot }, fight.label == "shipped" and { 10, 30, 20 } or { 70, 90, 20 })
             fight.wolf:kill()
             fight.victim:kill()
             if step == "fight1" then
@@ -207,6 +268,10 @@ risen.on("tick", function()
         if wait == 300 then
             -- the spawn init scripts / AI ticks did not undo the template edit
             L("later spawn wolf hp", wolf:hp(), "/", wolf:hp_max(), "level", wolf:level(), "str", wolf:skill_total("Strength"), "state", wolf:state())
+            local later_str = wolf:skill_total("Strength")
+            T.expect("the edit survives spawn init and AI ticks", wolf:hp() == 500 and wolf:hp_max() == 500 and wolf:level() == 20 and later_str == 90
+                and tostring(wolf:state()):find("^ZS_") ~= nil,
+                ("hp %s / %s level %s str %s state %s"):format(tostring(wolf:hp()), tostring(wolf:hp_max()), tostring(wolf:level()), tostring(later_str), tostring(wolf:state())))
             step = "done"
             L("verify done")
             risen.gamevar.set("SPASS_BALANCE_NPCS_DONE", 1)   -- lets balance_npcs_driver start (scripts/smoke-test.ps1 runs both mods)

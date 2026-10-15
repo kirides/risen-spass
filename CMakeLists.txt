@@ -53,6 +53,8 @@ add_library(spass_core STATIC
     src/config.cpp
     src/common/log.cpp
     src/common/paths.cpp
+    src/common/test_run.cpp
+    src/common/trace.cpp
     src/game/abi.cpp
     src/game/bindings.cpp
     src/game/events.cpp
@@ -71,6 +73,7 @@ add_library(spass_core STATIC
     src/game/lua_quest.cpp
     src/game/lua_save.cpp
     src/game/lua_template.cpp
+    src/game/lua_test.cpp
     src/game/lua_vfs.cpp
     src/game/properties.cpp
     src/game/script_bridge.cpp

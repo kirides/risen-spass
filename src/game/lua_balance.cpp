@@ -261,6 +261,7 @@ local risen = ...
 local item = risen.item
 local balance = risen.balance or {}
 risen.balance = balance
+local function tr(...) local t = risen.trace if t and t.enabled("balance") then t("balance", ...) end end
 
 -- gESkill enum names (docs/RE.md section 23): friendly name -> engine suffix (gESkill_<suffix>), in the engine's order
 local SKILLS = {
@@ -581,6 +582,7 @@ function risen.balance.apply(spec, opts)
     end
     for _, job in ipairs(jobs) do
         local ok, err, touched = job.run({ instances = instances })
+        tr("job", job.label, ok and "ok" or ("FAILED: " .. tostring(err)), "live entities written: " .. tostring(touched or 0), instances and "(instances)" or "(templates only)")
         if ok then
             report.applied[#report.applied + 1] = job.label
             report.values = report.values + 1
@@ -602,7 +604,7 @@ local b = setmetatable({}, { __index = shared })
 api.balance = b
 local installed = setmetatable({}, { __mode = "k" })
 
--- risen.balance.install(spec [, { instances = true }]) -> true | false (already installed)
+-- risen.balance.install(spec [, { instances = true, on_applied = function(when, report) end }]) -> true | false (already installed)
 -- Applies `spec` (see risen.balance.apply) at the right moments and logs a summary: on the first `tick` (the earliest moment templates
 -- resolve; covers a savegame loaded from the menu) into the templates, and on every `session.start` (new game or load) again with the
 -- live entities of each template, because a world keeps its own copies of the values (docs/RE.md section 22).
@@ -612,6 +614,7 @@ function b.install(spec, opts)
     installed[spec] = true
     opts = opts or {}
     local with_instances = opts.instances ~= false
+    local on_applied = opts.on_applied
     local log = api.log
     local function run(instances, when)
         local report, why, problems = shared.apply(spec, { instances = instances })
@@ -622,6 +625,10 @@ function b.install(spec, opts)
         log.info(("balance: %s: applied %d of %d entries%s"):format(when, #report.applied, #report.applied + #report.failed,
             instances and (", %d live entities written"):format(report.instances) or ""))
         for _, f in ipairs(report.failed) do log.warn("balance: failed " .. f) end
+        if type(on_applied) == "function" then
+            local ok, err = pcall(on_applied, when, report)
+            if not ok then log.error("balance: on_applied: " .. tostring(err)) end
+        end
     end
     local first = true
     api.on("tick", function()

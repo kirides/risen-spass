@@ -7,6 +7,7 @@
 #include "bootstrap.h"
 #include "game/bindings.h"
 #include "game/events.h"
+#include "game/lua_test.h"
 #include "game/vfs_mount.h"
 #include "game/loc_overlay.h"
 #include "game/script_bridge.h"
@@ -46,6 +47,7 @@ int detourScriptAdminPostInit(void* self) {
 // gCSession::Process(this): once per frame while a session exists. Emits the Lua "tick" event.
 void detourSessionProcess(void* self) {
     g_sessionProcess.original(self);
+    test::onTick();  // risen.test: pending wait_for/sleep, heartbeat, first-tick mark
     auto& rt = lua::Runtime::instance();
     if (rt.running() && rt.hasHandlers("tick")) {
         rt.emit("tick");

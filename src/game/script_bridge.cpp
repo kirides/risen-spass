@@ -8,6 +8,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "common/trace.h"
 #include "game/abi.h"
 #include "game/lua_entity.h"
 #include "lua/runtime.h"
@@ -33,7 +34,7 @@ struct Slot {
     std::string name;
     void** fnSlot = nullptr;         // &eSScriptBase->function
     ScriptFn original = nullptr;     // what was registered before (nullptr for new scripts)
-    sol::protected_function lua;
+    sol::main_protected_function lua;
 };
 
 std::array<Slot, kMaxSlots> g_slots;
@@ -72,8 +73,10 @@ std::int64_t dispatch(std::size_t idx, void* unit, void* a, void* b, std::int64_
         if (!rt.running() || !s.lua.valid()) {
             return runOriginal(s, unit, a, b, arg);
         }
+        SPASS_TRACE(trace::Channel::Script, "engine calls Lua script '{}' (arg {})", s.name, arg);
         sol::protected_function_result r = s.lua(ScriptContext{unit, a, b, arg, idx});
         if (!r.valid()) {
+            SPASS_TRACE(trace::Channel::Lua, "script '{}' failed: {}", s.name, std::string(r.get<sol::error>().what()));
             const sol::error err = r;
             spdlog::error("lua: script '{}' failed: {}", s.name, err.what());
             return runOriginal(s, unit, a, b, arg);
@@ -124,7 +127,7 @@ std::size_t findSlotByFn(void** fnSlot) {
 }
 
 // Shared by define() and override(). Returns an error message, or empty on success.
-std::string install(const std::string& name, sol::protected_function fn, bool isOverride) {
+std::string install(const std::string& name, sol::main_protected_function fn, bool isOverride) {
     if (!g_layoutOk) {
         return "script bridge disabled (registry layout self-test failed, see log)";
     }
@@ -165,6 +168,7 @@ std::string install(const std::string& name, sol::protected_function fn, bool is
     slot.lua = std::move(fn);
     *fnSlot = reinterpret_cast<void*>(kThunks[idx]);
     spdlog::info("lua: script '{}' {} (slot {})", name, isOverride ? "overridden" : "defined", idx);
+    SPASS_TRACE(trace::Channel::Script, "{} '{}' (slot {}, original {})", isOverride ? "override" : "define", name, idx, current != nullptr ? "kept" : "none");
     return {};
 }
 
@@ -250,14 +254,14 @@ void bindScripts(sol::state_view lua, sol::table risen) {
 
     sol::table script = lua.create_table();
     // risen.script.define("MyScript", function(ctx) ... return 0 end)  -- new script name
-    script.set_function("define", [](const std::string& name, sol::protected_function fn) {
+    script.set_function("define", [](const std::string& name, sol::main_protected_function fn) {
         const std::string err = install(name, std::move(fn), /*isOverride=*/false);
         if (!err.empty()) {
             throw sol::error("risen.script.define: " + err);
         }
     });
     // risen.script.override("AssessActive", function(ctx) return ctx:call_original() end)
-    script.set_function("override", [](const std::string& name, sol::protected_function fn) {
+    script.set_function("override", [](const std::string& name, sol::main_protected_function fn) {
         const std::string err = install(name, std::move(fn), /*isOverride=*/true);
         if (!err.empty()) {
             throw sol::error("risen.script.override: " + err);
@@ -280,6 +284,7 @@ void bindScripts(sol::state_view lua, sol::table risen) {
             result = sym().script_admin_call(admin, n.get(), self ? ptr(*self) : nullptr, other ? ptr(*other) : nullptr,
                                              arg.value_or(0));
         });
+        SPASS_TRACE(trace::Channel::Script, "call '{}' -> {}{}", name, result, ok ? "" : " (engine exception)");
         if (!ok) {
             throw sol::error("risen.script.call('" + name + "'): engine raised an exception");
         }

@@ -622,7 +622,9 @@ function balanceApi.apply(spec, opts) end
 ---templates, and on every `session.start` again including the live entities (`instances = false` in `opts` to skip the latter). Idempotent
 ---per spec table. Problems are logged as errors. Per mod: handlers are registered for the calling mod.
 ---@param spec BalanceSpec
----@param opts? { instances?: boolean }
+---`opts.on_applied(when, report)` is called after each application with `when` = `"first tick"`, `"session.start (new)"` or `"session.start (load)"` and the
+---`BalanceReport` (a test scenario asserts on it, see `mods/balance_items`).
+---@param opts? { instances?: boolean, on_applied?: fun(when: string, report: BalanceReport) }
 ---@return boolean installed `false` when this spec table was installed before.
 function balanceApi.install(spec, opts) end
 
@@ -1437,6 +1439,144 @@ function engineApi.symbols() end
 function engineApi.build() end
 
 ---------------------------------------------------------------------------------------------------------------------
+-- Live verification and tracing
+---------------------------------------------------------------------------------------------------------------------
+
+---Checks for scenarios that are verified in the running game (docs/DEVELOPMENT.md "Testing and tracing"). Every function exists in every
+---run and only logs (`[test] ok|FAIL name: detail`) unless `config.toml` has `[test] enabled = true` (set by `scripts/test-run.ps1 -WaitForResult`)
+---or `[lua] unsafe = true`: then `finish` also writes `<Risen>\bin\spass\test-result.json`, the `[test] deadline_s` applies and (with `enabled`)
+---the process ends shortly after `finish`. A mod may therefore ship its checks.
+---@class RisenTestApi
+local testApi = {}
+
+---Records a check and logs `[test] ok|FAIL name: detail`. Never raises.
+---@param name string Identifies the check in the result file (and in `plan`).
+---@param cond any Truthy = pass (`nil` and `false` fail).
+---@param detail? any Shown in the log and the result file; put the values in it.
+---@return boolean ok
+function testApi.expect(name, cond, detail) end
+
+---Records a check that `actual` equals `expected` (tables are compared by content); the detail reads `expected {1, 3}, got {1, 2}` on a mismatch.
+---@param name string
+---@param actual any
+---@param expected any
+---@param tolerance? number For numbers: the largest allowed difference.
+---@return boolean ok
+function testApi.eq(name, actual, expected, tolerance) end
+
+---Records a check that `tostring(text)` matches the Lua pattern (`string.find`, not a regex).
+---@param name string
+---@param text any
+---@param pattern string
+---@return boolean ok
+function testApi.matches(name, text, pattern) end
+
+---Starts a named section: later checks carry its name, and a hang or timeout is reported "in section X".
+---@param name string
+function testApi.section(name) end
+
+---Declares the checks the scenario must record. `finish` fails the run when a planned check never ran (nothing gets dropped silently).
+---@param names string[]
+function testApi.plan(names) end
+
+---Gets, or with an argument sets, the scenario name shown in the result file (default: `[test] scenario` of the config).
+---@param name? string
+---@return string
+function testApi.scenario(name) end
+
+---A scenario parameter from `[test.params]` of the config (`scripts/test-run.ps1 -Param key=value`); strings.
+---@param name string
+---@param default? any Returned when the parameter is not set.
+---@return string|any
+function testApi.param(name, default) end
+
+---Whether the run writes a result file and has a deadline (`[test] enabled` or `[lua] unsafe`).
+---@return boolean
+function testApi.is_active() end
+
+---Seconds since the mod layer started.
+---@return number
+function testApi.elapsed() end
+
+---Ends the run: writes `test-result.json` (scenario, every check with its detail and time, timings, unfinished checks; status `pass` needs at
+---least one check, none failed, no planned check missing and no error line in `spass.log`) and, with `[test] enabled`, ends the game process. The script
+---`test-run.ps1 -WaitForResult` returns as soon as it sees the file. Only the first call counts.
+---@param summary? string
+---@return boolean
+function testApi.finish(summary) end
+
+---Records a failed check `fail` and ends the run as `aborted: <reason>`.
+---@param reason string
+---@return boolean
+function testApi.fail(reason) end
+
+---Polls `predicate()` once per frame (the `tick` event, not at the main menu). `on_done(true)` when it returned a truthy value; after `timeout_s`
+---seconds the check `wait <name>` fails and `on_done(false, "timeout")` is called (also when the predicate raised an error).
+---@param predicate fun(): any
+---@param timeout_s number
+---@param on_done? fun(ok: boolean, reason?: string)
+---@param name? string Shown in the failure and in the list of unfinished work of a timed-out run.
+function testApi.wait_for(predicate, timeout_s, on_done, name) end
+
+---Calls `on_done(true)` after `n` frames.
+---@param n integer
+---@param on_done fun(ok: boolean)
+function testApi.wait_ticks(n, on_done) end
+
+---Runs `fn` as a coroutine from the next frame on, so a scenario reads top to bottom: inside it `sleep`, `wait_until` and `wait_event` pause it.
+---An error in `fn` fails the run (with the traceback); when `fn` returns, `finish()` is called. One scenario per mod layer.
+---@param fn fun()
+---@param scenario_name? string
+function testApi.run(fn, scenario_name) end
+
+---Inside `run`: continues after `ticks` frames (default 1).
+---@param ticks? integer
+function testApi.sleep(ticks) end
+
+---Inside `run`: continues when `predicate()` is truthy. After `timeout_s` seconds (default 60) the check `wait <name>` fails and the run ends.
+---@param predicate fun(): any
+---@param timeout_s? number
+---@param name? string
+---@return true
+function testApi.wait_until(predicate, timeout_s, name) end
+
+---Inside `run`: waits for an event (and `filter(...)` returning true, when given) and returns its arguments. Registers its own handler, so call it
+---before the event can fire, e.g. after `risen.world.new_game()` (a request the engine performs later). Times out like `wait_until`.
+---@param event string
+---@param timeout_s? number Default 120.
+---@param filter? fun(...): boolean
+---@return any ...
+function testApi.wait_event(event, timeout_s, filter) end
+
+---Opt-in trace channels (`config.toml` `[debug] trace = "template,balance,save,events"`, `"all"`, or at run time `risen.trace.enable`). A disabled channel
+---costs one bit test. Lines read `[HH:MM:SS.mmm] [trace:channel] ...` in `spass.log` (and in `trace.log` with `[debug] trace_file = true`).
+---Built-in channels: `events` (every event the layer emits, with its arguments), `template`, `balance` (every applied job), `save` (save/load phases with
+---durations), `spawn`, `script` (define/override/call), `lua` (handler errors with traceback), `test`. A mod may use any other name.
+---Calling `risen.trace(channel, ...)` writes the `tostring`-ed arguments, joined by spaces, when the channel is on.
+---@class RisenTraceApi
+---@overload fun(channel: string, ...: any)
+local traceApi = {}
+
+---Turns channels on (comma separated; `all` or `*` for every one).
+---@param channels string
+---@return string enabled All enabled channels.
+function traceApi.enable(channels) end
+
+---Turns channels off.
+---@param channels string
+---@return string enabled
+function traceApi.disable(channels) end
+
+---Whether a channel is on: guard expensive message building with it.
+---@param channel string
+---@return boolean
+function traceApi.enabled(channel) end
+
+---The enabled channels, comma separated.
+---@return string
+function traceApi.channels() end
+
+---------------------------------------------------------------------------------------------------------------------
 -- Logging and the risen table
 ---------------------------------------------------------------------------------------------------------------------
 
@@ -1461,6 +1601,8 @@ function logApi.error(...) end
 ---@field version string Version of risen-spass.
 ---@field api_version integer Generation of this Lua API; a mod can require one with `api_version` in mod.toml.
 ---@field log RisenLogApi
+---@field trace RisenTraceApi
+---@field test RisenTestApi
 ---@field entity RisenEntityApi
 ---@field template RisenTemplateApi
 ---@field item RisenItemApi

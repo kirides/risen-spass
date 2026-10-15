@@ -7,6 +7,7 @@
 #include "game/loc_overlay.h"
 #include "game/lua_save.h"
 #include "game/lua_entity.h"
+#include "game/lua_test.h"
 #include "game/script_bridge.h"
 #include "lua/runtime.h"
 
@@ -122,6 +123,8 @@ void bindWorld(sol::state_view lua, sol::table risen) {
 
 void registerBindings() {
     auto& rt = lua::Runtime::instance();
+    rt.addBinding(test::bindTest);  // first: other bindings may report through risen.test
+    rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo&) { test::bindTestForMod(lua, api); });
     rt.addBinding(bindQuest);
     rt.addBinding(bindGameVars);
     rt.addBinding(bindWorld);

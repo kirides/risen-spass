@@ -54,6 +54,39 @@ risen.emit("my_mod.event", a, b)                      -- mod-to-mod events
 ## risen.log / risen.version
 `risen.log.trace|debug|info|warn|error(...)` (arguments are `tostring`-ed and joined by spaces).
 
+## risen.test / risen.trace — live verification and tracing (see [DEVELOPMENT.md](DEVELOPMENT.md) "Testing and tracing", `mods/testdemo`)
+```lua
+local T = risen.test
+T.plan { "player exists", "item spawned" }          -- checks that must run; a missing one fails the run as "unfinished"
+T.run(function()                                     -- a scenario as a coroutine (starts on the next frame)
+    T.section("new game")                            -- later checks carry the section name; a hang is reported "in section X"
+    local mode = T.wait_event("session.start", 180)  -- pauses until the event fired (timeout: FAIL + the run ends)
+    T.sleep(150)                                     -- frames (the `tick` event), not seconds
+    T.wait_until(function() return flag end, 60, "flag")   -- polled once per frame
+    T.expect("player exists", risen.entity.player() ~= nil, "detail shown in the log and the result")
+    T.eq("hero hit points", player:hp(), 80)         -- detail "expected 80, got 70" on a mismatch; tables compare by content, `tolerance` 4th argument for numbers
+    T.matches("log line", text, "value=%d+")         -- Lua pattern
+end, "my_scenario")                                  -- returning from the function calls T.finish()
+T.finish("summary")      -- writes <Risen>\bin\spass\test-result.json and (with [test] enabled) ends the game
+T.fail("reason")         -- records a failed check and ends the run as "aborted: reason"
+T.wait_for(pred, 30, function(ok, why) end, "name")  -- callback style, without a coroutine; T.wait_ticks(n, cb)
+T.param("mode", "pass")  -- [test.params] of config.toml (scripts\test-run.ps1 -Param mode=fail)
+```
+`risen.test.*` exists in every run and then only logs `[test] ok|FAIL name: detail` (a mod may ship its checks). It becomes a real run with
+`config.toml [test] enabled = true` (set by `test-run.ps1 -WaitForResult`) or `[lua] unsafe`: `finish` writes the result file and `[test] deadline_s` applies
+(a run that is not finished by then is reported as FAIL `timeout` with the unfinished checks, also when the game thread hangs inside Lua). `finish` adds the check
+`no errors logged` (no `[error]` line in `spass.log`). Status is `pass` only with at least one check, none failed, nothing planned/waited for left unfinished.
+Timeouts of `wait_for`/`wait_until`/`wait_event` are wall-clock seconds. `risen.balance.install(spec, { on_applied = fn(when, report) })` reports each application.
+
+```lua
+risen.trace("mymod", "got", x)           -- "[12:00:00.123] [trace:mymod] got 5" when the channel is on, nothing otherwise
+risen.trace.enable("template,save")      -- also config.toml  [debug] trace = "template,balance,save,events"  ("all" = every channel); trace_file = true -> trace.log
+risen.trace.disable("save");  risen.trace.enabled("template");  risen.trace.channels()
+```
+Built-in channels: `events` (every event the layer emits, with arguments, also when nobody listens; `tick` excluded), `template` (get/patch/propagation counts),
+`balance` (every applied job), `save` (save/load phases with durations), `spawn`, `script` (define/override/call and every engine call into a Lua script),
+`lua` (handler errors with traceback), `test`. A disabled channel costs one bit test; use `risen.trace.enabled(ch)` to guard expensive message building.
+
 ## risen.script — the game's scripts are native functions looked up by name
 ```lua
 risen.script.exists("AssessActive")                    -- bool

@@ -3,18 +3,33 @@
     Development loop: deploys the built proxy and chosen example mods into the isolated test copy, launches it
     windowed, and prints the lines of spass.log that match a filter.
 
+.DESCRIPTION
+    With -WaitForResult the run is a scenario that ends itself (risen.test.finish writes spass\test-result.json): the script
+    returns as soon as the file appears, prints the failed checks and sets the exit code (0 = pass, 1 = checks failed,
+    2 = no result: stall/timeout/game exited). -Seconds is then only the upper bound.
+    A watchdog kills the game when spass.log shows no new line for -StallSeconds or when -Seconds ran out, prints the last
+    25 log lines and where the run stopped. Stray Risen.exe processes are killed at the start and at the end (also on
+    Ctrl-C or an error). The outcome is left in $global:SpassRun (Reason, Seconds, Result, Timing, Verdict).
+
 .PARAMETER GameDir  Test copy of Risen (default B:\DevDrive\risen-test). Never point this at the real install.
 .PARAMETER Mods     Example mods from <repo>\mods to enable (copied); every other mod in the test copy is disabled
                     by renaming it to <name>.off. "autostart" (starts a new game on the first tick) is kept.
-.PARAMETER Seconds  How long to let the game run.
+.PARAMETER Seconds  Upper bound of the run (without -WaitForResult: how long the game runs).
 .PARAMETER Filter   Regex of log lines to print (default: everything of interest).
 .PARAMETER Keep     Do not delete spass.log and saves before the run (to test loading an earlier save).
+.PARAMETER WaitForResult  Scenario mode: [test] enabled = true, return when test-result.json appears.
+.PARAMETER StallSeconds   Watchdog: kill the game after this long without a new log line (default 90: loading a new game is quiet for up to ~60 s).
+.PARAMETER DeadlineSeconds  [test] deadline_s: the layer itself reports FAIL "timeout" (with the unfinished checks) after this long
+                    (default: -Seconds minus 10 with -WaitForResult). Catches a hang inside Lua, which the stall watchdog can only kill.
+.PARAMETER Scenario Name written to the result file.
+.PARAMETER Param    "key=value" strings for risen.test.param(key).
+.PARAMETER Trace    [debug] trace: channels such as "template,balance,save,events" or "all" (see docs/DEVELOPMENT.md).
 #>
 param(
     [string]$GameDir = 'B:\DevDrive\risen-test',
     [string[]]$Mods = @('persistdemo'),
     [int]$Seconds = 300,
-    [string]$Filter = 'lua:|save:|load:|session:|world:|\[error\]|\[warn\]',
+    [string]$Filter = 'lua:|save:|load:|session:|world:|\[error\]|\[warn\]|\[test\] (FAIL|finished|deadline)',
     [ValidateSet('trace', 'debug', 'info', 'warn', 'error')][string]$LogLevel = 'info',
     [switch]$Keep,
     # leave the game running after the log was printed (inspect it, then kill Risen.exe yourself)
@@ -30,59 +45,189 @@ param(
     # [debug] trace_files: log every file the engine opens whose path contains this text, from process start
     [string]$TraceFiles = '',
     # What the "autostart" helper mod does on the first tick: start a new game, or quick-load the last quick save.
-    [ValidateSet('new', 'load')][string]$Start = 'new'
+    [ValidateSet('new', 'load')][string]$Start = 'new',
+    [switch]$WaitForResult,
+    [int]$StallSeconds = 90,
+    [int]$DeadlineSeconds = -1,
+    [string]$Scenario = '',
+    [string[]]$Param = @(),
+    [string]$Trace = '',
+    [switch]$TraceFile,
+    # print every check of the result, not only the failed ones
+    [switch]$ShowChecks
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $bin = Join-Path $GameDir 'bin'
 $modsDir = Join-Path $bin 'spass\mods'
+$log = Join-Path $bin 'spass\spass.log'
+$resultFile = Join-Path $bin 'spass\test-result.json'
 if (-not (Test-Path (Join-Path $bin 'Risen.exe'))) { throw "no Risen.exe in $bin" }
 if ($GameDir -like 'B:\SteamLibrary*') { throw 'refusing to touch the real install' }
 
-Get-Process Risen -ErrorAction SilentlyContinue | Stop-Process -Force
-Get-Process Risen -ErrorAction SilentlyContinue | Wait-Process -Timeout 30 -ErrorAction SilentlyContinue
-Copy-Item (Join-Path $repo 'build\RelWithDebInfo\sentry.dll') (Join-Path $bin 'sentry.dll') -Force
-
-New-Item -ItemType Directory -Force $modsDir | Out-Null
-foreach ($d in Get-ChildItem $modsDir -Directory) {
-    if ($d.Name -eq 'autostart' -or $d.Name -like '*.off') { continue }
-    Remove-Item ($d.FullName + '.off') -Recurse -Force -ErrorAction SilentlyContinue   # a stale disabled copy
-    Rename-Item $d.FullName ($d.Name + '.off')
-}
-foreach ($m in $Mods) {
-    $dst = Join-Path $modsDir $m
-    Remove-Item "$dst.off" -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item $dst -Recurse -Force -ErrorAction SilentlyContinue
-    Copy-Item (Join-Path $repo "mods\$m") $dst -Recurse
-}
-if ($CorruptFile -ne '') {
-    $modId, $rel = $CorruptFile -split ':', 2
-    $target = Join-Path (Join-Path $modsDir $modId) $rel
-    New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
-    [IO.File]::WriteAllText($target, 'GENOMETP-corrupt')
-}
-if ($CopyInto -ne '') {
-    $modId, $srcDir = $CopyInto -split '=', 2
-    Copy-Item (Join-Path $srcDir '*') (Join-Path $modsDir $modId) -Recurse -Force
-}
-$auto = Join-Path $modsDir 'autostart'
-Remove-Item "$auto.off" -Recurse -Force -ErrorAction SilentlyContinue
-if ($NoAutostart) {
-    Remove-Item $auto -Recurse -Force -ErrorAction SilentlyContinue
-} else {
-    New-Item -ItemType Directory -Force $auto | Out-Null
-    Set-Content "$auto\mod.toml" "id = `"autostart`"`nname = `"Autostart`"`nversion = `"1.0.0`""
-    $call = if ($Start -eq 'load') { 'quick_load' } else { 'new_game' }
-    Set-Content "$auto\main.lua" "local done=false`nrisen.on('tick', function() if not done then done=true; risen.log.info('autostart $call -> '..tostring(risen.world.$call())) end end)"
-}
-# Isolate the game's %LOCALAPPDATA% (savegames, ConfigUser.xml, screenshots) inside the test copy.
-$appData = (Join-Path $GameDir 'localappdata').Replace('\', '/')
-$unsafeLine = if ($Unsafe) { "`n[lua]`nunsafe = true" } else { '' }
-Set-Content (Join-Path $bin 'spass\config.toml') "log_level = `"$LogLevel`"`n[debug]`napp_data = `"$appData`"`ntrace_files = `"$TraceFiles`"$unsafeLine"
-if (-not $Keep) {
-    Remove-Item (Join-Path $bin 'spass\spass.log') -ErrorAction SilentlyContinue
-    Remove-Item (Join-Path $bin 'spass\saves') -Recurse -Force -ErrorAction SilentlyContinue
+function Stop-Risen {
+    Get-Process Risen -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-Process Risen -ErrorAction SilentlyContinue | Wait-Process -Timeout 30 -ErrorAction SilentlyContinue
 }
 
-& (Join-Path $PSScriptRoot 'run-windowed.ps1') -GameDir $GameDir -Seconds $Seconds -KeepRunning:$KeepRunning 6>&1 |
-    Select-String -Pattern $Filter | ForEach-Object { $_.Line }
+# seconds of a "[HH:MM:SS.mmm]" log prefix (time of day)
+function Get-LogTime([string]$line) {
+    if ($line -match '^\[(\d\d):(\d\d):(\d\d)\.(\d+)\]') { return [int]$Matches[1] * 3600 + [int]$Matches[2] * 60 + [int]$Matches[3] + [double]("0." + $Matches[4]) }
+    return $null
+}
+
+# "where it stopped" for a run that was killed or died without a result
+function Show-Stopped($why) {
+    Write-Host "---- $why ----" -ForegroundColor Red
+    if (-not (Test-Path $log)) { Write-Host 'there is no spass.log: the game never loaded the mod layer'; return }
+    $lines = @(Get-Content $log -ErrorAction SilentlyContinue)
+    Write-Host '---- last 25 log lines ----'
+    $lines | Select-Object -Last 25 | ForEach-Object { Write-Host $_ }
+    $text = $lines -join "`n"
+    $lastLine = $lines | Select-Object -Last 1
+    $lastAt = Get-LogTime $lastLine
+    $age = if ($null -ne $lastAt) { [math]::Round(((Get-Date).TimeOfDay.TotalSeconds - $lastAt + 86400) % 86400) } else { '?' }
+    $phase = if ($text -notmatch 'game ready: starting Lua runtime') { 'during engine start-up, before the Lua runtime started' }
+             elseif ($text -notmatch 'session: start') { 'Lua running, no game session yet (main menu or the first game still loading)' }
+             else { 'inside a game session' }
+    Write-Host '---- where it stopped ----' -ForegroundColor Red
+    Write-Host "phase:             $phase"
+    Write-Host "last log line:     $age s before the end: $lastLine"
+    foreach ($pair in @(@('last section', '\[test\] section .*'), @('last check', '\[test\] (ok|FAIL) .*'), @('last heartbeat', '\[test\] alive .*'), @('last trace', '\[trace:[^\]]+\] .*'), @('last error', '\[(error|warning)\].*'))) {
+        $m = [regex]::Matches($text, '(?m)^\[[^\]]+\] .*?' + $pair[1] + '$')
+        if ($m.Count -gt 0) { Write-Host ("{0,-18} {1}" -f ($pair[0] + ':'), $m[$m.Count - 1].Value.Trim()) }
+    }
+}
+
+$runStart = Get-Date
+$global:SpassRun = [pscustomobject]@{ Reason = 'none'; Seconds = 0.0; Total = 0.0; Result = $null; Timing = $null; Verdict = 'none' }
+$exitCode = 0
+try {
+    Stop-Risen
+    Copy-Item (Join-Path $repo 'build\RelWithDebInfo\sentry.dll') (Join-Path $bin 'sentry.dll') -Force
+
+    New-Item -ItemType Directory -Force $modsDir | Out-Null
+    foreach ($d in Get-ChildItem $modsDir -Directory) {
+        if ($d.Name -eq 'autostart' -or $d.Name -like '*.off') { continue }
+        Remove-Item ($d.FullName + '.off') -Recurse -Force -ErrorAction SilentlyContinue   # a stale disabled copy
+        Rename-Item $d.FullName ($d.Name + '.off')
+    }
+    foreach ($m in $Mods) {
+        $dst = Join-Path $modsDir $m
+        Remove-Item "$dst.off" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item $dst -Recurse -Force -ErrorAction SilentlyContinue
+        Copy-Item (Join-Path $repo "mods\$m") $dst -Recurse
+    }
+    if ($CorruptFile -ne '') {
+        $modId, $rel = $CorruptFile -split ':', 2
+        $target = Join-Path (Join-Path $modsDir $modId) $rel
+        New-Item -ItemType Directory -Force (Split-Path $target) | Out-Null
+        [IO.File]::WriteAllText($target, 'GENOMETP-corrupt')
+    }
+    if ($CopyInto -ne '') {
+        $modId, $srcDir = $CopyInto -split '=', 2
+        Copy-Item (Join-Path $srcDir '*') (Join-Path $modsDir $modId) -Recurse -Force
+    }
+    $auto = Join-Path $modsDir 'autostart'
+    Remove-Item "$auto.off" -Recurse -Force -ErrorAction SilentlyContinue
+    if ($NoAutostart) {
+        Remove-Item $auto -Recurse -Force -ErrorAction SilentlyContinue
+    } else {
+        New-Item -ItemType Directory -Force $auto | Out-Null
+        Set-Content "$auto\mod.toml" "id = `"autostart`"`nname = `"Autostart`"`nversion = `"1.0.0`""
+        $call = if ($Start -eq 'load') { 'quick_load' } else { 'new_game' }
+        Set-Content "$auto\main.lua" "local done=false`nrisen.on('tick', function() if not done then done=true; risen.log.info('autostart $call -> '..tostring(risen.world.$call())) end end)"
+    }
+    # Isolate the game's %LOCALAPPDATA% (savegames, ConfigUser.xml, screenshots) inside the test copy.
+    $appData = (Join-Path $GameDir 'localappdata').Replace('\', '/')
+    $cfg = @("log_level = `"$LogLevel`"")
+    if ($Unsafe) { $cfg += '[lua]', 'unsafe = true' }
+    $cfg += '[debug]', "app_data = `"$appData`"", "trace_files = `"$TraceFiles`"", "trace = `"$Trace`""
+    if ($TraceFile) { $cfg += 'trace_file = true' }
+    if ($WaitForResult) {
+        $deadline = if ($DeadlineSeconds -ge 0) { $DeadlineSeconds } else { [math]::Max($Seconds - 10, 10) }
+        $cfg += '[test]', 'enabled = true', "deadline_s = $deadline", "scenario = `"$Scenario`""
+        if ($Param.Count -gt 0) {
+            $cfg += '[test.params]'
+            foreach ($kv in $Param) { $k, $v = $kv -split '=', 2; $cfg += ("{0} = `"{1}`"" -f $k.Trim(), $v) }
+        }
+    }
+    Set-Content (Join-Path $bin 'spass\config.toml') $cfg
+    Remove-Item $resultFile -ErrorAction SilentlyContinue
+    if (-not $Keep) {
+        Remove-Item $log -ErrorAction SilentlyContinue
+        Remove-Item (Join-Path $bin 'spass\trace.log') -ErrorAction SilentlyContinue
+        Remove-Item (Join-Path $bin 'spass\saves') -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    $windowed = @{ GameDir = $GameDir; Seconds = $Seconds; KeepRunning = $KeepRunning; StallSeconds = $StallSeconds }
+    if ($WaitForResult) { $windowed.ResultFile = $resultFile }
+    & (Join-Path $PSScriptRoot 'run-windowed.ps1') @windowed 6>&1 |
+        Select-String -Pattern $Filter | ForEach-Object { $_.Line }
+    $launched = $global:SpassRun
+    $run = [pscustomobject]@{ Reason = $launched.Reason; Seconds = $launched.Seconds; Total = ((Get-Date) - $runStart).TotalSeconds; Result = $null; Timing = $null; Verdict = 'none' }
+    $global:SpassRun = $run
+
+    # ---- timing from the log: relative to the first line (the mod layer loaded) ----
+    $t = [ordered]@{}
+    if (Test-Path $log) {
+        $lines = @(Get-Content $log -ErrorAction SilentlyContinue)
+        $t0 = Get-LogTime ($lines | Select-Object -First 1)
+        $rel = { param($rx) $l = $lines | Where-Object { $_ -match $rx } | Select-Object -First 1; if ($l) { $x = Get-LogTime $l; if ($null -ne $x -and $null -ne $t0) { [math]::Round(($x - $t0 + 86400) % 86400, 1) } } }
+        $t.lua_started = & $rel 'game ready: starting Lua runtime'
+        $t.first_tick = & $rel '\[test\] mark first_tick|autostart (new_game|quick_load)'
+        $t.session_start = & $rel 'session: start'
+        $t.last_line = if ($lines.Count -gt 0) { $x = Get-LogTime ($lines | Select-Object -Last 1); if ($null -ne $x -and $null -ne $t0) { [math]::Round(($x - $t0 + 86400) % 86400, 1) } }
+    }
+    $t.result = if ($run.Reason -eq 'result') { [math]::Round($run.Seconds, 1) } else { $null }
+    $t.total = [math]::Round($run.Total, 1)
+    $run.Timing = $t
+    $parts = @()
+    if ($null -ne $t.lua_started) { $parts += "lua started $($t.lua_started)" }
+    if ($null -ne $t.first_tick) { $parts += "first tick $($t.first_tick)" }
+    if ($null -ne $t.session_start) { $parts += "session.start $($t.session_start)" }
+    if ($null -ne $t.result) { $parts += "result $($t.result) s after launch" }
+    $parts += "run ended by '$($run.Reason)', wall time $($t.total) s"
+    Write-Host ('timing (s after the mod layer loaded): ' + ($parts -join ' | '))
+
+    if ($WaitForResult) {
+        $result = $null
+        if (Test-Path $resultFile) {
+            try { $result = Get-Content $resultFile -Raw -Encoding UTF8 | ConvertFrom-Json } catch { Write-Host "result file unreadable: $_" -ForegroundColor Red }
+        }
+        $run.Result = $result
+        if ($null -eq $result) {
+            $run.Verdict = 'no result'
+            $exitCode = 2
+            $why = switch ($run.Reason) {
+                'stall'   { "STALL: no new log line for $StallSeconds s, the game was killed" }
+                'seconds' { "TIMEOUT: no result within -Seconds $Seconds, the game was killed" }
+                'exited'  { 'the game exited without writing a result (crash?)' }
+                default   { "no result ($($run.Reason))" }
+            }
+            Show-Stopped $why
+        } else {
+            $run.Verdict = $result.status
+            Write-Host ("result: {0} '{1}': {2} check(s), {3} failed, {4:N1} s{5}" -f $result.status.ToUpper(), $result.scenario, $result.counts.total, $result.counts.failed, $result.elapsed_s, $(if ($result.reason) { " - " + $result.reason } else { '' }))
+            foreach ($c in $result.checks) {
+                if ($ShowChecks -or -not $c.ok) {
+                    $mark = if ($c.ok) { 'ok  ' } else { 'FAIL' }
+                    Write-Host ("  {0} {1}: {2}" -f $mark, $c.name, $c.detail) -ForegroundColor $(if ($c.ok) { 'Gray' } else { 'Red' })
+                }
+            }
+            foreach ($u in $result.unfinished) { Write-Host "  UNFINISHED $u" -ForegroundColor Red }
+            if ($result.status -ne 'pass') {
+                $exitCode = 1
+                if ($result.reason -like 'timeout*' -or $result.unfinished.Count -gt 0) { Show-Stopped "run did not complete: $($result.reason)" }
+            }
+        }
+    } elseif ($run.Reason -eq 'stall') {
+        # a scenario without a result file normally ends quietly: the watchdog only cuts the wait short. The caller judges by the log.
+        $lastLine = if (Test-Path $log) { Get-Content $log -ErrorAction SilentlyContinue | Select-Object -Last 1 } else { '(no log)' }
+        Write-Host "run ended by the stall watchdog (no new log line for $StallSeconds s, the game was killed); last log line: $lastLine"
+    }
+}
+finally {
+    if (-not $KeepRunning) { Stop-Risen }
+}
+exit $exitCode

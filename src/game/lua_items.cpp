@@ -1,5 +1,6 @@
 #include <spdlog/spdlog.h>
 
+#include "common/trace.h"
 #include "game/abi.h"
 #include "game/lua_entity.h"
 #include "game/template_object.h"
@@ -92,6 +93,8 @@ void bindItems(sol::state_view lua, sol::table risen) {
         if (!valid) {
             spdlog::warn("entity.spawn('{}'): unknown template", name);
         }
+        SPASS_TRACE(trace::Channel::Spawn, "spawn '{}' at ({:.0f}, {:.0f}, {:.0f}){} -> {}", name, x, y, z, temporary.value_or(false) ? " temporary" : "",
+                    !valid ? "unknown template" : ret.entity != nullptr ? "ok" : "no entity");
         return makeEntityObject(ts, ret.entity);
     });
 

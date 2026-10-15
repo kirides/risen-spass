@@ -70,12 +70,12 @@ private:
         std::uint64_t id;
         std::string mod;
         int priority;
-        sol::protected_function fn;
+        sol::main_protected_function fn;  // main thread: a handler registered from a scenario coroutine must not run on that coroutine
     };
 
     Runtime() = default;
 
-    std::uint64_t addHandler(const std::string& mod, const std::string& event, sol::protected_function fn, int prio);
+    std::uint64_t addHandler(const std::string& mod, const std::string& event, sol::main_protected_function fn, int prio);
     void removeHandler(std::uint64_t id);
     sol::table makeBaseEnv(bool unsafeLua);
     sol::table makeModApi(const ModInfo& mod);
