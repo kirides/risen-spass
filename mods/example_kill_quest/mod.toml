@@ -1,0 +1,6 @@
+id          = "example_kill_quest"
+name        = "Example: kill quests (count N, one special boss)"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Kill 3 wolves (counter + log lines), then kill one named boss made from a new template; npc.killed drives both, a Success option unlocks the second quest. See docs/EXAMPLES.md."
+main        = "main.lua"

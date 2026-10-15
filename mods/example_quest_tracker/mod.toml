@@ -1,0 +1,6 @@
+id          = "example_quest_tracker"
+name        = "Example: one quest tracker for dialogue, item and kill objectives"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "tracker.lua: a small reusable module that completes quests by finishing a dialogue option, by carrying items or by kills (info.finished, inventory poll, npc.killed). See docs/EXAMPLES.md."
+main        = "main.lua"

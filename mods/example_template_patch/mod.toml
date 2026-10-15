@@ -1,0 +1,6 @@
+id          = "example_template_patch"
+name        = "Example: patch existing templates"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Changes numbers of existing item and NPC templates with risen.template.patch (first tick + every session.start). See docs/EXAMPLES.md."
+main        = "main.lua"

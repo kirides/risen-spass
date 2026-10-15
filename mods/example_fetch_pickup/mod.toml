@@ -1,0 +1,6 @@
+id          = "example_fetch_pickup"
+name        = "Example: fetch quest that completes by collecting"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "The quest completes by itself the moment the player carries enough berries (picked up, looted, bought): item.picked_up event plus inventory polling. See docs/EXAMPLES.md."
+main        = "main.lua"

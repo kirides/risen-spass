@@ -1,0 +1,6 @@
+id          = "example_material"
+name        = "Example: change the material or texture of an existing template"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Material variants of existing meshes (MaterialSwitch) and a recoloured texture that shadows a shipped one (risen.assets). See docs/EXAMPLES.md."
+main        = "main.lua"

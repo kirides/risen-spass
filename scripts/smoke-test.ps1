@@ -38,7 +38,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -116,6 +116,8 @@ $scenarios = [ordered]@{
     ex_fetch_pickup   = @{ Est = 60; Title = 'example: fetch quest, collect'; Kind = 'result'; Mods = @('example_fetch_pickup'); Limit = 300 }
     ex_kill_quest     = @{ Est = 75; Title = 'example: kill quests'; Kind = 'result'; Mods = @('example_kill_quest'); Limit = 300 }
     ex_quest_rewards  = @{ Est = 100; Title = 'example: quest completion triggers'; Kind = 'result'; Mods = @('example_quest_rewards'); Limit = 300 }
+    ex_quest_tracker  = @{ Est = 95; Title = 'example: dialogue/item/kill quest tracker'; Kind = 'result'; Mods = @('example_quest_tracker'); Limit = 300 }
+    ex_material       = @{ Est = 50; Title = 'example: material variants and a loose texture'; Kind = 'result'; Mods = @('example_material'); Limit = 300 }
     # one game process per phase (-Param phase=...): "save" plays the whole scenario in a new game and leaves a quick save, the others load it in a fresh process
     newtemplates = @{ Est = 210; Title = 'new templates'; Kind = 'result'; Mods = @('newtemplates', 'newtemplates_driver'); Limit = 200
                       Phases = @(

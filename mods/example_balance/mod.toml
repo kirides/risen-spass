@@ -1,0 +1,6 @@
+id          = "example_balance"
+name        = "Example: balance items and NPCs"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "A declarative balancing spec for risen.balance.install: item value/damage/requirements/modifiers, NPC hit points/skills/loot, group scaling. See docs/EXAMPLES.md."
+main        = "main.lua"

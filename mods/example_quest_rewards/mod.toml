@@ -1,0 +1,6 @@
+id          = "example_quest_rewards"
+name        = "Example: things that happen when a quest completes"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "quest.status_changed trigger: gold, a spawned guard, a game variable and an unlocked dialogue option; all of it correct after saving and loading. See docs/EXAMPLES.md."
+main        = "main.lua"

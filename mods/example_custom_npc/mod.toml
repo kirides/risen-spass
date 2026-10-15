@@ -1,0 +1,6 @@
+id          = "example_custom_npc"
+name        = "Example: a custom NPC with dialogue and a quest"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "A new NPC template, a new reward item, an NPC placed at the start, a dialogue that starts a quest and a second option that finishes it. See docs/EXAMPLES.md."
+main        = "main.lua"

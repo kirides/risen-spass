@@ -1,0 +1,6 @@
+id          = "example_fetch_turnin"
+name        = "Example: fetch quest, hand-in through dialogue"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "An NPC asks for 3 berries; the quest completes when the player hands them in through a dialogue option (items are taken, reward given). See docs/EXAMPLES.md."
+main        = "main.lua"

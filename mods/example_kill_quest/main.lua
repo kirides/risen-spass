@@ -1,0 +1,160 @@
+-- EXAMPLE 6: kill quests -- "kill N entities of a template" and "kill one special, named entity".
+--
+-- The hunter Garrick gives two quests in a chain:
+--   1. Q_EX_Wolves: kill 3 wolves. Every kill is counted (risen.save keeps the counter), each one adds a quest log line ("Wolves: 2/3"),
+--      the third completes the quest and pays gold.
+--   2. Q_EX_Boss: offered only after quest 1 succeeded (`condition = "Success"` on the dialogue option -- no code needed for the unlock).
+--      The boss is a NEW template (Spass_Dire_Wolf, a clone of Wolf with 600 hit points) spawned under the unique name EX_DireWolf; killing
+--      exactly that entity completes the quest.
+--
+-- What you learn
+--   * `npc.killed(entity)` fires when the quest manager is told that an NPC or monster DIED (a real death in a fight). The argument is the
+--     dead entity: `entity:name()` is its unique name, `entity:template():name()` the template it was made from ("Wolf", "Spass_Dire_Wolf").
+--     Count by template ("any wolf") or by unique entity name ("this boss").
+--   * Humans are usually knocked out instead of killed: that is `npc.defeated(entity)` (same argument). Listen to both for "beat" objectives.
+--   * The event does NOT say who killed: kills by other NPCs count too (use entity:distance_to(player) if only kills near the player
+--     should count). The engine can report the same death twice within seconds, so remember which entities were counted.
+--   * Entity:kill() removes an entity without a death and fires nothing. Setting hit points to 0 fires nothing either. The game's own
+--     script `risen.script.call("Kill", killer, victim)` does tell the quest manager (the event fires) and zeroes the victim's hit points:
+--     the scenario of this example uses it as a stand-in for a fight. A real fight fires the same event (a pirate against a wolf, seen live).
+--   * The boss (runtime entity) is not saved: it is spawned again after a load while its quest runs and it was not killed yet.
+--
+-- Run the live check (about a minute and a half; see docs/EXAMPLES.md):
+--   .\scripts\test-run.ps1 -Instance 2 -Mods example_kill_quest -WaitForResult -Seconds 300 -Scenario example_kill_quest -ShowChecks
+
+local NPC = "EX_Garrick"
+local WOLVES, BOSS_QUEST = "Q_EX_Wolves", "Q_EX_Boss"
+local BOSS = "EX_DireWolf"
+local WANTED = 3
+
+risen.loc.set("FO_" .. NPC, "Garrick the Hunter")
+risen.loc.set("FO_" .. BOSS, "The Dire Wolf")
+
+-- ---- the boss template (a clone of Wolf, applied on the first tick and on every session.start) -------------------------------
+risen.balance.install({
+    new_npcs = {
+        Spass_Dire_Wolf = { base = "Wolf", name = "Dire Wolf", hp_max = 600, level = 15, skills = { Strength = 80 }, loot = { It_Apple = 2 } },
+    },
+})
+
+-- ---- objective 1: count the wolves ---------------------------------------------------------------------------------------------
+local counted = {}   -- unique names of the entities already counted (the engine may report one death twice)
+
+local function wolf_killed(entity)
+    if counted[entity:name()] or not risen.quest.is_running(WOLVES) then return end
+    counted[entity:name()] = true
+    local n = risen.save.get("wolf_kills", 0) + 1
+    risen.save.set("wolf_kills", n)
+    risen.quest.add_log(WOLVES, ("Wolves: %d/%d"):format(math.min(n, WANTED), WANTED))
+    if n >= WANTED then
+        local player = risen.entity.player()
+        if player then risen.item.give(player, "It_Gold", 150) end
+        risen.quest.succeed(WOLVES)
+    end
+end
+
+-- ---- objective 2: the one boss ---------------------------------------------------------------------------------------------------
+local function boss_killed()
+    if not risen.quest.is_running(BOSS_QUEST) then return end
+    local player = risen.entity.player()
+    if player then risen.item.give(player, "It_Gold", 500) end
+    risen.quest.add_log(BOSS_QUEST, "The Dire Wolf is dead.")
+    risen.quest.succeed(BOSS_QUEST)
+end
+
+-- >>> EVENT BLOCK: everything the kill objectives need; no polling workaround is required for deaths in combat.
+risen.on("npc.killed", function(entity)
+    if not entity then return end
+    if entity:name() == BOSS then return boss_killed() end          -- one specific entity (by unique name)
+    local template = entity:template()
+    if template and template:name() == "Wolf" then wolf_killed(entity) end   -- any entity of a template
+end)
+-- <<<
+
+-- ---- spawning the boss -------------------------------------------------------------------------------------------------------------
+local function spawn_boss()
+    if risen.entity.get(BOSS) then return end
+    local garrick = risen.entity.get(NPC)
+    if not garrick then return end
+    local x, y, z = garrick:position()
+    if not x then return end
+    risen.npc.spawn("Spass_Dire_Wolf", x + 1200, y + 20, z, { name = BOSS })   -- the other end of the beach
+end
+
+-- ---- dialogue -------------------------------------------------------------------------------------------------------------------------
+risen.script.define("EX_Garrick_StartWolves", function()
+    risen.save.set("wolf_kills", 0)
+    counted = {}
+    risen.quest.open(WOLVES)
+    risen.quest.run(WOLVES)
+    risen.quest.add_log(WOLVES, ("Garrick wants %d wolves dead."):format(WANTED))
+    return 0
+end)
+risen.script.define("EX_Garrick_StartBoss", function()
+    risen.quest.open(BOSS_QUEST)
+    risen.quest.run(BOSS_QUEST)
+    risen.quest.add_log(BOSS_QUEST, "A Dire Wolf haunts the other end of the beach. Kill it.")
+    spawn_boss()
+    return 0
+end)
+
+local function define_content()
+    risen.quest.define({ name = WOLVES, title = "Wolf Hunt", type = "Kill", xp = 100 })
+    risen.quest.define({ name = BOSS_QUEST, title = "The Dire Wolf", type = "Kill", xp = 300 })
+
+    risen.dialog.create({
+        name = "EX_Garrick_Wolves", owner = NPC,
+        lines = {
+            { speaker = "player", listener = "npc", text = "Anything to hunt around here?" },
+            { speaker = "npc", listener = "player", text = ("Wolves. Kill %d of them."):format(WANTED) },
+            { script = "EX_Garrick_StartWolves" },
+            { command = "End" },
+        },
+    })
+    -- unlocked by the first quest: the engine only offers it once Q_EX_Wolves succeeded
+    risen.dialog.create({
+        name = "EX_Garrick_Boss", owner = NPC, condition = "Success", quest = WOLVES,
+        lines = {
+            { speaker = "player", listener = "npc", text = "The wolves are dead. What else?" },
+            { speaker = "npc", listener = "player", text = "Their leader. A Dire Wolf, at the other end of the beach." },
+            { script = "EX_Garrick_StartBoss" },
+            { command = "End" },
+        },
+    })
+end
+
+-- ---- the hunter, and after a load the boss -------------------------------------------------------------------------------------------
+local function ensure_world()
+    if not risen.entity.get(NPC) then
+        local pos = risen.save.get("garrick_pos")
+        if not pos then
+            local player = risen.entity.player()
+            if not player then return end
+            local x, y, z = player:position()
+            if not x then return end
+            pos = { x + 150, y + 20, z + 150 }
+            risen.save.set("garrick_pos", pos)
+        end
+        risen.npc.spawn("Peasant_1_01", pos[1], pos[2], pos[3], { name = NPC, peaceful = true, level = 3, hp_max = 300 })
+    end
+    if risen.quest.is_running(BOSS_QUEST) then spawn_boss() end   -- runtime entities are not saved
+end
+
+risen.on("load.before", define_content)
+risen.on("session.start", function()
+    define_content()
+    counted = {}
+    local waited, handle = 0, nil
+    handle = risen.on("tick", function()
+        waited = waited + 1
+        if waited == 60 then
+            ensure_world()
+            if handle then risen.off(handle) end
+        end
+    end)
+end)
+
+-- the live check belongs to the test run only
+if risen.test.is_active() then
+    require("test_kill_quest")(NPC, WOLVES, BOSS_QUEST, BOSS, WANTED)
+end
