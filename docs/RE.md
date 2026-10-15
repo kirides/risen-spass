@@ -464,6 +464,11 @@ Game.dll RVAs; every one of these is exported with a decorated name, so the hook
 * `config.toml` `[debug] app_data = "<dir>"` hooks both functions for `CSIDL_LOCAL_APPDATA`/`CSIDL_APPDATA` (-> `<dir>\Local`, `<dir>\Roaming`).
   `scripts/test-run.ps1` sets it for the test copy, so savegames, `ConfigUser.xml` and `achievements.bin` stay inside it and the real
   `%LOCALAPPDATA%\Risen` is not touched (checked by comparing file timestamps before and after a run).
+* **Single-instance mutex** [confirmed in-game, M4c]: `SharedBase.dll` `g_CreateMutex(name)` (RVA 0xa9100) calls `CreateMutexA(NULL, TRUE, "GenomeMutex")` and treats `ERROR_ALREADY_EXISTS` (0xB7) as "another
+  instance": a second `Risen.exe` exits within ~1 s, with no message. `[debug] instance = "<id>"` hooks `CreateMutexA/W` and `OpenMutexA/W` (kernel32, installed before the engine runs, the proxy `sentry.dll` is
+  loaded first) and renames `GenomeMutex` to `GenomeMutex_<id>`: two (and four) games from separate copies then run side by side, each as fast as alone. Nothing else collided: the `.pak` volumes of the shared
+  `data\common`/`data\compiled` are opened with read sharing, Steam stays out of it because `SteamAppId` is set, the AMD shader cache tolerates parallel processes. What a copy must own: `bin` (log, config, mods,
+  `spass\saves`), `app_data` (savegames, `ConfigUser.xml`, `achievements.bin`).
 
 ## 16. The virtual file system and the packed data [confirmed in-game]
 

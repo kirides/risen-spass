@@ -11,7 +11,11 @@
     25 log lines and where the run stopped. Stray Risen.exe processes are killed at the start and at the end (also on
     Ctrl-C or an error). The outcome is left in $global:SpassRun (Reason, Seconds, Result, Timing, Verdict).
 
-.PARAMETER GameDir  Test copy of Risen (default B:\DevDrive\risen-test). Never point this at the real install.
+.PARAMETER GameDir  Test copy of Risen (default B:\DevDrive\risen-test, or the one of -Instance). Never point this at the real install.
+.PARAMETER Instance Parallel test instance 1..n (default 0 = the single main copy, no instance id). Instance 1 is B:\DevDrive\risen-test, n >= 2 is
+                    B:\DevDrive\risen-test<n> (created on first use from the main copy: bin copied, data\common and data\compiled junctioned,
+                    see docs/DEVELOPMENT.md "Parallel instances"). The layer gets `[debug] instance = "<n>"` (own single-instance mutex), the
+                    window is placed at its own offset, and only the Risen.exe of this copy is ever killed.
 .PARAMETER Mods     Example mods from <repo>\mods to enable (copied); every other mod in the test copy is disabled
                     by renaming it to <name>.off. "autostart" (starts a new game on the first tick) is kept.
 .PARAMETER Seconds  Upper bound of the run (without -WaitForResult: how long the game runs).
@@ -26,7 +30,8 @@
 .PARAMETER Trace    [debug] trace: channels such as "template,balance,save,events" or "all" (see docs/DEVELOPMENT.md).
 #>
 param(
-    [string]$GameDir = 'B:\DevDrive\risen-test',
+    [string]$GameDir = '',
+    [int]$Instance = 0,
     [string[]]$Mods = @('persistdemo'),
     [int]$Seconds = 300,
     [string]$Filter = 'lua:|save:|load:|session:|world:|\[error\]|\[warn\]|\[test\] (FAIL|finished|deadline)',
@@ -60,12 +65,41 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
+$mainCopy = 'B:\DevDrive\risen-test'
+if ($GameDir -eq '') { $GameDir = if ($Instance -ge 2) { "$mainCopy$Instance" } else { $mainCopy } }
+$GameDir = $GameDir.TrimEnd('\')
+if ($GameDir -like 'B:\SteamLibrary*') { throw 'refusing to touch the real install' }
+
+# A further test copy (-Instance n >= 2), made from the main copy: the 60 MB bin directory is copied, data\ini is copied, the big
+# data\common and data\compiled stay junctions to the same targets as the main copy's (read by the game, never written), data\extern
+# is made below, localappdata is seeded with the main copy's ConfigUser.xml. Delete the directory to drop the copy.
+function New-TestCopy([string]$dir, [string]$template) {
+    if ($dir -notlike 'B:\DevDrive\risen-test*') { throw "will only create test copies named B:\DevDrive\risen-test*, not $dir" }
+    if (-not (Test-Path (Join-Path $template 'bin\Risen.exe'))) { throw "the main test copy $template does not exist" }
+    Write-Host "creating the test copy $dir from $template"
+    New-Item -ItemType Directory -Force (Join-Path $dir 'data') | Out-Null
+    & robocopy (Join-Path $template 'bin') (Join-Path $dir 'bin') /E /XD spass /NFL /NDL /NJH /NJS /NP | Out-Null
+    if ($LASTEXITCODE -ge 8) { throw "robocopy failed ($LASTEXITCODE)" }
+    Copy-Item (Join-Path $template 'data\ini') (Join-Path $dir 'data\ini') -Recurse -Force
+    foreach ($j in 'common', 'compiled') {
+        $target = @((Get-Item (Join-Path $template "data\$j") -Force).Target)[0]
+        if (-not $target -or $target -notlike '*Risen\data\*') { throw "data\$j of the main copy is not a junction into a Risen install ($target)" }
+        & cmd.exe /c mklink /J "`"$(Join-Path $dir "data\$j")`"" "`"$target`"" | Out-Null
+    }
+    $cfgUser = Join-Path $template 'localappdata\Local\Risen\ConfigUser.xml'
+    if (Test-Path $cfgUser) {
+        New-Item -ItemType Directory -Force (Join-Path $dir 'localappdata\Local\Risen') | Out-Null
+        Copy-Item $cfgUser (Join-Path $dir 'localappdata\Local\Risen\ConfigUser.xml')
+    }
+    $LASTEXITCODE = 0
+}
+if ($Instance -ge 2 -and -not (Test-Path (Join-Path $GameDir 'bin\Risen.exe'))) { New-TestCopy $GameDir $mainCopy }
+
 $bin = Join-Path $GameDir 'bin'
 $modsDir = Join-Path $bin 'spass\mods'
 $log = Join-Path $bin 'spass\spass.log'
 $resultFile = Join-Path $bin 'spass\test-result.json'
 if (-not (Test-Path (Join-Path $bin 'Risen.exe'))) { throw "no Risen.exe in $bin" }
-if ($GameDir -like 'B:\SteamLibrary*') { throw 'refusing to touch the real install' }
 
 # The test copy plays no intro videos: data\extern is a junction to the real install, so give the copy its own data\externideos
 # with an empty logo.ini (what PlayIntros reads). Only the junction itself is removed, never its target.
@@ -78,9 +112,11 @@ if (-not (Test-Path (Join-Path $externDir 'videos\logo.ini'))) {
     [IO.File]::WriteAllText((Join-Path $externDir 'videos\logo.ini'), '')
 }
 
+# Only the Risen.exe of THIS test copy: other parallel instances (and the real install) are left alone.
+function Get-CopyRisen { Get-Process Risen -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path -like ($bin + '\*') } }
 function Stop-Risen {
-    Get-Process Risen -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-    Get-Process Risen -ErrorAction SilentlyContinue | Wait-Process -Timeout 30 -ErrorAction SilentlyContinue
+    Get-CopyRisen | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-CopyRisen | Wait-Process -Timeout 30 -ErrorAction SilentlyContinue
 }
 
 # seconds of a "[HH:MM:SS.mmm]" log prefix (time of day)
@@ -155,7 +191,9 @@ try {
     $appData = (Join-Path $GameDir 'localappdata').Replace('\', '/')
     $cfg = @("log_level = `"$LogLevel`"")
     if ($Unsafe) { $cfg += '[lua]', 'unsafe = true' }
-    $cfg += '[debug]', "app_data = `"$appData`"", "trace_files = `"$TraceFiles`"", "trace = `"$Trace`""
+    $cfg += '[debug]', "app_data = `"$appData`""
+    if ($Instance -ge 1) { $cfg += "instance = `"$Instance`"" }
+    $cfg += "trace_files = `"$TraceFiles`"", "trace = `"$Trace`""
     if ($TraceFile) { $cfg += 'trace_file = true' }
     if ($WaitForResult) {
         $deadline = if ($DeadlineSeconds -ge 0) { $DeadlineSeconds } else { [math]::Max($Seconds - 10, 10) }
@@ -175,6 +213,7 @@ try {
 
     $windowed = @{ GameDir = $GameDir; Seconds = $Seconds; KeepRunning = $KeepRunning; StallSeconds = $StallSeconds }
     if ($ExtraArgs.Count -gt 0) { $windowed.ExtraArgs = $ExtraArgs }
+    if ($Instance -ge 1) { $windowed.WindowX = 40 * $Instance; $windowed.WindowY = 40 * $Instance }
     if ($WaitForResult) { $windowed.ResultFile = $resultFile }
     & (Join-Path $PSScriptRoot 'run-windowed.ps1') @windowed 6>&1 |
         Select-String -Pattern $Filter | ForEach-Object { $_.Line }

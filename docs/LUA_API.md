@@ -481,5 +481,5 @@ sword:item_category()  sword:item_use_type()  sword:is_item_valid()  sword:is_mi
 
 ## Files
 Log: `<Risen>\bin\spass\spass.log`, config: `<Risen>\bin\spass\config.toml`
-(`enabled`, `log_level`, `[lua] unsafe`, `[debug] trace_files` (log the engine's file opens from process start), `[debug] app_data` – redirects the game's `%LOCALAPPDATA%`/`%APPDATA%`;
+(`enabled`, `log_level`, `[lua] unsafe`, `[debug] trace_files` (log the engine's file opens from process start), `[debug] app_data` – redirects the game's `%LOCALAPPDATA%`/`%APPDATA%`; `[debug] instance = "<id>"` – gives the engine's single-instance mutex `GenomeMutex` the name `GenomeMutex_<id>` so several test copies can run at once (see DEVELOPMENT.md "Parallel instances");
 `scripts/test-run.ps1` uses it to keep a test copy's savegames and `ConfigUser.xml` away from the real ones).

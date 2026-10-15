@@ -15,6 +15,8 @@ namespace spass {
 //   [debug]
 //   app_data  = ""          # redirect the game's %LOCALAPPDATA% and %APPDATA% (config, savegames, screenshots,
 //                           # sentry) to this directory: lets a test copy run without touching the user's data
+//   instance  = ""         # id of a parallel test instance: the engine's single-instance mutex "GenomeMutex" is renamed to
+//                           # "GenomeMutex_<id>" so several Risen.exe (separate test copies, each with its own app_data) can run at once
 //   trace_files = ""        # log every file the engine opens whose path contains this text, from process start
 //   trace      = ""         # opt-in trace channels, e.g. "template,balance,save,events" or "all" (see common/trace.h)
 //   trace_file = false      # also write the trace lines to <bin>/spass/trace.log
@@ -29,6 +31,7 @@ struct Config {
     std::string logLevel = "info";
     bool unsafeLua = false;
     std::string appData;
+    std::string instance;
     std::string traceFiles;
     std::string trace;
     bool traceFile = false;

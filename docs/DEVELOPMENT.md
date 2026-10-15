@@ -56,14 +56,15 @@ property sets through the entity's vtable. The engine's own log function is an e
 * **Unit tests** (no game): `build\RelWithDebInfo\spass_tests.exe` — string-file parser, mod discovery/order, Lua sandbox and events.
 * **Test copy**: never test in the real install. Make a copy of `bin\` next to junctions to the real `data\common` and `data\compiled`, with a private `data\ini` whose `ConfigLocal.xml`
   has `FullScreen="false"` (the game is always started windowed), and keep the stock `$(localappdata)/Risen/...` lines in its `mountlist_packed.ini`.
+  Further copies for parallel runs: see "Parallel instances" below.
   `data\extern` is a real directory of the copy, not a junction: `test-run.ps1` creates it with an **empty** `videos\logo.ini` (the file `PlayIntros` reads), so no intro video can ever
   add start-up time or block a run (the real install keeps its own `logo.ini`; its `.bik` files are renamed `.off`, so nothing plays there today either). The junction itself is
   removed with `rmdir`, the real install is never touched.
 * `scripts\test-run.ps1 -Mods <mod>[,<mod>] -Seconds 120 -Filter '<regex>'` deploys the build and the chosen mods into the copy, starts a new game
   (`-Start load` quick-loads, `-NoAutostart` stays in the menu), and prints the matching log lines. `config.toml [debug] app_data` (set by the script)
   keeps savegames and `ConfigUser.xml` inside the copy.
-* `scripts\smoke-test.ps1` runs every scenario (persistence, fetchquest, commands, branch, templates, balance, npcs, newtemplates; each ends itself, about 11 minutes in all, was 14+), prints a pass/fail table with timings and returns a
-  nonzero exit code on failure: `-List`, `-Scenario templates,npcs`, `-FailFast`, `-TotalSeconds` (time budget). Run it before committing changes to events, saving,
+* `scripts\smoke-test.ps1` runs every scenario (persistence, fetchquest, commands, branch, templates, balance, npcs, newtemplates; each ends itself, about 10.8 minutes in all one after the other, was 14+; `-Parallel 3` about 4.5 minutes), prints a pass/fail table with timings and returns a
+  nonzero exit code on failure: `-List`, `-Scenario templates,npcs`, `-FailFast`, `-TotalSeconds` (time budget), `-Parallel N` (N game instances at once, see "Parallel instances"). Run it before committing changes to events, saving,
   quests, dialogues or items. See "Testing and tracing" below.
 * Probe mods drive the game from `tick`: create a `mods/<name>` that logs what the engine reports, run it with `test-run.ps1`, read the log.
   `-Unsafe` lifts the Lua sandbox (to write fixture files), `-TraceFiles <text>` logs the engine's file opens from process start.
@@ -122,6 +123,34 @@ no clean-quit function was needed: `finish` ends the process itself (`TerminateP
 (`@{ Name; Param = @('phase=load'); Start = 'load'; Keep = $true }`): each phase is a `test-run.ps1 -WaitForResult -Param phase=... -Start load -Keep` run of the same mods, the first one leaves the quick save the others load; the mods switch on `risen.test.param("phase")`
 (`mods/newtemplates` + `newtemplates_driver`: `save`, `load`, `load_missing`, `load_again`, `load_late`, about 3.5 minutes in all). A phase of your own is run by hand like this:
 `.\scripts\test-run.ps1 -Mods a,b -WaitForResult -Seconds 150 -Scenario name -Param phase=load -Start load -Keep` (`-Keep` keeps the savegames; call it from PowerShell, a `-File` call passes `-Mods a,b` as one string).
+
+## Parallel instances (M4c)
+
+Several `Risen.exe` can run at the same time when each has its **own test copy** and its own id. The engine's single-instance guard is the named mutex `GenomeMutex`
+(`SharedBase.dll` `g_CreateMutex`: `CreateMutexA(NULL, TRUE, name)`, a second process gets `ERROR_ALREADY_EXISTS` (0xB7) and exits within a second, confirmed). `config.toml [debug] instance = "<id>"`
+(`src/game/instance_mutex.cpp`, hooks `CreateMutexA/W` and `OpenMutexA/W` before the engine runs) renames it to `GenomeMutex_<id>`. Nothing else is shared that matters: the packed archives open with
+read sharing (two games read the same `data\common` / `data\compiled` through junctions), Steam is not involved because `SteamAppId` is set (no restart, no dialog), and the savegames, `ConfigUser.xml`,
+`achievements.bin`, `.sentry-native` and `spass.log` live inside each copy (`[debug] app_data`, `bin\spass`). A parallel instance behaves exactly like a solo run (testdemo 37 s alone and two at once).
+
+* `test-run.ps1 -Instance <n>`: 1 is the main copy `B:\DevDrive\risen-test`, n >= 2 is `B:\DevDrive\risen-test<n>`, **created on first use** from the main copy (`robocopy` of `bin` without `spass`, 60 MB; `data\ini` copied;
+  `data\common` and `data\compiled` as junctions to the same targets as the main copy; the main copy's `ConfigUser.xml` as seed; `data\extern\videos` with the empty `logo.ini` as always). Delete the directory
+  (`Remove-Item -Recurse` after `rmdir` of the two junctions, or `cmd /c rmdir`) to drop a copy; they are rebuilt on demand. The script writes `instance = "<n>"`, places the window at an offset of 40 px per
+  instance, and **only kills the `Risen.exe` of its own copy** (matched by path; without `-Instance` it is the main copy only, other copies and the real install are never touched).
+* `smoke-test.ps1 -Parallel N`: a work queue over the instances 1..N; every scenario runs as a child `smoke-test.ps1 -Scenario x -Instance k` (own watchdog, own log), the longest first (`Est` in the scenario table), a free
+  instance takes the next one. The output of a passed scenario is one line, of a failed one the complete child output (`-VerboseChildren` prints all). Exit code and table as before plus the instance column; `-FailFast`
+  stops launching, a child that exceeds its limit plus 180 s is killed together with its game, and Ctrl-C leaves no game behind.
+* Measured on this machine (Ryzen 7 5700X3D 8c/16t, 64 GB, RX 7900 XTX, Dev Drive), all 8 scenarios, 678 s was the serial time before:
+
+| `-Parallel` | whole smoke | newtemplates (critical path) | result |
+|---|---|---|---|
+| 1 | 650 s | 204 s | 8/8 pass |
+| 2 | 355 s | 220 s | 8/8 pass |
+| 3 | 271 s | 249 s | 8/8 pass |
+| 4 | 235 s (twice) | 234 s | 8/8 pass |
+
+  The four games used ~4.2 GB RAM together and at most ~59 % GPU (3D engine); every check passed in every run, the per-scenario times grow by about 5-20 % at 3-4 instances. `newtemplates` (save, load,
+  load_missing, load_again, load_late) is a chain (`load_missing` saves, `load_again` loads that save), so it cannot be split further and bounds the run at ~3.5-4 minutes; beyond `-Parallel 4` nothing is gained.
+  **Recommended: `-Parallel 3`** (4.5 minutes, the machine stays usable) or 4 for the fastest run. Each game is a 1280x720 window cascaded by 40 px; windows may overlap.
 
 ## Startup time (M4b measurements)
 

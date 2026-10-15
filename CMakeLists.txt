@@ -61,6 +61,7 @@ add_library(spass_core STATIC
     src/game/file_trace.cpp
     src/game/folder_redirect.cpp
     src/game/hooks.cpp
+    src/game/instance_mutex.cpp
     src/game/lua_balance.cpp
     src/game/loc_files.cpp
     src/game/loc_overlay.cpp

@@ -25,6 +25,9 @@ param(
     [int]$Seconds = 90,
     [int]$Width = 1280,
     [int]$Height = 720,
+    # top-left corner of the window (parallel instances get their own offset)
+    [int]$WindowX = 100,
+    [int]$WindowY = 100,
     [switch]$KeepRunning,
     [switch]$NoResize,
     # extra Risen.exe command line switches (e.g. '-noaudio', '-res=640x360')
@@ -113,7 +116,7 @@ try {
             # async variants: a game thread that hangs must never block this script (the watchdog has to be able to kill it)
             [RisenWin]::ShowWindowAsync($p.MainWindowHandle, 9) | Out-Null       # SW_RESTORE
             # SWP_NOZORDER | SWP_SHOWWINDOW | SWP_ASYNCWINDOWPOS
-            [RisenWin]::SetWindowPos($p.MainWindowHandle, [IntPtr]::Zero, 100, 100, $Width, $Height, 0x0004 -bor 0x0040 -bor 0x4000) | Out-Null
+            [RisenWin]::SetWindowPos($p.MainWindowHandle, [IntPtr]::Zero, $WindowX, $WindowY, $Width, $Height, 0x0004 -bor 0x0040 -bor 0x4000) | Out-Null
             $resized = $true
         }
     }

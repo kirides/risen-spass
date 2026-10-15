@@ -27,18 +27,30 @@
 .PARAMETER FailFast  Stop after the first failing scenario.
 .PARAMETER TotalSeconds  Time budget of the whole run: a scenario that cannot start with at least 90 s left is skipped (and counts as a failure).
 .PARAMETER StallSeconds  Watchdog: kill the game after this long without a new log line.
+.PARAMETER Parallel  Number of game instances running at the same time (default 1 = one after the other in the main test copy). With N > 1
+                    the scenarios are a work queue over the test copies risen-test, risen-test2 .. risen-testN (created on first use); the
+                    wall time drops to roughly max(longest scenario, sum / N). See docs/DEVELOPMENT.md "Parallel instances".
+.PARAMETER Instance  Internal (used by -Parallel for its child runs): run in the test copy of this parallel instance (default 0 = main copy).
+.PARAMETER ResultsFile  Internal: write the result rows as JSON to this file.
+.PARAMETER VerboseChildren  With -Parallel: print the complete output of every scenario (default: only of the failed ones, one line for a passed one).
 #>
 param(
-    [string]$GameDir = 'B:\DevDrive\risen-test',
+    [string]$GameDir = '',
     [int]$Seconds = 200,
     [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
-    [int]$StallSeconds = 90
+    [int]$StallSeconds = 90,
+    [int]$Parallel = 1,
+    [int]$Instance = 0,
+    [string]$ResultsFile = '',
+    # -Parallel: print the complete output of every child, not only of the failed ones
+    [switch]$VerboseChildren
 )
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
+if ($GameDir -eq '') { $GameDir = if ($Instance -ge 2) { "B:\DevDrive\risen-test$Instance" } else { 'B:\DevDrive\risen-test' } }
 $log = Join-Path $GameDir 'bin\spass\spass.log'
 
 # ---- the regex checks of the scenarios that still assert on spass.log: description, regex that must match the log ----
@@ -88,15 +100,15 @@ $branch = @(
 
 # name -> definition. Kind 'log': fixed run time, regex checks. Kind 'result': a risen.test scenario that ends itself.
 $scenarios = [ordered]@{
-    persistence = @{ Title = 'persistence and events'; Kind = 'log'; Mods = @('persistdemo', 'eventlog'); Limit = $Seconds; Checks = $persistence }
-    fetchquest  = @{ Title = 'fetch quest example'; Kind = 'log'; Mods = @('fetchquest', 'fetchquest_driver'); Limit = $Seconds + 60; Checks = $fetch }
-    commands    = @{ Title = 'dialogue commands'; Kind = 'log'; Mods = @('dialogcmds'); Limit = $Seconds - 20; Checks = $cmds }
-    branch      = @{ Title = 'branching dialogue'; Kind = 'log'; Mods = @('dialogbranch'); Limit = $Seconds + 60; Checks = $branch }
-    templates   = @{ Title = 'template editing'; Kind = 'result'; Mods = @('templatepatch', 'templatepatch_driver'); Limit = 400 }
-    balance     = @{ Title = 'item balancing'; Kind = 'result'; Mods = @('balance_items', 'balance_driver'); Limit = 400 }
-    npcs        = @{ Title = 'NPC balancing'; Kind = 'result'; Mods = @('balance_npcs', 'balance_npcs_driver'); Limit = 500 }
+    persistence = @{ Est = 95; Title = 'persistence and events'; Kind = 'log'; Mods = @('persistdemo', 'eventlog'); Limit = $Seconds; Checks = $persistence }
+    fetchquest  = @{ Est = 90; Title = 'fetch quest example'; Kind = 'log'; Mods = @('fetchquest', 'fetchquest_driver'); Limit = $Seconds + 60; Checks = $fetch }
+    commands    = @{ Est = 60; Title = 'dialogue commands'; Kind = 'log'; Mods = @('dialogcmds'); Limit = $Seconds - 20; Checks = $cmds }
+    branch      = @{ Est = 80; Title = 'branching dialogue'; Kind = 'log'; Mods = @('dialogbranch'); Limit = $Seconds + 60; Checks = $branch }
+    templates   = @{ Est = 60; Title = 'template editing'; Kind = 'result'; Mods = @('templatepatch', 'templatepatch_driver'); Limit = 400 }
+    balance     = @{ Est = 60; Title = 'item balancing'; Kind = 'result'; Mods = @('balance_items', 'balance_driver'); Limit = 400 }
+    npcs        = @{ Est = 70; Title = 'NPC balancing'; Kind = 'result'; Mods = @('balance_npcs', 'balance_npcs_driver'); Limit = 500 }
     # one game process per phase (-Param phase=...): "save" plays the whole scenario in a new game and leaves a quick save, the others load it in a fresh process
-    newtemplates = @{ Title = 'new templates'; Kind = 'result'; Mods = @('newtemplates', 'newtemplates_driver'); Limit = 200
+    newtemplates = @{ Est = 210; Title = 'new templates'; Kind = 'result'; Mods = @('newtemplates', 'newtemplates_driver'); Limit = 200
                       Phases = @(
                           @{ Name = 'save'; Param = @('phase=save'); Start = 'new'; Keep = $false; Limit = 200 }
                           @{ Name = 'load'; Param = @('phase=load'); Start = 'load'; Keep = $true; Limit = 120 }
@@ -118,6 +130,79 @@ $selected = if ($Scenario -contains 'all') { @($scenarios.Keys) } else { @($scen
 $rows = @()
 $runStart = Get-Date
 $failures = 0
+
+# ---- -Parallel N: a work queue over N game instances (test copies 1..N, see docs/DEVELOPMENT.md "Parallel instances") ----
+# Every scenario runs as a child "smoke-test.ps1 -Scenario <name> -Instance <slot>" (its own process: own watchdog, own test copy,
+# own log); the longest scenarios start first and a slot that finishes picks the next one. The children's output is printed as one
+# block per scenario when it ends, the result rows come back through a JSON file.
+if ($Parallel -gt 1 -and $selected.Count -gt 1) {
+    $slots = [math]::Min($Parallel, $selected.Count)
+    $queue = [System.Collections.Generic.List[string]]::new()
+    foreach ($n in ($selected | Sort-Object { -[int]$scenarios[$_].Est })) { $queue.Add($n) }
+    $running = @{}
+    $tmp = Join-Path $env:TEMP "spass-smoke-$PID"
+    New-Item -ItemType Directory -Force $tmp | Out-Null
+    $pwsh = (Get-Process -Id $PID).Path
+    $stop = $false
+    Write-Host "running $($selected.Count) scenario(s) on $slots parallel game instance(s)"
+    try {
+        while ($queue.Count -gt 0 -or $running.Count -gt 0) {
+            foreach ($slot in 1..$slots) {
+                if ($running.ContainsKey($slot) -or $queue.Count -eq 0 -or $stop) { continue }
+                $left = $TotalSeconds - ((Get-Date) - $runStart).TotalSeconds
+                $name = $queue[0]; $queue.RemoveAt(0)
+                if ($left -lt 90) {
+                    Write-Host "== ${name}: SKIPPED, only $([int]$left) s of the $TotalSeconds s budget are left" -ForegroundColor Yellow
+                    $rows += [pscustomobject]@{ Scenario = $name; Slot = '-'; Result = 'SKIPPED'; Checks = '-'; Seconds = 0; Note = 'time budget used up' }
+                    $failures++
+                    continue
+                }
+                $s = $scenarios[$name]
+                $out = Join-Path $tmp "$name.out"; $json = Join-Path $tmp "$name.json"
+                Remove-Item $out, $json -ErrorAction SilentlyContinue
+                $childArgs = @('-NoProfile', '-File', $PSCommandPath, '-Scenario', $name, '-Instance', $slot, '-Seconds', $Seconds,
+                               '-StallSeconds', $StallSeconds, '-TotalSeconds', [int]$left, '-ResultsFile', $json)
+                $proc = Start-Process $pwsh -ArgumentList $childArgs -RedirectStandardOutput $out -WindowStyle Hidden -PassThru
+                $cap = $(if ($s.Phases) { ($s.Phases | ForEach-Object { $_.Limit } | Measure-Object -Sum).Sum } else { $s.Limit }) + 180
+                $running[$slot] = @{ Name = $name; Proc = $proc; Out = $out; Json = $json; T0 = Get-Date; Cap = $cap }
+                Write-Host ("[{0:N0} s] slot {1}: started {2}" -f ((Get-Date) - $runStart).TotalSeconds, $slot, $name)
+            }
+            Start-Sleep -Milliseconds 500
+            foreach ($slot in @($running.Keys)) {
+                $r = $running[$slot]
+                $age = ((Get-Date) - $r.T0).TotalSeconds
+                $hung = -not $r.Proc.HasExited -and $age -gt $r.Cap
+                if ($hung) { Stop-Process -Id $r.Proc.Id -Force -ErrorAction SilentlyContinue }
+                if (-not $r.Proc.HasExited -and -not $hung) { continue }
+                $r.Proc.WaitForExit(10000) | Out-Null
+                Write-Host ("[{0:N0} s] slot {1}: {2} ended" -f ((Get-Date) - $runStart).TotalSeconds, $slot, $r.Name)
+                $row = $null
+                if (-not $hung -and (Test-Path $r.Json)) { $row = @(Get-Content $r.Json -Raw | ConvertFrom-Json)[0] }
+                # a passed scenario is one line; a failed one prints everything
+                if ($row -and $row.Result -eq 'PASS' -and -not $VerboseChildren) { Write-Host ("  [{0} {1}] PASS {2} checks, {3} s" -f $slot, $r.Name, $row.Checks, $row.Seconds) }
+                elseif (Test-Path $r.Out) { Get-Content $r.Out | ForEach-Object { Write-Host "  [$slot $($r.Name)] $_" } }
+                if ($null -eq $row) {
+                    $row = [pscustomobject]@{ Scenario = $r.Name; Result = 'FAIL'; Checks = '-'; Seconds = [int]$age; Note = $(if ($hung) { "child did not end within $([int]$r.Cap) s, killed" } else { 'child ended without result rows' }) }
+                }
+                $row | Add-Member -NotePropertyName Slot -NotePropertyValue $slot -Force
+                $rows += $row
+                if ($row.Result -ne 'PASS') { $failures++; if ($FailFast) { $stop = $true; $queue.Clear() } }
+                $running.Remove($slot)
+            }
+        }
+    }
+    finally {
+        # never leave a child or a game behind (Ctrl-C, error): only the processes of the instances started here
+        foreach ($slot in @($running.Keys)) { Stop-Process -Id $running[$slot].Proc.Id -Force -ErrorAction SilentlyContinue }
+        foreach ($slot in 1..$slots) {
+            $copy = if ($slot -ge 2) { "B:\DevDrive\risen-test$slot\bin\" } else { 'B:\DevDrive\risen-test\bin\' }
+            Get-Process Risen -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path -like "$copy*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+        }
+        Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if ($stop) { Write-Host 'stopping after the first failure (-FailFast)' -ForegroundColor Yellow }
+    $selected = @()
+}
 foreach ($name in $selected) {
     $s = $scenarios[$name]
     $elapsed = ((Get-Date) - $runStart).TotalSeconds
@@ -139,7 +224,7 @@ foreach ($name in $selected) {
         $phLimit = [int][math]::Min($ph.Limit, [math]::Max($TotalSeconds - ((Get-Date) - $runStart).TotalSeconds, 60))
         $label = if ($ph.Name) { "$name/$($ph.Name)" } else { $name }
         if ($ph.Name) { Write-Host "-- phase $($ph.Name), limit $phLimit s" }
-        $testArgs = @{ GameDir = $GameDir; Mods = $s.Mods; Seconds = $phLimit; Filter = 'NOTHING'; StallSeconds = $StallSeconds }
+        $testArgs = @{ GameDir = $GameDir; Instance = $Instance; Mods = $s.Mods; Seconds = $phLimit; Filter = 'NOTHING'; StallSeconds = $StallSeconds }
         # every scenario ends itself (risen.test.finish writes the result file); the [log checks] ones additionally assert on the log below
         $testArgs.WaitForResult = $true; $testArgs.Scenario = $name
         if ($s.Kind -eq 'result') {
@@ -198,7 +283,9 @@ foreach ($name in $selected) {
 }
 
 Write-Host ''
-$rows | Format-Table Scenario, Result, Checks, Seconds, Note -AutoSize | Out-String -Width 200 | Write-Host
+if ($ResultsFile -ne '') { ConvertTo-Json -InputObject @($rows) -Depth 3 | Set-Content $ResultsFile -Encoding UTF8 }
+if ($Parallel -gt 1) { $rows | Format-Table Scenario, Slot, Result, Checks, Seconds, Note -AutoSize | Out-String -Width 200 | Write-Host }
+else { $rows | Format-Table Scenario, Result, Checks, Seconds, Note -AutoSize | Out-String -Width 200 | Write-Host }
 Write-Host ("total {0:N0} s, {1} scenario(s), {2} not passed" -f ((Get-Date) - $runStart).TotalSeconds, $rows.Count, $failures)
 if ($failures -gt 0) { exit 1 }
 Write-Host 'all scenarios passed'

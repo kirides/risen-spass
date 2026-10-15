@@ -12,6 +12,7 @@
 #include "game/bindings.h"
 #include "game/folder_redirect.h"
 #include "game/hooks.h"
+#include "game/instance_mutex.h"
 #include "game/lua_test.h"
 #include "game/symbols.h"
 #include "hook/hook_manager.h"
@@ -72,6 +73,10 @@ void onProcessAttach(HMODULE self) {
         }
         spdlog::error("required engine symbols missing ({}): wrong game version? Mod layer disabled.", list);
         return;
+    }
+
+    if (!g_config.instance.empty()) {
+        game::installInstanceMutex(g_config.instance);
     }
 
     if (!g_config.appData.empty()) {
