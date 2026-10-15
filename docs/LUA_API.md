@@ -27,7 +27,7 @@ Globals: `mod` (`id, name, version, author, dir`), `risen`.
 
 **Editor support:** [`types/risen.d.lua`](../types/risen.d.lua) describes every function below for LuaLS (completion, hover docs, type
 checks); see [`types/README.md`](../types/README.md).
-**Examples:** ten small, live-verified example mods (patching, balancing, materials/textures, custom NPC, fetch/kill quests, completion triggers, quest tracker, voiced dialogue) are indexed in [`EXAMPLES.md`](EXAMPLES.md).
+**Examples:** eleven small, live-verified example mods (patching, balancing, materials/textures, custom NPC, fetch/kill quests, completion triggers, quest tracker, voiced dialogue, spells) are indexed in [`EXAMPLES.md`](EXAMPLES.md).
 
 ## Events
 
@@ -259,7 +259,7 @@ risen.item.consume(player, "It_Po_Health_01")                   -- what using a 
   (`gESkill_Stat_STR`) are accepted too. An unknown name is an error that lists the valid ones.
 * **Modifier modes** (`risen.balance.modes()`): `add` (default; the shipped value of every item), `set`, `max`, `percent`. Amounts are integers (negative allowed).
 * **`items` settings**: `value`, `damage`, `requires`, `modifies`, `use_type`, `category`, `mana_cost` and `properties = { Set = { Property = value } }` (anything else, validated like `risen.template.patch`);
-  an unknown setting or template is an error listing the valid settings. More sections: `npcs`, `npc_groups` and `item_groups` (see "Balancing NPCs"); later features register theirs (`spells`, ...) with `risen.balance.register_section`.
+  an unknown setting or template is an error listing the valid settings. More sections: `npcs`, `npc_groups` and `item_groups` (see "Balancing NPCs"); `spells` and `new_spells` (see "Spells"); later features register theirs with `risen.balance.register_section`.
 * **`instances`**: `risen.balance.apply`/`install` write into the live entities of each template by default (world items; **existing entities keep their own copies**, RE.md §22);
   `set_requirements`/`set_modifiers` and `risen.template.patch` default to templates only. Values written into entities are saved with the game.
 * **Timing**: edits are runtime-only; `install` applies them on the first `tick` and on every `session.start`. In a savegame the world's items keep the *saved* values until a mod writes them again
@@ -353,7 +353,44 @@ entity:dependencies()                        -- the mesh/actor files the engine 
 * **A clone is a snapshot** of its base when it is created (later edits of the base do not reach it); creating again with the same base only re-applies the overrides. Existing entities keep their own values (`instances = true` writes them). The clone lives until the
   process ends; `remove` only gives the names back (refused while live entities of it exist) -- items already handed out keep working -- and `create` with the same base brings it back with the same ID.
 * **Timing**: items and NPC templates can be cloned from the first `tick` on, also while a world is loaded (a hook skips `gCNavigation_PS::OnPostCopy` during the copy: it crashed on templates once a world existed). The base is loaded on demand.
-* **Not covered**: new meshes/textures/icons (see the next section), spells, appearance parts of humans (heads are `eCBodyPart_PS` item templates `Hero_Head_*`, not part of the NPC template), multi templates (refused).
+* **Not covered**: new meshes/textures/icons (see the next section), appearance parts of humans (heads are `eCBodyPart_PS` item templates `Hero_Head_*`, not part of the NPC template), multi templates (refused).
+
+### Spells -- `risen.spell`, `risen.balance` sections `spells` and `new_spells` (see `mods/balance_spells`, `mods/example_spell`, [RE.md §29](RE.md), [SPELL_PROPERTIES.md](SPELL_PROPERTIES.md))
+There is no spell object: a spell is a group of **items** and scripts. **Projectile spells** (`Fireball`, `Frost`, `Missile`) are cast with a *crystal* (`It_Crystal_Fire`, ...) and shoot a *projectile template*
+(`It_Projectile_Fireball_S0`: damage, speed, radius); every other spell (`Light`, `Inferno`, `Skeleton`, the heals, ...) is a *rune* (permanent), *scroll* and *orb* (used up). Mana cost, requirement and "used up" live in the
+item's `gCCastInfo_PS`, the damage in the projectile. `risen.spell.names()` lists the 21 shipped spells, `risen.spell.get("Fireball")` shows the numbers the templates hold now.
+```lua
+-- modify the shipped spells (validated first, nothing is written when anything is wrong; relative *_mult settings never compound)
+risen.balance.install({
+    spells = {
+        Fireball = { mana_cost = 12, damage = 150 },                    -- crystal 8 -> 12 mana, projectile 100 -> 150 damage (a list sets one value per level: damage = { 100, 120, 150 })
+        Frost    = { damage_mult = 2, speed_mult = 1.5, requires = { Frost = 2 } },
+        Light    = { mana_cost = 7, scroll_mana_cost = 3 },              -- rune spells: rune, scroll and orb have their own costs
+        Skeleton = { mana_mult = 0.5 },                                  -- rune and scroll cost = shipped * 0.5 (an orb stays free)
+    },
+    new_spells = {                                                       -- new spells from the pieces of shipped ones (new item templates, savegame-safe IDs)
+        Spass_Fireball_Strong = { base = "Fireball", name = { English = "Strong Fireball", German = "Starker Feuerball" }, mana_cost = 24,
+                                  requires = { Fireball = 2 }, damage_mult = 2, forms = { "crystal", "scroll" } },
+        Spass_Skeleton_Cheap  = { base = "Skeleton", mana_cost = 15, requires = { Circle = 2 }, forms = { "rune", "scroll", "orb" }, scroll = { mana_cost = 7 } },
+    },
+})
+risen.spell.create("Spass_Frost_Heavy", { base = "Frost", damage = 90 })  -- the one-spell form (also enables the per-shot overrides for this mod); risen.spell.modify(name, settings) likewise
+```
+* **`spells` settings** (all optional, an unknown key lists the valid ones): `mana_cost`, `mana_mult` (crystal, rune and scroll; excludes `mana_cost`), `scroll_mana_cost`, `orb_mana_cost` (rune spells), `requires` (crystal/rune, e.g. `{ Fireball = 2 }` or `{ Circle = 3 }`),
+  `consume`, `properties` (any other property of the crystal/rune); projectile spells only: `damage` (number or one per projectile level; `damage_mult`), `damage_type` (`"Magic"`, `"Fire"`, `"Ice"`, ...), `speed`/`speed_mult` (`StartVelocity`),
+  `radius`/`radius_mult` (`SweepTestRadius`), `effect` (the flying effect), `projectile_properties`. A projectile setting on a rune spell (and a scroll/orb cost on a projectile spell) is an error.
+* **`new_spells` settings**: `base` (required: a name of `risen.spell.names()`), `forms` (projectile spells: `crystal`, `scroll`; rune spells: `rune`, `scroll`, `orb`; default the main form), the item settings of the main form (`name`, `description`, `icon`, `value`,
+  `mana_cost`, `requires`, `consume`, `properties`, `mana_mult`), per-form tables (`crystal`, `rune`, `scroll`, `orb` with the same item settings) and, for projectile spells, the projectile settings above. Template names: crystal/rune `<name>`, scroll `<name>_Scroll`, orb `<name>_Orb`
+  (clones made with `risen.template.create`: the deterministic ID makes savegames with them load again; create them on the first `tick`, like `install` does). A *scroll of a projectile spell* is the crystal used up by its cast (`consume`, no requirements, half the cost, a fifth of the value by default).
+* **What reaches the engine** (verified live with the player casting through the engine's own state scripts): the mana taken is exactly `ManaCost`; the projectile that is spawned carries `DamageAmount`; the engine's hit script takes `DamageAmount + 25 * Fireball skill - protection`
+  (Frost/Missile add 15 per level; see SPELL_PROPERTIES.md); crystals and scrolls are equipped into slot 11 (`item.equipped`), runes and scrolls of rune spells into slot 10 (inferred from the decompilation); `risen.item.can_use` is the engine's requirement check.
+* **Per-shot overrides.** The engine picks the projectile template per spell *type* (a crystal in the hand of a Fireball caster always shoots `It_Projectile_Fireball_S0`), so the projectile settings of a **new** projectile spell are written into the projectile *entity* of each of its shots
+  (`entity.spawned` of the projectile, its shooter's equipped crystal decides; relative `*_mult` are relative to what that projectile carries, i.e. including a `spells` edit). `risen.balance.install` with `new_spells` and `risen.spell.create` register the handler for the calling mod (`risen.spell.enable_overrides()`).
+  The same handler removes the **last scroll** of a projectile spell after its shot: the engine's `PSCastInfo::Consume` unequips only from the rune slot, so a scroll cast from the magic slot would keep one item forever.
+* **Natives**: `risen.spell.equipped(who [, slot])` (template in an equip slot, default 11), `can_cast(caster, item)` (the engine's `PSCastInfo::CanCast`), `consume(caster, item)` (`PSCastInfo::Consume`: takes the cost and, for scrolls of rune spells, one item), `discard(owner, item)`, `shooter(projectile)`, `overrides()`.
+* **Casting from a script** (what the tests do): `risen.item.equip(player, crystal)`, `player:set_state("PS_Magic")`, wait until `player:state() == "PS_MagicBall_Loop"` (about 4.5 s), then `player:set_state("PS_MagicBall_Shoot")` is one real shot (~1 s); the mana, the `entity.spawned` projectile and `entity.damaged` follow.
+* **Not covered / limits**: numbers that are constants in the game's scripts (heal amounts 50/100/150, Fireball area radius 100/200/300 and the +25 per Fireball level, the Protection/Berserker durations) are not template data -- they are listed in SPELL_PROPERTIES.md and can only be changed by overriding the script;
+  a projectile spell has no rune (the crystal is the only item the combat move accepts); an NPC shooter was not driven live (the same scripts, so the same numbers are inferred); the visual effect of a changed `effect`/`radius` was not looked at (screenshots are black); the *effect* of a rune spell (heal, summon) was not driven live, only its item numbers and the engine's cost accounting.
 
 ### New meshes, textures and icons — `risen.assets` (see `mods/newassets`, [RE.md §26](RE.md))
 A mod can bring its own **loose resource files** and use them for new items and creatures. The engine finds a resource by the bare, case-insensitive name of the *compiled* file in a cache of everything that is mounted

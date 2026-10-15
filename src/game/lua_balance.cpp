@@ -622,6 +622,7 @@ function b.install(spec, opts)
     if installed[spec] then return false end
     installed[spec] = true
     opts = opts or {}
+    if spec.new_spells ~= nil and api.spell and api.spell.enable_overrides then api.spell.enable_overrides() end   -- per-shot numbers of new projectile spells
     local with_instances = opts.instances ~= false
     local on_applied = opts.on_applied
     local log = api.log

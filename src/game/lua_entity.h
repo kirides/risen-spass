@@ -74,6 +74,13 @@ void addTemplateMethods(sol::usertype<LuaEntity>& ut);
 void installTemplateCreateHelpers(sol::state_view lua, sol::table risen);
 void bindTemplateCreate(sol::state_view lua, sol::table risen);
 
+// Registers risen.spell (natives: equipped, can_cast, consume, shooter; Lua: the catalogue, the `spells` / `new_spells` sections, risen.spell.create/modify).
+// Must run after bindTemplateCreate(). installSpellHelpers runs only the Lua part (the unit tests mock the natives); installSpellModApi adds the per-mod
+// part (the entity.spawned handler of per-shot overrides). (lua_spell.cpp)
+void bindSpell(sol::state_view lua, sol::table risen);
+void installSpellHelpers(sol::state_view lua, sol::table risen);
+void installSpellModApi(sol::state_view lua, sol::table api);
+
 // Registers the Quest usertype and risen.quest.new/get/define/add_log. Needs risen.quest (bindQuest), risen.dialog.
 void bindQuestObjects(sol::state_view lua, sol::table risen);
 

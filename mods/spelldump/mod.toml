@@ -1,0 +1,4 @@
+id = "spelldump"
+name = "Spell property dump"
+version = "1.0.0"
+description = "Logs the item templates, projectiles and NPC carriers that make up the spells (development aid; see docs/SPELL_PROPERTIES.md and tools/gen_spell_properties_doc.py)."

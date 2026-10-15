@@ -12,6 +12,8 @@
       newtemplates - new item/NPC templates (mods/newtemplates + newtemplates_driver); five runs: save, then four fresh-process loads
                      (templates created early / missing / early again / late)                                                [risen.test]
       newassets    - new meshes, textures and icons from loose files (mods/newassets); two runs: build (derive + play), use (fresh process, files mounted at startup)
+      spells       - spell balancing and new spells (mods/balance_spells): real casts through the engine's state scripts; two runs: save, then a fresh-process load
+      ex_spell     - example: edit Fireball/Light, a new Strong Fireball crystal and scroll (mods/example_spell)
       ex_voice     - spoken dialogue lines from ogg/wav/mp3 files (mods/example_voice); two runs: voice language English, then German
 
 .DESCRIPTION
@@ -39,7 +41,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -126,6 +128,13 @@ $scenarios = [ordered]@{
                                @{ Name = 'english'; Param = @('lang=English'); Start = 'new'; Keep = $false; Limit = 200 }
                                @{ Name = 'german'; Param = @('lang=German'); VoiceLanguage = 'German'; Start = 'new'; Keep = $false; Limit = 200 }
                            ) }
+    # spell balancing and new spells (M6): the player really casts (PS_Magic -> PS_MagicBall_Shoot); "save" plays the scenario and saves, "load" casts a saved scroll in a fresh process
+    spells      = @{ Est = 125; Title = 'spells (M6)'; Kind = 'result'; Mods = @('balance_spells'); Limit = 200
+                     Phases = @(
+                         @{ Name = 'save'; Param = @('phase=save'); Start = 'new'; Keep = $false; Limit = 200 }
+                         @{ Name = 'load'; Param = @('phase=load'); Start = 'load'; Keep = $true; Limit = 120 }
+                     ) }
+    ex_spell          = @{ Est = 60; Title = 'example: spells (edit, new crystal and scroll)'; Kind = 'result'; Mods = @('example_spell'); Limit = 300 }
     # one game process per phase (-Param phase=...): "save" plays the whole scenario in a new game and leaves a quick save, the others load it in a fresh process
     newtemplates = @{ Est = 210; Title = 'new templates'; Kind = 'result'; Mods = @('newtemplates', 'newtemplates_driver'); Limit = 200
                       Phases = @(

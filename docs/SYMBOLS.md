@@ -5,7 +5,7 @@ decorated export name (`GetProcAddress`), so nothing depends on addresses; the R
 see `risen.engine.build()`). **Required** symbols must resolve or the layer stays off; for an optional one only its own feature is
 disabled (`risen.engine.missing()` lists what failed). To add one: see the developer guide in `docs/DEVELOPMENT.md`.
 
-311 symbols, 153 required.
+315 symbols, 153 required.
 
 ## Engine.dll
 
@@ -220,6 +220,8 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 
 | Field | Function | RVA | Required |
 |---|---|---|---|
+| `cast_can_cast` | `bool PSCastInfo::CanCast(class Entity &)const ` | 0x219760 | no |
+| `cast_consume` | `bool PSCastInfo::Consume(class Entity &,int)` | 0x2194f0 | no |
 | `dialog_start` | `bool InfoSystem::StartInfoSystem(class Entity const &,class Entity const &)` | 0x215280 | yes |
 | `ent_distance_to` | `float Entity::GetDistanceTo(class Entity const &)const ` | 0x20cd70 | yes |
 | `ent_enable_rendering` | `void Entity::EnableRendering(bool)` | 0x209ce0 | yes |
@@ -253,6 +255,7 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `inv_create_items` | `int PSInventory::CreateItems(class Template const &,int,enum gEStackType)` | 0x223820 | yes |
 | `inv_delete_items` | `bool PSInventory::DeleteItems(int,int)` | 0x223fe0 | no |
 | `inv_equip_stack` | `bool PSInventory::EquipStack(int)` | 0x2245f0 | yes |
+| `inv_find_slot` | `int PSInventory::FindStackIndex(enum gEEquipSlot)const ` | 0x223c30 | no |
 | `inv_find_stack` | `int PSInventory::FindStackIndex(class Template const &,int,bool)const ` | 0x223960 | no |
 | `inv_item_amount` | `int PSInventory::GetItemAmount(class Template const &)const ` | 0x2258f0 | yes |
 | `inv_money` | `float PSInventory::GetMoneyAmount(void)const ` | 0x223460 | yes |
@@ -263,6 +266,7 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `npc_get_guild` | `PSNpc::PropertyGuild::operator enum gEGuild const (void)const ` | 0x22b750 | yes |
 | `npc_set_group` | `class PSNpc::PropertyGroup & PSNpc::PropertyGroup::operator=(class bCString const &)` | 0x22b640 | yes |
 | `npc_set_guild` | `class PSNpc::PropertyGuild & PSNpc::PropertyGuild::operator=(enum gEGuild const &)` | 0x22b6f0 | yes |
+| `proj_get_shooter` | `class Entity PSProjectile::GetShooter(void)const ` | 0x2309e0 | no |
 | `psinv_drop_stack` | `class Entity PSInventory::DropStack(int,class bCMatrix const &)` | 0x225410 | no |
 | `psinv_insert_stack` | `int PSInventory::InsertStack(class Entity const &)` | 0x225550 | no |
 | `psinv_loot` | `bool PSInventory::LootSelections(class Entity &)` | 0x225ce0 | no |

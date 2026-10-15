@@ -3,7 +3,7 @@
 
     python tools/check_luadefs.py          # exit code 1 and a list of differences when out of sync
 
-Sources scanned (src/game/*.cpp, src/game/npc_balance_lua.h, src/game/template_create_lua.h, src/lua/runtime.cpp):
+Sources scanned (src/game/*.cpp, src/game/npc_balance_lua.h, src/game/template_create_lua.h, src/game/spell_lua.h, src/lua/runtime.cpp):
   * `<table>.set_function("fn", ...)` where the table is published with `risen["ns"] = <table>;`
   * Lua helper chunks:  `function risen.ns.fn(`
   * usertype members:   `new_usertype<LuaX>("Type", ..., "member", ...)` and `ut["member"] = ...`
@@ -23,7 +23,7 @@ members = {}    # "Type.member" -> source
 
 USERTYPES = {'LuaEntity': 'Entity', 'LuaTemplate': 'Template', 'LuaQuest': 'Quest', 'LuaInfo': 'Info', 'ScriptContext': 'ScriptContext'}
 
-for path in sorted(list((root / 'src').rglob('*.cpp')) + [root / 'src/game/npc_balance_lua.h', root / 'src/game/template_create_lua.h']):   # the .h files hold the Lua chunks of NPC balancing and template creation
+for path in sorted(list((root / 'src').rglob('*.cpp')) + [root / 'src/game/npc_balance_lua.h', root / 'src/game/template_create_lua.h', root / 'src/game/spell_lua.h']):   # the .h files hold the Lua chunks of NPC balancing, template creation and spells
     text = path.read_text(encoding='utf-8', errors='replace')
     rel = path.relative_to(root).as_posix()
     # table variables published in `risen`
@@ -92,6 +92,9 @@ for fn in re.findall(r'^function t\.(\w+)\(', (root / 'src/game/lua_test.cpp').r
 # per-mod risen.balance.install (a Lua chunk in lua_balance.cpp that defines `function b.<name>(` on the mod's balance table)
 for fn in re.findall(r'^function b\.(\w+)\(', (root / 'src/game/lua_balance.cpp').read_text(encoding='utf-8'), flags=re.M):
     bound[f'balance.{fn}'] = 'src/game/lua_balance.cpp'
+# per-mod risen.spell.enable_overrides / create (the chunk in spell_lua.h that defines `function s.<name>(` on the mod's spell table)
+for fn in re.findall(r'^function s\.(\w+)\(', (root / 'src/game/spell_lua.h').read_text(encoding='utf-8'), flags=re.M):
+    bound[f'spell.{fn}'] = 'src/game/spell_lua.h'
 # spec-less sol properties of usertypes use `"name", sol::property(` : include them
 for path in (root / 'src/game/script_bridge.cpp', root / 'src/game/lua_entity.cpp'):
     text = path.read_text(encoding='utf-8')

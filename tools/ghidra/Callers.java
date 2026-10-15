@@ -43,7 +43,13 @@ public class Callers extends GhidraScript {
                     Reference r = ri.next();
                     Function c = currentProgram.getFunctionManager().getFunctionContaining(r.getFromAddress());
                     String where = c != null ? c.getName(true) + " (0x" + Long.toHexString(c.getEntryPoint().subtract(currentProgram.getImageBase())) + ")" : "<no function>";
-                    out.println("   " + r.getReferenceType() + " from 0x" + Long.toHexString(r.getFromAddress().subtract(currentProgram.getImageBase())) + "  " + where);
+                    String from;
+                    try {
+                        from = "0x" + Long.toHexString(r.getFromAddress().subtract(currentProgram.getImageBase()));
+                    } catch (Exception ex) {
+                        from = r.getFromAddress().toString();
+                    }
+                    out.println("   " + r.getReferenceType() + " from " + from + "  " + where);
                 }
             }
         }

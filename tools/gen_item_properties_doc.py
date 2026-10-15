@@ -126,7 +126,7 @@ out += ['## Where the numbers live', '',
         '| armor / shield / ring / amulet effects | `gCItem_PS.ModifySkills` array (`modifies`) | `Prot*` skills for protection, attributes (`Strength`, `Dexterity`, `MaxHitPoints`, ...) for rings; applied on equip, subtracted on unequip |',
         '| potion / food effects | `gCItem_PS.ModifySkills` array | `HitPoints`/`ManaPoints` = instant heal/mana, `MaxHitPoints`/`MaxManaPoints` = permanent maximum, `Strength`, `Experience`; applied when the item is used up |',
         '| use type / category | `gCItem_PS.UseType`, `Category`, `HoldType` | `UseType` decides the equip slot and which script handles it |',
-        '| spell cost of runes/scrolls | `gCCastInfo_PS.ManaCost` (`mana_cost`) | plus `CastItem`, `CastAmmo`, `CastFail`, `ConsumeItem` |',
+        '| spell cost of runes/scrolls | `gCCastInfo_PS.ManaCost` (`mana_cost`) | plus `CastItem`, `CastAmmo`, `CastFail`, `ConsumeItem`; whole spells (projectiles, `spells` / `new_spells`): [`SPELL_PROPERTIES.md`](SPELL_PROPERTIES.md) |',
         '| recipe ingredients / skills | `gCRecipe_PS.CraftIngredients`, `RequiredSkills`, `ResultItem` | the arrays of recipes are not editable yet |',
         '', 'There is no durability and no weight in this game: no property for either exists on any item.', '']
 

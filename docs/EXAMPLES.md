@@ -1,6 +1,6 @@
 # Example mods
 
-Ten small, self-contained mods under `mods/example_*`: each is the simplest realistic form of one thing a modder wants, written to be copied
+Eleven small, self-contained mods under `mods/example_*`: each is the simplest realistic form of one thing a modder wants, written to be copied
 (`main.lua` with a header that says what you learn, `mod.toml`, and a `test_*.lua` that is loaded **only** in a test run). Every one of them has a
 `risen.test` scenario that was **run live in the game**; nothing in this table is claimed that was not. The scenarios are registered in
 `scripts\smoke-test.ps1` (`ex_*`), so the regression suite covers them.
@@ -9,7 +9,7 @@ Run one (about a minute; use your own test copy, never the real install, always 
 
 ```powershell
 .\scripts\test-run.ps1 -Instance 2 -Mods example_kill_quest -WaitForResult -Seconds 300 -Scenario example_kill_quest -ShowChecks
-.\scripts\smoke-test.ps1 -Scenario ex_template_patch,ex_balance,ex_custom_npc,ex_fetch_turnin,ex_fetch_pickup,ex_kill_quest,ex_quest_rewards,ex_quest_tracker,ex_material,ex_voice -Parallel 3
+.\scripts\smoke-test.ps1 -Scenario ex_template_patch,ex_balance,ex_custom_npc,ex_fetch_turnin,ex_fetch_pickup,ex_kill_quest,ex_quest_rewards,ex_quest_tracker,ex_material,ex_voice,ex_spell -Parallel 3
 ```
 
 ## Index
@@ -26,6 +26,7 @@ Run one (about a minute; use your own test copy, never the real install, always 
 | 7 | `example_quest_rewards` | what happens when a quest completes: gold, a spawned guard, a game variable, an unlocked option; **idempotent after save/load** | `quest.status_changed`, `risen.save`, `risen.gamevar`, `risen.world.quick_save/quick_load`, `condition = "Success"` | `ex_quest_rewards`, 100 s | trigger ran once, gold paid once across a real quick save + quick load, guard respawned at the same spot, variable and unlocked option survive (17 checks) |
 | 8 | `example_quest_tracker` | one reusable `tracker.lua` completing quests by **dialogue** (`info.finished`), by **items** (`inventory.changed`) and by **kills** (`entity.died`), progress in `risen.save`, rewards on completion | `info.finished`, `inventory.changed`, `entity.died` | `ex_quest_tracker`, 90 s | all three completion paths, other templates ignored, repeated death counted once, rewards (15 checks) |
 | 9 | `example_voice` | an NPC whose dialogue lines are **spoken** from audio files of the mod: ogg, wav and mp3, one file per language (voice language of the game), subtitles per language, a sound made by Lua code, a sound-only `SaySound` line, a bark | `risen.dialog.create` (`sound`, `text` per language), `risen.voice.load_dir/set/say/speaking/language`, `risen.assets.import_sound/sound` | `ex_voice` (English, then German voice language: two processes), 140 s | the engine asked for the line's text id and took the variant of the voice language; FMOD created ogg/mp3/wav sounds; an option with a 0.4 s voice took 53 frames instead of 467; speaking state; refusal of bad files; a shipped NPC line shadowed by a loose sound (22 checks per language). The user heard the tones. **Not** lip sync (no `._xmot` for custom lines) |
+| 10 | `example_spell` | edit shipped spells (Fireball mana cost and damage, Light's rune and scroll cost) and add a **Strong Fireball** (double damage, double cost, needs Fireball 2) as a crystal and a scroll that is used up | `risen.balance.install` (`spells`, `new_spells`), `risen.spell.get/equipped/consume`, `risen.item.can_use` | `ex_spell`, 55 s | the player really casts (`PS_Magic` -> `PS_MagicBall_Shoot`): mana taken 10 / 20 / 10, projectile damage 140 / 280 / 280, the engine's hit script takes `damage + 25 * Fireball - protection` (191 / 331), the last scroll is gone, the edited rune cost (9 checks). **Not** the look of the fireball, NPC casters |
 
 Timings are wall-clock on the development machine (engine start ~30 s of it). Each scenario ends itself the moment its checks are done.
 
@@ -66,6 +67,9 @@ hit point maximum before the hit points (`risen.npc.spawn` options do it for you
 `condition = "Running"|"Success"|... , quest = Q` is the engine's own switch: offer the hand-in only while the quest runs, unlock follow-ups after it succeeded - no code.
 A quest-bound option makes the engine append the speakers' labels to the quest log, so the log grows by more than your own `add_log` lines. A quest-state condition on a quest
 that does not exist yet blocks the game with a message box (`risen.dialog.create` refuses it). `Entity:position()` returns `nil`s without a world: guard `x, y, z` before arithmetic.
+
+**Spells.** A spell is a group of items: a crystal (Fireball, Frost, Missile) or a rune / scroll / orb (everything else) holds mana cost, requirement and "used up"; the damage lives in the projectile. `spells = { Fireball = { mana_cost = 10, damage = 140 } }` edits a shipped spell, `new_spells = { My_Spell = { base = "Fireball", damage_mult = 2, forms = { "crystal", "scroll" } } }` builds a new one;
+both go through `risen.balance.install` (first `tick` + every `session.start`). To test a spell, cast it for real: `risen.item.equip(player, crystal)`, `player:set_state("PS_Magic")`, wait for `player:state() == "PS_MagicBall_Loop"`, then `player:set_state("PS_MagicBall_Shoot")`: the mana and the projectile are the engine's own (`test_spell.lua`). Numbers fixed in the game's scripts (heals, the Fireball area, +25 per skill level) are in `docs/SPELL_PROPERTIES.md`.
 
 **Voiced lines.** Put the audio next to the dialogue and name it by text id: `voice/<language>/<option name>_<line number>.<ogg|wav|mp3>`, `risen.voice.load_dir("voice")` before `risen.dialog.create` (or `sound = "..."` / `sound = { en = ..., de = ... }` on the line;
 `text = { default = ..., de = ... }` for the subtitle). The game's voice language picks the variant (`default`, then English, when it is missing); register on `load.before` and `session.start` like dialogues. The layer compiles the files itself (no tool), refuses a bad one

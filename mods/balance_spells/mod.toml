@@ -1,0 +1,6 @@
+id          = "balance_spells"
+name        = "Spell balancing demo"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Edits the shipped spells and builds new ones with risen.balance (spells / new_spells sections) and verifies them in the engine's own cast path (docs/RE.md section 29)."
+main        = "main.lua"

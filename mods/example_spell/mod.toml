@@ -1,0 +1,6 @@
+id          = "example_spell"
+name        = "Example: modify spells and add a new one"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Edits the shipped Fireball (mana cost, damage) and Light, and adds a Strong Fireball as crystal and scroll with risen.balance spells / new_spells. See docs/EXAMPLES.md."
+main        = "main.lua"

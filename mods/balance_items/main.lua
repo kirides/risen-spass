@@ -184,10 +184,10 @@ risen.on("tick", function()
     L("bad spec:", rep == nil, why)
     T.expect("a bad skill name is refused with the list", rep == nil and why ~= nil
         and why:find("items.It_1H_Sword: requires: unknown skill 'Strenght' (valid: Strength, Dexterity", 1, true) ~= nil, why)
-    local rep2, why2 = risen.balance.apply({ items = { It_Nope = { value = 1 } }, spells = {} })
+    local rep2, why2 = risen.balance.apply({ items = { It_Nope = { value = 1 } }, no_such_section = {} })
     L("bad spec 2:", rep2 == nil, why2)
     T.expect("an unknown template and section are refused", rep2 == nil and why2 ~= nil
-        and why2:find("items.It_Nope: unknown template .*unknown section 'spells'") ~= nil, why2)
+        and why2:find("items.It_Nope: unknown template .*unknown section 'no_such_section'") ~= nil, why2)
     local value_after = risen.template.get("It_1H_Sword"):get_property("gCItem_PS", "GoldValue")
     L("sword value after the rejected specs", value_after)
     T.eq("a rejected spec writes nothing", tostring(value_after), "120")

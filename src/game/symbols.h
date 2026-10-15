@@ -266,6 +266,11 @@
     X(module_find_by_class, L"Engine.dll", "?FindModule@eCModuleAdmin@@QEBAPEAVeCEngineComponentBase@@AEBVbCString@@@Z", void* (*)(const void* self, const void* className), false) \
     X(scene_ctx_count, L"Engine.dll", "?GetDynamicEntityContextCount@eCSceneAdmin@@QEBAHXZ", int (*)(const void* self), false) \
     X(inv_template_item, L"Script.dll", "?GetTemplateItem@PSInventory@@QEBA?AVEntity@@H@Z", void* (*)(const void* self, void* ret, int stack), false) \
+    /* ---- spells: the cast accounting (PSCastInfo), the stack in an equip slot, the shooter of a projectile (docs/RE.md section 29) ---- */ \
+    X(inv_find_slot, L"Script.dll", "?FindStackIndex@PSInventory@@QEBAHW4gEEquipSlot@@@Z", int (*)(const void* self, int slot), false) \
+    X(proj_get_shooter, L"Script.dll", "?GetShooter@PSProjectile@@QEBA?AVEntity@@XZ", void* (*)(const void* self, void* ret), false) \
+    X(cast_can_cast, L"Script.dll", "?CanCast@PSCastInfo@@QEBA_NAEAVEntity@@@Z", bool (*)(const void* self, const void* caster), false) \
+    X(cast_consume, L"Script.dll", "?Consume@PSCastInfo@@QEAA_NAEAVEntity@@H@Z", bool (*)(void* self, const void* caster, int stack), false) \
     X(tple_patch_entity, L"Engine.dll", "?PatchEntity@eCTemplateEntity@@QEBA?AW4bEResult@@PEAVeCEntity@@_N1@Z", int (*)(const void* self, void* entity, bool replaceAll, bool arg), false) \
     /* ---- item skill arrays: gCSkillValue (requirements) / gCModifySkill (modifiers), docs/RE.md section 23 ---- */ \
     X(skillvalue_ctor, L"Game.dll", "??0gCSkillValue@@QEAA@XZ", void* (*)(void* self), false) \

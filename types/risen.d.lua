@@ -751,6 +751,8 @@ local balanceApi = {}
 ---@field item_groups? BalanceItemGroup[] `{ { group = "Items/Potions", value_mult = 0.5 } }`
 ---@field new_items? table<string, TemplateOverrides> New item templates: `{ My_Sword = { base = "It_1H_Sword", value = 900, name = "Flame Tongue" } }` (see `risen.template.create`).
 ---@field new_npcs? table<string, TemplateOverrides> New NPC/monster templates: `{ My_Wolf = { base = "Wolf", hp_max = 500, name = "Dire Wolf" } }`; `loot` may name items of `new_items`.
+---@field spells? table<string, SpellSettings> Edits of the shipped spells: `{ Fireball = { mana_cost = 12, damage = 150 }, Light = { mana_cost = 7 } }` (see `risen.spell.names`, docs/SPELL_PROPERTIES.md).
+---@field new_spells? table<string, NewSpell> New spells made of the pieces of shipped ones: `{ Spass_Fireball_Strong = { base = "Fireball", mana_cost = 24, damage_mult = 2, forms = { "crystal", "scroll" } } }`.
 ---@field templates? table<string, TemplateOverrides> Like `new_items` and `new_npcs` for either kind (and other templates: only `name`, `mesh`, `properties`, ...).
 
 ---@class BalanceOptions
@@ -788,13 +790,13 @@ function balanceApi.apply(spec, opts) end
 ---@return boolean installed `false` when this spec table was installed before.
 function balanceApi.install(spec, opts) end
 
----Registers a handler for another section of the spec (later milestones add `npcs`, `spells`). `handler(data, opts)` returns
+---Registers a handler for another section of the spec (the shipped sections `npcs`, `spells`, ... are registered this way). `handler(data, opts)` returns
 ---`jobs, problems`: validated jobs `{ label = string, run = function(opts) -> ok, err, touched end }` and a list of problem strings.
 ---@param name string
 ---@param handler fun(data: any, opts: BalanceOptions): table[], string[]
 function balanceApi.register_section(name, handler) end
 
----Names of the registered sections (`{ "item_groups", "items", "new_items", "new_npcs", "npc_groups", "npcs", "templates" }`).
+---Names of the registered sections (`{ "item_groups", "items", "new_items", "new_npcs", "new_spells", "npc_groups", "npcs", "spells", "templates" }`).
 ---@return string[]
 function balanceApi.section_names() end
 
@@ -1017,6 +1019,164 @@ function npcApi.template_give(name, item, count) end
 ---@return integer|nil removed
 ---@return string|nil reason
 function npcApi.template_take(name, item, count) end
+
+---------------------------------------------------------------------------------------------------------------------
+-- Spells (docs/RE.md section 29, docs/SPELL_PROPERTIES.md)
+---------------------------------------------------------------------------------------------------------------------
+
+---One entry of the `spells` section: edits a shipped spell. The settings of an item apply to its crystal (Fireball, Frost, Missile) or rune; scroll and orb costs have
+---their own keys. Projectile settings (`damage` ... `projectile_properties`) only exist for Fireball, Frost and Missile and change the projectile templates
+---(`It_Projectile_Fireball_S0..S2`, ...); `*_mult` settings are relative to the shipped values (applying twice never compounds).
+---@class SpellSettings
+---@field mana_cost? integer `gCCastInfo_PS.ManaCost` of the crystal / rune (what the engine's cast takes from the caster's mana).
+---@field mana_mult? number Relative: crystal, rune and scroll cost = shipped * factor (an orb stays free). Excludes `mana_cost`.
+---@field scroll_mana_cost? integer Cost of the scroll (rune spells only).
+---@field orb_mana_cost? integer Cost of the orb (rune spells only).
+---@field requires? ItemRequirements Equip requirement of the crystal / rune, e.g. `{ Fireball = 2 }` or `{ Circle = 3 }`.
+---@field consume? boolean `gCCastInfo_PS.ConsumeItem`: the item is used up by a cast.
+---@field properties? TemplateEdits Any other property of the crystal / rune items (`{ gCItem_PS = { GoldValue = 900 } }`).
+---@field damage? integer|integer[] `gCDamage_PS.DamageAmount` of the projectiles, one number for all levels or one per projectile level (Fireball and Frost have three, Missile one). A hit takes `damage + 25 * Fireball skill - protection` (see docs/SPELL_PROPERTIES.md).
+---@field damage_mult? number Relative damage.
+---@field damage_type? string `gCDamage_PS.DamageType`: `"Magic"`, `"Fire"`, `"Ice"`, `"Blunt"`, `"Edge"`, `"Point"`, `"Physics"`, `"None"` (picks the protection skill that reduces the hit).
+---@field speed? number `gCProjectile2_PS.StartVelocity`.
+---@field speed_mult? number
+---@field radius? number `gCProjectile2_PS.SweepTestRadius`.
+---@field radius_mult? number
+---@field effect? string `gCEffect_PS.Effect` of the projectile (the flying effect, e.g. `"eff_projectile_Frostball_01"`).
+---@field projectile_properties? TemplateEdits Any other property of the projectile templates.
+
+---One item form of a new spell: the settings of that item. `name`/`description` are label texts (a string or `{ English = "...", German = "..." }`).
+---@class NewSpellItem
+---@field name? string|table<string,string>
+---@field description? string|table<string,string>
+---@field icon? string Inventory icon (`gCItem_PS.IconImage`).
+---@field value? integer Gold value.
+---@field mana_cost? integer
+---@field requires? ItemRequirements
+---@field consume? boolean
+---@field properties? TemplateEdits
+
+---One entry of the `new_spells` section / the argument of `risen.spell.create`: a new spell built from the pieces of the shipped spell `base`. Every form is a new item
+---template (`risen.template.create`, deterministic ID: savegame-safe): crystal = `<name>`, rune = `<name>`, scroll = `<name>_Scroll`, orb = `<name>_Orb`. The item keys
+---(`name` ... `properties`) apply to the main form (crystal / rune) and `mana_mult` to every form; `crystal`, `rune`, `scroll`, `orb` tables override single forms. The
+---projectile keys of a Fireball/Frost/Missile spell are applied to the projectile of **every shot** of these items (the engine picks the projectile per spell type, not per
+---crystal), relative to the projectile's current values.
+---@class NewSpell: SpellSettings
+---@field base string The shipped spell: `risen.spell.names()`.
+---@field forms? string[] `{ "crystal", "scroll" }` for Fireball/Frost/Missile (default `{ "crystal" }`), `{ "rune", "scroll", "orb" }` for the rune spells (default `{ "rune" }`).
+---@field name? string|table<string,string>
+---@field description? string|table<string,string>
+---@field icon? string
+---@field value? integer
+---@field crystal? NewSpellItem
+---@field rune? NewSpellItem
+---@field scroll? NewSpellItem Scroll of a projectile spell: the crystal that is used up (`consume`), no requirements, half the cost by default.
+---@field orb? NewSpellItem
+
+---What the catalogue knows about a spell.
+---@class SpellInfo
+---@field name string
+---@field kind string `"projectile"` (Fireball, Frost, Missile: cast with a crystal) or `"rune"` (rune, scroll and orb items).
+---@field skill? string The magic skill of a projectile spell (`Fireball`, `Frost`, `Missile`).
+---@field items table<string,string> Item templates by form: `crystal` or `rune`, `scroll`, `orb`.
+---@field projectiles string[] The projectile templates the engine spawns (empty for rune spells).
+
+---The numbers of a spell as the templates hold them now.
+---@class SpellNumbers
+---@field name string
+---@field kind string
+---@field items table<string, { template: string, mana_cost: number|nil, consume: boolean, requires: ItemRequirements, value: number|nil }>
+---@field projectiles { template: string, damage: number|nil, damage_type: string|nil, speed: number|nil, radius: number|nil, effect: string|nil }[]
+
+---@class RisenSpellApi
+local spellApi = {}
+
+---Equip slot of runes and scrolls (UseType Cast).
+---@type integer
+spellApi.SLOT_CAST = 10
+
+---Equip slot of the crystals (and of scrolls of projectile spells).
+---@type integer
+spellApi.SLOT_MAGIC = 11
+
+---The shipped spells: the projectile spells `Fireball`, `Frost`, `Missile` and the rune spells `Beast`, `Berserker`, `BlueBarrier`, `EnhancedHeal`, `Illusion`, `Inferno`, `Joke`,
+---`Levitate`, `Light`, `MediumHeal`, `MinorHeal`, `Nautilus`, `OpenLock`, `Protection`, `RedBarrier`, `Skeleton`, `Speed`, `Telekinesis`. Sorted.
+---@return string[]
+function spellApi.names() end
+
+---The item and projectile templates of a spell (docs/SPELL_PROPERTIES.md).
+---@param name string
+---@return SpellInfo|nil
+---@return string|nil reason The valid names when the spell is unknown.
+function spellApi.info(name) end
+
+---Mana cost, requirements, consume flag and value of every item of a spell and the numbers of its projectiles, read from the templates (so a `spells` edit shows).
+---@param name string
+---@return SpellNumbers|nil
+---@return string|nil reason
+function spellApi.get(name) end
+
+---Edits one shipped spell: `risen.balance.apply { spells = { [name] = settings } }` (validated first, nothing is written on a problem). Templates only on the first
+---`tick`; use `risen.balance.install` to apply it on every `session.start` too.
+---@param name string
+---@param settings SpellSettings
+---@param opts? BalanceOptions
+---@return BalanceReport|nil report
+---@return string|nil reason
+---@return string[]|nil problems
+function spellApi.modify(name, settings, opts) end
+
+---Creates one new spell (the `new_spells` section for a single entry) and enables its per-shot overrides for the calling mod. Same timing rules as `risen.template.create`
+---(first `tick` at the earliest, every process again).
+---@param name string Name of the crystal / rune template (letters, digits, `_`).
+---@param spec NewSpell
+---@param opts? BalanceOptions
+---@return BalanceReport|nil report
+---@return string|nil reason
+---@return string[]|nil problems
+function spellApi.create(name, spec, opts) end
+
+---The registered per-shot overrides of the new projectile spells: `{ [item template] = { spell, base, projectiles, settings, scroll } }`.
+---@return table<string, table>
+function spellApi.overrides() end
+
+---Registers this mod's handlers for new projectile spells: `entity.spawned` (writes the per-shot numbers into the projectile of a shot) and `tick` (takes the last scroll of
+---a projectile spell away once its shot is over: the engine would keep it). `risen.spell.create` and `risen.balance.install` for a spec with `new_spells` call it for you.
+---@return boolean enabled `false` when it was enabled before.
+function spellApi.enable_overrides() end
+
+---The template name of the item in an equip slot of a character (`nil` when empty): slot 11 (default, `risen.spell.SLOT_MAGIC`) holds the crystal or fireball/frost/missile scroll,
+---slot 10 (`SLOT_CAST`) the rune or scroll of a rune spell.
+---@param who Entity
+---@param slot? integer
+---@return string|nil template
+function spellApi.equipped(who, slot) end
+
+---The engine's own mana check for casting with `item` (a template name; `PSCastInfo::CanCast`): its `ManaCost` is at most the caster's total mana.
+---@param caster Entity
+---@param item string
+---@return boolean|nil can
+---@return string|nil reason
+function spellApi.can_cast(caster, item) end
+
+---What the cast scripts do when a spell is cast (`PSCastInfo::Consume`): takes the item's `ManaCost` from the caster's base mana and, when `ConsumeItem` is set, uses up one
+---item of the stack (a rune or scroll of Cast type; the last item of a scroll cast from the magic slot stays, see `discard`). The caster has to carry the item.
+---@param caster Entity
+---@param item string
+---@return boolean|nil ok
+---@return string|nil reason
+function spellApi.consume(caster, item) end
+
+---Deletes the whole stack of `item` from an inventory (`gCInventory_PS::DeleteStack`), also a stack the engine emptied but left behind (`risen.item.take` cannot remove that).
+---@param owner Entity
+---@param item string
+---@return boolean ok
+function spellApi.discard(owner, item) end
+
+---Who shot a projectile (`PSProjectile::GetShooter`), `nil` for anything that was not shot.
+---@param projectile Entity
+---@return Entity|nil
+function spellApi.shooter(projectile) end
 
 ---------------------------------------------------------------------------------------------------------------------
 -- Quests
@@ -2030,6 +2190,7 @@ function logApi.error(...) end
 ---@field item RisenItemApi
 ---@field balance RisenBalanceApi
 ---@field npc RisenNpcApi
+---@field spell RisenSpellApi
 ---@field quest RisenQuestApi
 ---@field dialog RisenDialogApi
 ---@field script RisenScriptApi
