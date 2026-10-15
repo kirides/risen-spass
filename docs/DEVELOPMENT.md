@@ -150,7 +150,7 @@ read sharing (two games read the same `data\common` / `data\compiled` through ju
 
   The four games used ~4.2 GB RAM together and at most ~59 % GPU (3D engine); every check passed in every run, the per-scenario times grow by about 5-20 % at 3-4 instances. `newtemplates` (save, load,
   load_missing, load_again, load_late) is a chain (`load_missing` saves, `load_again` loads that save), so it cannot be split further and bounds the run at ~3.5-4 minutes; beyond `-Parallel 4` nothing is gained.
-  **Recommended: `-Parallel 3`** (4.5 minutes, the machine stays usable) or 4 for the fastest run. Each game is a 1280x720 window cascaded by 40 px; windows may overlap.
+  **Recommended: `-Parallel 3`** (4.5 minutes, the machine stays usable) or 4 for the fastest run. Each game starts as a 1600x900 window (`test-run.ps1 -WindowSize`, written into the copy's `ConfigUser.xml` before the start) and is never resized at runtime (a resize misaligns the UI and the mouse; `run-windowed.ps1 -Resize` exists but is not used); windows may overlap. The machine has 64 GB RAM and 24 GB VRAM, so 4 instances are no problem.
 
 ## Startup time (M4b measurements)
 

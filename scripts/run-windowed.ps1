@@ -30,6 +30,8 @@ param(
     [int]$WindowY = 100,
     [switch]$KeepRunning,
     [switch]$NoResize,
+    # really resize the window to -Width/-Height after the start (buggy in the game: misaligned UI and mouse)
+    [switch]$Resize,
     # extra Risen.exe command line switches (e.g. '-noaudio', '-res=640x360')
     [string[]]$ExtraArgs = @(),
     [string]$ResultFile = '',
@@ -115,8 +117,11 @@ try {
         if (-not $resized -and -not $NoResize -and $p.MainWindowHandle -ne [IntPtr]::Zero -and [RisenWin]::TitleOf($p.MainWindowHandle) -like 'RISEN*') {
             # async variants: a game thread that hangs must never block this script (the watchdog has to be able to kill it)
             [RisenWin]::ShowWindowAsync($p.MainWindowHandle, 9) | Out-Null       # SW_RESTORE
-            # SWP_NOZORDER | SWP_SHOWWINDOW | SWP_ASYNCWINDOWPOS
-            [RisenWin]::SetWindowPos($p.MainWindowHandle, [IntPtr]::Zero, $WindowX, $WindowY, $Width, $Height, 0x0004 -bor 0x0040 -bor 0x4000) | Out-Null
+            # SWP_NOZORDER | SWP_SHOWWINDOW | SWP_ASYNCWINDOWPOS; the size is only changed with -Resize (the game starts at the size
+            # from ConfigUser.xml, a runtime resize misaligns its UI and mouse), otherwise the window is just moved (SWP_NOSIZE)
+            $flags = 0x0004 -bor 0x0040 -bor 0x4000
+            if (-not $Resize) { $flags = $flags -bor 0x0001 }
+            [RisenWin]::SetWindowPos($p.MainWindowHandle, [IntPtr]::Zero, $WindowX, $WindowY, $Width, $Height, $flags) | Out-Null
             $resized = $true
         }
     }

@@ -53,6 +53,8 @@ param(
     [ValidateSet('new', 'load')][string]$Start = 'new',
     # extra Risen.exe command line switches, e.g. '-noaudio', '-res=640x360' (see docs/DEVELOPMENT.md "Startup time")
     [string[]]$ExtraArgs = @(),
+    # client size the game window starts with (written into the copy's ConfigUser.xml before the start, never resized later)
+    [string]$WindowSize = '1600x900',
     [switch]$WaitForResult,
     [int]$StallSeconds = 90,
     [int]$DeadlineSeconds = -1,
@@ -186,6 +188,17 @@ try {
         Set-Content "$auto\mod.toml" "id = `"autostart`"`nname = `"Autostart`"`nversion = `"1.0.0`""
         $call = if ($Start -eq 'load') { 'quick_load' } else { 'new_game' }
         Set-Content "$auto\main.lua" "local done=false`nrisen.on('tick', function() if not done then done=true; risen.log.info('autostart $call -> '..tostring(risen.world.$call())) end end)"
+    }
+    # Window size: the game starts at this size from its ConfigUser.xml (<Window Right/Bottom>); the window is never resized at
+    # runtime (that misaligns the UI and the mouse).
+    $cfgUserPath = Join-Path $GameDir 'localappdata\Local\Risen\ConfigUser.xml'
+    if ($WindowSize -notmatch '^(\d+)x(\d+)$') { throw "-WindowSize must look like 1600x900, not '$WindowSize'" }
+    $winW = $Matches[1]; $winH = $Matches[2]
+    if (Test-Path $cfgUserPath) {
+        $xml = [System.IO.File]::ReadAllText($cfgUserPath)
+        $new = [regex]::Replace($xml, '(?s)(<Window\b[^>]*?)\bBottom="\d+"', "`$1Bottom=`"$winH`"")
+        $new = [regex]::Replace($new, '(?s)(<Window\b[^>]*?)\bRight="\d+"', "`$1Right=`"$winW`"")
+        if ($new -ne $xml) { [System.IO.File]::WriteAllText($cfgUserPath, $new) }
     }
     # Isolate the game's %LOCALAPPDATA% (savegames, ConfigUser.xml, screenshots) inside the test copy.
     $appData = (Join-Path $GameDir 'localappdata').Replace('\', '/')
