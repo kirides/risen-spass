@@ -1,0 +1,7 @@
+id          = "example_voice"
+name        = "Example: spoken dialogue lines in several languages"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "An NPC whose dialogue lines are voiced from ogg/wav/mp3 files of the mod, with per-language variants and subtitles. See docs/EXAMPLES.md."
+main        = "main.lua"
+# assets = "assets"   # loose engine resource files; this example needs none: the layer compiles the audio files itself (risen.voice, risen.assets.import_sound)

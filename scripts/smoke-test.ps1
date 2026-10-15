@@ -12,6 +12,7 @@
       newtemplates - new item/NPC templates (mods/newtemplates + newtemplates_driver); five runs: save, then four fresh-process loads
                      (templates created early / missing / early again / late)                                                [risen.test]
       newassets    - new meshes, textures and icons from loose files (mods/newassets); two runs: build (derive + play), use (fresh process, files mounted at startup)
+      ex_voice     - spoken dialogue lines from ogg/wav/mp3 files (mods/example_voice); two runs: voice language English, then German
 
 .DESCRIPTION
     Needs a built sentry.dll and the test copy (see CLAUDE.md). The [risen.test] scenarios end as soon as they are done
@@ -38,7 +39,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -119,6 +120,12 @@ $scenarios = [ordered]@{
     ex_quest_rewards  = @{ Est = 100; Title = 'example: quest completion triggers'; Kind = 'result'; Mods = @('example_quest_rewards'); Limit = 300 }
     ex_quest_tracker  = @{ Est = 95; Title = 'example: dialogue/item/kill quest tracker'; Kind = 'result'; Mods = @('example_quest_tracker'); Limit = 300 }
     ex_material       = @{ Est = 50; Title = 'example: material variants and a loose texture'; Kind = 'result'; Mods = @('example_material'); Limit = 300 }
+    # custom voice lines (M5c): two game processes, the voice language of the game is English, then German (test-run.ps1 -VoiceLanguage); the second proves the variant choice
+    ex_voice          = @{ Est = 140; Title = 'example: voiced dialogue lines (en, de)'; Kind = 'result'; Mods = @('example_voice'); Limit = 200
+                           Phases = @(
+                               @{ Name = 'english'; Param = @('lang=English'); Start = 'new'; Keep = $false; Limit = 200 }
+                               @{ Name = 'german'; Param = @('lang=German'); VoiceLanguage = 'German'; Start = 'new'; Keep = $false; Limit = 200 }
+                           ) }
     # one game process per phase (-Param phase=...): "save" plays the whole scenario in a new game and leaves a quick save, the others load it in a fresh process
     newtemplates = @{ Est = 210; Title = 'new templates'; Kind = 'result'; Mods = @('newtemplates', 'newtemplates_driver'); Limit = 200
                       Phases = @(
@@ -250,6 +257,7 @@ foreach ($name in $selected) {
             if ($ph.Param -and $ph.Param.Count -gt 0) { $testArgs.Param = $ph.Param }
             if ($ph.Start -eq 'load') { $testArgs.Start = 'load' }
             if ($ph.Keep) { $testArgs.Keep = $true }
+            if ($ph.VoiceLanguage) { $testArgs.VoiceLanguage = $ph.VoiceLanguage }
         }
         $global:SpassRun = [pscustomobject]@{ Reason = 'error'; Result = $null }
         try { & (Join-Path $here 'test-run.ps1') @testArgs | Out-Null }

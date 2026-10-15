@@ -5,7 +5,7 @@ decorated export name (`GetProcAddress`), so nothing depends on addresses; the R
 see `risen.engine.build()`). **Required** symbols must resolve or the layer stays off; for an optional one only its own feature is
 disabled (`risen.engine.missing()` lists what failed). To add one: see the developer guide in `docs/DEVELOPMENT.md`.
 
-301 symbols, 153 required.
+311 symbols, 153 required.
 
 ## Engine.dll
 
@@ -47,6 +47,7 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `loc_exists_id` | `bool eCLocAdmin2::ExistsID(class bCString const &)const ` | 0x7376a0 | yes |
 | `loc_get_string` | `class bCUnicodeString eCLocAdmin2::GetString(class bCString const &)const ` | 0x7372f0 | yes |
 | `loc_get_text_language` | `class bCString eCLocAdmin2::GetTextLanguage(void)const ` | 0x7388a0 | yes |
+| `loc_get_voice_language` | `class bCString eCLocAdmin2::GetVoiceLanguage(void)const ` | 0x737f30 | no |
 | `loc_instance` | `class eCLocAdmin2 & eCLocAdmin2::GetInstance(void)` | 0x738c30 | yes |
 | `loc_reserve_id` | `void eCLocAdmin2::ReserveID(class bCString const &)` | 0x737520 | yes |
 | `loc_set_string` | `bool eCLocAdmin2::SetString(class bCString const &,class bCUnicodeString const &)` | 0x737050 | yes |
@@ -189,6 +190,9 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `quest_create_object` | `class bCObjectBase * gCQuest::CreateObject(void)` | 0x95d030 | yes |
 | `quest_get_log_text` | `long & gCScriptRoutine_PS::AccessAIDelay(void)` | 0x499dc0 | yes |
 | `quest_set_status` | `bool gCQuest::SetStatus(enum gEQuestStatus const &,bool,bool)` | 0x95d920 | no |
+| `rout_is_output_playing` | `bool gCScriptRoutine_PS::IsOutputPlaying(void)const ` | 0x96aac0 | no |
+| `rout_start_output` | `bool gCScriptRoutine_PS::StartOutput(class bCString const &,enum gEOutputType)` | 0x96aae0 | no |
+| `rout_stop_output` | `bool gCScriptRoutine_PS::StopOutput(void)` | 0x966180 | no |
 | `runscript_access_script` | `class bCString & gCInfoCommandRunAIScript::AccessAIScriptName(void)` | 0x499bb0 | yes |
 | `runscript_create` | `class bCObjectBase * gCInfoCommandRunScript::CreateObject(void)` | 0x891d90 | yes |
 | `save_load` | `bool gCSaveGameManager::Load(class bCString const &,class IFFFileStream2 *)` | 0x99b8f0 | no |
@@ -224,6 +228,7 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `ent_get_name` | `class bCString Entity::GetName(void)const ` | 0x20c880 | yes |
 | `ent_get_player` | `class Entity Entity::GetPlayer(void)` | 0x20f5d0 | yes |
 | `ent_get_position` | `class bCVector Entity::GetPosition(void)const ` | 0x20d1a0 | yes |
+| `ent_get_sample_title` | `class bCString Entity::GetSampleTitle(class bCString)const ` | 0x20a9e0 | no |
 | `ent_goto_entity` | `bool Entity::StartGoto(class Entity &,enum gEWalkMode)` | 0x2088f0 | yes |
 | `ent_goto_pos` | `bool Entity::StartGoto(class bCVector const &,enum gEWalkMode)` | 0x2088d0 | yes |
 | `ent_is_character` | `bool Entity::IsCharacter(void)const ` | 0x20e080 | yes |
@@ -258,12 +263,15 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `npc_get_guild` | `PSNpc::PropertyGuild::operator enum gEGuild const (void)const ` | 0x22b750 | yes |
 | `npc_set_group` | `class PSNpc::PropertyGroup & PSNpc::PropertyGroup::operator=(class bCString const &)` | 0x22b640 | yes |
 | `npc_set_guild` | `class PSNpc::PropertyGuild & PSNpc::PropertyGuild::operator=(enum gEGuild const &)` | 0x22b6f0 | yes |
+| `psinv_drop_stack` | `class Entity PSInventory::DropStack(int,class bCMatrix const &)` | 0x225410 | no |
 | `psinv_insert_stack` | `int PSInventory::InsertStack(class Entity const &)` | 0x225550 | no |
 | `psinv_loot` | `bool PSInventory::LootSelections(class Entity &)` | 0x225ce0 | no |
+| `psinv_set_max_select_limit` | `void PSInventory::SetMaxSelectLimit(void)` | 0x225f40 | no |
 | `psinv_set_max_selection` | `void PSInventory::SetMaxSelection(void)` | 0x225e60 | no |
 | `psinv_set_selection` | `void PSInventory::SetSelection(int,int const &)` | 0x2260a0 | no |
 | `psinv_trade` | `bool PSInventory::TradeSelections(class Entity &)` | 0x225da0 | no |
 | `psinv_transfer_amount` | `bool PSInventory::TransferAmountTo(int,int,class Entity &)` | 0x225b50 | no |
+| `psinv_unequip_stack` | `bool PSInventory::UnEquipStack(int)` | 0x2244e0 | no |
 | `psitem_amount` | `unsigned long PSItem::GetAmount(void)const ` | 0x2270a0 | no |
 | `psitem_category` | `enum gEItemCategory PSItem::GetCategory(void)const ` | 0x226fe0 | no |
 | `psitem_gold_value` | `int PSItem::GetGoldValue(void)const ` | 0x227040 | no |
@@ -307,6 +315,8 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | Field | Function | RVA | Required |
 |---|---|---|---|
 | `sg_cheat_kill` | `__int64 OnCheatKill(class gCScriptProcessingUnit *,void *,void *,__int64)` | 0xdc850 | no |
+| `sg_defeat` | `__int64 Defeat(class gCScriptProcessingUnit *,void *,void *,__int64)` | 0xd60e0 | no |
+| `sg_kill` | `__int64 Kill(class gCScriptProcessingUnit *,void *,void *,__int64)` | 0xc9f70 | no |
 ## SharedBase.dll
 
 | Field | Function | RVA | Required |

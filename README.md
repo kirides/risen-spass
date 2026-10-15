@@ -27,7 +27,7 @@ engine's lifecycle, and exposes it to Lua with a sandbox per mod.
 | | |
 |---|---|
 | Events | session/world/save/load lifecycle, quest status changes, kills, dialogue start/finish, item pick-ups |
-| Content | quests, dialogue options (conditions, scripts, log entries), NPC spawning and configuration, items |
+| Content | quests, dialogue options (conditions, scripts, log entries, **voiced lines from ogg/wav/mp3 per language**), NPC spawning and configuration, items |
 | State | `risen.save`: per-mod data stored with every savegame; entity handles that survive loads |
 | Texts | `risen.loc` overlay and `strings/*.csv` files per mod and language |
 | Scripts | define or override the game's native scripts from Lua |

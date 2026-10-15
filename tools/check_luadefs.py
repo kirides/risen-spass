@@ -78,6 +78,10 @@ for fn in re.findall(r'save\.set_function\("(\w+)"', (root / 'src/game/lua_save.
 assets_src = (root / 'src/game/lua_assets.cpp').read_text(encoding='utf-8')
 for fn in re.findall(r'own\.set_function\("(\w+)"', assets_src) + re.findall(r'^function A\.(\w+)\(', assets_src, flags=re.M):
     bound[f'assets.{fn}'] = 'src/game/lua_assets.cpp'
+# per-mod voice functions (lua_voice.cpp: `own.set_function` on the mod's assets table (import_sound) and its voice table (check/set/load_dir))
+voice_src = (root / 'src/game/lua_voice.cpp').read_text(encoding='utf-8')
+for fn in re.findall(r'own\.set_function\("(\w+)"', voice_src):
+    bound[('assets.' if fn == 'import_sound' else 'voice.') + fn] = 'src/game/lua_voice.cpp'
 for fn in re.findall(r'loc\.set_function\("(\w+)"', (root / 'src/game/loc_files.cpp').read_text(encoding='utf-8')):
     bound[f'loc.{fn}'] = 'src/game/loc_files.cpp'
 # risen.trace.* (runtime.cpp) and the per-mod risen.test.wait_event (a chunk in lua_test.cpp: `function t.<name>(`)

@@ -18,6 +18,7 @@
 #include <spdlog/spdlog.h>
 
 #include "common/asset_names.h"
+#include "common/sound_file.h"
 #include "common/template_id.h"
 #include "common/test_run.h"
 #include "common/trace.h"
@@ -476,6 +477,7 @@ TEST(balance_install_reports_each_application_to_on_applied) {
 }
 
 #include "asset_tests.inc"
+#include "sound_tests.inc"
 #include "npc_tests.inc"
 #include "template_create_tests.inc"
 #include "test_risen_test.inc"

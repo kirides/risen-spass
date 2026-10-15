@@ -27,7 +27,7 @@ Globals: `mod` (`id, name, version, author, dir`), `risen`.
 
 **Editor support:** [`types/risen.d.lua`](../types/risen.d.lua) describes every function below for LuaLS (completion, hover docs, type
 checks); see [`types/README.md`](../types/README.md).
-**Examples:** nine small, live-verified example mods (patching, balancing, materials/textures, custom NPC, fetch/kill quests, completion triggers, quest tracker) are indexed in [`EXAMPLES.md`](EXAMPLES.md).
+**Examples:** ten small, live-verified example mods (patching, balancing, materials/textures, custom NPC, fetch/kill quests, completion triggers, quest tracker, voiced dialogue) are indexed in [`EXAMPLES.md`](EXAMPLES.md).
 
 ## Events
 
@@ -134,7 +134,7 @@ risen.trace.disable("save");  risen.trace.enabled("template");  risen.trace.chan
 ```
 Built-in channels: `events` (every event the layer emits, with arguments, also when nobody listens; `tick` excluded), `template` (get/patch/propagation counts),
 `balance` (every applied job), `save` (save/load phases with durations), `spawn`, `script` (define/override/call and every engine call into a Lua script),
-`lua` (handler errors with traceback), `test`. A disabled channel costs one bit test; use `risen.trace.enabled(ch)` to guard expensive message building.
+`lua` (handler errors with traceback), `test`, `voice` (every sample title the engine asks for and what was answered, voice registrations, barks). A disabled channel costs one bit test; use `risen.trace.enabled(ch)` to guard expensive message building.
 
 ## risen.script — the game's scripts are native functions looked up by name
 ```lua
@@ -398,6 +398,50 @@ risen.balance.install({ new_items = { Spass_Club3 = { base = "It_1H_Club", mesh 
   **Not verified**: how it looks on screen (screenshots of the D3D9 window are black), names of another length inside a patched file, the inventory drawing of a new icon, replacing a resource the engine has already loaded.
 * Entity **templates themselves** are still not loadable from files (RE.md §17); the new templates come from `risen.template.create`.
 
+## Voice lines — spoken dialogue in several languages (`risen.voice`, `risen.assets.import_sound`; see `mods/example_voice`, [RE.md §28](RE.md))
+A `Say` line of a dialogue can be **voiced** with audio files of your mod: Ogg Vorbis, WAV (PCM or float, any rate) or MP3, mono or stereo. The line lasts as long as the audio (a line without audio waits a few
+seconds by the length of an internal name), the subtitle shows as usual, and each language can have its own file. The layer compiles the files into the engine's own sound format (`._xsnd`, in `<Risen>\bin\spass\generated\<mod>\voice`;
+an identical file is never written twice) — no tool is needed. A file that is not usable is refused with `nil, "reason"` (naming the file) before anything is created.
+```lua
+-- 1. in the dialogue: `sound` on a Say line (one file, or one per language), `text` per language
+risen.dialog.create({
+    name = "Hob_Greet", owner = "Hob", permanent = true,
+    lines = {
+        { speaker = "npc", listener = "player", text = { default = "Welcome!", de = "Willkommen!" },
+          sound = { en = "voice/en/greet.ogg", de = "voice/de/greet.ogg" } },     -- or sound = "voice/greet.ogg" for every language
+        { command = "SaySound", Speaker = "npc", sound = "voice/cue.mp3" },       -- sound only, no subtitle; the language is chosen when the option is created
+    },
+})
+-- 2. or by directory convention: files named after the text id of the line (`<option name>_<line number>`), one folder per language
+--      voice/English/Hob_Greet_1.ogg   voice/German/Hob_Greet_1.ogg   voice/Hob_Greet_1.wav (= every language)
+risen.voice.load_dir("voice")            -- before risen.dialog.create; returns the number of keys and files, or nil, reason
+-- 3. audio made by Lua (`{ data = bytes }`) and a bark outside of any dialogue
+risen.voice.set("Hob_Warning", { default = { data = wav_bytes } })
+risen.voice.say(risen.entity.get("Hob"), "Hob_Warning")      -- true; risen.voice.speaking(npc) is true while it plays
+```
+* **Which variant plays**: the voice language of the game (`VoiceLanguage` in the options; `risen.voice.language()` -> `"English"`, `"German"`, `"French"`, `"Russian"`), else the `default` entry, else English, else the first one by language name. Language keys are the engine's names or codes
+  (`en`, `de`, `fr`, `ru`, `pl`, ...; `risen.voice.normalize`). The subtitle language is separate (`risen.loc.language()`): give `text = { default = ..., de = ... }` per language, or use `strings/<Language>.csv`.
+* **Text ids**: `risen.dialog.create` names the text of line `n` of option `name` `<name>_<n>` (that is also the key for `risen.voice.set` and for the file names of the convention). Voice any id the engine speaks — also shipped ones (`risen.voice.set("INFO_FILLERX2_00007314", ...)` re-voices that line; `-Trace voice` lists
+  every id the engine asks for, with the title it composed).
+* **Register on `load.before` and `session.start`** like dialogues (the registry lives in the process; everything is idempotent and cheap: files are probed again, nothing is rewritten).
+* **Shadowing a shipped sound**: `risen.assets.import_sound("INFO_KALVERAMX2B_00000556_Druid_English_%_Eldric.wav", "voice/x.ogg")` makes the engine take your audio for that shipped line, as long as the sound has not been loaded yet (lines of the hero are prefetched at the start). The stored `Duration` stays the shipped one; playback is your audio.
+* **Lip sync**: shipped lines carry an EMotionFX `._xmot`; yours have none, so the face does not move (no error).
+
+| Function | Notes |
+|---|---|
+| `risen.assets.import_sound(name, source)` | compiles an audio file into `<name>._xsnd` (`name` = bare file name, `Spass_Hello.wav`; the extension is a label) and mounts it: `name` then works as `SoundName` of a `SaySound` command, for `risen.voice.say`, or as a shadow of a shipped sound. `source`: a file of the mod (relative path) or `{ data = bytes }`. Returns `{ name, compiled, format, channels, sample_rate, bits, duration_ms, bytes, written }` or `nil, reason` |
+| `risen.voice.set(key, variants)` | registers audio for a text id; `variants`: a file / `{ data = }`, or `{ en = file, de = file, default = file }`. Returns `{ key, variants = { [Language] = import info } }` or `nil, reason` (nothing changes) |
+| `risen.voice.check(variants)` | the same validation without writing |
+| `risen.voice.load_dir(dir)` | `<dir>/<language>/<key>.<ogg\|wav\|mp3>` and `<dir>/<key>.<ext>` (default) -> `set` for every key; returns `keys, files` |
+| `risen.voice.get(key)`, `keys()`, `remove(key)`, `title(key)` | the entry (`variants` by language with title, compiled name, source, duration; `requests` = how often the engine asked), the keys, forget, the raw sound name for the current language (for `SaySound`) |
+| `risen.voice.say(entity, key_or_sound[, { type = n }])` | a bark: starts a registered key or any sound name the engine finds as the entity's speech output (no animation or subtitle); `type` 0 NPC (default), 2 the player, 3 comment. `false` when it cannot start |
+| `risen.voice.speaking(entity)`, `stop(entity)` | whether a speech sound plays; stops it |
+| `risen.voice.language()`, `normalize(name)`, `last()`, `title_calls()` | current voice language; `"de"` -> `"German"`; `{ key, title, language }` of the last registered key the engine asked for (the proof that a spoken line used your sound); the number of titles the engine asked for |
+| `risen.assets.sound(name)` | what the engine and FMOD made of a sound: `{ state, duration_ms, flags, fmod, fmod_length_ms, channels, bits, sample_rate, type }` (`state` 3 = loaded when it is first played; `fmod` true = playable; `type` 10 Ogg Vorbis, 9 MPEG, 15 WAV) |
+* **Verified live** (`ex_voice`, English and German voice language): the engine asks `GetSampleTitle` for the line's text id and takes the registered variant of the current language; ogg, mp3 and wav (8, 16 and float32 bit) are found, opened, loaded and played by FMOD; an option with a 0.4 s voice takes 53 frames against 467 for the same line without voice; the speaking state follows the audio; a bad file refuses the whole `create`;
+  a loose sound replaces a shipped NPC line; the user heard the test tones. **Not verified**: lip sync, stereo or other rates (FMOD opens them: untested), what the voices sound like on other hardware.
+* **Limits**: formats are recognised by content (Ogg Opus, FLAC, M4A are refused with a hint: convert with e.g. `ffmpeg -i in.flac -c:a libvorbis -q:a 4 out.ogg`, ffmpeg is not needed otherwise); ids are case-insensitive; `SaySound` has no language switch at run time (the variant is chosen when the option is created); a long file is read into memory whole.
+
 ## NPCs — `risen.npc.spawn` and the Entity NPC methods
 Spawn a template and configure it in one call (see `mods/npcdemo`):
 ```lua
@@ -450,6 +494,7 @@ local info = risen.dialog.create({
     },
 })
 ```
+A `Say` line can be **voiced**: `sound = "voice/hello.ogg"` (or a table per language, or the files `voice/<language>/<option>_<n>.ogg`), and `text` may be a table per language, see "Voice lines" below.
 Speaker/listener keywords: `"player"`, `"npc"` (the other party), or an entity name. An info disappears after it was
 used unless `permanent = true`. Condition names are the engine's `gEInfoCondType_*`; **quest-state conditions only work
 with an existing quest** (`quest = ...`).

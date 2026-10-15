@@ -1317,7 +1317,9 @@ function Info:set_command_text(index, command, text_key) end
 ---@class DialogLine
 ---@field speaker? string `"player"`, `"npc"` (default) or an entity name.
 ---@field listener? string Default `"player"`.
----@field text? string The spoken text. The first line's text is the label of the option.
+---@field text? string|table<string, string> The spoken text; a table gives the text per language (`{ default = "...", de = "..." }`). The first line's text is the label of the option.
+---@field sound? VoiceVariants Voice of a `Say` line (spoken while the subtitle shows; the line lasts as long as the audio) or, on a `{ command = "SaySound", Speaker = ... }` line, its sound (the language is chosen when the
+---option is created). Without `sound`, files registered for the text id `<option name>_<line number>` (`risen.voice.load_dir`) are used. A file that cannot be used makes `create` return `nil, reason` before anything is created.
 ---@field script? string Name of a script registered with `risen.script.define`.
 ---@field log? {quest: string, text: string} Adds a quest log entry.
 ---@field command? string Any engine dialogue command by name (`"Give"`, `"GiveXP"`, `"SetGameEvent"`, `"RunQuest"`, `"MoveTo"`, `"SetTradeEnabled"`, ...).
@@ -1602,7 +1604,7 @@ local assetsApi = {}
 ---@class AssetInfo
 ---@field name string The name asked for.
 ---@field compiled? string File name the engine looks up (`It_Wpn_1H_Club._xmsh`); missing when `name` is not a resource name (`found` is `false`).
----@field kind? string `"mesh"`, `"material"`, `"image"`, `"actor"`, `"motion"` or `"collision"`.
+---@field kind? string `"mesh"`, `"material"`, `"image"`, `"actor"`, `"motion"`, `"collision"` or `"sound"`.
 ---@field found boolean A file with that name exists in the game archives or a mounted directory.
 ---@field virtual? string Virtual path (`#G3:/data/common/meshes/...`).
 ---@field physical? string Path on disk (inside a `.pak` for packed files).
@@ -1622,7 +1624,7 @@ local assetsApi = {}
 ---@field virtual string
 ---@field physical string
 
----Name mapping: `"It_Wpn_1H_Club.xmsh"` -> `"It_Wpn_1H_Club._xmsh"`, `.tga/.dds/.png/.ximg` -> `._ximg`, `.xmat` -> `._xmat`, `.xac` -> `._xmac`; an already compiled name stays.
+---Name mapping: `"It_Wpn_1H_Club.xmsh"` -> `"It_Wpn_1H_Club._xmsh"`, `.tga/.dds/.png/.ximg` -> `._ximg`, `.xmat` -> `._xmat`, `.xac` -> `._xmac`, `.wav/.ogg/.mp3` -> `._xsnd`; an already compiled name stays.
 ---@param name string A bare file name (no directory).
 ---@return string|nil compiled
 ---@return string kind The kind, or the reason when `compiled` is `nil`.
@@ -1706,6 +1708,138 @@ function assetsApi.bitmap(name) end
 ---@param relpath string
 ---@return boolean ok
 function assetsApi.dump_collection(collection, relpath) end
+
+---Compiles an audio file (Ogg Vorbis, WAV or MP3; recognised by content) into the engine's sound resource `<name>._xsnd` below `<Risen>\bin\spass\generated\<mod>\voice` and mounts it,
+---so that `name` works as a `SoundName` (dialogue command `SaySound`), for `risen.voice.say` or as a shadow of a shipped sound. `name` is a bare file name (`"Spass_Hello.wav"`; the extension
+---is only a label). An identical file is not written again. Returns `nil, reason` (naming the file) for an unusable one.
+---@param name string
+---@param source string|{file: string}|{data: string} File name relative to the mod directory, or audio bytes.
+---@return SoundImportInfo|nil info
+---@return string|nil reason
+function assetsApi.import_sound(name, source) end
+---What the engine and FMOD made of a sound resource: `state` (3 = loaded: a sound loads when it is played the first time), `duration_ms` (the resource's Duration property: for a shipped name
+---that a loose file shadows it stays the shipped value), `flags`, `fmod` (FMOD created a playable sound), `fmod_length_ms`, `channels`, `bits`, `sample_rate`, `type` (FMOD sound type:
+---10 Ogg Vorbis, 9 MPEG, 15 WAV). `nil` when the engine does not know the name.
+---@param name string The raw name, `"Spass_Hello.wav"`.
+---@return {state: integer, duration_ms?: number, flags?: integer, fmod?: boolean, fmod_length_ms?: number, channels?: integer, bits?: integer, sample_rate?: number, type?: integer}|nil
+function assetsApi.sound(name) end
+
+---Spoken dialogue lines and sounds (docs/RE.md §28, docs/LUA_API.md "Voice lines", `mods/example_voice`).
+---
+---A spoken line is a `Say` command; the engine asks for the sound of its text id (`<option name>_<line number>` for `risen.dialog.create`) in the voice
+---language of the game (`VoiceLanguage` in the options). `risen.voice` registers audio files (Ogg Vorbis, WAV, MP3; compiled into the engine's own sound format)
+---for such text ids, one per language, and the line then lasts as long as the audio. The variant that plays is: the voice language, else `default`, else English,
+---else the first by language name.
+---@class RisenVoiceApi
+local voiceApi = {}
+
+---A sound given as a file name relative to the mod directory (`"voice/hello.ogg"`), `{ file = "voice/hello.ogg" }` or audio bytes made by Lua (`{ data = wav_bytes }`).
+---@alias VoiceSource string|{file: string}|{data: string}
+---One sound for every language (a `VoiceSource`) or a table of languages (`en`/`English`, `de`/`German`, `fr`, `ru`, ... or the engine's names) with an optional `default`.
+---@alias VoiceVariants VoiceSource|table<string, VoiceSource>
+
+---What `risen.assets.import_sound` and `risen.voice.set` report about a compiled sound.
+---@class SoundImportInfo
+---@field name string Raw sound name the engine is given (`INFO_..._%_SPASS.wav`, `Spass_Hello.wav`).
+---@field compiled string Compiled file name (`...._xsnd`) in `<Risen>\bin\spass\generated\<mod>\voice`.
+---@field format string `"ogg"`, `"wav"` or `"mp3"` (recognised by content, not by the file name).
+---@field channels integer
+---@field sample_rate integer
+---@field bits? integer Bits per sample of a WAV.
+---@field duration_ms number Length of the audio in milliseconds.
+---@field bytes number Size of the source audio.
+---@field written boolean `false` when an identical file was already there (nothing was written).
+
+---A registered voice entry.
+---@class VoiceEntry
+---@field key string
+---@field mod string Mod id that registered it.
+---@field requests integer How many times the engine asked for this key.
+---@field variants table<string, {title: string, compiled: string, file: string, duration_ms: number}> By language name (`"English"`, `"German"`, ..., `"default"`).
+
+---The last registered key the engine asked a sample title for.
+---@class VoiceLast
+---@field key string
+---@field title string
+---@field language string The variant that was chosen.
+
+---Checks a sound or a table of languages without writing anything (every file is read and recognised). `true`, or `nil, reason` naming the file and the problem.
+---@param variants VoiceVariants
+---@return boolean|nil ok
+---@return string|nil reason
+function voiceApi.check(variants) end
+
+---Registers audio for a dialogue text id (`"<option name>_<line number>"` for `risen.dialog.create`; any id the engine speaks: shipped ids work too). Validates all files
+---first and returns `nil, reason` without changing anything; compiles each file below `<Risen>\bin\spass\generated\<mod>\voice` (the same audio is not written twice).
+---Calling it again replaces the entry. The registry lives in the process: register on `load.before` and `session.start` like dialogues.
+---@param key string
+---@param variants VoiceVariants
+---@return {key: string, variants: table<string, SoundImportInfo>}|nil result
+---@return string|nil reason
+function voiceApi.set(key, variants) end
+
+---Registers every audio file below a directory of the mod: `<dir>/<language>/<key>.<ogg|wav|mp3>` is a variant of `<key>`, `<dir>/<key>.<ext>` the default. Language folders are
+---engine names or codes (`English`, `German`, `de`, ...). Returns the number of keys and files, or `nil, reason` (a file that cannot be used names itself).
+---@param dir string Relative to the mod directory, e.g. `"voice"`.
+---@return integer|nil keys
+---@return integer|string files_or_reason
+function voiceApi.load_dir(dir) end
+
+---The voice language the game speaks (`"English"`, `"German"`, ...; the `VoiceLanguage` of the options).
+---@return string
+function voiceApi.language() end
+
+---The engine's name of a language code or name: `"de"` -> `"German"`; unknown names are kept (first letter upper case).
+---@param name string
+---@return string
+function voiceApi.normalize(name) end
+
+---A registered voice entry.
+---@param key string
+---@return VoiceEntry|nil
+function voiceApi.get(key) end
+
+---The registered keys (lower case).
+---@return string[]
+function voiceApi.keys() end
+
+---Forgets a key (the files stay).
+---@param key string
+---@return boolean removed
+function voiceApi.remove(key) end
+
+---The raw sound name (`....wav`) of the variant of `key` that plays in the current voice language: what the engine is given for the line, and what a `SaySound` command
+---takes as `SoundName`.
+---@param key string
+---@return string|nil
+function voiceApi.title(key) end
+
+---The registered key the engine asked a sample title for most recently (the proof that a spoken line took our sound), or `nil`.
+---@return VoiceLast|nil
+function voiceApi.last() end
+
+---How many sample titles the engine asked for since the start (every spoken line, shipped or not).
+---@return integer
+function voiceApi.title_calls() end
+
+---Makes an NPC speak a sound outside of a dialogue (a "bark"): a registered key (variant of the current language) or the raw name of any sound the engine finds
+---(`"Spass_Hello.wav"`, imported with `risen.assets.import_sound`). Returns `false` when the sound cannot be started. `opts.type`: engine output type, `0` NPC voice
+---(default), `2` the player's voice, `3` comment/sound command.
+---@param entity Entity
+---@param key_or_sound string
+---@param opts? {type?: integer}
+---@return boolean started
+function voiceApi.say(entity, key_or_sound, opts) end
+
+---Whether the entity is playing a speech sound right now.
+---@param entity Entity
+---@return boolean
+function voiceApi.speaking(entity) end
+
+---Stops the speech sound of an entity.
+---@param entity Entity
+---@return boolean ok
+function voiceApi.stop(entity) end
 
 ---Development aids.
 ---@class RisenDebugApi
@@ -1905,6 +2039,7 @@ function logApi.error(...) end
 ---@field save RisenSaveApi
 ---@field vfs RisenVfsApi
 ---@field assets RisenAssetsApi
+---@field voice RisenVoiceApi
 ---@field debug RisenDebugApi
 ---@field engine RisenEngineApi
 local risen_ = {}

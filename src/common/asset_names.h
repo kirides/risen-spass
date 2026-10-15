@@ -13,7 +13,7 @@
 // (`It_Wpn_1H_Club._xmsh`) and finds it by that bare file name in a flat, case-insensitive name cache of everything mounted.
 namespace spass::assets {
 
-enum class Kind { Mesh, Material, Image, Actor, Motion, Collision, Unknown };
+enum class Kind { Mesh, Material, Image, Actor, Motion, Collision, Sound, Unknown };
 
 inline std::string lowerAscii(std::string_view s) {
     std::string out(s);
@@ -39,6 +39,7 @@ inline Kind kindOf(std::string_view name) {
     if (ext == "xac" || ext == "xmac" || ext == "_xmac") return Kind::Actor;
     if (ext == "xmot" || ext == "_xmot") return Kind::Motion;
     if (ext == "xcom" || ext == "_xcom") return Kind::Collision;
+    if (ext == "wav" || ext == "ogg" || ext == "mp3" || ext == "xsnd" || ext == "_xsnd") return Kind::Sound;
     return Kind::Unknown;
 }
 
@@ -50,6 +51,7 @@ inline const char* kindName(Kind k) {
         case Kind::Actor: return "actor";
         case Kind::Motion: return "motion";
         case Kind::Collision: return "collision";
+        case Kind::Sound: return "sound";
         default: return "unknown";
     }
 }
@@ -76,6 +78,7 @@ inline std::optional<std::string> compiledName(std::string_view name) {
         case Kind::Actor: return stem + "._xmac";
         case Kind::Motion: return stem + "._xmot";
         case Kind::Collision: return stem + "._xcom";
+        case Kind::Sound: return stem + "._xsnd";
         default: return std::nullopt;
     }
 }

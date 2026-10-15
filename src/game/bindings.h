@@ -28,4 +28,9 @@ void bindVfs(sol::state_view lua, sol::table risen);
 void bindAssetNatives(sol::state_view lua, sol::table risen);
 void bindAssetModApi(sol::state_view lua, sol::table api, const lua::ModInfo& mod);  // risen.assets.write/mount of the calling mod
 
+// risen.voice (lua_voice.cpp): custom voice lines. The hook needs Script.dll (installed from installScriptEventHooks()).
+void installVoiceHooks();
+void bindVoiceNatives(sol::state_view lua, sol::table risen);  // after bindAssetNatives: also adds risen.assets.sound
+void bindVoiceModApi(sol::state_view lua, sol::table api, const lua::ModInfo& mod);  // risen.assets.import_sound, risen.voice.set/check/load_dir, risen.dialog.create(sound)
+
 }  // namespace spass::game

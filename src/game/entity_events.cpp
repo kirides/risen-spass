@@ -6,6 +6,7 @@
 
 #include "common/trace.h"
 #include "game/abi.h"
+#include "game/bindings.h"
 #include "game/event_bus.h"
 #include "game/events.h"
 #include "game/lua_entity.h"
@@ -259,6 +260,7 @@ void installScriptEventHooks() {
     install(g_scriptCheatKill, "script OnCheatKill", s.sg_cheat_kill, &detourScriptCheatKill);
     install(g_spawnAt, "Entity::Spawn(at)", s.ent_spawn, &detourSpawnAt);
     install(g_spawnNear, "Entity::Spawn(near)", s.ent_spawn_near, &detourSpawnNear);
+    installVoiceHooks();  // Entity::GetSampleTitle: custom voice lines (lua_voice.cpp)
 }
 
 }  // namespace spass::game

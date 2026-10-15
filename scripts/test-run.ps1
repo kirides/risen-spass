@@ -55,6 +55,8 @@ param(
     [string[]]$ExtraArgs = @(),
     # client size the game window starts with (written into the copy's ConfigUser.xml before the start, never resized later)
     [string]$WindowSize = '1600x900',
+    # voice language the game speaks (ConfigUser.xml <Language VoiceLanguage>): English (default), German, French, Russian; the spoken-line scenarios use it
+    [string]$VoiceLanguage = '',
     [switch]$WaitForResult,
     [int]$StallSeconds = 90,
     [int]$DeadlineSeconds = -1,
@@ -198,6 +200,12 @@ try {
         $xml = [System.IO.File]::ReadAllText($cfgUserPath)
         $new = [regex]::Replace($xml, '(?s)(<Window\b[^>]*?)\bBottom="\d+"', "`$1Bottom=`"$winH`"")
         $new = [regex]::Replace($new, '(?s)(<Window\b[^>]*?)\bRight="\d+"', "`$1Right=`"$winW`"")
+        # voice language: the element this script adds is replaced/removed on every run, so a run never inherits the language of an earlier one
+        $new = [regex]::Replace($new, '(?s)\s*<Language[^>]*VoiceLanguage="[^"]*"[^>]*>\s*</Language>', '')
+        if ($VoiceLanguage -ne '') {
+            if ($VoiceLanguage -notmatch '^[A-Za-z]+$') { throw "-VoiceLanguage must be a language name such as German, not '$VoiceLanguage'" }
+            $new = [regex]::Replace($new, '</Controls>', "</Controls>`n`t`t<Language VoiceLanguage=`"$VoiceLanguage`"></Language>", 1)
+        }
         if ($new -ne $xml) { [System.IO.File]::WriteAllText($cfgUserPath, $new) }
     }
     # Isolate the game's %LOCALAPPDATA% (savegames, ConfigUser.xml, screenshots) inside the test copy.

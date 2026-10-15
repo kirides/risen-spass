@@ -1,6 +1,6 @@
 # Example mods
 
-Nine small, self-contained mods under `mods/example_*`: each is the simplest realistic form of one thing a modder wants, written to be copied
+Ten small, self-contained mods under `mods/example_*`: each is the simplest realistic form of one thing a modder wants, written to be copied
 (`main.lua` with a header that says what you learn, `mod.toml`, and a `test_*.lua` that is loaded **only** in a test run). Every one of them has a
 `risen.test` scenario that was **run live in the game**; nothing in this table is claimed that was not. The scenarios are registered in
 `scripts\smoke-test.ps1` (`ex_*`), so the regression suite covers them.
@@ -9,7 +9,7 @@ Run one (about a minute; use your own test copy, never the real install, always 
 
 ```powershell
 .\scripts\test-run.ps1 -Instance 2 -Mods example_kill_quest -WaitForResult -Seconds 300 -Scenario example_kill_quest -ShowChecks
-.\scripts\smoke-test.ps1 -Scenario ex_template_patch,ex_balance,ex_custom_npc,ex_fetch_turnin,ex_fetch_pickup,ex_kill_quest,ex_quest_rewards,ex_quest_tracker,ex_material -Parallel 3
+.\scripts\smoke-test.ps1 -Scenario ex_template_patch,ex_balance,ex_custom_npc,ex_fetch_turnin,ex_fetch_pickup,ex_kill_quest,ex_quest_rewards,ex_quest_tracker,ex_material,ex_voice -Parallel 3
 ```
 
 ## Index
@@ -25,6 +25,7 @@ Run one (about a minute; use your own test copy, never the real install, always 
 | 6 | `example_kill_quest` | kill 3 `Wolf` (counter in `risen.save`, log "Wolves: 2/3", duplicate death counted once, a clone of Wolf does not count), then a `Success`-conditioned option unlocks the boss quest: kill one named entity (`EX_DireWolf`, template `Spass_Dire_Wolf`) | `entity.died(entity, killer, cause)`, `Entity:template():name()`, `Entity:name()` | `ex_kill_quest`, 75 s | counting, negative cases, unlock, boss spawn and kill (12 checks); kills are driven with the game's `Kill` script (see Gaps) |
 | 7 | `example_quest_rewards` | what happens when a quest completes: gold, a spawned guard, a game variable, an unlocked option; **idempotent after save/load** | `quest.status_changed`, `risen.save`, `risen.gamevar`, `risen.world.quick_save/quick_load`, `condition = "Success"` | `ex_quest_rewards`, 100 s | trigger ran once, gold paid once across a real quick save + quick load, guard respawned at the same spot, variable and unlocked option survive (17 checks) |
 | 8 | `example_quest_tracker` | one reusable `tracker.lua` completing quests by **dialogue** (`info.finished`), by **items** (`inventory.changed`) and by **kills** (`entity.died`), progress in `risen.save`, rewards on completion | `info.finished`, `inventory.changed`, `entity.died` | `ex_quest_tracker`, 90 s | all three completion paths, other templates ignored, repeated death counted once, rewards (15 checks) |
+| 9 | `example_voice` | an NPC whose dialogue lines are **spoken** from audio files of the mod: ogg, wav and mp3, one file per language (voice language of the game), subtitles per language, a sound made by Lua code, a sound-only `SaySound` line, a bark | `risen.dialog.create` (`sound`, `text` per language), `risen.voice.load_dir/set/say/speaking/language`, `risen.assets.import_sound/sound` | `ex_voice` (English, then German voice language: two processes), 140 s | the engine asked for the line's text id and took the variant of the voice language; FMOD created ogg/mp3/wav sounds; an option with a 0.4 s voice took 53 frames instead of 467; speaking state; refusal of bad files; a shipped NPC line shadowed by a loose sound (22 checks per language). The user heard the tones. **Not** lip sync (no `._xmot` for custom lines) |
 
 Timings are wall-clock on the development machine (engine start ~30 s of it). Each scenario ends itself the moment its checks are done.
 
@@ -65,6 +66,10 @@ hit point maximum before the hit points (`risen.npc.spawn` options do it for you
 `condition = "Running"|"Success"|... , quest = Q` is the engine's own switch: offer the hand-in only while the quest runs, unlock follow-ups after it succeeded - no code.
 A quest-bound option makes the engine append the speakers' labels to the quest log, so the log grows by more than your own `add_log` lines. A quest-state condition on a quest
 that does not exist yet blocks the game with a message box (`risen.dialog.create` refuses it). `Entity:position()` returns `nil`s without a world: guard `x, y, z` before arithmetic.
+
+**Voiced lines.** Put the audio next to the dialogue and name it by text id: `voice/<language>/<option name>_<line number>.<ogg|wav|mp3>`, `risen.voice.load_dir("voice")` before `risen.dialog.create` (or `sound = "..."` / `sound = { en = ..., de = ... }` on the line;
+`text = { default = ..., de = ... }` for the subtitle). The game's voice language picks the variant (`default`, then English, when it is missing); register on `load.before` and `session.start` like dialogues. The layer compiles the files itself (no tool), refuses a bad one
+with `nil, reason` before the dialogue exists, and the line lasts as long as the audio. `risen.voice.say(npc, key)` is a bark; `-Trace voice` lists every id the engine asks a voice for. Test it with `test-run.ps1 -VoiceLanguage German` (writes the option into the copy's `ConfigUser.xml`).
 
 **Finding a material variant.** Scan the templates and group them by mesh/actor: the entries of a group with different `MaterialSwitch` values are the shipped variants
 (`Wolf` 0 / `Wolf_Black` 1, `It_Po_Health_01` 0 / `It_Po_Mana_01` 1, `Gnome` 0 / `Gnome_Chief` 1, crystals 3/4/6, gems). Loop `risen.template.list(group)`, read

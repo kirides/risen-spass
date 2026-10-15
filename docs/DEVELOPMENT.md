@@ -64,11 +64,11 @@ property sets through the entity's vtable. The engine's own log function is an e
 * `scripts\test-run.ps1 -Mods <mod>[,<mod>] -Seconds 120 -Filter '<regex>'` deploys the build and the chosen mods into the copy, starts a new game
   (`-Start load` quick-loads, `-NoAutostart` stays in the menu), and prints the matching log lines. `config.toml [debug] app_data` (set by the script)
   keeps savegames and `ConfigUser.xml` inside the copy.
-* `scripts\smoke-test.ps1` runs every scenario (persistence, fetchquest, commands, branch, templates, balance, npcs, newtemplates, newassets, events and the example scenarios; each ends itself, about 10.8 minutes in all one after the other, was 14+; `-Parallel 3` about 4.5 minutes), prints a pass/fail table with timings and returns a
+* `scripts\smoke-test.ps1` runs every scenario (persistence, fetchquest, commands, branch, templates, balance, npcs, newtemplates, newassets, events and the example scenarios (`ex_voice` plays the voice language English and then German); each ends itself, about 10.8 minutes in all one after the other, was 14+; `-Parallel 3` about 4.5 minutes), prints a pass/fail table with timings and returns a
   nonzero exit code on failure: `-List`, `-Scenario templates,npcs`, `-FailFast`, `-TotalSeconds` (time budget), `-Parallel N` (N game instances at once, see "Parallel instances"). Run it before committing changes to events, saving,
   quests, dialogues or items. See "Testing and tracing" below.
 * Probe mods drive the game from `tick`: create a `mods/<name>` that logs what the engine reports, run it with `test-run.ps1`, read the log.
-  `-Unsafe` lifts the Lua sandbox (to write fixture files), `-TraceFiles <text>` logs the engine's file opens from process start.
+  `-Unsafe` lifts the Lua sandbox (to write fixture files), `-TraceFiles <text>` logs the engine's file opens from process start, `-VoiceLanguage German` makes the game speak that voice language (writes `<Language VoiceLanguage=...>` into the copy's `ConfigUser.xml`; removed again on the next run without it).
   Files a mod makes at run time (`risen.assets.write`) live in `<Risen>\bin\spass\generated\<mod>`, which `test-run.ps1` does not clean: the `newassets` scenario relies on that for its second phase (`use`) and starts its first phase with `risen.assets.clear()`.
 
 ## Testing and tracing
@@ -109,7 +109,7 @@ blocks on a hung game (`SetWindowPos` is asynchronous). Failure drills: `-Mods t
 
 **Trace channels** (opt-in, zero cost when off): `.\scripts\test-run.ps1 -Trace template,balance,save,events [-TraceFile]` or `config.toml [debug] trace = "..."`
 (`"all"`; `trace_file = true` also writes `trace.log`). Lines: `[12:31:09.513] [trace:events] session.start(new)`. Channels: `events` (every gameplay event the moment the hook queued it, with arguments, also when no mod listens), `template`, `balance`, `save`
-(save/load phases with durations), `spawn`, `script`, `lua` (errors with traceback), `test`; mods add their own with `risen.trace("mymod", ...)`. Turn channels on
+(save/load phases with durations), `spawn`, `script`, `lua` (errors with traceback), `test`, `voice` (every sample title the engine asks for, with the answer; M5c); mods add their own with `risen.trace("mymod", ...)`. Turn channels on
 instead of adding temporary `log.info` lines and rerunning.
 
 **Timings** (this machine, the same assertions): templates 53 s (was 240 s fixed), balance 53 s (240 s), npcs 61 s (300 s). The four older scenarios (persistence, fetchquest,

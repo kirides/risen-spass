@@ -327,15 +327,26 @@
     X(infocmd_give, L"Game.dll", "?Execute@gCInfoCommandGive@@UEAA_NAEAVgCRuntimeInfo@@_N@Z", bool (*)(void* self, void* runtimeInfo, bool flag), false) \
     X(eproxy_get_entity, L"Engine.dll", "?GetEntity@eCEntityProxy@@QEAAPEAVeCEntity@@XZ", void* (*)(void* proxy), false) \
     X(eent_kill, L"Engine.dll", "?Kill@eCEntity@@QEAAXXZ", void (*)(void* self), false) \
-    X(gdmg_do_damage, L"Game.dll", "?DoDamage@gCDamage_PS@@QEAA_NPEAVeCEntity@@@Z", bool (*)(void* self, void* victim), false)     X(sg_kill, L"Script_Game.dll", "?Kill@@YA_JPEAVgCScriptProcessingUnit@@PEAX1_J@Z", std::int64_t (*)(void* unit, void* self, void* other, std::int64_t arg), false) \
-    X(sg_cheat_kill, L"Script_Game.dll", "?OnCheatKill@@YA_JPEAVgCScriptProcessingUnit@@PEAX1_J@Z", std::int64_t (*)(void* unit, void* self, void* other, std::int64_t arg), false)     X(sg_defeat, L"Script_Game.dll", "?Defeat@@YA_JPEAVgCScriptProcessingUnit@@PEAX1_J@Z", std::int64_t (*)(void* unit, void* self, void* other, std::int64_t arg), false) \
+    X(gdmg_do_damage, L"Game.dll", "?DoDamage@gCDamage_PS@@QEAA_NPEAVeCEntity@@@Z", bool (*)(void* self, void* victim), false) \
+    X(sg_kill, L"Script_Game.dll", "?Kill@@YA_JPEAVgCScriptProcessingUnit@@PEAX1_J@Z", std::int64_t (*)(void* unit, void* self, void* other, std::int64_t arg), false) \
+    X(sg_cheat_kill, L"Script_Game.dll", "?OnCheatKill@@YA_JPEAVgCScriptProcessingUnit@@PEAX1_J@Z", std::int64_t (*)(void* unit, void* self, void* other, std::int64_t arg), false) \
+    X(sg_defeat, L"Script_Game.dll", "?Defeat@@YA_JPEAVgCScriptProcessingUnit@@PEAX1_J@Z", std::int64_t (*)(void* unit, void* self, void* other, std::int64_t arg), false) \
     X(ent_spawn_near, L"Script.dll", "?Spawn@Entity@@SA?AV1@VTemplate@@V1@_NW4gEDirection@@@Z", void* (*)(void* ret, void* byValueTemplate, void* byValueEntity, bool temporary, int direction), false) \
     X(psinv_transfer_amount, L"Script.dll", "?TransferAmountTo@PSInventory@@QEAA_NHHAEAVEntity@@@Z", bool (*)(void* self, int stack, int count, void* target), false) \
     X(psinv_loot, L"Script.dll", "?LootSelections@PSInventory@@QEAA_NAEAVEntity@@@Z", bool (*)(void* self, void* from), false) \
     X(psinv_trade, L"Script.dll", "?TradeSelections@PSInventory@@QEAA_NAEAVEntity@@@Z", bool (*)(void* self, void* with), false) \
     X(psinv_set_max_selection, L"Script.dll", "?SetMaxSelection@PSInventory@@QEAAXXZ", void (*)(void* self), false) \
     X(psinv_insert_stack, L"Script.dll", "?InsertStack@PSInventory@@QEAAHAEBVEntity@@@Z", int (*)(void* self, const void* item), false) \
-    X(psinv_set_selection, L"Script.dll", "?SetSelection@PSInventory@@QEAAXHAEBH@Z", void (*)(void* self, int stack, const int* amount), false)     X(psinv_unequip_stack, L"Script.dll", "?UnEquipStack@PSInventory@@QEAA_NH@Z", bool (*)(void* self, int stack), false)     X(psinv_set_max_select_limit, L"Script.dll", "?SetMaxSelectLimit@PSInventory@@QEAAXXZ", void (*)(void* self), false)     X(psinv_drop_stack, L"Script.dll", "?DropStack@PSInventory@@QEAA?AVEntity@@HAEBVbCMatrix@@@Z", void* (*)(void* self, void* ret, int stack, const float* pose), false)
+    X(psinv_set_selection, L"Script.dll", "?SetSelection@PSInventory@@QEAAXHAEBH@Z", void (*)(void* self, int stack, const int* amount), false) \
+    X(psinv_unequip_stack, L"Script.dll", "?UnEquipStack@PSInventory@@QEAA_NH@Z", bool (*)(void* self, int stack), false) \
+    X(psinv_set_max_select_limit, L"Script.dll", "?SetMaxSelectLimit@PSInventory@@QEAAXXZ", void (*)(void* self), false) \
+    X(psinv_drop_stack, L"Script.dll", "?DropStack@PSInventory@@QEAA?AVEntity@@HAEBVbCMatrix@@@Z", void* (*)(void* self, void* ret, int stack, const float* pose), false) \
+    /* ---- custom voice lines (docs/RE.md section 28) ---- */ \
+    X(ent_get_sample_title, L"Script.dll", "?GetSampleTitle@Entity@@QEBA?AVbCString@@V2@@Z", void* (*)(const void* self, void* ret, void* byValueKey), false) \
+    X(loc_get_voice_language, L"Engine.dll", "?GetVoiceLanguage@eCLocAdmin2@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false) \
+    X(rout_start_output, L"Game.dll", "?StartOutput@gCScriptRoutine_PS@@QEAA_NAEBVbCString@@W4gEOutputType@@@Z", bool (*)(void* self, const void* name, int type), false) \
+    X(rout_stop_output, L"Game.dll", "?StopOutput@gCScriptRoutine_PS@@QEAA_NXZ", bool (*)(void* self), false) \
+    X(rout_is_output_playing, L"Game.dll", "?IsOutputPlaying@gCScriptRoutine_PS@@QEBA_NXZ", bool (*)(const void* self), false)
 
 namespace spass::game {
 

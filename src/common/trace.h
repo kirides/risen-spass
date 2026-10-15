@@ -23,10 +23,11 @@ namespace spass::trace {
 //   script    risen.script define / override / call and every call the engine makes into a Lua script
 //   lua       Lua errors with their traceback
 //   test      the risen.test machinery
+//   voice     custom voice lines: every sample title the engine asks for, which variant answered, sound output started/stopped
 // A mod may use any other name (risen.trace("mymod", ...)).
-enum class Channel : unsigned { Events, Template, Balance, Save, Spawn, Script, Lua, Test, Count };
+enum class Channel : unsigned { Events, Template, Balance, Save, Spawn, Script, Lua, Test, Voice, Count };
 
-constexpr const char* kChannelNames[] = {"events", "template", "balance", "save", "spawn", "script", "lua", "test"};
+constexpr const char* kChannelNames[] = {"events", "template", "balance", "save", "spawn", "script", "lua", "test", "voice"};
 static_assert(sizeof(kChannelNames) / sizeof(kChannelNames[0]) == static_cast<std::size_t>(Channel::Count));
 
 // Result of parsing "template,save, mymod" (separators: comma, semicolon, whitespace). "all" and "*" select everything.

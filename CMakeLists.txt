@@ -80,6 +80,7 @@ add_library(spass_core STATIC
     src/game/lua_template.cpp
     src/game/lua_test.cpp
     src/game/lua_vfs.cpp
+    src/game/lua_voice.cpp
     src/game/properties.cpp
     src/game/script_bridge.cpp
     src/game/symbols.cpp

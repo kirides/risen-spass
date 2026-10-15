@@ -6,6 +6,7 @@
 
 #include "common/asset_names.h"
 #include "common/paths.h"
+#include "game/asset_files.h"
 #include "game/abi.h"
 #include "game/bindings.h"
 #include "game/vfs_mount.h"
@@ -323,6 +324,63 @@ end
     }
 }
 
+// Writes <spass>/generated/<mod>/<rel> (atomically) and makes the directory known to the engine: a first write mounts it, later ones mark it for a
+// remount before the next lookup (refreshAssetMounts() does it at once). Shared by risen.assets.write and the sound import.
+bool writeGeneratedAsset(const std::string& id, const std::string& rel, const std::string& data, std::string& error) {
+    const auto clean = assets::cleanRelativePath(rel);
+    if (!clean) {
+        error = "risen.assets.write: '" + rel + "' is not a relative path below the mod's generated directory (no '..', no drive, no empty parts)";
+        return false;
+    }
+    if (data.size() > 256u * 1024u * 1024u) {
+        error = "risen.assets.write: data larger than 256 MB";
+        return false;
+    }
+    const std::filesystem::path dir = paths::dataDir() / "generated" / id;
+    const std::filesystem::path target = dir / *clean;
+    std::error_code ec;
+    std::filesystem::create_directories(target.parent_path(), ec);
+    if (ec) {
+        error = "risen.assets.write: cannot create " + target.parent_path().string() + ": " + ec.message();
+        return false;
+    }
+    const std::filesystem::path tmp = target.string() + ".tmp";
+    {
+        std::ofstream f(tmp, std::ios::binary | std::ios::trunc);
+        f.write(data.data(), static_cast<std::streamsize>(data.size()));
+        f.close();
+        if (!f) {
+            std::filesystem::remove(tmp, ec);
+            error = "risen.assets.write: cannot write " + tmp.string();
+            return false;
+        }
+    }
+    std::filesystem::rename(tmp, target, ec);
+    if (ec) {
+        std::filesystem::remove(target, ec);
+        std::filesystem::rename(tmp, target, ec);
+        if (ec) {
+            error = "risen.assets.write: cannot replace " + target.string() + ": " + ec.message();
+            return false;
+        }
+    }
+    // make the new file known to the engine: a first write mounts the directory, later ones remount it before the next lookup
+    bool mounted = false;
+    for (const auto& m : assetMounts()) {
+        if (m.mod == id && m.kind == "generated") {
+            g_dirty.insert(m.virtualPath);
+            mounted = true;
+        }
+    }
+    if (!mounted && !mountAssetDirectory(id, "generated", dir.string())) {
+        error = "risen.assets.write: the engine could not mount " + dir.string();
+        return false;
+    }
+    return true;
+}
+
+int refreshAssetMounts() { return refreshDirty(); }
+
 // Per-mod functions: they know which mod calls (registered with Runtime::addModBinding).
 void bindAssetModApi(sol::state_view lua, sol::table api, const lua::ModInfo& mod) {
     {
@@ -336,51 +394,9 @@ void bindAssetModApi(sol::state_view lua, sol::table api, const lua::ModInfo& mo
 
         own.set_function("write", [id](sol::this_state ts, const std::string& rel, const std::string& data) -> std::tuple<sol::object, sol::object> {
             sol::state_view L(ts);
-            const auto fail = [&](const std::string& why) {
-                return std::tuple<sol::object, sol::object>{sol::make_object(L, sol::lua_nil), sol::make_object(L, why)};
-            };
-            const auto clean = assets::cleanRelativePath(rel);
-            if (!clean) {
-                return fail("risen.assets.write: '" + rel + "' is not a relative path below the mod's generated directory (no '..', no drive, no empty parts)");
-            }
-            if (data.size() > 256u * 1024u * 1024u) {
-                return fail("risen.assets.write: data larger than 256 MB");
-            }
-            const std::filesystem::path dir = paths::dataDir() / "generated" / id;
-            const std::filesystem::path target = dir / *clean;
-            std::error_code ec;
-            std::filesystem::create_directories(target.parent_path(), ec);
-            if (ec) {
-                return fail("risen.assets.write: cannot create " + target.parent_path().string() + ": " + ec.message());
-            }
-            const std::filesystem::path tmp = target.string() + ".tmp";
-            {
-                std::ofstream f(tmp, std::ios::binary | std::ios::trunc);
-                f.write(data.data(), static_cast<std::streamsize>(data.size()));
-                f.close();
-                if (!f) {
-                    std::filesystem::remove(tmp, ec);
-                    return fail("risen.assets.write: cannot write " + tmp.string());
-                }
-            }
-            std::filesystem::rename(tmp, target, ec);
-            if (ec) {
-                std::filesystem::remove(target, ec);
-                std::filesystem::rename(tmp, target, ec);
-                if (ec) {
-                    return fail("risen.assets.write: cannot replace " + target.string() + ": " + ec.message());
-                }
-            }
-            // make the new file known to the engine: a first write mounts the directory, later ones remount it before the next lookup
-            bool mounted = false;
-            for (const auto& m : assetMounts()) {
-                if (m.mod == id && m.kind == "generated") {
-                    g_dirty.insert(m.virtualPath);
-                    mounted = true;
-                }
-            }
-            if (!mounted && !mountAssetDirectory(id, "generated", dir.string())) {
-                return fail("risen.assets.write: the engine could not mount " + dir.string());
+            std::string error;
+            if (!writeGeneratedAsset(id, rel, data, error)) {
+                return {sol::make_object(L, sol::lua_nil), sol::make_object(L, error)};
             }
             return {sol::make_object(L, true), sol::make_object(L, sol::lua_nil)};
         });
