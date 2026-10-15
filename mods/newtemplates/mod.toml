@@ -1,0 +1,6 @@
+id          = "newtemplates"
+name        = "New templates demo"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Creates new item and NPC templates at runtime (risen.template.create, risen.balance new_items/new_npcs) and logs what that changes (docs/RE.md section 25)."
+main        = "main.lua"

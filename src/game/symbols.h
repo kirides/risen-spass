@@ -273,6 +273,20 @@
     X(skills_infos, L"Game.dll", "?ms_arrSkillInfos@gCSkills_PS@@2PAUgSSkillInfo@@A", unsigned char*, false) \
     X(combat_admin_instance, L"Game.dll", "?GetInstance@gCCombatAdmin@@SAPEAV1@XZ", void* (*)(), false) \
     X(combat_get_species, L"Game.dll", "?GetSpecies@gCCombatAdmin@@QEBAPEAVgCCombatSpecies@@AEBVbCString@@@Z", void* (*)(const void* self, const void* name), false) \
+    /* ---- new templates at runtime: clone + rename + id (docs/RE.md section 25) ---- */ \
+    X(tple_create_copy, L"Engine.dll", "?CreateEntityCopy@eCTemplateEntity@@SAPEAV1@PEAV1@@Z", void* (*)(void* source), false) \
+    X(tple_set_name, L"Engine.dll", "?SetName@eCTemplateEntity@@UEAAXAEBVbCString@@@Z", void (*)(void* self, const void* name), false) \
+    X(tple_set_id, L"Engine.dll", "?SetID@eCTemplateEntity@@UEAAXAEBVbCPropertyID@@@Z", void (*)(void* self, const void* id), false) \
+    X(tple_get_id, L"Engine.dll", "?GetID@eCTemplateEntity@@UEBAAEBVbCPropertyID@@XZ", const void* (*)(const void* self), false) \
+    X(scene_get_entity_by_id, L"Engine.dll", "?GetEntity@eCSceneAdmin@@QEAAPEAVeCNode@@AEBVbCPropertyID@@W4eEEntityType@@@Z", void* (*)(void* self, const void* id, int type), false) \
+    X(interaction_focus_name, L"Game.dll", "?GetPlainFocusName@gCInteraction_PS@@QEBA?AVbCUnicodeString@@XZ", void* (*)(const void* self, void* ret), false) \
+    X(item_plain_description, L"Game.dll", "?GetPlainDescription@gCItem_PS@@QEBA?AVbCUnicodeString@@XZ", void* (*)(const void* self, void* ret), false) \
+    X(mesh_ps_dependencies, L"Engine.dll", "?GetDependencies@eCMesh_PS@@UEAAXAEAV?$bTObjArray@VbCString@@@@0AEAV?$bTObjArray@VeCTemplateEntityProxy@@@@@Z", void (*)(void* ps, void* files, void* files2, void* proxies), false) \
+    X(anim_ps_dependencies, L"Engine.dll", "?GetDependencies@eCAnimation_PS@@UEAAXAEAV?$bTObjArray@VbCString@@@@0AEAV?$bTObjArray@VeCTemplateEntityProxy@@@@@Z", void (*)(void* ps, void* files, void* files2, void* proxies), false) \
+    X(bodypart_ps_dependencies, L"Engine.dll", "?GetDependencies@eCBodyPart_PS@@UEAAXAEAV?$bTObjArray@VbCString@@@@0AEAV?$bTObjArray@VeCTemplateEntityProxy@@@@@Z", void (*)(void* ps, void* files, void* files2, void* proxies), false) \
+    X(nav_post_copy, L"Game.dll", "?OnPostCopy@gCNavigation_PS@@UEAAXAEBVeCEntityPropertySet@@@Z", void (*)(void* self, const void* source), false) \
+    X(node_attach_child, L"Engine.dll", "?AttachChild@eCNode@@QEAA_NPEAV1@@Z", bool (*)(void* self, void* child), false) \
+    X(scene_unregister_tpl_name, L"Engine.dll", "?UnregisterNameInfo@eCSceneAdmin@@QEAA_NAEAVeCTemplateEntity@@@Z", bool (*)(void* self, void* tpl), false) \
     X(scene_ctx_at, L"Engine.dll", "?GetDynamicEntityContext@eCSceneAdmin@@QEBAPEAVeCEntityDynamicContext@@H@Z", void* (*)(const void* self, int index), false)
 
 namespace spass::game {

@@ -1,0 +1,6 @@
+id          = "newtemplates_driver"
+name        = "New templates driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Plays the savegame scenarios of the newtemplates mod unattended: dialogue Give, quick save/load in one process, a new game, and the fresh-process phases (docs/RE.md section 25)."
+main        = "main.lua"

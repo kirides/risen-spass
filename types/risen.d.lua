@@ -247,6 +247,24 @@ function Entity:stack_item(index) end
 ---@return string|nil reason
 function Entity:template() end
 
+---The label the engine shows for this entity (`gCInteraction_PS:GetPlainFocusName`: the localization id `focus_unique:FO_<entity name>`, else
+---`focus:FO_<entity name>`; `""` when neither exists). Shows what a mod's `risen.loc.set("FO_<name>", ...)` / strings file made of it.
+---@return string|nil text
+---@return string|nil reason
+function Entity:focus_name() end
+
+---The item description the engine shows (`gCItem_PS:GetPlainDescription`: localization id `item:ITEMDESC_<entity name>`; `""` or `"-"` when there is none).
+---@return string|nil text
+---@return string|nil reason `"entity has no gCItem_PS"` for non-items.
+function Entity:description() end
+
+---The resource files the entity's visual property sets loaded, as the engine's own `GetDependencies` reports them (`eCMesh_PS`: the compiled mesh,
+---`It_Wpn_1H_Sword._xmsh`; `eCAnimation_PS`: the actor file, `Ani_Wolf_Monster_Wolf.xac`; `eCBodyPart_PS`). This is what is really rendered, as opposed to the
+---`MeshFileName` property text: `risen.template.create(..., { mesh = ... })` is verified with it. Only entities (spawns) have loaded resources, templates report nothing.
+---@return string[]|nil files
+---@return string|nil reason
+function Entity:dependencies() end
+
 ---The equip requirements of this item entity (or a template entity such as `stack_item(i)`), same as `risen.item.requirements`:
 ---`{ Strength = 10 }`. Only the player is held to them: NPCs equip anything.
 ---@return table<string, integer>|nil requirements
@@ -312,6 +330,69 @@ function entityApi.spawn(template, x, y, z, temporary) end
 
 ---@class RisenTemplateApi
 local templateApi = {}
+
+---Overrides of `risen.template.create` (and one entry of the `new_items` / `new_npcs` / `templates` balancing sections, which adds `base`). An item base accepts
+---the keys of `BalanceItem`, an NPC/monster base those of `BalanceNpc`; every other base only `name`, `description`, `mesh`, `icon`, `material` and `properties`.
+---@class TemplateOverrides: BalanceItem, BalanceNpc
+---@field base? string Only in a balancing section: the template to clone.
+---@field name? string|table<string,string> Label shown for the item/NPC (localization id `FO_<name>`): one text for every language or `{ English = "...", German = "..." }`.
+---@field description? string|table<string,string> Item description (`ITEMDESC_<name>`), same forms. Items only.
+---@field mesh? string Mesh of an item (`eCMesh_PS.MeshFileName`, `"It_Wpn_1H_Club.xmsh"`) or the actor file of an NPC (`eCAnimation_PS.ResourceFilePath`, `"Ani_Boar_Monster_Boar.xac"`).
+---@field icon? string Inventory icon of an item (`gCItem_PS.IconImage`, `"ic_it_1h_club"`).
+---@field material? integer Material switch of the mesh/actor (`MaterialSwitch`).
+
+---@class TemplateCreateOptions
+---@field instances? boolean Also write the overrides into live entities of the clone (default `false`).
+
+---Creates a **new template** at runtime: a full independent copy of the item/NPC/monster template `base` (property sets, mesh, icon, skills, inventory)
+---with the new unique name `name` and the **deterministic ID of that name** (`risen.template.id_for(name)`), then applies `overrides` (the machinery of
+---`risen.balance`: `value`, `requires`, `modifies`, `damage`, `hp_max`, `skills`, `loot`, `properties`, ... plus `name`, `description`, `mesh`, `icon`,
+---`material`). Everything is validated first; on any problem nothing is created and `nil, reason` is returned. The clone is a snapshot of the base at creation
+---time. Afterwards `Template(name)`, `risen.entity.spawn`, `risen.npc.spawn`, `risen.item.give`, dialogue `Give` commands, `loot` and the balancing sections accept
+---the new name. Calling it again for an existing clone of the same base re-applies the overrides (`created = false`).
+---
+---Savegames store the ID of the template of every inventory stack, so create the template **in every process** before the savegame is read (on the first `tick`,
+---as `risen.balance.install` does); stacks of a template that does not exist (yet) stay dormant and resolve as soon as it is created, also after the load.
+---Items and NPC templates can be cloned at any time after the first `tick`; the clone lives until the process ends (see `risen.template.remove`).
+---```lua
+---risen.template.create("My_Sword", "It_1H_Sword", { value = 900, requires = { Strength = 25 }, name = "Flame Tongue", mesh = "It_Wpn_1H_Club.xmsh" })
+---```
+---@param name string New template name: letters, digits and `_`, not starting with a digit, at most 63 characters (`FO_<name>` is its label).
+---@param base string Existing template (`risen.template.list`, docs/TEMPLATES.md). Multi templates are refused.
+---@param overrides? TemplateOverrides
+---@param opts? TemplateCreateOptions
+---@return Template|nil template `nil` on failure.
+---@return boolean|string created `true` when the template was created now, `false` when it existed and only the overrides were applied; the reason when `template` is `nil`.
+function templateApi.create(name, base, overrides, opts) end
+
+---The low-level part of `create`: clones `base` as `name` (new name, ID derived from the name) without applying any overrides.
+---@param name string
+---@param base string
+---@return Template|nil template
+---@return string|nil reason
+function templateApi.clone(name, base) end
+
+---The ID a clone called `name` gets (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`): the MD5 of `"spass.template:<name>"`, printed as a GUID. Pure function.
+---@param name string
+---@return string id
+function templateApi.id_for(name) end
+
+---Why `name` cannot be the name of a new template, or `nil` when it can.
+---@param name string
+---@return string|nil problem
+function templateApi.name_problem(name) end
+
+---The templates this process created: `{ [name] = base name }` (removed ones are not listed).
+---@return table<string,string>
+function templateApi.created() end
+
+---Gives a template created by `risen.template.create` its names back (`Template(name)`, spawn, give and the dialogue commands no longer find it; `create` with the
+---same base brings it back with the same ID). Refused while live entities of it exist and for templates this layer did not create. Saved stacks and items that
+---were handed out keep working: the engine object and its ID stay registered until the process ends.
+---@param name string
+---@return boolean|nil ok
+---@return string|nil reason
+function templateApi.remove(name) end
 
 ---Whether a template with that name exists.
 ---@param name string
@@ -395,6 +476,28 @@ function Template:instances(limit) end
 ---@return integer|nil count
 ---@return string|nil reason
 function Template:instance_count() end
+
+---The template's ID as `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` (a GUID). Savegames store the ID of the template of every item stack. For a clone made by
+---`risen.template.create` it is `risen.template.id_for(name)`.
+---@return string|nil id
+---@return string|nil reason
+function Template:id() end
+
+---Engine bookkeeping for diagnostics: `{ id, created (a clone of this layer), base (its base's name), flags, has_parent, has_children, ref_id, property_sets,
+---own_name, parent = { name, id, flags, ... } }`. Every template is a pair: a hidden root `"<name>.tple"` and the template entity `"<name>"` below it.
+---@return table|nil info
+---@return string|nil reason
+function Template:info() end
+
+---The label the engine shows for items/NPCs of this template (localization id `FO_<name>`; `""` when there is none).
+---@return string|nil text
+---@return string|nil reason
+function Template:focus_name() end
+
+---The item description the engine shows (localization id `ITEMDESC_<name>`; `""` or `"-"` when there is none). Items only.
+---@return string|nil text
+---@return string|nil reason
+function Template:description() end
 
 ---Handle of an entity template by name.
 ---@param name string
@@ -592,6 +695,9 @@ local balanceApi = {}
 ---@field npcs? table<string, BalanceNpc> NPC and monster templates (see `BalanceNpc`, docs/NPC_PROPERTIES.md).
 ---@field npc_groups? BalanceNpcGroup[] `{ { match = "^Wolf", hp_mult = 1.5 }, { group = "Monster/Kapitel 2", level_add = 2 } }`
 ---@field item_groups? BalanceItemGroup[] `{ { group = "Items/Potions", value_mult = 0.5 } }`
+---@field new_items? table<string, TemplateOverrides> New item templates: `{ My_Sword = { base = "It_1H_Sword", value = 900, name = "Flame Tongue" } }` (see `risen.template.create`).
+---@field new_npcs? table<string, TemplateOverrides> New NPC/monster templates: `{ My_Wolf = { base = "Wolf", hp_max = 500, name = "Dire Wolf" } }`; `loot` may name items of `new_items`.
+---@field templates? table<string, TemplateOverrides> Like `new_items` and `new_npcs` for either kind (and other templates: only `name`, `mesh`, `properties`, ...).
 
 ---@class BalanceOptions
 ---@field instances? boolean Also write the values into the live entities of each template (default `true`).
@@ -634,7 +740,7 @@ function balanceApi.install(spec, opts) end
 ---@param handler fun(data: any, opts: BalanceOptions): table[], string[]
 function balanceApi.register_section(name, handler) end
 
----Names of the registered sections (`{ "item_groups", "items", "npc_groups", "npcs" }`).
+---Names of the registered sections (`{ "item_groups", "items", "new_items", "new_npcs", "npc_groups", "npcs", "templates" }`).
 ---@return string[]
 function balanceApi.section_names() end
 
@@ -1313,7 +1419,7 @@ function worldApi.is_save_allowed() end
 ---case-insensitively.
 ---@class RisenLocApi
 local locApi = {}
----Defines the text for an id (UTF-8).
+---Defines the text for an id (UTF-8). An id set without table prefix (`"FO_SPASS_Bob"`) also answers the prefixed id the engine asks for (`"focus:FO_SPASS_Bob"`).
 ---@param id string e.g. `"FO_SPASS_Bob"`, `"GO_QuestRunning"`.
 ---@param text string
 ---@param language? string Only this language (`"English"`, `"German"`, ...); all languages if omitted.

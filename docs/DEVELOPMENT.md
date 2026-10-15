@@ -59,7 +59,7 @@ property sets through the entity's vtable. The engine's own log function is an e
 * `scripts\test-run.ps1 -Mods <mod>[,<mod>] -Seconds 120 -Filter '<regex>'` deploys the build and the chosen mods into the copy, starts a new game
   (`-Start load` quick-loads, `-NoAutostart` stays in the menu), and prints the matching log lines. `config.toml [debug] app_data` (set by the script)
   keeps savegames and `ConfigUser.xml` inside the copy.
-* `scripts\smoke-test.ps1` runs every scenario (persistence, fetchquest, commands, branch, templates, balance, npcs), prints a pass/fail table with timings and returns a
+* `scripts\smoke-test.ps1` runs every scenario (persistence, fetchquest, commands, branch, templates, balance, npcs, newtemplates), prints a pass/fail table with timings and returns a
   nonzero exit code on failure: `-List`, `-Scenario templates,npcs`, `-FailFast`, `-TotalSeconds` (time budget). Run it before committing changes to events, saving,
   quests, dialogues or items. See "Testing and tracing" below.
 * Probe mods drive the game from `tick`: create a `mods/<name>` that logs what the engine reports, run it with `test-run.ps1`, read the log.
@@ -111,6 +111,11 @@ start up to `session.start` is ~30 s, so a scenario is bounded by its own settle
 fetchquest, commands, branch) still run for a fixed time; migrating one means moving its `driver:` lines into `risen.test` checks as done for the other three.
 `-Start load` (quick-load the last quick save instead of a new game) skips the new game but needs a prepared savegame in the copy and cannot test new-game behaviour;
 no clean-quit function was needed: `finish` ends the process itself (`TerminateProcess` after 1.5 s unless the script was faster).
+
+**Scenarios over several game processes.** What a savegame does in a *fresh* process (templates created before/after/never, ...) needs one process per step: `smoke-test.ps1` scenarios may list `Phases`
+(`@{ Name; Param = @('phase=load'); Start = 'load'; Keep = $true }`): each phase is a `test-run.ps1 -WaitForResult -Param phase=... -Start load -Keep` run of the same mods, the first one leaves the quick save the others load; the mods switch on `risen.test.param("phase")`
+(`mods/newtemplates` + `newtemplates_driver`: `save`, `load`, `load_missing`, `load_again`, `load_late`, about 3.5 minutes in all). A phase of your own is run by hand like this:
+`.\scripts\test-run.ps1 -Mods a,b -WaitForResult -Seconds 150 -Scenario name -Param phase=load -Start load -Keep` (`-Keep` keeps the savegames; call it from PowerShell, a `-File` call passes `-Mods a,b` as one string).
 
 ## Releases
 

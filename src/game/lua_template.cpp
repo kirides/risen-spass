@@ -5,11 +5,17 @@
 
 #include <spdlog/spdlog.h>
 
+#include <cstring>
+
+#include "common/template_id.h"
 #include "common/trace.h"
 #include "game/abi.h"
+#include "game/events.h"
 #include "game/lua_entity.h"
 #include "game/properties.h"
+#include "game/template_create_lua.h"
 #include "game/template_object.h"
+#include "hook/hook_manager.h"
 
 // Runtime access to the engine's entity templates (docs/RE.md §22).
 //
@@ -195,6 +201,114 @@ sol::optional<int> countInstances(void* tpl) {
     return count;
 }
 
+// ---- runtime-created templates (docs/RE.md section 25) --------------------------------------------------------------------
+
+// gCNavigation_PS::OnPostCopy (Game.dll) runs `Reset(false, true, true)` on every copied navigation set; while a world is loaded that raises an
+// access violation when the copy is a *template's* set (an NPC template cloned after the world exists). Entities of a world need it, a template
+// does not (its navigation state is the default), so it is skipped while this layer clones a template.
+Hook<void (*)(void*, const void*)> g_navPostCopy;
+bool g_skipNavPostCopy = false;
+
+void detourNavPostCopy(void* self, const void* source) {
+    if (g_skipNavPostCopy) {
+        return;
+    }
+    g_navPostCopy.original(self, source);
+}
+
+struct SkipNavPostCopy {
+    SkipNavPostCopy() { g_skipNavPostCopy = true; }
+    ~SkipNavPostCopy() { g_skipNavPostCopy = false; }
+};
+
+// The engine's bCPropertyID: a 16 byte GUID and a 4 byte counter (always 0).
+struct PropertyId {
+    unsigned char guid[16] = {};
+    std::uint32_t count = 0;
+};
+
+// Every clone this process created (clones live until the process ends; `retired` ones only gave up their names, see risen.template.remove).
+struct CreatedTemplate {
+    std::string base;
+    void* root = nullptr;   // the hidden "<name>.tple" root entity
+    void* clone = nullptr;  // the template entity itself
+    bool retired = false;
+};
+std::map<std::string, CreatedTemplate>& createdTemplates() {
+    static std::map<std::string, CreatedTemplate> created;
+    return created;
+}
+
+std::string idTextOf(const void* tpl) {
+    if (sym().tple_get_id == nullptr || tpl == nullptr) {
+        return "";
+    }
+    std::string out;
+    guarded([&] {
+        const void* id = sym().tple_get_id(tpl);
+        if (id != nullptr) {
+            templates::TemplateId bytes{};
+            std::memcpy(bytes.data(), id, bytes.size());
+            out = templates::guidText(bytes);
+        }
+    });
+    return out;
+}
+
+// The text the engine shows for an entity or template: gCInteraction_PS::GetPlainFocusName (key FO_<name>) or
+// gCItem_PS::GetPlainDescription (key ITEMDESC_<name>). `ps` is the property set; empty string when it has no text.
+std::string plainTextOf(void* ps, void* (*fn)(const void*, void*)) {
+    std::string out;
+    if (ps == nullptr || fn == nullptr) {
+        return out;
+    }
+    guarded([&] {
+        OutUString text;
+        fn(ps, text.ptr());
+        out = text.take();
+    });
+    return out;
+}
+
+// A bTObjArray<bCString> the engine fills (header { data*, count, capacity }; the callee grows it with the engine allocator).
+struct StringArray {
+    void* data = nullptr;
+    std::int32_t count = 0;
+    std::int32_t capacity = 0;
+};
+
+// The resource files a property set depends on, according to the engine (GetDependencies of eCMesh_PS / eCAnimation_PS / eCBodyPart_PS):
+// the mesh/actor resources the set actually loaded. A set that has not requested its resources (a template's) reports nothing.
+void collectDependencies(void* ps, void (*fn)(void*, void*, void*, void*), std::vector<std::string>& out) {
+    if (ps == nullptr || fn == nullptr) {
+        return;
+    }
+    StringArray files, files2, proxies;
+    guarded([&] { fn(ps, &files, &files2, &proxies); });
+    guarded([&] {
+        for (int i = 0; i < files.count && i < 64 && files.data != nullptr; ++i) {
+            const void* str = static_cast<const char*>(files.data) + static_cast<std::size_t>(i) * 8;
+            out.emplace_back(sym().bstring_get_text(str));
+        }
+    });
+    // release what the engine allocated (the strings and the array buffer)
+    guarded([&] {
+        for (int i = 0; i < files.count && files.data != nullptr; ++i) {
+            sym().bstring_dtor(static_cast<char*>(files.data) + static_cast<std::size_t>(i) * 8);
+        }
+        if (files.data != nullptr && sym().mem_free != nullptr) {
+            sym().mem_free(sym().mem_instance(), files.data);
+        }
+    });
+}
+
+template <class T>
+T rawField(const void* base, std::size_t offset) {
+    T v{};
+    std::memcpy(&v, static_cast<const char*>(base) + offset, sizeof(T));
+    return v;
+}
+
 using Two = std::tuple<sol::object, sol::object>;
 
 Two okResult(sol::state_view lua, sol::object value) { return {std::move(value), sol::make_object(lua, sol::lua_nil)}; }
@@ -202,7 +316,165 @@ Two failResult(sol::state_view lua, const std::string& reason) {
     return {sol::make_object(lua, sol::lua_nil), sol::make_object(lua, reason)};
 }
 
+// Clones `baseName` under a new name with the deterministic ID of that name. See docs/RE.md section 25 for what each step does.
+Two cloneTemplate(sol::state_view lua, const std::string& newName, const std::string& baseName) {
+    const Symbols& s = sym();
+    if (s.tple_create_copy == nullptr || s.tple_set_name == nullptr || s.tple_set_id == nullptr || s.tple_get_id == nullptr ||
+        s.scene_get_entity_by_id == nullptr) {
+        return failResult(lua, "engine functions for creating templates are unavailable (risen.engine.missing())");
+    }
+    if (const std::string why = templates::nameProblem(newName); !why.empty()) {
+        return failResult(lua, why);
+    }
+    auto& created = createdTemplates();
+    if (const Resolved existing = resolveTemplate(newName); existing.tpl != nullptr) {
+        const auto it = created.find(newName);
+        if (it != created.end() && !it->second.retired && it->second.base == baseName) {
+            SPASS_TRACE(trace::Channel::Template, "create '{}': already created from '{}' in this process", newName, baseName);
+            return okResult(lua, sol::make_object(lua, LuaTemplate{newName}));
+        }
+        if (it != created.end() && !it->second.retired) {
+            return failResult(lua, "template '" + newName + "' was already created from '" + it->second.base + "' (not '" + baseName + "')");
+        }
+        return failResult(lua, "a template called '" + newName + "' already exists (choose a new name)");
+    }
+    if (const auto it = created.find(newName); it != created.end() && it->second.retired) {
+        // a clone that was removed: its entities and ID are still registered, so it gets its names back instead of a second copy
+        if (it->second.base != baseName) {
+            return failResult(lua, "template '" + newName + "' was created from '" + it->second.base + "' and removed; it can only come back from that base");
+        }
+        const bool ran = guarded([&] {
+            const BString rootName(newName + ".tple");
+            s.tple_set_name(it->second.root, rootName.get());
+            const BString name(newName);
+            s.tple_set_name(it->second.clone, name.get());
+        });
+        const Resolved back = resolveTemplate(newName);
+        if (!ran || back.tpl != it->second.clone) {
+            return failResult(lua, "the removed template '" + newName + "' could not be registered again");
+        }
+        it->second.retired = false;
+        SPASS_TRACE(trace::Channel::Template, "create '{}' from '{}': removed clone registered again", newName, baseName);
+        return okResult(lua, sol::make_object(lua, LuaTemplate{newName}));
+    }
+    const Resolved base = resolveTemplate(baseName);
+    if (base.tpl == nullptr) {
+        return failResult(lua, "base template: " + base.error);
+    }
+    if (!ensureLoaded(base.tpl)) {
+        return failResult(lua, "the content of the base template '" + baseName + "' could not be loaded");
+    }
+    void* admin = sceneAdmin();
+    if (admin == nullptr) {
+        return failResult(lua, "the scene admin is not available (game not ready?)");
+    }
+    // Every shipped template is a pair: a hidden root ("<name>.tple", helper-parent flag, no property sets) with the real template
+    // entity ("<name>") as its only child (docs/RE.md section 25). The name lookup only finds the child whose root is a single template.
+    void* baseRoot = nullptr;
+    guarded([&] {
+        void* parent = rawField<void*>(base.tpl, 0x10);
+        if (parent != nullptr && rawField<void*>(parent, 0x10) == nullptr && rawField<void*>(parent, 0x20) == base.tpl) {
+            baseRoot = parent;
+        }
+    });
+    if (baseRoot == nullptr) {
+        return failResult(lua, "the base template '" + baseName + "' has an unexpected structure (no single root): cannot clone it");
+    }
+    PropertyId id;
+    PropertyId rootId;
+    const templates::TemplateId bytes = templates::idForName(newName);
+    const templates::TemplateId rootBytes = templates::rootIdForName(newName);
+    std::memcpy(id.guid, bytes.data(), bytes.size());
+    std::memcpy(rootId.guid, rootBytes.data(), rootBytes.size());
+
+    // Is an ID already taken by a *registered* entity? (An ID that only a pending proxy of a loaded savegame knows has no node yet:
+    // that is the good case, the clone claims it.)
+    for (const auto* probe : {&id, &rootId}) {
+        void* holder = nullptr;
+        if (!guarded([&] { holder = s.scene_get_entity_by_id(admin, probe, 2); })) {
+            return failResult(lua, "the engine raised an exception while checking the template ID");
+        }
+        if (holder != nullptr) {
+            return failResult(lua, "the ID derived from '" + newName + "' (" +
+                                       templates::guidText(probe == &id ? bytes : rootBytes) +
+                                       ") is already used by another entity: choose another name");
+        }
+    }
+
+    void* root = nullptr;
+    void* clone = nullptr;
+    std::string failure;
+    int step = 0;  // where an engine exception happened (reported in the error)
+    const SkipNavPostCopy skipNav;
+    const bool ran = guarded([&] {
+        step = 1;
+        root = s.tple_create_copy(baseRoot);
+        step = 2;
+        clone = s.tple_create_copy(base.tpl);
+        step = 3;
+        if (root == nullptr || clone == nullptr) {
+            failure = "the engine could not copy the template";
+            return;
+        }
+        const BString rootName(newName + ".tple");
+        s.tple_set_name(root, rootName.get());
+        step = 4;
+        s.tple_set_id(root, &rootId);
+        step = 5;
+        const BString name(newName);
+        s.tple_set_name(clone, name.get());
+        step = 6;
+        s.tple_set_id(clone, &id);
+        step = 7;
+        if (!s.node_attach_child(root, clone)) {
+            failure = "the engine refused to attach the template to its root";
+            return;
+        }
+        step = 8;
+        const void* now = s.tple_get_id(clone);
+        const void* nowRoot = s.tple_get_id(root);
+        if (now == nullptr || std::memcmp(now, id.guid, sizeof(id.guid)) != 0 || nowRoot == nullptr ||
+            std::memcmp(nowRoot, rootId.guid, sizeof(rootId.guid)) != 0) {
+            failure = "the engine did not accept the template ID (collision)";
+        }
+    });
+    // a failed attempt must not leave half-made entities answering to the base's name: take them out of the name map
+    auto discard = [&] {
+        if (s.scene_unregister_tpl_name == nullptr) {
+            return;
+        }
+        for (void* e : {clone, root}) {
+            if (e != nullptr) {
+                guarded([&] { s.scene_unregister_tpl_name(admin, e); });
+            }
+        }
+    };
+    if (!ran) {
+        discard();
+        SPASS_TRACE(trace::Channel::Template, "create '{}' from '{}': engine exception in step {}", newName, baseName, step);
+        return failResult(lua, "the engine raised an exception while cloning '" + baseName + "' (step " + std::to_string(step) + ")");
+    }
+    if (!failure.empty()) {
+        discard();
+        return failResult(lua, failure);
+    }
+    // the name must now resolve to the clone, through the same lookup every API of this layer uses
+    const Resolved back = resolveTemplate(newName);
+    if (back.tpl != clone) {
+        return failResult(lua, "the clone was created but the name '" + newName + "' does not resolve to it (" +
+                                   (back.error.empty() ? std::string("another entity answers to that name") : back.error) + ")");
+    }
+    created[newName] = CreatedTemplate{baseName, root, clone, false};
+    SPASS_TRACE(trace::Channel::Template, "create '{}' from '{}': id {} sets {}", newName, baseName, templates::guidText(bytes),
+                propertySetsOf(clone).size());
+    return okResult(lua, sol::make_object(lua, LuaTemplate{newName}));
+}
+
 }  // namespace
+
+void installTemplateHooks() {
+    g_navPostCopy.install("gCNavigation_PS::OnPostCopy", sym().nav_post_copy, &detourNavPostCopy);
+}
 
 void* templatePropertySet(const std::string& templateName, const std::string& set, std::string& error) {
     const Resolved r = resolveTemplate(templateName);
@@ -234,8 +506,58 @@ void* templateEntityPtr(const std::string& templateName, std::string& error) {
     return r.tpl;
 }
 
-// entity:template() -> Template | nil, reason
+// entity:template() -> Template | nil, reason; entity:focus_name() / entity:description() -> the texts the engine shows
 void addTemplateMethods(sol::usertype<LuaEntity>& ut) {
+    auto textMethod = [](const char* cls, void* (*Symbols::*fn)(const void*, void*)) {
+        return [cls, fn](sol::this_state ts, const LuaEntity& e) -> Two {
+            sol::state_view lua(ts);
+            void* entity = ptr(e);
+            if (entity == nullptr) {
+                return failResult(lua, "entity is gone");
+            }
+            const Symbols& s = sym();
+            if (s.*fn == nullptr || s.ent_get_property_set == nullptr) {
+                return failResult(lua, "the engine function is unavailable");
+            }
+            void* ps = nullptr;
+            guarded([&] {
+                const BString name(cls);
+                ps = s.ent_get_property_set(entity, name.get());
+            });
+            if (ps == nullptr) {
+                return failResult(lua, std::string("entity has no ") + cls);
+            }
+            return okResult(lua, sol::make_object(lua, plainTextOf(ps, s.*fn)));
+        };
+    };
+    // entity:dependencies() -> { "It_Wpn_1H_Sword.xmsh", ... }: the mesh/actor resource files the entity's visual property sets loaded, as the engine's
+    // own GetDependencies reports them (what the entity really renders, as opposed to the property text)
+    ut["dependencies"] = [](sol::this_state ts, const LuaEntity& e) -> Two {
+        sol::state_view lua(ts);
+        void* entity = ptr(e);
+        if (entity == nullptr) {
+            return failResult(lua, "entity is gone");
+        }
+        const Symbols& s = sym();
+        std::vector<std::string> files;
+        for (const auto& [setName, ps] : propertySetsOf(entity)) {
+            if (setName == "eCMesh_PS") {
+                collectDependencies(ps, s.mesh_ps_dependencies, files);
+            } else if (setName == "eCAnimation_PS") {
+                collectDependencies(ps, s.anim_ps_dependencies, files);
+            } else if (setName == "eCBodyPart_PS") {
+                collectDependencies(ps, s.bodypart_ps_dependencies, files);
+            }
+        }
+        sol::table out = lua.create_table();
+        int i = 1;
+        for (const std::string& f : files) {
+            out[i++] = f;
+        }
+        return okResult(lua, out);
+    };
+    ut["focus_name"] = textMethod("gCInteraction_PS", &Symbols::interaction_focus_name);
+    ut["description"] = textMethod("gCItem_PS", &Symbols::item_plain_description);
     ut["template"] = [](sol::this_state ts, const LuaEntity& e) -> Two {
         sol::state_view lua(ts);
         void* entity = ptr(e);
@@ -456,6 +778,90 @@ void bindTemplates(sol::state_view lua, sol::table risen) {
                 return failResult(lua, "the scene is not available (no world loaded?)");
             }
             return okResult(lua, sol::make_object(lua, *n));
+        },
+        // template:focus_name() -> the label the engine shows for the template's items (localization key FO_<name>), "" when it has none
+        "focus_name", [&s](sol::this_state ts, const LuaTemplate& t) -> Two {
+            sol::state_view lua(ts);
+            const Resolved r = resolveTemplate(t.name);
+            if (r.tpl == nullptr || !ensureLoaded(r.tpl)) {
+                return failResult(lua, r.tpl == nullptr ? r.error : "the template content could not be loaded");
+            }
+            if (s.interaction_focus_name == nullptr) {
+                return failResult(lua, "engine function gCInteraction_PS::GetPlainFocusName is unavailable");
+            }
+            void* ps = findSet(r.tpl, "gCInteraction_PS");
+            if (ps == nullptr) {
+                return failResult(lua, "template '" + t.name + "' has no gCInteraction_PS");
+            }
+            return okResult(lua, sol::make_object(lua, plainTextOf(ps, s.interaction_focus_name)));
+        },
+        // template:description() -> the item description the engine shows (localization key ITEMDESC_<name>), "" when it has none
+        "description", [&s](sol::this_state ts, const LuaTemplate& t) -> Two {
+            sol::state_view lua(ts);
+            const Resolved r = resolveTemplate(t.name);
+            if (r.tpl == nullptr || !ensureLoaded(r.tpl)) {
+                return failResult(lua, r.tpl == nullptr ? r.error : "the template content could not be loaded");
+            }
+            if (s.item_plain_description == nullptr) {
+                return failResult(lua, "engine function gCItem_PS::GetPlainDescription is unavailable");
+            }
+            void* ps = findSet(r.tpl, "gCItem_PS");
+            if (ps == nullptr) {
+                return failResult(lua, "template '" + t.name + "' is not an item (no gCItem_PS)");
+            }
+            return okResult(lua, sol::make_object(lua, plainTextOf(ps, s.item_plain_description)));
+        },
+        // template:id() -> "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx": the template's ID (what savegames store); nil, reason when it does not resolve
+        "id", [](sol::this_state ts, const LuaTemplate& t) -> Two {
+            sol::state_view lua(ts);
+            const Resolved r = resolveTemplate(t.name);
+            if (r.tpl == nullptr) {
+                return failResult(lua, r.error);
+            }
+            const std::string text = idTextOf(r.tpl);
+            if (text.empty()) {
+                return failResult(lua, "the template has no ID");
+            }
+            return okResult(lua, sol::make_object(lua, text));
+        },
+        // template:info() -> { id, created, base, flags, has_parent, has_children, ref_id, property_sets } engine bookkeeping for diagnostics
+        "info", [](sol::this_state ts, const LuaTemplate& t) -> Two {
+            sol::state_view lua(ts);
+            const Resolved r = resolveTemplate(t.name);
+            if (r.tpl == nullptr) {
+                return failResult(lua, r.error);
+            }
+            sol::table out = lua.create_table();
+            guarded([&] {
+                out["flags"] = static_cast<int>(rawField<std::uint8_t>(r.tpl, 0x58));
+                out["has_parent"] = rawField<void*>(r.tpl, 0x10) != nullptr;
+                out["has_children"] = rawField<void*>(r.tpl, 0x20) != nullptr;
+                out["ref_id"] = rawField<void*>(r.tpl, 0x60) != nullptr;
+                out["property_sets"] = rawField<std::int32_t>(r.tpl, 0x48);
+            });
+            out["id"] = idTextOf(r.tpl);
+            guarded([&] {
+                const void* parent = rawField<void*>(r.tpl, 0x10);
+                if (parent != nullptr) {
+                    sol::table p = lua.create_table();
+                    p["flags"] = static_cast<int>(rawField<std::uint8_t>(parent, 0x58));
+                    p["name"] = templateNameOf(parent);
+                    p["id"] = idTextOf(parent);
+                    p["first_child_is_this"] = rawField<void*>(parent, 0x20) == r.tpl;
+                    p["has_sibling"] = rawField<void*>(r.tpl, 0x18) != nullptr;
+                    p["parent_has_parent"] = rawField<void*>(parent, 0x10) != nullptr;
+                    p["parent_sets"] = rawField<std::int32_t>(parent, 0x48);
+                    out["parent"] = p;
+                }
+                out["own_name"] = templateNameOf(r.tpl);
+            });
+            const auto& created = createdTemplates();
+            const auto it = created.find(t.name);
+            out["created"] = it != created.end() && !it->second.retired;
+            if (it != created.end() && !it->second.retired) {
+                out["base"] = it->second.base;
+            }
+            return okResult(lua, out);
         });
     (void)ut;
 
@@ -471,6 +877,62 @@ void bindTemplates(sol::state_view lua, sol::table risen) {
         SPASS_TRACE(trace::Channel::Template, "get '{}' -> ok", name);
         const std::string real = templateNameOf(r.tpl);
         return okResult(lua, sol::make_object(lua, LuaTemplate{real.empty() ? name : real}));
+    });
+
+    // risen.template.clone(new_name, base_name) -> Template | nil, reason: low-level clone of a template under a new unique name with the
+    // deterministic ID of that name (see risen.template.create for the overrides)
+    tpl.set_function("clone", [](sol::this_state ts, const std::string& newName, const std::string& baseName) -> Two {
+        return cloneTemplate(sol::state_view(ts), newName, baseName);
+    });
+    // risen.template.id_for(name) -> the ID a clone of that name gets (pure function, no engine access)
+    tpl.set_function("id_for", [](const std::string& name) { return templates::guidText(templates::idForName(name)); });
+    // risen.template.name_problem(name) -> nil when the name is a valid name for a new template, else the reason
+    tpl.set_function("name_problem", [](sol::this_state ts, const std::string& name) -> sol::object {
+        const std::string why = templates::nameProblem(name);
+        return why.empty() ? sol::make_object(ts, sol::lua_nil) : sol::make_object(ts, why);
+    });
+    // risen.template.created() -> { [name] = base name } the clones this process created
+    tpl.set_function("created", [](sol::this_state ts) {
+        sol::state_view lua(ts);
+        sol::table out = lua.create_table();
+        for (const auto& [name, rec] : createdTemplates()) {
+            if (!rec.retired) {
+                out[name] = rec.base;
+            }
+        }
+        return out;
+    });
+    // risen.template.remove(name) -> true | nil, reason: gives a clone this layer created its names back (Template(name), spawn, give and the
+    // dialogue commands no longer find it). Refused while live entities of it exist. Entities that already refer to it (saved stacks, items that were
+    // handed out) keep working: the clone and its ID stay registered until the process ends, and create() with the same base brings the names back.
+    tpl.set_function("remove", [](sol::this_state ts, const std::string& name) -> Two {
+        sol::state_view lua(ts);
+        const Symbols& s = sym();
+        auto& created = createdTemplates();
+        const auto it = created.find(name);
+        if (it == created.end() || it->second.retired) {
+            return failResult(lua, "'" + name + "' is not a template this mod layer created");
+        }
+        if (s.scene_unregister_tpl_name == nullptr) {
+            return failResult(lua, "engine function eCSceneAdmin::UnregisterNameInfo is unavailable");
+        }
+        void* admin = sceneAdmin();
+        if (admin == nullptr) {
+            return failResult(lua, "the scene admin is not available (game not ready?)");
+        }
+        if (const sol::optional<int> n = countInstances(it->second.clone); n && *n > 0) {
+            return failResult(lua, std::to_string(*n) + " live entities of '" + name + "' exist: remove them first (Entity:kill)");
+        }
+        const bool ran = guarded([&] {
+            s.scene_unregister_tpl_name(admin, it->second.clone);
+            s.scene_unregister_tpl_name(admin, it->second.root);
+        });
+        if (!ran || resolveTemplate(name).tpl != nullptr) {
+            return failResult(lua, "the engine did not release the name '" + name + "'");
+        }
+        it->second.retired = true;
+        SPASS_TRACE(trace::Channel::Template, "remove '{}'", name);
+        return okResult(lua, sol::make_object(lua, true));
     });
 
     // risen.template.census() -> { [template name] = number of live entities created from it }, total entities (one pass over the scene)
@@ -498,6 +960,21 @@ void bindTemplates(sol::state_view lua, sol::table risen) {
 
     installTemplatePatchHelper(lua, risen);
 }
+
+void installTemplateCreateHelpers(sol::state_view lua, sol::table risen) {
+    sol::load_result loaded = lua.load(kTemplateCreateChunk, "=risen.template.create");
+    if (!loaded.valid()) {
+        spdlog::error("lua: template create helpers failed to load: {}", loaded.get<sol::error>().what());
+        return;
+    }
+    sol::protected_function fn = loaded;
+    sol::protected_function_result res = fn(risen);
+    if (!res.valid()) {
+        spdlog::error("lua: template create helpers failed to run: {}", res.get<sol::error>().what());
+    }
+}
+
+void bindTemplateCreate(sol::state_view lua, sol::table risen) { installTemplateCreateHelpers(lua, risen); }
 
 void installTemplatePatchHelper(sol::state_view lua, sol::table risen) {
     // risen.template.patch(name, { gCItem_PS = { GoldValue = 100 } } [, { instances = true, dry_run = true }]) -> true, count [, instance_count] | nil, reason

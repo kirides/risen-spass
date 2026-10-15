@@ -7,4 +7,7 @@ namespace spass::game {
 // Needs the Game.dll/Engine.dll symbols: call it from installHooks() at DllMain time.
 void installEventHooks();
 
+// The hook that lets NPC templates be cloned while a world is loaded (docs/RE.md section 25). (lua_template.cpp)
+void installTemplateHooks();
+
 }  // namespace spass::game

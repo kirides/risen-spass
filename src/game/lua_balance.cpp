@@ -485,6 +485,15 @@ local function items_section(data, _)
             elseif not current then
                 bad("not an item template (no gCItem_PS)")
             elseif known then
+                for _, key in ipairs({ "value", "damage", "mana_cost" }) do
+                    local v = entry[key]
+                    if v ~= nil and not (type(v) == "number" and v == math.floor(v) and v >= 0 and v < 2 ^ 31) then
+                        bad(("%s must be a non-negative integer, got %s"):format(key, tostring(v)))
+                    end
+                end
+                for _, key in ipairs({ "use_type", "category" }) do
+                    if entry[key] ~= nil and type(entry[key]) ~= "string" then bad(("%s must be a string (an enum name), got %s"):format(key, type(entry[key]))) end
+                end
                 -- plain properties: validated by a dry run of risen.template.patch
                 local sets, any = {}, false
                 for key, loc in pairs(ITEM_PROPS) do

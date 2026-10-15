@@ -9,6 +9,8 @@
       templates   - template editing (mods/templatepatch + templatepatch_driver)                                            [risen.test]
       balance     - item balancing (mods/balance_items + balance_driver)                                                    [risen.test]
       npcs        - NPC balancing (mods/balance_npcs + balance_npcs_driver)                                                 [risen.test]
+      newtemplates - new item/NPC templates (mods/newtemplates + newtemplates_driver); five runs: save, then four fresh-process loads
+                     (templates created early / missing / early again / late)                                                [risen.test]
 
 .DESCRIPTION
     Needs a built sentry.dll and the test copy (see CLAUDE.md). The [risen.test] scenarios end as soon as they are done
@@ -28,7 +30,7 @@
 param(
     [string]$GameDir = 'B:\DevDrive\risen-test',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -92,6 +94,15 @@ $scenarios = [ordered]@{
     templates   = @{ Title = 'template editing'; Kind = 'result'; Mods = @('templatepatch', 'templatepatch_driver'); Limit = 400 }
     balance     = @{ Title = 'item balancing'; Kind = 'result'; Mods = @('balance_items', 'balance_driver'); Limit = 400 }
     npcs        = @{ Title = 'NPC balancing'; Kind = 'result'; Mods = @('balance_npcs', 'balance_npcs_driver'); Limit = 500 }
+    # one game process per phase (-Param phase=...): "save" plays the whole scenario in a new game and leaves a quick save, the others load it in a fresh process
+    newtemplates = @{ Title = 'new templates'; Kind = 'result'; Mods = @('newtemplates', 'newtemplates_driver'); Limit = 200
+                      Phases = @(
+                          @{ Name = 'save'; Param = @('phase=save'); Start = 'new'; Keep = $false; Limit = 200 }
+                          @{ Name = 'load'; Param = @('phase=load'); Start = 'load'; Keep = $true; Limit = 120 }
+                          @{ Name = 'load_missing'; Param = @('phase=load_missing'); Start = 'load'; Keep = $true; Limit = 120 }
+                          @{ Name = 'load_again'; Param = @('phase=load_again'); Start = 'load'; Keep = $true; Limit = 120 }
+                          @{ Name = 'load_late'; Param = @('phase=load_late'); Start = 'load'; Keep = $true; Limit = 120 }
+                      ) }
 }
 
 if ($List) {
@@ -119,44 +130,64 @@ foreach ($name in $selected) {
     $limit = [int][math]::Min($s.Limit, $left)
     Write-Host "== $name ($($s.Title)), limit $limit s"
     $t0 = Get-Date
-    $testArgs = @{ GameDir = $GameDir; Mods = $s.Mods; Seconds = $limit; Filter = 'NOTHING'; StallSeconds = $StallSeconds }
-    if ($s.Kind -eq 'result') { $testArgs.WaitForResult = $true; $testArgs.Scenario = $name }
-    $global:SpassRun = [pscustomobject]@{ Reason = 'error'; Result = $null }
-    try { & (Join-Path $here 'test-run.ps1') @testArgs | Out-Null }
-    catch { Write-Host "  test-run.ps1 failed: $_" -ForegroundColor Red }
-    $run = $global:SpassRun
-    $took = ((Get-Date) - $t0).TotalSeconds
-    $row = [pscustomobject]@{ Scenario = $name; Result = 'FAIL'; Checks = '-'; Seconds = [int]$took; Note = '' }
+    $row = [pscustomobject]@{ Scenario = $name; Result = 'FAIL'; Checks = '-'; Seconds = 0; Note = '' }
+    # every run of the scenario: one entry (a single run) or one per phase (several game processes)
+    $phases = if ($s.Phases) { @($s.Phases) } else { @(@{ Name = ''; Param = @(); Start = 'new'; Keep = $false; Limit = $limit }) }
+    $passedChecks = 0; $totalChecks = 0; $badPhases = @(); $notes = @()
+    foreach ($ph in $phases) {
+        $phLimit = [int][math]::Min($ph.Limit, [math]::Max($TotalSeconds - ((Get-Date) - $runStart).TotalSeconds, 60))
+        $label = if ($ph.Name) { "$name/$($ph.Name)" } else { $name }
+        if ($ph.Name) { Write-Host "-- phase $($ph.Name), limit $phLimit s" }
+        $testArgs = @{ GameDir = $GameDir; Mods = $s.Mods; Seconds = $phLimit; Filter = 'NOTHING'; StallSeconds = $StallSeconds }
+        if ($s.Kind -eq 'result') {
+            $testArgs.WaitForResult = $true; $testArgs.Scenario = $name
+            if ($ph.Param -and $ph.Param.Count -gt 0) { $testArgs.Param = $ph.Param }
+            if ($ph.Start -eq 'load') { $testArgs.Start = 'load' }
+            if ($ph.Keep) { $testArgs.Keep = $true }
+        }
+        $global:SpassRun = [pscustomobject]@{ Reason = 'error'; Result = $null }
+        try { & (Join-Path $here 'test-run.ps1') @testArgs | Out-Null }
+        catch { Write-Host "  test-run.ps1 failed: $_" -ForegroundColor Red }
+        $run = $global:SpassRun
 
-    if ($s.Kind -eq 'result') {
-        $res = $run.Result
-        if ($null -eq $res) {
-            $row.Note = switch ($run.Reason) { 'stall' { "stalled (no log line for $StallSeconds s), killed" } 'seconds' { "no result within $limit s, killed" } 'exited' { 'the game exited without a result' } default { "no result ($($run.Reason))" } }
-            Write-Host "  FAIL  $($row.Note)" -ForegroundColor Red
-        } else {
-            foreach ($c in $res.checks) {
-                if ($c.ok) { Write-Host ("  ok    " + $c.name) } else { Write-Host ("  FAIL  " + $c.name + ": " + $c.detail) -ForegroundColor Red }
+        if ($s.Kind -eq 'result') {
+            $res = $run.Result
+            if ($null -eq $res) {
+                $note = switch ($run.Reason) { 'stall' { "stalled (no log line for $StallSeconds s), killed" } 'seconds' { "no result within $phLimit s, killed" } 'exited' { 'the game exited without a result' } default { "no result ($($run.Reason))" } }
+                Write-Host "  FAIL  $note" -ForegroundColor Red
+                $badPhases += $label; $notes += "${label}: $note"
+            } else {
+                foreach ($c in $res.checks) {
+                    if ($c.ok) { Write-Host ("  ok    " + $c.name) } else { Write-Host ("  FAIL  " + $c.name + ": " + $c.detail) -ForegroundColor Red }
+                }
+                foreach ($u in $res.unfinished) { Write-Host "  UNFINISHED $u" -ForegroundColor Red }
+                $passedChecks += $res.counts.passed; $totalChecks += $res.counts.total
+                if ($res.status -ne 'pass') { $badPhases += $label; $notes += "${label}: $($res.reason)" }
+                Write-Host ("{0} of {1} checks passed" -f $res.counts.passed, $res.counts.total)
             }
-            foreach ($u in $res.unfinished) { Write-Host "  UNFINISHED $u" -ForegroundColor Red }
-            $row.Checks = "$($res.counts.passed)/$($res.counts.total)"
-            if ($res.status -eq 'pass') { $row.Result = 'PASS' } else { $row.Note = $res.reason }
-            Write-Host ("{0} of {1} checks passed" -f $res.counts.passed, $res.counts.total)
+        } else {
+            if (-not (Test-Path $log)) { throw "no log at $log" }
+            $text = Get-Content $log -Raw
+            $failed = 0
+            foreach ($c in $s.Checks) {
+                if ($text -match $c[1]) { Write-Host ("  ok    " + $c[0]) }
+                else { Write-Host ("  FAIL  " + $c[0]) -ForegroundColor Red; $failed++ }
+            }
+            $passedChecks = $s.Checks.Count - $failed; $totalChecks = $s.Checks.Count
+            # these scenarios end quietly: the stall watchdog only cuts the fixed wait short, the checks decide
+            if ($failed -eq 0) { if ($run.Reason -eq 'stall') { $notes += 'quiet after the last step: ended by the watchdog' } }
+            else {
+                $badPhases += $label
+                $notes += $(if ($run.Reason -eq 'stall') { "$failed check(s) failed; the run stalled (no log line for $StallSeconds s) and was killed" } else { "$failed check(s) failed, see $log" })
+            }
+            Write-Host ("{0} of {1} checks passed" -f ($s.Checks.Count - $failed), $s.Checks.Count)
         }
-    } else {
-        if (-not (Test-Path $log)) { throw "no log at $log" }
-        $text = Get-Content $log -Raw
-        $failed = 0
-        foreach ($c in $s.Checks) {
-            if ($text -match $c[1]) { Write-Host ("  ok    " + $c[0]) }
-            else { Write-Host ("  FAIL  " + $c[0]) -ForegroundColor Red; $failed++ }
-        }
-        $row.Checks = "$($s.Checks.Count - $failed)/$($s.Checks.Count)"
-        # these scenarios end quietly: the stall watchdog only cuts the fixed wait short, the checks decide
-        if ($failed -eq 0) { $row.Result = 'PASS'; if ($run.Reason -eq 'stall') { $row.Note = 'quiet after the last step: ended by the watchdog' } }
-        elseif ($run.Reason -eq 'stall') { $row.Note = "$failed check(s) failed; the run stalled (no log line for $StallSeconds s) and was killed" }
-        else { $row.Note = "$failed check(s) failed, see $log" }
-        Write-Host ("{0} of {1} checks passed" -f ($s.Checks.Count - $failed), $s.Checks.Count)
+        if ($badPhases.Count -gt 0 -and $FailFast) { break }
     }
+    $row.Seconds = [int]((Get-Date) - $t0).TotalSeconds
+    $row.Checks = "$passedChecks/$totalChecks"
+    $row.Note = ($notes -join '; ')
+    if ($badPhases.Count -eq 0) { $row.Result = 'PASS' }
     if ($row.Result -ne 'PASS') { $failures++ }
     $rows += $row
     if ($failures -gt 0 -and $FailFast) { Write-Host 'stopping after the first failure (-FailFast)' -ForegroundColor Yellow; break }

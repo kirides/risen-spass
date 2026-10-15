@@ -41,9 +41,23 @@ std::string toUtf8(const void* ustring) {
     return ustring != nullptr ? UString::narrow(sym().ustring_get_text(ustring)) : std::string{};
 }
 
+// The overlay entry for `id`; a prefixed id ("focus:FO_Bob") also finds an entry stored without the table prefix ("FO_Bob"): the engine
+// asks for both spellings (eCLocString::ExistsID / GetText use the prefixed id, the HUD the bare key), a mod sets whichever it knows.
+// Call with g_mutex held.
+std::unordered_map<std::string, std::vector<Entry>>::iterator findEntry(const std::string& id) {
+    auto it = g_overlay.find(fold(id));
+    if (it == g_overlay.end()) {
+        const auto colon = id.find(':');
+        if (colon != std::string::npos && colon + 1 < id.size()) {
+            it = g_overlay.find(fold(id.substr(colon + 1)));
+        }
+    }
+    return it;
+}
+
 std::optional<std::wstring> find(const std::string& id, const std::string& lang) {
     std::lock_guard lock(g_mutex);
-    const auto it = g_overlay.find(fold(id));
+    const auto it = findEntry(id);
     if (it == g_overlay.end()) {
         return std::nullopt;
     }
@@ -101,7 +115,7 @@ bool detourLookup3(const void* self, const void* lang, const void* key, void* ou
 
 bool hasOverlay(const std::string& id) {
     std::lock_guard lock(g_mutex);
-    return g_overlay.contains(fold(id));
+    return findEntry(id) != g_overlay.end();
 }
 
 bool detourLookup2(const void* self, const void* key, void* out) {

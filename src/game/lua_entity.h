@@ -64,6 +64,11 @@ void addBalanceMethods(sol::usertype<LuaEntity>& ut);
 // Adds Entity:template() (the template an entity was created from) to the Entity usertype.
 void addTemplateMethods(sol::usertype<LuaEntity>& ut);
 
+// Registers risen.template.create (the Lua part on top of risen.template.clone and the balancing sections) and the `new_items`, `new_npcs` and
+// `templates` sections of risen.balance. Must run after bindNpcBalance(). Split out so the unit tests can run it against mocks. (lua_template.cpp)
+void installTemplateCreateHelpers(sol::state_view lua, sol::table risen);
+void bindTemplateCreate(sol::state_view lua, sol::table risen);
+
 // Registers the Quest usertype and risen.quest.new/get/define/add_log. Needs risen.quest (bindQuest), risen.dialog.
 void bindQuestObjects(sol::state_view lua, sol::table risen);
 

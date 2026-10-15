@@ -10,12 +10,14 @@
 #include <fstream>
 #include <chrono>
 #include <functional>
+#include <set>
 #include <string>
 #include <thread>
 #include <vector>
 
 #include <spdlog/spdlog.h>
 
+#include "common/template_id.h"
 #include "common/test_run.h"
 #include "common/trace.h"
 #include "game/loc_files.h"
@@ -436,6 +438,7 @@ TEST(balance_install_reports_each_application_to_on_applied) {
 }
 
 #include "npc_tests.inc"
+#include "template_create_tests.inc"
 #include "test_risen_test.inc"
 
 }  // namespace

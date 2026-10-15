@@ -139,6 +139,7 @@ void registerBindings() {
     rt.addBinding(bindVfs);  // after bindItems: adds risen.template.list
     rt.addBinding(bindNpcHelpers);
     rt.addBinding(bindNpcBalance);  // after bindNpcHelpers/bindBalance: adds to risen.npc
+    rt.addBinding(bindTemplateCreate);  // after bindNpcBalance: risen.template.create and the new_items/new_npcs/templates sections
     rt.addBinding(bindDialog);
     rt.addBinding(bindQuestObjects);
     rt.addBinding(scripts::bindScripts);

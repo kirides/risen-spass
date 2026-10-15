@@ -263,6 +263,43 @@ risen.npc.set_stats("Wolf", { hp_max = 300 }, { instances = true })     -- templ
 * **Not measured / open:** the effect of `set_combat_species_property` on running fights (only read back), kill experience through a real combat death (the `GiveXP` script that the kill calls was run directly: 200 for level 20),
   ranged damage chains, `Dexterity`/`Intelligence`/magic skills of NPCs (stored and clamped, no consumer checked), changing the inventory of NPCs that already exist (use `risen.item.give/take` on them).
 
+### New templates — `risen.template.create`, `risen.balance` sections `new_items`, `new_npcs`, `templates` (see `mods/newtemplates`, [RE.md §25](RE.md))
+A mod can add **new item and NPC/monster templates** at runtime: a clone of an existing template (property sets, mesh, icon, skills, inventory, ...) under a new unique name with the **ID derived from that name**,
+so everything that refers to a template -- `risen.entity.spawn`, `risen.npc.spawn`, `risen.item.give`, `loot`, dialogue `Give` commands (`Item = "My_Sword"`), inventory stacks, savegames -- accepts it.
+```lua
+local sword = assert(risen.template.create("Spass_Flame_Sword", "It_1H_Sword", {   -- Template | nil, reason ; second result: created now (true) or overrides re-applied (false)
+    name = { English = "Flame Tongue", German = "Flammenzunge" },       -- label: localization id FO_Spass_Flame_Sword (a string = every language)
+    description = "A sword that feels warm to the touch.",              -- ITEMDESC_Spass_Flame_Sword (items)
+    value = 900, damage = 55, requires = { Strength = 25 }, modifies = { Strength = 5 },   -- the settings of the `items` section
+    mesh = "It_Wpn_1H_Club.xmsh", icon = "ic_it_1h_club",              -- another existing weapon's mesh and inventory icon
+}))
+risen.template.create("Spass_Dire_Wolf", "Wolf", { name = "Dire Wolf", hp_max = 600, level = 15, skills = { Strength = 80 },   -- the settings of the `npcs` section
+                                                  loot = { It_Apple = 2, Spass_Flame_Sword = 1 }, mesh = "Ani_Boar_Monster_Boar.xac" })
+-- declaratively: applied on the first tick and on every session.start, idempotent (check a spec with risen.balance.apply(spec, { dry_run = true })); `loot` may name items of new_items:
+risen.balance.install({
+    new_items = { Spass_Flame_Sword = { base = "It_1H_Sword", value = 900, name = "Flame Tongue" } },
+    new_npcs  = { Spass_Dire_Wolf = { base = "Wolf", hp_max = 600, loot = { Spass_Flame_Sword = 1 } } },
+    templates = { ... },                                              -- either kind, and other templates (only name / mesh / properties)
+})
+risen.template.id_for("Spass_Flame_Sword")   -- "c095059b-0585-7a31-efea-da3f9de97a06": MD5 of "spass.template:<name>" printed as a GUID; sword:id() reads it back
+risen.template.created()                     -- { Spass_Flame_Sword = "It_1H_Sword", ... }      risen.template.remove("Spass_Flame_Sword")   -- gives the names back (see below)
+sword:focus_name(), sword:description()      -- the texts the engine shows (Entity:focus_name()/description() for spawned items and NPCs)
+entity:dependencies()                        -- the mesh/actor files the engine loaded for a spawned entity (verifies `mesh`)
+```
+* **Overrides**: for an item base the keys of the `items` section (`value`, `damage`, `requires`, `modifies`, `use_type`, `category`, `mana_cost`, `properties`), for an NPC/monster base those of the `npcs` section
+  (`hp_max`, `level`, `skills`, `guild`, `loot`, `properties`, ...), for both `name`, `description` (items), `mesh` (item: `eCMesh_PS.MeshFileName`; NPC/monster: `eCAnimation_PS.ResourceFilePath`, the actor file, e.g. `Ani_Boar_Monster_Boar.xac`),
+  `icon` (`gCItem_PS.IconImage`) and `material` (`MaterialSwitch`). `properties` reaches everything else (e.g. `gCItem_PS = { ItemInventory = ... }`). **Everything is validated before anything is created** (names, base, setting names, types, skill
+  names, conflicts such as `mesh` plus `properties.eCMesh_PS.MeshFileName`); a bad request returns `nil, reason` and creates nothing. Names: letters, digits and `_`, not starting with a digit, at most 63 characters; a shipped template name is refused.
+* **Labels**: the engine shows `FO_<name>` for the focus label of an entity and for the inventory name of an item (a `focus_unique:FO_<name>` entry wins), `ITEMDESC_<name>` for an item's description. `name`/`description` set them with `risen.loc.set`;
+  a mod's `strings/all.csv` with the same ids works too. A clone without `name` shows its base's label unless a mod already supplied one. A key set without table prefix (`FO_Bob`) now also answers the prefixed id the engine asks for (`focus:FO_Bob`).
+* **The ID** is derived from the name, so the same mod creates the same template in every process on every machine: **savegames that contain items of it resolve again** (a stack stores the template's ID). Create the templates on the first `tick` (as
+  `install` does), before a savegame is loaded. Verified live in a fresh process: items in the player's and a world NPC's inventory survive a restart; if the template is **missing** in a session the stacks stay dormant (`risen.item.count` 0, `stack_item` nil, the game
+  runs, a save keeps them) and **resolve as soon as the template exists**, even when it is created after the load. Spawned entities are not saved by the engine (RE.md §14), so only inventories (and world entities that existed before) carry clones.
+* **A clone is a snapshot** of its base when it is created (later edits of the base do not reach it); creating again with the same base only re-applies the overrides. Existing entities keep their own values (`instances = true` writes them). The clone lives until the
+  process ends; `remove` only gives the names back (refused while live entities of it exist) -- items already handed out keep working -- and `create` with the same base brings it back with the same ID.
+* **Timing**: items and NPC templates can be cloned from the first `tick` on, also while a world is loaded (a hook skips `gCNavigation_PS::OnPostCopy` during the copy: it crashed on templates once a world existed). The base is loaded on demand.
+* **Not covered**: new meshes/textures/icons (only existing ones can be referenced, M5), spells, appearance parts of humans (heads are `eCBodyPart_PS` item templates `Hero_Head_*`, not part of the NPC template), multi templates (refused).
+
 ## NPCs — `risen.npc.spawn` and the Entity NPC methods
 Spawn a template and configure it in one call (see `mods/npcdemo`):
 ```lua
@@ -379,7 +416,8 @@ risen.world.is_game_running()  risen.world.new_game()  risen.world.quick_load()
 risen.world.quick_save()  risen.world.auto_save("name")  risen.world.is_save_allowed()
 ```
 `new_game`, `quick_load`, `quick_save` and `auto_save` are *requests*: the engine performs them on its next processing step
-(watch `save.after` / `load.after` / `session.start`).
+(watch `save.after` / `load.after` / `session.start`). `is_save_allowed()` is false while a conversation is open; a save requested then crashed the game when the conversation had run a `Give`
+command (and so did the next new game): finish the conversation first (an `End` command as the last line of the info, or let the player leave it).
 
 ## risen.loc — localization overlay
 ```lua
@@ -387,7 +425,7 @@ risen.loc.trace(true)                                 -- log every string id the
 risen.loc.set("GO_QuestRunning", "Quest läuft", "German")   -- optional language; default: all languages
 risen.loc.get("GO_QuestRunning"), risen.loc.exists(id), risen.loc.clear(id), risen.loc.language()
 ```
-Ids are matched case-insensitively. The game's own tables are never modified (they are read-only at runtime).
+Ids are matched case-insensitively. A prefixed id the engine asks for (`focus:FO_Bob`, `item:ITEMDESC_Sword`) also finds a text set without the table prefix (`FO_Bob`). The game's own tables are never modified (they are read-only at runtime).
 
 **String files:** instead of calling `risen.loc.set` for every text, put them into CSV files (see `mods/stringsdemo`):
 `strings/all.csv` (every language) and `strings/<Language>.csv` (`English.csv`, `German.csv`, ...; wins over `all.csv`) of every mod are

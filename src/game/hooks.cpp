@@ -64,6 +64,7 @@ bool installHooks() {
     ok &= g_sessionProcess.install("gCSession::Process", s.session_process, &detourSessionProcess);
     ok &= installLocHooks();
     installEventHooks();
+    installTemplateHooks();
     installFileTrace();
     installModMountHook();
     return ok;
