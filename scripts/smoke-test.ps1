@@ -15,8 +15,8 @@
 param(
     [string]$GameDir = 'B:\DevDrive\risen-test',
     [int]$Seconds = 200,
-    # persistence | fetchquest | commands | branch | all
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'all')][string]$Scenario = 'all'
+    # persistence | fetchquest | commands | branch | templates | all
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'all')][string]$Scenario = 'all'
 )
 $ErrorActionPreference = 'Stop'
 $here = $PSScriptRoot
@@ -98,6 +98,26 @@ if ($Scenario -in 'branch', 'all') {
         @('no Lua errors',                          '^(?!(?s).*\[error\])')
     )
     $totalFailed += Run-Checks 'branching dialogue' (Get-Content $log -Raw) $branch
+}
+
+if ($Scenario -in 'templates', 'all') {
+    & (Join-Path $here 'test-run.ps1') -GameDir $GameDir -Mods templatepatch, templatepatch_driver -Seconds ($Seconds + 40) -Filter 'NOTHING' | Out-Null
+    $tpl = @(
+        @('templates resolve from the first tick on',   'tpdriver available@mods\.loaded false(?s).*tpdriver available@first tick true'),
+        @('a new spawn uses the edited template',       'templatepatch: verify spawn: value=777'),
+        @('an inventory stack follows the template',    'templatepatch: verify inventory stack \d+: value=777'),
+        @('existing instances were patched',            'templatepatch: verify instances: n=\d+ values=777(,777)*'),
+        @('an NPC template property applies to spawns', 'templatepatch: verify npc: guild=4'),
+        @('patch with instances=true updates the world','tpdriver after patch n=\d+ count=\d+ values=\{999/a1x\d+\} template_value=999'),
+        @('the targeted NPC patch keeps hp and group',  'tpdriver npc after targeted patch \[1 guild=gEGuild_Pir hp=7/180 stacks=1 grp=TPG\]'),
+        @('the full patch_instances resets them',       'after full patch_instances.*\[1 guild=gEGuild_Pir hp=180/180 stacks=1 grp=\]'),
+        @('a full patch also resets item amounts',      'tpdriver gold amount before patch_entity 25.*(?s).*tpdriver gold amount after patch_entity 1'),
+        @('saved values win over an edited template',   'tpdriver after load \(template 555\) n=\d+ count=\d+ values=\{999/a1x\d+\} template_value=555'),
+        @('patching after the load updates them',       'tpdriver after patch n=\d+ count=\d+ values=\{555/a1x\d+\} template_value=555'),
+        @('a new game world does not follow the edit',  'tpdriver second new game .* values=\{(?!555)\d+/a1x\d+\} template_value=555'),
+        @('no Lua errors',                              '^(?!(?s).*\[error\])')
+    )
+    $totalFailed += Run-Checks 'template editing' (Get-Content $log -Raw) $tpl
 }
 
 if ($totalFailed -gt 0) { Write-Host "$totalFailed check(s) failed, see $log"; exit 1 }

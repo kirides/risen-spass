@@ -130,6 +130,7 @@ void registerBindings() {
     rt.addBinding(bindLoc);
     rt.addBinding(bindEntity);
     rt.addBinding(bindItems);
+    rt.addBinding(bindTemplates);  // after bindItems: extends risen.template
     rt.addBinding(bindVfs);  // after bindItems: adds risen.template.list
     rt.addBinding(bindNpcHelpers);
     rt.addBinding(bindDialog);

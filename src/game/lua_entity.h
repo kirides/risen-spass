@@ -32,6 +32,16 @@ void bindItems(sol::state_view lua, sol::table risen);
 // Registers risen.dialog.* and the Info usertype (runtime-created dialogues). Needs risen.loc and risen.script.
 void bindDialog(sol::state_view lua, sol::table risen);
 
+// Registers the Template usertype, risen.template.get/patch (adds to risen.template; must run after bindItems()).
+void bindTemplates(sol::state_view lua, sol::table risen);
+
+// Defines risen.template.patch (a Lua chunk on top of Template:property_sets/list_properties/set_property/instances). Split out so the
+// unit tests can run it against a mock risen.template.get without the game.
+void installTemplatePatchHelper(sol::state_view lua, sol::table risen);
+
+// Adds Entity:template() (the template an entity was created from) to the Entity usertype.
+void addTemplateMethods(sol::usertype<LuaEntity>& ut);
+
 // Registers the Quest usertype and risen.quest.new/get/define/add_log. Needs risen.quest (bindQuest), risen.dialog.
 void bindQuestObjects(sol::state_view lua, sol::table risen);
 

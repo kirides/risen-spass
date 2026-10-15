@@ -68,6 +68,7 @@ add_library(spass_core STATIC
     src/game/lua_npc.cpp
     src/game/lua_quest.cpp
     src/game/lua_save.cpp
+    src/game/lua_template.cpp
     src/game/lua_vfs.cpp
     src/game/properties.cpp
     src/game/script_bridge.cpp

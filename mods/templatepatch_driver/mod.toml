@@ -1,0 +1,6 @@
+id          = "templatepatch_driver"
+name        = "Template patch driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Development aid: plays the template editing scenarios unattended (docs/RE.md section 22) and logs 'tpdriver' lines for scripts/smoke-test.ps1."
+main        = "main.lua"

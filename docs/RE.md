@@ -557,3 +557,74 @@ listed and read through the engine's own exports instead of parsing the `FFC`/`G
   rebuilt from `GetChildInfoList` (children with Type 3 whose conditions hold), otherwise the owner's top-level list is rebuilt. Children stay offered after a permanent
   child; the `Back` command (child of a parent -> its parent's list becomes the top level again) returns to the top-level list. The children appear only *after the parent's
   lines finished playing* (about 11 seconds for two lines).
+
+## 22. Entity templates at runtime [confirmed in-game unless marked]
+
+Everything below is Engine.dll (RVAs of the 64-bit Risen Enhanced build), driven by `src/game/lua_template.cpp`; live tests: `mods/templatepatch` (the recommended
+pattern) and `mods/templatepatch_driver` (the savegame/instance scenarios, run by `scripts/smoke-test.ps1 -Scenario templates`).
+
+**Reaching a template.** The engine keeps one `eCTemplateEntity` (an `eCEntity`, vftable `0x9d14d0`, size `0xa8`) per template name. `Template(name)` (Script.dll, §9)
+is an `eCTemplateEntityProxy`: its first qword points to an `eSEntityID`, whose first qword is the `eCNode*`. `eCTemplateEntityProxy::GetEntity()` (`0x6b46b0`) returns the
+`eCTemplateEntity*` (null for a *multi template*). The pointer stays valid for the whole process; we still resolve it per call. `Template::IsValid` is **false before the
+first `tick`** (the template database does not exist yet at `mods.loaded`; it does at the first `tick`, which fires once at the main menu, and in `load.before`). Related
+(decompiled, not needed): `eCSceneAdmin::GetTemplateEntityByName` (`0x6996e0`), `eCTemplateEntityProxy::SetEntity(bCString)` (`0x6b44e0`), `GetRefTemplate` (`0x6adfc0`; none of ~300
+sampled item templates has a reference template).
+
+**Layout seen in the decompilation** (`eCTemplateEntity`, offsets from `this`): `+0x10` reference template (parent), `+0x20/+0x18` child/sibling list (multi templates), `+0x28`
+entity flag word (`& 8` makes `PatchEntity` refuse), `+0x30` property-set type table (byte per `eEPropertySetType`, `0xff` = none), `+0x40` array of `eCEntityPropertySet*`,
+`+0x48` count, `+0x50` `bCDateTime` "modified" stamp (a FILETIME), `+0x58` flags (bit 1 = content loaded, `IsContentLoaded` `0x223030`), `+0x60` reference template ID, `+0x68` name
+info (`GetName` `0x223040` returns `**(this+0x68)`), `+0xa0` `eSEntityID*`.
+
+**Lazy loading.** Item templates are loaded at startup; **NPC and monster templates are not** (`IsContentLoaded` is false for `Peasant_1_01`, `Wolf` and 102 of 103 monsters at the main
+menu). `GetPropertySetCount/At` are bare array reads and load nothing, `GetPropertySet(className)` goes through a virtual loader (slot `0x110`) and does;
+`eCTemplateEntity::ReadAll()` (`0x6ad6d0`, exported) loads the `.tple` file and sets the flag. `Template:property_sets()/list_properties/get_property/set_property` call `ReadAll` first.
+
+**Property sets are plain `bCObjectBase`s.** `eCEntity::GetPropertySetAt(i)` (`0x21e430`) + `eCEntityPropertySet::GetPropertySetClassName` (`0x6b0600`, vtable `+0xf0`) list the
+class names; the §11/§20 accessor mechanism (`bCAccessorProperty`) reads and writes them exactly as it does for live entities. Examples: `It_1H_Sword` = `eCMesh_PS,
+eCRigidBody_PS, eCCollisionShape_PS, gCItem_PS, gCInteraction_PS, gCDamage_PS, eCIlluminated_PS, eCStrip_PS`; `Peasant_1_01` = `gCNavigation_PS, gCDynamicCollisionCircle_PS,
+eCRigidBody_PS, eCCollisionShape_PS, gCCharacterMovement_PS, gCNPC_PS, gCInventory_PS, gCScriptRoutine_PS, gCInteraction_PS, gCDamage_PS, gCDialog_PS, eCIlluminated_PS,
+gCParty_PS, gCEffect_PS, eCAnimation_PS, gCSkills_PS, gCCombatSystem_PS`. `gCItem_PS` properties: `Amount, GoldValue, MissionItem, Permanent, SortValue, Category, IconImage,
+HoldOffset, Dropped, ItemWorld, ItemInventory, Spell, RequiredSkills (bTObjArray<gCSkillValue>), ModifySkills (bTObjArray<gCModifySkill>), UseType, CanEquipScript, EquipScript,
+UnEquipScript, EffectMaterial, HoldType, IsDangerousWeapon, CombatHitRangeOffset`. **`gCSkills_PS` has no reflected properties** (hit points, level and skills cannot be edited through the
+property mechanism; M3 needs another route). Array properties read back only as `Array[n]` (not explored yet, M2).
+
+**What an edit affects** (all verified with `It_1H_Sword.GoldValue` 50 -> 777 and the `gCNPC_PS.Guild` of `Peasant_1_01`/`Wolf`):
+* **new spawns** (`Entity::Spawn`): yes, at once.
+* **items given to an inventory** (`PSInventory::CreateItems`): yes. An inventory holds *references to templates plus an amount*, not item entities:
+  `PSInventory::GetTemplateItem(stack)` (`0x2262e0`, `Entity:stack_item`) returns the **template entity itself** (its `GetCreator()` is null, its name is the template name), so
+  every stack, including ones that existed before the edit, shows the new value immediately.
+* **entities that already exist** (world items, NPCs, earlier spawns): **no**, each entity owns *copies* of the property sets (the sword spawned before the edit kept 50).
+* **a world restored from a savegame, and the world of a new game**: **no**, the saved/level values win (see below).
+
+**Updating existing entities.** The engine's `eCTemplateEntity::PatchInstances()` (`0x6ae510`, bool) walks the scene (roots = the scene admin's dynamic entity contexts) and calls
+`eCEntity::PatchWithTemplate(tpl, false)` for every entity whose `GetCreator()` (virtual, vtable `+0x170`; `eCDynamicEntity::GetCreator` `0x21cd10` reads the creator proxy at `+0x1d8`)
+is the template. After a plain edit that does **nothing**: `eCEntity::OnPatchWithTemplate` (`0x6a56b0`, vtable `+0x1b8`) first compares the entity's `+0x50` stamp with the template's
+and skips the patch when they are equal (an editor/versioning mechanism: a template saved with a new date re-patches old entities). Writing a different stamp into the template makes
+`PatchInstances` work (tested, then dropped from the API in favour of the direct call). `eCTemplateEntity::PatchEntity(entity, bool replaceAll, bool)` (`0x6af050`, exported) does the real work
+and can be called directly (it ignores the stamp): for every template property set, a set with `IsReferencedByTemplate()` (set vtable `+0x110`; default **true**) or `replaceAll` is **replaced by
+`Clone()`** (`+0x188`) of the template's set, a set the entity lacks is cloned in if `IsCopyable()` (`+0x120`), otherwise `bCObjectBase::CopyFrom(set, true)` (vtable `+0x68`) merges.
+Verified effect of the full patch (`Template:patch_instances()` = `PatchEntity` on every instance): the edited value arrives, **but per-instance state inside the template's sets is reset**:
+a wolf's hit points 7/180 -> 180 and `gCNPC_PS.Group` "TPG" -> "" (its inventory stack stayed), an `It_Gold` with `Amount` 25 -> 1. Hence the recommended propagation is **targeted**: write only
+the edited properties into each instance with the ordinary property accessor (`risen.template.patch(name, sets, { instances = true })`); verified: on all 97 wolves `Guild` changed while the
+damaged wolf kept `hp=7/180` and `grp=TPG`.
+
+**Savegames** (same process and fresh process both tested, `It_Plant_Berry.GoldValue` on 149 world items and `Wolf` `Guild`):
+* A savegame stores the property values of its entities. After a load they hold **the saved values, not the current template's**, whether the template still carries the edit or not and
+  whatever the stamps are (template edited to 555 while the saved world held 999: the world stays 999; the engine only copies the template's stamp into the entity). The same holds for the
+  world of a **new game**: after editing the template, a second new game still created the 149 berries with the original value.
+* Consequently values written into entities (also with `instances = true`) are **saved with the game** and are still there in a fresh process even if the mod does nothing at load; a mod that
+  is removed later leaves its patched values in old savegames.
+* Templates keep their edits across `quick_load` and new games inside one process (they are not reloaded); a new process starts with the shipped values, so **re-apply on every start**.
+* Entities created *after* an edit (spawns, inventory stacks) need nothing.
+
+**Counting and listing instances** (`risen.template.census`, `Template:instances/instance_count`): `eCSceneAdmin::GetDynamicEntityContextCount/At` (exports) give the contexts (~315 in the
+start world, ~48 000 entities, 1165 templates in use, about a millisecond per walk); the scene admin is `eCModuleAdmin::GetInstance().FindModule("eCSceneAdmin")` (`0x4cd1f0`, class-name
+overload; the engine's own accessor `FUN_1800957e0` does that plus an RTTI cast). Per context: root entity at `+0x40`, first child `+0x20`, next sibling `+0x18`. (An earlier walk capped at 64
+contexts saw only part of the world: never cap the contexts.) Without a world the walk finds nothing (0 / empty table).
+
+**Recommended pattern** (`mods/templatepatch`): apply the edits (`risen.template.patch(name, sets)`) on the **first `tick`**, the earliest hook the Lua API offers (it also covers a savegame
+loaded from the menu), and again with `{ instances = true }` on every `session.start` (new game *and* load: the world entities of both carry their own copies). `mods.loaded` is too early.
+
+**Not done / inferred:** `eCTemplateEntity::CreateEntityCopy/SetName/SetID` (cloning a template under a new name, M4) are decompiled (tpl1_dump) but were not called; array properties
+(`RequiredSkills`, `ModifySkills`) and non-reflected sets are untested; which property sets a savegame persists is only known for `gCItem_PS` and `gCNPC_PS`; multi templates
+(`GetEntity` null) are refused with a message.

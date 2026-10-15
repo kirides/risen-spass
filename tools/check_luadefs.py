@@ -21,7 +21,7 @@ defs = (root / 'types' / 'risen.d.lua').read_text(encoding='utf-8')
 bound = {}      # "ns.fn" -> source
 members = {}    # "Type.member" -> source
 
-USERTYPES = {'LuaEntity': 'Entity', 'LuaQuest': 'Quest', 'LuaInfo': 'Info', 'ScriptContext': 'ScriptContext'}
+USERTYPES = {'LuaEntity': 'Entity', 'LuaTemplate': 'Template', 'LuaQuest': 'Quest', 'LuaInfo': 'Info', 'ScriptContext': 'ScriptContext'}
 
 for path in sorted((root / 'src').rglob('*.cpp')):
     text = path.read_text(encoding='utf-8', errors='replace')
@@ -96,7 +96,7 @@ for var, fn in re.findall(r'^function (\w+)\.(\w+)\(', defs, flags=re.M):
     if var in var_ns:
         described[f'{var_ns[var]}.{fn}'] = True
 described_members = {}
-for typ, fn in re.findall(r'^function (Entity|Quest|Info|ScriptContext):(\w+)\(', defs, flags=re.M):
+for typ, fn in re.findall(r'^function (Entity|Template|Quest|Info|ScriptContext):(\w+)\(', defs, flags=re.M):
     described_members[f'{typ}.{fn}'] = True
 for typ in ('ScriptContext',):
     block = re.search(r'---@class ScriptContext\n((?:---.*\n)*)', defs).group(1)

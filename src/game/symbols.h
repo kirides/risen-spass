@@ -240,7 +240,22 @@
     X(gamevar_exists, L"Script.dll", "?ExistsGameVariable@InfoSystem@@SA_NAEBVbCString@@@Z", bool (*)(const void*), false) \
     X(gamevar_remove, L"Script.dll", "?RemoveGameVariable@InfoSystem@@SA_NAEBVbCString@@@Z", bool (*)(const void*), false) \
     X(is_refresh_children, L"Game.dll", "?RefreshParentChildInfos@gCInfoSystem@@QEAAXXZ", void (*)(void* self), false) \
-    X(element_base_name, L"Engine.dll", "?GetFileBaseName@eCProcessibleElement@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false)
+    X(element_base_name, L"Engine.dll", "?GetFileBaseName@eCProcessibleElement@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false) \
+    /* ---- entity templates at runtime (eCTemplateEntity, docs/RE.md section 22) ---------------------------- */ \
+    X(tpl_proxy_get_entity, L"Engine.dll", "?GetEntity@eCTemplateEntityProxy@@QEAAPEAVeCTemplateEntity@@XZ", void* (*)(void* proxy), false) \
+    X(tple_get_name, L"Engine.dll", "?GetName@eCTemplateEntity@@UEBAAEBVbCString@@XZ", const void* (*)(const void* self), false) \
+    X(tple_is_content_loaded, L"Engine.dll", "?IsContentLoaded@eCTemplateEntity@@QEBA_NXZ", bool (*)(const void* self), false) \
+    X(tple_read_all, L"Engine.dll", "?ReadAll@eCTemplateEntity@@UEAA?AW4bEResult@@XZ", int (*)(void* self), false) \
+    X(tple_get_ref_template, L"Engine.dll", "?GetRefTemplate@eCTemplateEntity@@QEBAPEBV1@XZ", const void* (*)(const void* self), false) \
+    X(ent_ps_count, L"Engine.dll", "?GetPropertySetCount@eCEntity@@QEBAHXZ", int (*)(const void* self), false) \
+    X(ent_ps_at, L"Engine.dll", "?GetPropertySetAt@eCEntity@@QEAAPEAVeCEntityPropertySet@@H@Z", void* (*)(void* self, int index), false) \
+    X(ps_class_name, L"Engine.dll", "?GetPropertySetClassName@eCEntityPropertySet@@UEBAAEBVbCString@@XZ", const void* (*)(const void* self), false) \
+    X(module_admin_instance, L"Engine.dll", "?GetInstance@eCModuleAdmin@@SAAEAV1@XZ", void* (*)(), false) \
+    X(module_find_by_class, L"Engine.dll", "?FindModule@eCModuleAdmin@@QEBAPEAVeCEngineComponentBase@@AEBVbCString@@@Z", void* (*)(const void* self, const void* className), false) \
+    X(scene_ctx_count, L"Engine.dll", "?GetDynamicEntityContextCount@eCSceneAdmin@@QEBAHXZ", int (*)(const void* self), false) \
+    X(inv_template_item, L"Script.dll", "?GetTemplateItem@PSInventory@@QEBA?AVEntity@@H@Z", void* (*)(const void* self, void* ret, int stack), false) \
+    X(tple_patch_entity, L"Engine.dll", "?PatchEntity@eCTemplateEntity@@QEBA?AW4bEResult@@PEAVeCEntity@@_N1@Z", int (*)(const void* self, void* entity, bool replaceAll, bool arg), false) \
+    X(scene_ctx_at, L"Engine.dll", "?GetDynamicEntityContext@eCSceneAdmin@@QEBAPEAVeCEntityDynamicContext@@H@Z", void* (*)(const void* self, int index), false)
 
 namespace spass::game {
 

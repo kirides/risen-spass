@@ -15,6 +15,7 @@
 #include <spdlog/spdlog.h>
 
 #include "game/loc_files.h"
+#include "game/lua_entity.h"
 #include "lua/mods.h"
 #include "lua/runtime.h"
 
@@ -219,6 +220,53 @@ TEST(runtime_survives_broken_mods) {
         CHECK(r.valid() && r.is<double>() && r.as<double>() == 1.0);
     }
     rt.stop();
+}
+
+// ---- risen.template.patch (Lua helper on top of the template handle; the engine part is mocked) -------------------------------
+
+TEST(template_patch_validates_before_writing) {
+    sol::state lua;
+    lua.open_libraries(sol::lib::base, sol::lib::string, sol::lib::table, sol::lib::math);
+    // A fake template database: It_Sword has gCItem_PS{GoldValue, Amount}; every write is recorded in `log`.
+    lua.script(R"LUA(
+        log = {}
+        local function make(name)
+            local t = { sets = { gCItem_PS = { GoldValue = "50", Amount = "1" } } }
+            function t:property_sets() local l = {} for k in pairs(self.sets) do l[#l + 1] = k end return l end
+            function t:list_properties(set)
+                if not self.sets[set] then return nil, "no set" end
+                local l = {} for k in pairs(self.sets[set]) do l[#l + 1] = { name = k, type = "long" } end return l
+            end
+            function t:set_property(set, prop, value) log[#log + 1] = name .. "." .. set .. "." .. prop .. "=" .. value; self.sets[set][prop] = value; return true end
+            local inst = { set_property = function(_, set, prop, value) log[#log + 1] = "inst." .. set .. "." .. prop .. "=" .. value; return set == "gCItem_PS" end }
+            function t:instances() return { inst, inst } end
+            return t
+        end
+        risen = { template = { get = function(name)
+            if name == "It_Sword" then return make(name) end
+            return nil, "unknown template '" .. name .. "'"
+        end } }
+    )LUA");
+    spass::game::installTemplatePatchHelper(lua, lua["risen"]);
+
+    // success: values are converted to the engine's text format
+    auto run = [&](const char* code) { return lua.script(code).get<std::string>(); };
+    CHECK(run("local ok, n = risen.template.patch('It_Sword', { gCItem_PS = { GoldValue = 777, Amount = 2.5 } }) "
+              "table.sort(log) return tostring(ok) .. ',' .. tostring(n) .. ',' .. table.concat(log, ';')") ==
+          "true,2,It_Sword.gCItem_PS.Amount=2.5;It_Sword.gCItem_PS.GoldValue=777");
+    // unknown template, unknown set, unknown property, bad value type, bad argument: nil + a reason, and nothing was written
+    lua.script("log = {}");
+    for (const char* call : {"'It_Nope', { gCItem_PS = { GoldValue = 1 } }", "'It_Sword', { gCNPC_PS = { Guild = 1 } }",
+                             "'It_Sword', { gCItem_PS = { GoldValue = 1, Nope = 2 } }", "'It_Sword', { gCItem_PS = { GoldValue = {} } }",
+                             "'It_Sword', 'not a table'"}) {
+        const std::string code = std::string("local ok, why = risen.template.patch(") + call + ") return tostring(ok) .. '|' .. type(why)";
+        CHECK(run(code.c_str()) == "nil|string");
+    }
+    CHECK(lua.script("return #log").get<int>() == 0);
+    // instances = true also writes the listed properties into the live entities and counts them
+    CHECK(run("local ok, n, touched = risen.template.patch('It_Sword', { gCItem_PS = { GoldValue = true } }, { instances = true }) "
+              "return tostring(ok) .. ',' .. n .. ',' .. touched .. ',' .. table.concat(log, ';')") ==
+          "true,1,2,It_Sword.gCItem_PS.GoldValue=true;inst.gCItem_PS.GoldValue=true;inst.gCItem_PS.GoldValue=true");
 }
 
 }  // namespace

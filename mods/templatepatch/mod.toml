@@ -1,0 +1,6 @@
+id          = "templatepatch"
+name        = "Template patch demo"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Edits entity templates at runtime (risen.template.get/patch) and logs what that changes (development aid, docs/RE.md section 22)."
+main        = "main.lua"

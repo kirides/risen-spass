@@ -93,6 +93,8 @@ Helper chunks written in Lua live inside the `.cpp` file next to the binding (`c
   (`load.before`), a new game removes runtime quests; mod data persists through `risen.save` sidecar files.
 - The test copy's `mountlist_packed.ini` must use the stock `$(localappdata)/Risen/...` lines; absolute paths there make all
   saves fail silently. `$(localappdata)` is expanded via `SHGetFolderPathA`, not the environment variable.
+- Entity templates are editable at runtime (`risen.template.get/patch`, RE.md §22): apply on the first `tick` (not `mods.loaded`) and again with `instances = true` on
+  `session.start`; existing entities and savegame/new-game worlds keep their own property copies, inventory stacks and new spawns follow the template.
 - `risen.vfs` lists/reads the packed archives through the engine's own VFS; template names come from
   `data/common/templates/**/*.tple`.
 

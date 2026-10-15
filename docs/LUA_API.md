@@ -92,6 +92,47 @@ risen.item.take(player, "It_Apple", 3)                    -- removes up to 3, re
 risen.item.money(player)                                  -- number
 ```
 
+### Editing templates — `risen.template.get / patch` (see `mods/templatepatch`, [RE.md §22](RE.md))
+The engine keeps one object per template name; spawns, items given to inventories and **inventory stacks** (which only reference templates) read their values from it,
+so a *balancing mod* can change an item or NPC archetype at runtime. Edits are in memory only: **apply them again in every game process**, on the first `tick` at the earliest
+(`mods.loaded` is too early, nothing resolves yet; the main menu already ticks once).
+```lua
+-- declarative: validated first (template, property sets, properties, value types), nothing is written when anything is wrong
+local ok, applied, touched = risen.template.patch("It_1H_Sword", { gCItem_PS = { GoldValue = 100 } }, { instances = true })
+-- ok = true, applied = number of values written, touched = entities that got them (only with instances = true); or nil, "reason"
+
+-- handle API
+local t = risen.template.get("Peasant_1_01")                    -- Template | nil, reason
+t:property_sets()                                               -- { "gCNPC_PS", "gCInventory_PS", ... }
+t:list_properties("gCNPC_PS")                                   -- { {name=, type=}, ... }
+t:get_property("gCNPC_PS", "Guild")                             -- "gEGuild_Grd"
+t:set_property("gCNPC_PS", "Guild", "gEGuild_Cit")              -- true | nil, reason   (numbers/booleans as text: "777", "true")
+t:instance_count(); t:instances(limit)                          -- the live entities made from it (NPCs, world items, spawns; not inventory stacks)
+local e = risen.entity.spawn("It_1H_Sword", x, y, z); e:template() -- Template (the creator of an entity)
+risen.template.census()                                         -- { It_Gold = 107, Wolf = 97, ... }, total entities
+```
+What an edit reaches (verified, details in RE.md §22):
+
+| | new spawns, items given, inventory stacks | entities that already exist |
+|---|---|---|
+| `t:set_property` / `patch` | **yes**, at once | no: each entity has its own copies |
+| `patch(..., { instances = true })` | yes | **yes**, only the listed properties (hit points, amounts, ... untouched) |
+| `t:patch_instances()` / `t:patch_entity(e)` | | yes, but copies the **whole** template over the entity: resets per-instance state in those sets (NPC hit points and `Group`, item `Amount`) |
+
+**Savegames.** A savegame stores its entities' values and wins over the template: after a load (and in the world of a new game) existing entities have the saved/level values, so
+the edit must be written into them again (`instances = true`). Those values are then saved with the game. Recommended pattern:
+```lua
+local EDITS = { It_1H_Sword = { gCItem_PS = { GoldValue = 100 } } }
+local function apply(instances)
+    for name, sets in pairs(EDITS) do assert(risen.template.patch(name, sets, { instances = instances })) end
+end
+local first = true
+risen.on("tick", function() if first then first = false; apply(false) end end)   -- earliest moment
+risen.on("session.start", function() apply(true) end)                            -- new game and load: update the world's entities too
+```
+NPC and monster templates are loaded lazily by the engine; the template methods load them on demand. `gCSkills_PS` (hit points, skills) has no reflected properties.
+Entity methods added with this API: `Entity:template()`, `Entity:stack_item(index)` (inventory stack `index`'s item: the template entity, handy for `item_value()` of what a character carries).
+
 ## NPCs — `risen.npc.spawn` and the Entity NPC methods
 Spawn a template and configure it in one call (see `mods/npcdemo`):
 ```lua
@@ -117,7 +158,7 @@ Entity methods (every call returns `nil`/`false` instead of crashing on a bad ha
 | `state()`, `set_state("ZS_…")` | AI state scripts: `ZS_Ambient`, `ZS_AmbientObserve`, `ZS_AmbientSleep`, `ZS_HangAround`, `ZS_Housewife`, `ZS_Observe`, `ZS_Watch`, `ZS_Study`, `ZS_Smith`, `ZS_Trader`, `ZS_Talk`, `ZS_FollowPlayer`, `ZS_GuidePlayer`, `ZS_WaitForPlayer`, `ZS_Attack`, `ZS_Dead`, `ZS_Monster`, … |
 | `full_stop()` | cancel the current AI action |
 | `goto_pos(x,y,z[,mode])`, `goto_entity(e[,mode])`, `stop_goto()`, `turn_to(e)` | `mode` is the engine's walk mode enum (0 default) |
-| `equip_all()`, `stack_count()` | equips every equippable inventory stack |
+| `equip_all()`, `stack_count()`, `stack_item(i)` | equips every equippable inventory stack; number of stacks; the item of stack `i` (a template entity, see "Editing templates") |
 
 **Persistence:** entities created at runtime are **not** part of a savegame (verified in-game): after a load they are
 gone and must be spawned again. Use the guard pattern on `session.start` and `load.after`:

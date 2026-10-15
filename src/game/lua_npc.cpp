@@ -174,6 +174,14 @@ void addNpcMethods(sol::usertype<LuaEntity>& ut) {
                })
             .value_or(0);
     };
+    // entity:stack_item(i) -> Entity | nil: the item entity that represents inventory stack `i` (0-based); its item_value() etc. reflect the template
+    ut["stack_item"] = [&s](sol::this_state ts, const LuaEntity& e, int stack) -> sol::object {
+        EntityHolder ret;
+        if (s.inv_template_item == nullptr || stack < 0 || !guarded([&] { EntityHolder h{ptr(e)}; s.inv_template_item(&h, &ret, stack); })) {
+            return sol::make_object(ts, sol::lua_nil);
+        }
+        return makeEntityObject(ts, ret.entity);
+    };
     ut["stack_count"] = [&s](const LuaEntity& e) { return tryGet<int>([&] { EntityHolder h{ptr(e)}; return s.inv_stack_count(&h); }); };
 }
 

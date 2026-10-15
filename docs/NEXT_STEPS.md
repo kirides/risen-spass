@@ -18,12 +18,13 @@ Order matters: every later milestone builds on the template access of M1.
 Key finding that drives the plan (RE.md §22): the engine keeps one `eCTemplateEntity` per template name. It is an `eCEntity`, so
 `GetPropertySet(className)` + the generic property mechanism (RE.md §11/§19) can read and write its property sets, exactly like for a
 live entity -- no file shadowing needed (that path is a dead end, §17). Reachable from a name through `Template(name)` +
-`eCTemplateEntityProxy::GetEntity`. `eCTemplateEntity::CreateEntityCopy / SetName / SetID` and `PatchInstances` are exported, which makes
-**editing existing templates, cloning new ones and updating already spawned instances** the central technique.
+`eCTemplateEntityProxy::GetEntity`. `eCTemplateEntity::CreateEntityCopy / SetName / SetID` are exported (cloning, M4, not yet tried). Verified in M1: **templates can be edited at runtime**; spawns and inventory stacks follow at once;
+**existing entities keep their own property copies and savegames/new-game worlds win over the template**, so edits are propagated into live entities property by property
+(`risen.template.patch(..., { instances = true })`); the engine's whole-template `PatchInstances` is a no-op after a plain edit (stamp check) and resets per-instance state when forced.
 
 | # | Milestone | Status |
 |---|---|---|
-| M1 | **Template access and editing**: `risen.template.get(name)` handle, property sets/properties by name (get/set/list), `patch_instances()`; effect on new spawns, inventories and world entities; declarative `risen.template.patch`. | open |
+| M1 | **Template access and editing**: `risen.template.get(name)` handle, property sets/properties by name (get/set/list), `patch_instances()`; effect on new spawns, inventories and world entities; declarative `risen.template.patch`. | **done** (RE.md §22, `mods/templatepatch`, smoke test `-Scenario templates`). Also added: `Template:instances/instance_count/patch_entity`, `risen.template.census`, `Entity:template()`, `Entity:stack_item(i)`. Notes for later milestones below. |
 | M2 | **Item balancing**: gold value, required skills ("conditions"), skill modifiers, damage/armor values, use type, weight-like fields; helpers for the array properties (`RequiredSkills`, `ModifySkills`); `risen.balance.apply{...}` tables. | open |
 | M3 | **NPC/monster balancing**: skills, hit points, level, guild/species, combat values on templates (`gCNPC_PS`, `gCSkills_PS`, ...) and propagation to instances already in the world. | open |
 | M4 | **New templates**: `risen.template.create(name, base, overrides)` (clone + rename + deterministic GUID + registration) for items and NPCs; savegame-safe because the ID derives from the name; new items reusing meshes/textures/icons. | open |
@@ -35,6 +36,15 @@ live entity -- no file shadowing needed (that path is a dead end, §17). Reachab
 | M10 | **NPC routines**: `gCScriptRoutine_PS` routines, working/sleeping/relaxing points, guard points, named waypoints/freepoints; `risen.npc.set_routine`. | open |
 | M11 | **AI script bridging**: Lua AI states/functions/callbacks (`RegisterScriptAI*`), so custom behaviour can be attached to NPCs. | open |
 | M12 | **Showcase + docs**: `mods/balance_example` (items, NPCs, spells, new item, persistent NPC with quest, conditional spawn) with smoke-test coverage; `docs/MODDING_GUIDE.md`; roadmap tick-off. | open |
+
+M1 findings the later milestones build on (details RE.md §22):
+* Edit templates on the first `tick` (earliest; `mods.loaded` is too early) and again with `{ instances = true }` on every `session.start`; edits are per process. A savegame/new-game world keeps *its own* values, so
+  propagation into live entities is part of every balancing mod; patched entity values are then saved with the game.
+* Inventory stacks are references to templates: edits to items show in every inventory at once (no propagation needed there). `Template:patch_instances()` (whole-template copy) resets hit points, group and item amounts: use the targeted
+  `patch(... instances = true)`.
+* NPC/monster templates are lazy-loaded (handled by the API). **`gCSkills_PS` has no reflected properties** (M3 must find another way for hit points/skills, e.g. `PSSkills` setters on instances plus a raw layout of the template's set);
+  array properties (`RequiredSkills`, `ModifySkills`, M2) show only as `Array[n]` through the text format.
+* `CreateEntityCopy` (M4) was decompiled only; the scene walk (`Template:instances`, `census`) is available for M7/M8 bookkeeping.
 
 Process rules for this plan: one fresh sub-agent per milestone, run strictly one after another; each one reads this section, `docs/RE.md`, `CLAUDE.md`, verifies in the
 isolated windowed test copy, records findings in `docs/RE.md`, updates `types/risen.d.lua`/`docs/LUA_API.md`, runs `check_luadefs.py`, the unit tests and (when events,

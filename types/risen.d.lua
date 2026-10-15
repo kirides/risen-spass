@@ -234,6 +234,19 @@ function Entity:set_property(set, name, value) end
 ---@return integer|nil
 function Entity:stack_count() end
 
+---The item that represents inventory stack `index` (0-based). Inventories keep *references to templates* plus an amount, not item
+---entities: this returns the template entity itself (so `item_value()`, `item_amount()`, ... show the template's current values, and
+---`name()` is the template name). Do not `kill()` it.
+---@param index integer
+---@return Entity|nil item `nil` for an invalid stack or entity.
+function Entity:stack_item(index) end
+
+---The template this entity was created from (the engine's `GetCreator`). Entities that are templates themselves, such as the objects
+---returned by `stack_item`, have none.
+---@return Template|nil template
+---@return string|nil reason
+function Entity:template() end
+
 ---------------------------------------------------------------------------------------------------------------------
 -- risen.entity / risen.template / risen.item / risen.npc
 ---------------------------------------------------------------------------------------------------------------------
@@ -272,6 +285,112 @@ function templateApi.exists(name) end
 ---@param group? string Sub-directory of `data/common/templates` (`"NPC"`, `"Items"`, `"NPC/Harbour"`, ...); all if omitted.
 ---@return string[]
 function templateApi.list(group) end
+
+---Handle of an engine entity template, which can be read and **edited at runtime** (docs/RE.md §22). New spawns, items given to an
+---inventory and inventory stacks use the edited values at once; entities that already exist keep their own copy of the property
+---values (see `Template:patch_instances` and `risen.template.patch`'s `instances` option). Edits live in memory only: apply them again
+---in every game process, on the first `tick` at the earliest (`mods.loaded` is too early: no template resolves yet). The handle stores
+---only the name and resolves the engine object on every call. Methods return `nil, reason` on failure.
+---@class Template
+local Template = {}
+
+---Template name (`"It_1H_Sword"`).
+---@return string
+function Template:name() end
+
+---Whether the engine already read the template's content from its `.tple` file. Property access loads it on demand.
+---@return boolean|nil loaded
+---@return string|nil reason
+function Template:is_loaded() end
+
+---Name of the template this one is derived from (`GetRefTemplate`), or `nil`. Most game templates have none.
+---@return string|nil ref
+function Template:ref_template() end
+
+---Class names of the template's property sets, e.g. `{ "eCMesh_PS", "gCItem_PS", ... }` for an item or `{ "gCNPC_PS", "gCSkills_PS", ... }`
+---for an NPC. Note that `gCSkills_PS` has no reflected properties.
+---@return string[]|nil sets
+---@return string|nil reason
+function Template:property_sets() end
+
+---The properties of one property set (names and engine types), like `Entity:list_properties`.
+---@param set string
+---@return PropertyInfo[]|nil list
+---@return string|nil reason
+function Template:list_properties(set) end
+
+---Reads a property in the engine's text format (same as `Entity:get_property`): `"50"`, `"gEItemCategory_Weapon"`, `"True"`.
+---@param set string
+---@param name string
+---@return string|nil value
+---@return string|nil reason
+function Template:get_property(set, name) end
+
+---Writes a property of the template (text format as for `Entity:set_property`; unknown sets/properties are reported instead of ignored).
+---Affects what is created from the template afterwards; use `patch_instances` or `risen.template.patch` to update existing entities.
+---@param set string
+---@param name string
+---@param value string
+---@return boolean|nil ok
+---@return string|nil reason
+function Template:set_property(set, name, value) end
+
+---Copies **all** property sets of the template into every live entity created from it (`eCTemplateEntity::PatchEntity`). Destructive:
+---per-instance values that live in those sets are reset to the template's (hit points, `gCNPC_PS.Group`, item `Amount`, ...); inventory
+---contents are kept. Prefer `risen.template.patch(name, sets, { instances = true })`, which writes only the properties you list.
+---@return integer|nil patched Number of entities patched.
+---@return string|nil reason
+function Template:patch_instances() end
+
+---Same as `patch_instances` for one entity (it should have been created from this template).
+---@param entity Entity
+---@return boolean|nil ok
+---@return string|nil reason
+function Template:patch_entity(entity) end
+
+---The live entities created from this template (world entities, spawned ones, NPCs; not inventory stacks), found by walking the scene.
+---@param limit? integer Default 200.
+---@return Entity[]|nil list
+---@return string|nil reason Only when the engine's scene admin is unavailable; without a world the list is simply empty.
+function Template:instances(limit) end
+
+---Number of live entities created from this template.
+---@return integer|nil count
+---@return string|nil reason
+function Template:instance_count() end
+
+---Handle of an entity template by name.
+---@param name string
+---@return Template|nil template
+---@return string|nil reason `"unknown template '...'"`, or the engine is not ready (before the first `tick`).
+function templateApi.get(name) end
+
+---`{ [property set] = { [property] = value } }`: `value` may be a number, boolean or string (text format of the engine).
+---@alias TemplateEdits table<string, table<string, number|boolean|string>>
+
+---@class TemplatePatchOptions
+---@field instances? boolean Also write the listed properties into every live entity created from the template (default `false`).
+
+---Edits several template properties declaratively. Everything is validated first (the template, every property set, every property,
+---the value types): on any problem nothing is written and `nil, reason` is returned (all problems, separated by `;`). With
+---`instances = true` the same values are also written into the existing entities (only the listed properties, so hit points, amounts
+---etc. of those entities are preserved).
+---```lua
+---risen.template.patch("It_1H_Sword", { gCItem_PS = { GoldValue = 100 } }, { instances = true })
+---```
+---@param name string
+---@param sets TemplateEdits
+---@param opts? TemplatePatchOptions
+---@return boolean|nil ok `true` on success.
+---@return integer|string applied Number of values written (or the reason when `ok` is `nil`).
+---@return integer|nil touched With `instances = true`: number of entities that received at least one value.
+function templateApi.patch(name, sets, opts) end
+
+---Counts the live entities per template in one pass over the scene (`{ It_Gold = 107, Wolf = 97, ... }`) plus the total number of entities
+---visited (a fresh world holds ~50 000; an empty table and 0 at the main menu). Entities without a template are only part of the total.
+---@return table<string, integer>|nil counts
+---@return integer|string total Total entity count (or the reason when `counts` is `nil`).
+function templateApi.census() end
 
 ---@class RisenItemApi
 local itemApi = {}
