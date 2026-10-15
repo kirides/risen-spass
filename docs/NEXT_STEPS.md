@@ -8,6 +8,39 @@ quest** all work in a live game (Risen Enhanced x64, English text). Findings are
 Legend: **done** (verified in the game or by tests), **partly** (what works / what does not), **open**.
 "Verify" means: do it in the isolated test copy (`scripts/test-run.ps1`) and confirm through engine state/log lines as the demos do.
 
+## 0. Plan: balancing and content mods (current work)
+
+Goal: a modder can write **balancing mods** (item conditions and values, NPC values, spells), **add content** (new items from existing or new
+meshes/textures, new spells from existing ones, persistent NPCs with quests, NPCs that appear after quests) and script **dialogue conditions,
+routines and AI** from Lua. Each milestone below is one commit (feature built *and* verified live, `types/risen.d.lua` + docs updated in the same commit).
+Order matters: every later milestone builds on the template access of M1.
+
+Key finding that drives the plan (RE.md §22): the engine keeps one `eCTemplateEntity` per template name. It is an `eCEntity`, so
+`GetPropertySet(className)` + the generic property mechanism (RE.md §11/§19) can read and write its property sets, exactly like for a
+live entity -- no file shadowing needed (that path is a dead end, §17). Reachable from a name through `Template(name)` +
+`eCTemplateEntityProxy::GetEntity`. `eCTemplateEntity::CreateEntityCopy / SetName / SetID` and `PatchInstances` are exported, which makes
+**editing existing templates, cloning new ones and updating already spawned instances** the central technique.
+
+| # | Milestone | Status |
+|---|---|---|
+| M1 | **Template access and editing**: `risen.template.get(name)` handle, property sets/properties by name (get/set/list), `patch_instances()`; effect on new spawns, inventories and world entities; declarative `risen.template.patch`. | open |
+| M2 | **Item balancing**: gold value, required skills ("conditions"), skill modifiers, damage/armor values, use type, weight-like fields; helpers for the array properties (`RequiredSkills`, `ModifySkills`); `risen.balance.apply{...}` tables. | open |
+| M3 | **NPC/monster balancing**: skills, hit points, level, guild/species, combat values on templates (`gCNPC_PS`, `gCSkills_PS`, ...) and propagation to instances already in the world. | open |
+| M4 | **New templates**: `risen.template.create(name, base, overrides)` (clone + rename + deterministic GUID + registration) for items and NPCs; savegame-safe because the ID derives from the name; new items reusing meshes/textures/icons. | open |
+| M5 | **New meshes, textures, icons**: whether loose files from a mounted mod directory load for `eCMesh_PS.MeshFileName`, materials, icon images (the open question of 4.2); a minimal "new asset" path. | open |
+| M6 | **Spells**: find the spell templates and their property sets (`gCItem_PS.Spell`, `gCInteraction_PS.Spell`, `gCCastInfo_PS`); modify cost/damage/range; new spells by cloning (M4) plus scroll/rune items that use them. | open |
+| M7 | **Persistent NPCs**: `risen.npc.persistent{...}`: spawned from a stored spec on `session.start`/`load.after`, position/health/dead state kept in `risen.save`, dialogues and quests defined in `load.before`; attempt an engine-saved layer first (1.1 open point). | open |
+| M8 | **Conditional spawning**: spawn/despawn rules triggered by quest status, game variables or item possession (`risen.spawn.when{...}`), remembered across savegames; example NPC that appears after a quest. | open |
+| M9 | **Dialogue conditions beyond quest state**: `gCInfoCondition*` objects (item amount, game variable, skill, guild, ...) and a Lua-script condition in `risen.dialog.create`. | open |
+| M10 | **NPC routines**: `gCScriptRoutine_PS` routines, working/sleeping/relaxing points, guard points, named waypoints/freepoints; `risen.npc.set_routine`. | open |
+| M11 | **AI script bridging**: Lua AI states/functions/callbacks (`RegisterScriptAI*`), so custom behaviour can be attached to NPCs. | open |
+| M12 | **Showcase + docs**: `mods/balance_example` (items, NPCs, spells, new item, persistent NPC with quest, conditional spawn) with smoke-test coverage; `docs/MODDING_GUIDE.md`; roadmap tick-off. | open |
+
+Process rules for this plan: one fresh sub-agent per milestone, run strictly one after another; each one reads this section, `docs/RE.md`, `CLAUDE.md`, verifies in the
+isolated windowed test copy, records findings in `docs/RE.md`, updates `types/risen.d.lua`/`docs/LUA_API.md`, runs `check_luadefs.py`, the unit tests and (when events,
+saving, quests, dialogues or items are touched) the smoke test, adds unit tests for pure logic, and makes exactly one commit. If something turns out impossible the milestone
+documents what was tried and the closest working alternative instead of stopping.
+
 ## 1. Must-do before mods can rely on it — done
 
 ### 1.1 Persistence across save / load — done
