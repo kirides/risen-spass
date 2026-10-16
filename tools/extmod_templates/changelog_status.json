@@ -1,0 +1,261 @@
+[
+ {
+  "id": 1,
+  "item": "Lizard skins (24 monster templates, 49 textures, 34 materials, 16 actors)",
+  "status": "generated",
+  "needs": "",
+  "note": "actor swaps + loose assets"
+ },
+ {
+  "id": 2,
+  "item": "Small vegetation update (4 textures)",
+  "status": "generated",
+  "needs": "",
+  "note": "loose textures replacing stock names (probe P1)"
+ },
+ {
+  "id": 3,
+  "item": "Female mesh changed (9 actors)",
+  "status": "generated",
+  "needs": "",
+  "note": "loose actors replacing stock names; skeleton compatibility untested"
+ },
+ {
+  "id": 4,
+  "item": "Armor / monster skins, head textures",
+  "status": "generated",
+  "needs": "",
+  "note": "loose textures replacing stock names"
+ },
+ {
+  "id": 5,
+  "item": "Darker caves / dungeons (18 lightmaps, light spell range)",
+  "status": "generated",
+  "needs": "",
+  "note": "lightmaps replaced; It_Cast_Light range 1000 -> 1500"
+ },
+ {
+  "id": 6,
+  "item": "Pickpocket gives XP by required level (65 dialogue infos)",
+  "status": "missing",
+  "needs": "M20",
+  "note": "dialogue edits"
+ },
+ {
+  "id": 7,
+  "item": "Doyle XP when found later; quest XP (Caspar, Doyle, Cole, Esteban)",
+  "status": "missing",
+  "needs": "M20",
+  "note": ""
+ },
+ {
+  "id": 8,
+  "item": "Wisdom useful for non-mages (INT books, XP books)",
+  "status": "generated",
+  "needs": "",
+  "note": "books and transcription recipes; INT books/plans not placed in the world yet (M20)"
+ },
+ {
+  "id": 9,
+  "item": "Teacher limits (STR/DEX up to 150/200)",
+  "status": "missing",
+  "needs": "M20",
+  "note": "placed NPC instances"
+ },
+ {
+  "id": 10,
+  "item": "New smithing recipes (11 weapons, whole chains)",
+  "status": "generated",
+  "needs": "",
+  "note": "recipe items converted; plans are handed out by the starter kit until traders/world placement (M20)"
+ },
+ {
+  "id": 11,
+  "item": "Pearl necklaces craftable, gold smithing",
+  "status": "generated",
+  "needs": "",
+  "note": "as recipes the player knows from the start (shipped items cannot become recipes)"
+ },
+ {
+  "id": 12,
+  "item": "Big gems sold earlier",
+  "status": "missing",
+  "needs": "M20",
+  "note": "trader stock"
+ },
+ {
+  "id": 13,
+  "item": "Melee system 1H / 2H / staff (weapon types, skills)",
+  "status": "partial",
+  "needs": "M21",
+  "note": "weapon use types and numbers converted; combat style table, skill names not"
+ },
+ {
+  "id": 14,
+  "item": "Two-hand swords and big axes not one-handed (use types)",
+  "status": "generated",
+  "needs": "",
+  "note": ""
+ },
+ {
+  "id": 15,
+  "item": "New weapon sorting",
+  "status": "generated",
+  "needs": "",
+  "note": "SortValue"
+ },
+ {
+  "id": 16,
+  "item": "Backwards hop removed, side dodge kept",
+  "status": "missing",
+  "needs": "M21",
+  "note": "combat table"
+ },
+ {
+  "id": 17,
+  "item": "2H reach higher from a skill",
+  "status": "missing",
+  "needs": "M21",
+  "note": "combat table"
+ },
+ {
+  "id": 18,
+  "item": "Ogre club / pickaxe equippable",
+  "status": "generated",
+  "needs": "",
+  "note": "new items"
+ },
+ {
+  "id": 19,
+  "item": "All weapon values and requirements",
+  "status": "generated",
+  "needs": "",
+  "note": "value, damage, STR/DEX requirements of existing items"
+ },
+ {
+  "id": 20,
+  "item": "Many new weapons (64) incl. DEX and mage weapons",
+  "status": "generated",
+  "needs": "",
+  "note": "new templates + meshes"
+ },
+ {
+  "id": 21,
+  "item": "New / reworked helmets and shields",
+  "status": "generated",
+  "needs": "",
+  "note": ""
+ },
+ {
+  "id": 22,
+  "item": "A few armors for guildless players",
+  "status": "partial",
+  "needs": "",
+  "note": "armors exist (Crawler, Guard Heavy); who may buy/wear them is script-side"
+ },
+ {
+  "id": 23,
+  "item": "Captain armor only in chapter 4",
+  "status": "missing",
+  "needs": "M20",
+  "note": "chapter gating of the trade"
+ },
+ {
+  "id": 24,
+  "item": "Mage robes: armor lowered, magic protection raised",
+  "status": "generated",
+  "needs": "",
+  "note": ""
+ },
+ {
+  "id": 25,
+  "item": "Berserker / rune sword purchasable",
+  "status": "partial",
+  "needs": "M20",
+  "note": "items exist; trader stock missing; It_BS_RuneSword_01 is not in the mod's archives"
+ },
+ {
+  "id": 26,
+  "item": "Mana costs of runes and scrolls, minimum mana",
+  "status": "generated",
+  "needs": "",
+  "note": "38 mana costs + MaxMP requirements"
+ },
+ {
+  "id": 27,
+  "item": "Crystal mana cost / damage, blessed crystals",
+  "status": "generated",
+  "needs": "",
+  "note": "3 new crystals; their sale is trader stock (M20)"
+ },
+ {
+  "id": 28,
+  "item": "Gold as an item that can be put into chests",
+  "status": "generated",
+  "needs": "",
+  "note": "category Misc; behaviour of gold pickup to be checked in play"
+ },
+ {
+  "id": 29,
+  "item": "Unfinished lizard busts replaced",
+  "status": "generated",
+  "needs": "",
+  "note": ""
+ },
+ {
+  "id": 30,
+  "item": "Bow amulet lower; Acrobat / Sneak rings need DEX; amulets need a seal",
+  "status": "generated",
+  "needs": "",
+  "note": ""
+ },
+ {
+  "id": 31,
+  "item": "Permanent potions +3 / HP +15; meat in bread coat +4 HP",
+  "status": "generated",
+  "needs": "",
+  "note": ""
+ },
+ {
+  "id": 32,
+  "item": "Recipes baked plaice / hunter's pan buyable from chapter 2",
+  "status": "partial",
+  "needs": "M20",
+  "note": "values converted; trader stock and gate missing"
+ },
+ {
+  "id": 33,
+  "item": "Uriziel, Trollfaust, crawler armor, guard armors in the game",
+  "status": "partial",
+  "needs": "M20",
+  "note": "items exist; where they lie is script/world data"
+ },
+ {
+  "id": 34,
+  "item": "Gothic easter eggs (2)",
+  "status": "na",
+  "needs": "",
+  "note": "not identifiable in the archives"
+ },
+ {
+  "id": 35,
+  "item": "Trader stock (106 refills: weapons, blanks, recipes, runes, crystals ...)",
+  "status": "missing",
+  "needs": "M20",
+  "note": "the main way to get the new items; the starter kit stands in for it"
+ },
+ {
+  "id": 36,
+  "item": "Items placed in the world (recipes, potions, rings, bastard sword ...)",
+  "status": "missing",
+  "needs": "M20",
+  "note": ".lrent world files"
+ },
+ {
+  "id": 37,
+  "item": "Wind strength (WeatherStates)",
+  "status": "missing",
+  "needs": "M22",
+  "note": ""
+ }
+]
