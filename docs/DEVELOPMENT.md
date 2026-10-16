@@ -16,10 +16,10 @@ How the project is organised and how to extend it. (`CLAUDE.md` holds the same r
 | `src/game/lua_interact.cpp`, `lua_input.cpp`, `lua_hud.cpp`, `lua_config.cpp`, `call_trace.cpp` | focus/interaction info, keys and the `input.action` event, HUD log, per-mod `config.toml`, the `calls`/`hud` trace channels (RE.md §31) |
 | `src/lua` | LuaJIT state, per-mod sandbox, events, mod discovery and load order |
 | `types/risen.d.lua` | LuaLS definitions of the API — **must always match the bindings** |
-| `mods/` | example mods and the real mod `quickloot` ([QUICKLOOT.md](QUICKLOOT.md));  `*_driver`, `vfsprobe`, `templatedump`, `itemdump`, `npcdump`, `spelldump`, `recipedump`, `persistdemo`, `persistnpc` (the live test of `risen.npc.persistent`), `spawnwhen` (the live test of `risen.spawn.when`), `dialogcond` (the live test of dialogue conditions), `aistates` (the live test of `risen.ai`) are development tools that drive or probe the game |
+| `mods/` | example mods and the real mod `quickloot` ([QUICKLOOT.md](QUICKLOOT.md));  `*_driver`, `vfsprobe`, `templatedump`, `itemdump`, `npcdump`, `spelldump`, `recipedump`, `persistdemo`, `persistnpc` (the live test of `risen.npc.persistent`), `spawnwhen` (the live test of `risen.spawn.when`), `dialogcond` (the live test of dialogue conditions), `aistates` (the live test of `risen.ai`), `hardening` (the fuzz scenario, "Hardening" below) are development tools that drive or probe the game; `balance_example` is the showcase mod ([MODDING_GUIDE.md](MODDING_GUIDE.md)) |
 | `tests/` | unit tests that run without the game |
 | `tools/` | export dumping/demangling, Ghidra helpers (`ghidra/DumpDecomp.java`, `DumpVtable.java`), doc generators, API consistency check |
-| `docs/` | `LUA_API.md` (API), `RE.md` (findings per topic), `SYMBOLS.md`/`TEMPLATES.md`/`ITEM_PROPERTIES.md`/`NPC_PROPERTIES.md`/`SPELL_PROPERTIES.md`/`RECIPE_PROPERTIES.md` (generated), `NEXT_STEPS.md` (roadmap) |
+| `docs/` | `MODDING_GUIDE.md` (task-oriented guide for modders), `LUA_API.md` (API), `RE.md` (findings per topic), `SYMBOLS.md`/`TEMPLATES.md`/`ITEM_PROPERTIES.md`/`NPC_PROPERTIES.md`/`SPELL_PROPERTIES.md`/`RECIPE_PROPERTIES.md` (generated), `NEXT_STEPS.md` (roadmap) |
 
 ## Adding a Lua binding
 

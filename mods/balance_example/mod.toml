@@ -1,0 +1,7 @@
+id          = "balance_example"
+name        = "Showcase: balance, new content and a small story"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "One coherent mod that uses the whole stack: balanced items, NPCs and spells, new items (one with its own mesh/texture files), a new spell, a smithing recipe, a persistent smith with a voiced dialogue and an iron-ore quest, an apprentice who appears when it is done (with a daily routine), a watchman with Lua AI. See mods/balance_example/README.md."
+main        = "main.lua"
+# assets = "assets"   # a real mod ships its meshes/textures/icons here; this showcase derives its few files from shipped ones at run time (assets.lua)

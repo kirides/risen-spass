@@ -354,6 +354,7 @@ T.run(function()
         end
     end
     local seen_ticks = 0
+    ---@diagnostic disable-next-line: redundant-return-value   (a tick handler that returns something on purpose)
     local garbage_handle = risen.on("tick", function() seen_ticks = seen_ticks + 1 return values[(seen_ticks % #values) + 1][2] end)
     T.sleep(#values + 5)       -- one garbage return value per frame
     risen.off(garbage_handle)

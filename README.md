@@ -26,16 +26,21 @@ engine's lifecycle, and exposes it to Lua with a sandbox per mod.
 
 | | |
 |---|---|
-| Events | session/world/save/load lifecycle, quest status changes, kills, dialogue start/finish, item pick-ups |
-| Content | quests, dialogue options (conditions, scripts, log entries, **voiced lines from ogg/wav/mp3 per language**), NPC spawning and configuration, items |
-| State | `risen.save`: per-mod data stored with every savegame; entity handles that survive loads |
+| Balancing | one declarative table (`risen.balance.install`) re-balances shipped **items** (value, damage, conditions, effects), **NPCs and monsters** (hit points, level, experience, skills, loot, groups) and **spells**; every number is also readable and editable by name (`risen.template`) |
+| New content | **new items, NPCs, spells and smithing recipes** cloned from existing ones (savegame-safe IDs), with **their own meshes, textures and icons** from loose files |
+| Story | quests, dialogue options with **engine-side conditions** (item, variable, skill, guild, quest state, your own function), **voiced lines from ogg/wav/mp3 per language**, **persistent NPCs** that are never duplicated, NPCs that **appear when something happened**, **daily routines** and patrols, **behaviour written in Lua** (AI states and perception) |
+| Events | session/world/save/load lifecycle, quest status changes, inventory changes, kills, spawns, dialogue start/finish, game variables, key presses: no polling |
+| State | `risen.save`: per-mod data stored with every savegame; entity handles that survive loads and refuse to dereference deleted entities |
 | Texts | `risen.loc` overlay and `strings/*.csv` files per mod and language |
 | Scripts | define or override the game's native scripts from Lua |
-| Tooling | editor completion and type checks (LuaLS `types/risen.d.lua`), virtual file system access, template list ([docs/TEMPLATES.md](docs/TEMPLATES.md)) |
+| Tooling | editor completion and type checks (LuaLS `types/risen.d.lua`), a test framework that plays your mod in an isolated windowed game and reports in a minute (`risen.test`), virtual file system access, template list ([docs/TEMPLATES.md](docs/TEMPLATES.md)) |
+| Safe | argument types are checked, a wrong call from Lua is an error and never a crash (a fuzz scenario calls every function with 1.6 million wrong arguments on each test run) |
 
-Reference: [Lua API](docs/LUA_API.md) · [entity templates](docs/TEMPLATES.md) · [item properties](docs/ITEM_PROPERTIES.md) · [NPC properties](docs/NPC_PROPERTIES.md) · [engine notes](docs/RE.md) ·
-[developer guide](docs/DEVELOPMENT.md) · [roadmap](docs/NEXT_STEPS.md). Examples: `mods/fetchquest` (a complete, savegame-safe
-quest), `mods/stringsdemo`, `mods/_template`.
+**Start here:** the [modding guide](docs/MODDING_GUIDE.md) (install, mod layout, the event model, recipes by goal, limits). The finished showcase mod [`mods/balance_example`](mods/balance_example/README.md) combines most of it; a real distributable mod is
+[Quick Loot](docs/QUICKLOOT.md) (right mouse button takes what you look at).
+
+Reference: [Lua API](docs/LUA_API.md) · [examples](docs/EXAMPLES.md) · [entity templates](docs/TEMPLATES.md) · [item properties](docs/ITEM_PROPERTIES.md) · [NPC properties](docs/NPC_PROPERTIES.md) · [spells](docs/SPELL_PROPERTIES.md) · [recipes](docs/RECIPE_PROPERTIES.md) · [engine notes](docs/RE.md) ·
+[developer guide](docs/DEVELOPMENT.md) · [roadmap](docs/NEXT_STEPS.md). Small mods: `mods/fetchquest` (a complete, savegame-safe quest), `mods/example_*` (sixteen verified patterns), `mods/stringsdemo`, `mods/_template`.
 
 ## Install
 

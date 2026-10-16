@@ -3,7 +3,7 @@
 A hook-based **Lua (LuaJIT) modding layer for Risen Enhanced (x64)**: a proxy `sentry.dll` is loaded by `Risen.exe`, binds the
 game's exported C++ API by decorated name, hooks lifecycle functions and runs mods from `<Risen>\bin\spass\mods`.
 Docs: `docs/RE.md` (reverse-engineering findings, by section), `docs/LUA_API.md` (API), `docs/NEXT_STEPS.md` (roadmap),
-`docs/TEMPLATES.md` (entity template names), `docs/QUICKLOOT.md` (the standalone quick-loot mod and the interaction/input/HUD building blocks it uses), `docs/ITEM_PROPERTIES.md` (where item numbers live), `docs/NPC_PROPERTIES.md` (where NPC/monster numbers live), `docs/SPELL_PROPERTIES.md` (how spells are made of items and scripts, where their numbers live), `docs/RECIPE_PROPERTIES.md` (how crafting recipes and stations work, where their numbers live), `docs/EXAMPLES.md` (index of the verified example mods `mods/example_*`, patterns, gaps), `types/README.md` (editor support).
+`docs/TEMPLATES.md` (entity template names), `docs/QUICKLOOT.md` (the standalone quick-loot mod and the interaction/input/HUD building blocks it uses), `docs/ITEM_PROPERTIES.md` (where item numbers live), `docs/NPC_PROPERTIES.md` (where NPC/monster numbers live), `docs/SPELL_PROPERTIES.md` (how spells are made of items and scripts, where their numbers live), `docs/RECIPE_PROPERTIES.md` (how crafting recipes and stations work, where their numbers live), `docs/EXAMPLES.md` (index of the verified example mods `mods/example_*`, patterns, gaps), `docs/MODDING_GUIDE.md` (task-oriented guide for modders: install, mod layout, event model, recipes by goal, limits; `mods/balance_example` is the showcase mod), `types/README.md` (editor support).
 
 ## Hard rules
 
@@ -86,6 +86,7 @@ Conventions: every engine call from Lua goes through `guarded(...)` and returns 
 Lua-facing validation happens before the engine is touched and returns `nil, "reason"`; native entity handles are `LuaEntity`
 (use `ptr(h)` to get the pointer, never `h.e`); optional symbols (`required = false`) only disable their own feature.
 Helper chunks written in Lua live inside the `.cpp` file next to the binding (`const char* chunk = R"LUA(...)LUA"`).
+Natives may use typed parameters: argument types are checked (`SOL_EXCEPTIONS_SAFE_PROPAGATION=0` in CMakeLists.txt; without it sol2 skips the check with LuaJIT and a wrong type crashes). Never use `for (auto a : va)` over a `sol::variadic_args` that follows fixed parameters, never keep a raw entity pointer across frames (use `LuaEntity` + `ptr()`, which turns stale when the engine removes the entity), validate anything the engine hangs on (names, NaN). The scenario `hardening` enumerates the API at run time and calls every function with wrong arguments (docs/DEVELOPMENT.md "Hardening"); run it (`smoke-test.ps1 -Scenario hardening`, a minute) after adding bindings.
 
 ## Reverse engineering
 

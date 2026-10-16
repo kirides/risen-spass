@@ -32,7 +32,7 @@ calls every function with ~1.6 million wrong or hostile argument combinations on
 
 **Editor support:** [`types/risen.d.lua`](../types/risen.d.lua) describes every function below for LuaLS (completion, hover docs, type
 checks); see [`types/README.md`](../types/README.md).
-**Examples:** sixteen small, live-verified example mods (patching, balancing, materials/textures, custom NPC, fetch/kill quests, completion triggers, quest tracker, voiced dialogue, spells, recipes, NPCs that appear and disappear, dialogue conditions, routines, AI states) are indexed in [`EXAMPLES.md`](EXAMPLES.md).
+**Examples:** sixteen small, live-verified example mods (patching, balancing, materials/textures, custom NPC, fetch/kill quests, completion triggers, quest tracker, voiced dialogue, spells, recipes, NPCs that appear and disappear, dialogue conditions, routines, AI states) are indexed in [`EXAMPLES.md`](EXAMPLES.md); the showcase [`mods/balance_example`](../mods/balance_example/README.md) combines them in one mod and [`MODDING_GUIDE.md`](MODDING_GUIDE.md) is the task-oriented guide.
 
 ## Events
 

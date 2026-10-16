@@ -5,7 +5,7 @@
 .DESCRIPTION
     Run after `cmake --build build --config RelWithDebInfo` (and the unit tests). The zip contains everything a player or
     modder needs; install it with:
-        .\install.ps1 -GameDir 'C:\...\Risen' [-WithExamples]
+        .\install.ps1 -GameDir 'C:\...\Risen' [-WithExamples]      # -WithExamples installs the small mods of mods\ (hello, fetchquest, quickloot, ...); examples\ is for reading and copying
     Nothing in the game directory except bin\sentry.dll is touched (the original is kept as sentry_orig.dll);
     `[ -enabled = false ]` in bin\spass\config.toml switches the whole layer off without uninstalling.
 
@@ -35,7 +35,7 @@ Copy-Item $dll (Join-Path $stage 'sentry.dll')
 Copy-Item (Join-Path $repo 'scripts\install.ps1'), (Join-Path $repo 'scripts\uninstall.ps1') $stage
 Copy-Item (Join-Path $repo 'types') $stage -Recurse
 New-Item -ItemType Directory -Force (Join-Path $stage 'docs') | Out-Null
-foreach ($d in 'LUA_API.md', 'TEMPLATES.md', 'SYMBOLS.md', 'DEVELOPMENT.md') {
+foreach ($d in 'MODDING_GUIDE.md', 'LUA_API.md', 'EXAMPLES.md', 'QUICKLOOT.md', 'TEMPLATES.md', 'ITEM_PROPERTIES.md', 'NPC_PROPERTIES.md', 'SPELL_PROPERTIES.md', 'RECIPE_PROPERTIES.md', 'PROPERTIES.md', 'SYMBOLS.md', 'DEVELOPMENT.md', 'RE.md') {
     Copy-Item (Join-Path $repo "docs\$d") (Join-Path $stage 'docs') -ErrorAction SilentlyContinue
 }
 Copy-Item (Join-Path $repo 'README.md') $stage
@@ -46,6 +46,15 @@ New-Item -ItemType Directory -Force $mods | Out-Null
 Copy-Item (Join-Path $repo 'mods\.luarc.json') $mods
 foreach ($m in 'hello', 'fetchquest', 'stringsdemo', 'eventlog', 'quickloot', '_template') {
     Copy-Item (Join-Path $repo "mods\$m") $mods -Recurse
+}
+
+# Mods to READ and COPY, not to install: they change the game's balance (balance_example) or only demonstrate one pattern each (example_*), so they go to examples\, which
+# install.ps1 -WithExamples does not touch. Copy a folder into <Risen>\bin\spass\mods to use it. The *_driver mods and their scenarios are development tools and stay out.
+$examples = Join-Path $stage 'examples'
+New-Item -ItemType Directory -Force $examples | Out-Null
+Copy-Item (Join-Path $repo 'mods\.luarc.json') $examples
+foreach ($m in @('balance_example') + @(Get-ChildItem (Join-Path $repo 'mods') -Directory -Filter 'example_*' | ForEach-Object { $_.Name })) {
+    Copy-Item (Join-Path $repo "mods\$m") $examples -Recurse
 }
 
 New-Item -ItemType Directory -Force $Out | Out-Null
