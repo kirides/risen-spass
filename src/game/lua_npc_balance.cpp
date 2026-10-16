@@ -91,6 +91,46 @@ int infoMin(int skill) {
     return *reinterpret_cast<const std::int32_t*>(infos + static_cast<std::size_t>(skill) * kInfoStride);
 }
 
+
+// gCDialog_PS.TeachSkills (RE.md section 44): a bTObjArray<gCSkillRange> at +0x30 {data, count, capacity}; elements are inline, 0x20 bytes each,
+// with the reflected properties Skill (gESkill), MinValue and MaxValue. The teaching options of a teacher ask the element of the skill
+// (CanTeachSkill: Min <= the player's value + the amount <= Max), so changing MaxValue in place raises or lowers what he teaches.
+constexpr std::size_t kTeachOffset = 0x30;
+constexpr std::size_t kTeachStride = 0x20;
+
+char* teachSetOf(const sol::object& target, std::string& error) {
+    void* ps = nullptr;
+    if (target.get_type() == sol::type::string) {
+        ps = templatePropertySet(target.as<std::string>(), "gCDialog_PS", error);
+        return static_cast<char*>(ps);
+    }
+    if (target.is<LuaEntity>()) {
+        void* entity = ptr(target.as<LuaEntity>());
+        const Symbols& s = sym();
+        if (entity == nullptr) {
+            error = "entity is gone";
+            return nullptr;
+        }
+        if (s.ent_get_property_set == nullptr) {
+            error = "engine function eCEntity::GetPropertySet is unavailable";
+            return nullptr;
+        }
+        if (!guarded([&] {
+                const BString cls("gCDialog_PS");
+                ps = s.ent_get_property_set(entity, cls.get());
+            })) {
+            error = "the engine raised an exception (not an entity?)";
+            return nullptr;
+        }
+        if (ps == nullptr) {
+            error = "the entity has no dialogue property set (gCDialog_PS): not an NPC that talks";
+        }
+        return static_cast<char*>(ps);
+    }
+    error = "expected a template name or an NPC entity";
+    return nullptr;
+}
+
 }  // namespace
 
 void installNpcBalanceHelpers(sol::state_view lua, sol::table risen) {
@@ -380,6 +420,105 @@ void bindNpcBalance(sol::state_view lua, sol::table risen) {
             return failResult(L, "unknown item template '" + itemName + "'");
         }
         return {sol::make_object(L, removed), sol::make_object(L, sol::lua_nil)};
+    });
+
+    // risen.npc.teach_skills(target) -> { { skill = "gESkill_Stat_STR", min = 0, max = 100 }, ... } | nil, reason
+    //   What the NPC (an entity, or a template name) teaches: gCDialog_PS.TeachSkills. Engine enum names; `max` is the highest value he can bring the player to.
+    npc.set_function("teach_skills", [](sol::this_state ts, sol::object target) -> Two {
+        sol::state_view L(ts);
+        std::string error;
+        char* ps = teachSetOf(target, error);
+        if (ps == nullptr) {
+            return failResult(L, error);
+        }
+        sol::table out = L.create_table();
+        std::string problem;
+        if (!guarded([&] {
+                struct Header {
+                    void* data;
+                    std::int32_t count;
+                    std::int32_t capacity;
+                };
+                const Header* h = reinterpret_cast<const Header*>(ps + kTeachOffset);
+                if (h->count < 0 || h->count > 64 || (h->count > 0 && h->data == nullptr)) {
+                    problem = "the TeachSkills array looks corrupt (count " + std::to_string(h->count) + ")";
+                    return;
+                }
+                for (int i = 0; i < h->count; ++i) {
+                    void* elem = static_cast<char*>(h->data) + static_cast<std::size_t>(i) * kTeachStride;
+                    const auto skill = propertyGet(elem, "Skill");
+                    const auto mn = propertyGet(elem, "MinValue");
+                    const auto mx = propertyGet(elem, "MaxValue");
+                    if (!skill || !mn || !mx) {
+                        problem = "a TeachSkills element has no Skill/MinValue/MaxValue property";
+                        return;
+                    }
+                    sol::table e = L.create_table();
+                    e["skill"] = *skill;
+                    e["min"] = std::atoi(mn->c_str());
+                    e["max"] = std::atoi(mx->c_str());
+                    out[i + 1] = e;
+                }
+            })) {
+            return failResult(L, "the engine raised an exception while reading TeachSkills");
+        }
+        if (!problem.empty()) {
+            return failResult(L, problem);
+        }
+        return {out, sol::make_object(L, sol::lua_nil)};
+    });
+
+    // risen.npc.set_teach_limit(target, "gESkill_Stat_STR", max [, min]) -> true | nil, reason
+    //   Changes the MaxValue (and optionally the MinValue) of the element of that skill in place; the skill must already be in his list.
+    //   Placed NPCs keep their own copy (saved with the entity), so write the instance; templates only matter for new spawns.
+    npc.set_function("set_teach_limit", [](sol::this_state ts, sol::object target, const std::string& skill, int maxValue, sol::optional<int> minValue) -> Two {
+        sol::state_view L(ts);
+        if (maxValue < 0 || maxValue > 1000) {
+            return failResult(L, "max must be between 0 and 1000");
+        }
+        if (minValue && (*minValue < 0 || *minValue > maxValue)) {
+            return failResult(L, "min must be between 0 and max");
+        }
+        std::string error;
+        char* ps = teachSetOf(target, error);
+        if (ps == nullptr) {
+            return failResult(L, error);
+        }
+        std::string problem;
+        bool found = false;
+        if (!guarded([&] {
+                struct Header {
+                    void* data;
+                    std::int32_t count;
+                    std::int32_t capacity;
+                };
+                const Header* h = reinterpret_cast<const Header*>(ps + kTeachOffset);
+                if (h->count < 0 || h->count > 64 || (h->count > 0 && h->data == nullptr)) {
+                    problem = "the TeachSkills array looks corrupt (count " + std::to_string(h->count) + ")";
+                    return;
+                }
+                for (int i = 0; i < h->count && !found; ++i) {
+                    void* elem = static_cast<char*>(h->data) + static_cast<std::size_t>(i) * kTeachStride;
+                    const auto name = propertyGet(elem, "Skill");
+                    if (!name || *name != skill) {
+                        continue;
+                    }
+                    found = true;
+                    if (!propertySet(elem, "MaxValue", std::to_string(maxValue)) ||
+                        (minValue && !propertySet(elem, "MinValue", std::to_string(*minValue)))) {
+                        problem = "the engine refused the value";
+                    }
+                }
+            })) {
+            return failResult(L, "the engine raised an exception while writing TeachSkills");
+        }
+        if (!problem.empty()) {
+            return failResult(L, problem);
+        }
+        if (!found) {
+            return failResult(L, "the NPC does not teach " + skill + " (risen.npc.teach_skills shows the list)");
+        }
+        return {sol::make_object(L, true), sol::make_object(L, sol::lua_nil)};
     });
 
     installNpcBalanceHelpers(lua, risen);

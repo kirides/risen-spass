@@ -1411,6 +1411,28 @@ function npcApi.stats(target, opts) end
 ---@return string|nil reason
 function npcApi.set_stats(target, spec, opts) end
 
+---One entry of an NPC's teaching list (`gCDialog_PS.TeachSkills`).
+---@class TeachSkill
+---@field skill string Engine enum name, e.g. `"gESkill_Stat_STR"`.
+---@field min integer The lowest value the teacher can start from.
+---@field max integer The highest value he can bring the player to.
+
+---What an NPC teaches (`gCDialog_PS.TeachSkills`): `{ { skill = "gESkill_Stat_STR", min = 0, max = 100 }, ... }`. `target` is an NPC entity (its own copy, saved with it) or a template name.
+---@param target string|Entity
+---@return TeachSkill[]|nil list
+---@return string|nil reason
+function npcApi.teach_skills(target) end
+
+---Changes how far an NPC teaches a skill: the `MaxValue` (and with `min` the `MinValue`) of his list entry for that skill, in place. The skill must already be in his list.
+---Placed NPCs keep their own copy, so write the instance (`risen.entity.by_id`); a template name only changes later spawns. Engine attribute cap: 200.
+---@param target string|Entity
+---@param skill string Engine enum name, e.g. `"gESkill_Stat_DEX"`.
+---@param max integer 0..1000.
+---@param min? integer 0..max.
+---@return boolean|nil ok
+---@return string|nil reason
+function npcApi.set_teach_limit(target, skill, max, min) end
+
 ---Low level: the stored base value, modification (worn items/effects), total (clamped), minimum and maximum of one skill (`gESkill` 0..33, RE.md section 23).
 ---`max <= 0` means unlimited. `target` is a template name (its `gCSkills_PS` storage) or an entity.
 ---@param target string|Entity
