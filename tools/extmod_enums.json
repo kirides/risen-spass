@@ -1,0 +1,200 @@
+{
+ "enums": {
+  "eEBoolOverwrite": {
+   "0": "None",
+   "2": "False"
+  },
+  "eECollisionGroup": {
+   "2": "Dynamic"
+  },
+  "eEDynamicLightEffect": {
+   "0": "Steady"
+  },
+  "eEPhysicRangeType": {
+   "1": "ProcessingRange"
+  },
+  "eERigidbody_Flag": {
+   "0": "NONE",
+   "126": "FROZEN"
+  },
+  "eEShadowCasterType": {
+   "1": "Building",
+   "2": "Object"
+  },
+  "eEStaticIlluminated": {
+   "0": "Static",
+   "1": "Dynamic"
+  },
+  "eEStripSpawning": {
+   "0": "Continuous",
+   "1": "Movement",
+   "2": "Timed"
+  },
+  "gEAIMode": {
+   "0": "None"
+  },
+  "gEAmbientAction": {
+   "0": "Ambient"
+  },
+  "gEAniState": {
+   "2": "Stand"
+  },
+  "gEDamageType": {
+   "1": "Edge",
+   "2": "Blunt",
+   "3": "Point",
+   "5": "Ice",
+   "6": "Magic"
+  },
+  "gEEffectDecayMode": {
+   "0": "Decay",
+   "1": "Kill"
+  },
+  "gEEffectLoopMode": {
+   "1": "Loop",
+   "2": "Repeat"
+  },
+  "gEEffectStopMode": {
+   "0": "Decay",
+   "2": "Kill"
+  },
+  "gEEffectTargetMode": {
+   "0": "Self",
+   "1": "Parent"
+  },
+  "gEFlightPathType": {
+   "0": "Ballistic"
+  },
+  "gEFocusNameType": {
+   "0": "Skeleton",
+   "1": "Entity",
+   "3": "Disable",
+   "4": "Center"
+  },
+  "gEFocusPriority": {
+   "0": "None",
+   "3": "Normal"
+  },
+  "gEHitDirection": {
+   "0": "Left"
+  },
+  "gEInteractionUseType": {
+   "0": "None",
+   "1": "Item"
+  },
+  "gEItemCategory": {
+   "0": "None",
+   "1": "Weapon",
+   "2": "Armor",
+   "3": "Consumable",
+   "5": "Magic",
+   "6": "Misc",
+   "7": "Written"
+  },
+  "gEItemHoldType": {
+   "0": "None",
+   "1": "1H",
+   "10": "Armor",
+   "11": "Helmet",
+   "12": "Staff",
+   "13": "Amulet",
+   "14": "Ring",
+   "16": "Torch",
+   "18": "Axe",
+   "19": "Apple",
+   "2": "2H",
+   "20": "Bread",
+   "21": "Jar",
+   "22": "Joint",
+   "23": "Meat",
+   "24": "Potion",
+   "25": "Saringda",
+   "26": "Saw",
+   "27": "Scoop",
+   "28": "Stew",
+   "29": "Cast",
+   "3": "BS",
+   "31": "FocusCast",
+   "32": "MagicMissile",
+   "33": "MagicFireball",
+   "35": "Flute",
+   "5": "Bow",
+   "6": "CrossBow",
+   "8": "Fist",
+   "9": "Shield"
+  },
+  "gEItemUseType": {
+   "0": "None",
+   "1": "1H",
+   "10": "Armor",
+   "11": "Helmet",
+   "12": "Staff",
+   "13": "Amulet",
+   "14": "Ring",
+   "16": "Torch",
+   "17": "CarryFront",
+   "18": "Axe",
+   "19": "Cast",
+   "2": "2H",
+   "20": "FocusCast",
+   "21": "MagicMissile",
+   "22": "MagicFireball",
+   "24": "MagicAmmo",
+   "25": "MagicFrost",
+   "3": "BS",
+   "4": "Arrow",
+   "5": "Bow",
+   "6": "CrossBow",
+   "7": "Bolt",
+   "8": "Fist",
+   "9": "Shield"
+  },
+  "gERecipeCategory": {
+   "0": "Alchemy",
+   "1": "Cooking",
+   "3": "Frying",
+   "4": "Goldsmith",
+   "5": "WriteScroll",
+   "6": "Smith_Forge",
+   "7": "Smith_Anvil",
+   "8": "Smith_CoolWeapon",
+   "9": "Smith_GrindStone"
+  }
+ },
+ "skills": {
+  "0": "HitPoints",
+  "1": "ManaPoints",
+  "10": "ProtEdge",
+  "11": "ProtBlunt",
+  "12": "ProtPoint",
+  "13": "ProtFire",
+  "14": "ProtIce",
+  "15": "ProtMagic",
+  "16": "Sword",
+  "17": "Axe",
+  "18": "Staff",
+  "19": "Bow",
+  "2": "Level",
+  "20": "CrossBow",
+  "21": "Circle",
+  "22": "Fireball",
+  "23": "Frost",
+  "24": "Missile",
+  "25": "Smith",
+  "26": "Mining",
+  "27": "Lockpick",
+  "28": "Pickpocket",
+  "29": "Sneak",
+  "3": "Experience",
+  "30": "Acrobat",
+  "31": "Alchemy",
+  "32": "Scribe",
+  "33": "Trophy",
+  "4": "LearnPoints",
+  "5": "MaxHitPoints",
+  "6": "MaxManaPoints",
+  "7": "Strength",
+  "8": "Dexterity",
+  "9": "Intelligence"
+ }
+}

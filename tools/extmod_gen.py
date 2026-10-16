@@ -322,8 +322,15 @@ def gen_items(ctx, d):
         if not diffkeys:
             stats["identical (re-saved only)"] += 1
             continue
-        if not path.startswith("Items/"):
-            # monsters and others: the actor file is the only thing that is data (the rest is runtime state of the saved template)
+        if not path.startswith("Items/") or "gCItem_PS.UseType" not in a:
+            # monsters: the actor file is the only thing that is data (the rest is runtime state of the saved template);
+            # item-like templates without gCItem_PS (projectiles): every scalar property that differs
+            if path.startswith("Items/"):
+                sets = prop_diff(ctx, name, {k: v for k, v in a.items() if "[]" not in k}, {k: v for k, v in b.items() if "[]" not in k}, at, bt)
+                if sets:
+                    patches[name] = sets
+                    stats["projectile-like templates patched"] += 1
+                continue
             want = {k: b[k] for k in diffkeys if k == "eCAnimation_PS.ResourceFilePath"}
             other = [k for k in diffkeys if k not in want]
             if want:

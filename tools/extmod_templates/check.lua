@@ -137,7 +137,7 @@ return function(M)
             T.eq("a new weapon spawns and loads its mesh", { spawned, meshes }, { #sample, {} })
 
             -- equip: meet the requirements, then the engine's own check
-            assert(risen.npc.set_stats(p, { skills = { Strength = 250, Dexterity = 250, Smith = 3, Alchemy = 3, Circle = 3 } }))
+            assert(risen.npc.set_stats(p, { skills = { Strength = 200, Dexterity = 200, Smith = 3, Alchemy = 3, Circle = 3 } }))
             local not_usable, equipped = {}, 0
             for _, name in ipairs(sample) do
                 risen.item.give(p, name, 1)
@@ -201,10 +201,11 @@ return function(M)
             local e = risen.entity.spawn(mon, (x or 0) - 300, (y or 0) + 10, z or 0)
             T.sleep(60)
             local deps = e and e:dependencies() or {}
-            local want_actor = M.patch[mon].eCAnimation_PS.ResourceFilePath:gsub("%.xac$", "._xmac"):lower()
+            local want_actor = M.patch[mon].eCAnimation_PS.ResourceFilePath:lower()
             local found = false
             for _, d in ipairs(deps) do if tostring(d):lower():find(want_actor, 1, true) then found = true end end
-            T.expect("a monster with a new actor spawns", e ~= nil and not e:is_dead() and found, ("%s deps %s want %s"):format(mon, table.concat(deps, ","), want_actor))
+            local res = risen.assets.resource((M.patch[mon].eCAnimation_PS.ResourceFilePath:gsub("%.xac$", "._xmac")))
+            T.expect("a monster with a new actor spawns", e ~= nil and not e:is_dead() and found and res ~= nil and res.state >= 1, ("%s deps %s want %s"):format(mon, table.concat(deps, ","), want_actor))
             if e then e:kill() end
 
             T.section("assets")

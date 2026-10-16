@@ -224,6 +224,23 @@ A game that dies used to leave "exited, no result" and a log that just stops. No
 
 **Engine guards and the race probe.** `[debug] engine_guards = "all" | "findroom" | "none"` (`test-run.ps1 -EngineGuards`) selects the guards of `src/game/engine_guards.cpp` (RE.md section 43: the rich-presence thread's world access is answered from a cache of the game thread, `FindPortalRoom` has a fault guard); `"none"` is the engine as shipped. `[debug] race_probe = true` (`-RaceProbe`) starts a thread that calls the same engine function in a tight loop: a test tool to provoke that class of race (it did not crash the unguarded engine in 40 million calls; the race needs one exact interleaving).
 
+## Risen Extended: generated mod and milestone snapshots (M19)
+
+The re-implementation of the Risen Extended Mod ([EXTENDED_MOD_ANALYSIS.md](EXTENDED_MOD_ANALYSIS.md)) is **generated** from the user's own copy of the mod and never committed (`mods/risen_extended/` is git-ignored, the generated folder also holds a `.gitignore` and a `NOTICE.txt`).
+
+```powershell
+python -I tools/extmod_gen.py --mod B:\TMP\Risen_Extended_Mod --baseline B:\DevDrive\risen-test\data --out mods\risen_extended   # ~15 s, deterministic; --no-assets skips the 108 MB copy
+python -I tools/extmod_enums.py --log <spass.log of mods/itemdump> --baseline B:\DevDrive\risen-test\data                         # engine enum names (gEItemHoldType_...) -> tools/extmod_enums.json
+python -I tools/test_extmod_gen.py                                                                                                # data-free self-test of the generator helpers
+.\scripts\smoke-test.ps1 -Scenario extmod                                                                                          # two game processes: main (checks + save), load (fresh process)
+.\scripts\test-run.ps1 -Mods risen_extended -WaitForResult -Seconds 300 -Scenario extmod -Param check=extmod,phase=main -ShowChecks   # one phase by hand
+```
+`manifest.json` of the generated mod lists the counts, every entity that could not be converted (reason + the milestone that would handle it) and what is deferred (dialogue / world / combat table). The generic Lua code (`main.lua`, `check.lua`, `config.lua`) is in `tools/extmod_templates/`; the data (`data/*.lua`, `strings/*.csv`, `assets/`) comes only from the archives.
+The smoke scenario `extmod` is skipped when the generated mod is absent.
+
+**Snapshots.** `scripts\extmod-snapshot.ps1 -Name 01-data -Title "..." -Verified "..." -Known "..."` builds `B:\DevDrive\extmod-milestones\<NN>-<name>\` (current `sentry.dll`, the generated mod, `modmanager`, `quickloot`, `README.md` with the changelog checklist from `tools/extmod_templates/changelog_status.json`, `snapshot.json`, `play.ps1`), rewrites `B:\DevDrive\extmod-milestones\LATEST.md` and tags the repo commit `extmod-<NN>`.
+`scripts\play-extmod.ps1 [-Snapshot <folder>] [-Fresh]` (also `play.ps1` inside a snapshot) makes or refreshes the private play copy `B:\DevDrive\risen-play` (made from the test copy: `bin` copied, `data\common` / `data\compiled` junctions, savegames and `ConfigUser.xml` inside the copy through `[debug] app_data`, windowed 1600x900, never the real install), mirrors the snapshot's mods into it and starts the game at the main menu (no test autostart, no deadline). Savegames survive a refresh; items are created from their names, so saves of an earlier snapshot load in a later one.
+
 ## Parallel instances (M4c)
 
 Several `Risen.exe` can run at the same time when each has its **own test copy** and its own id. The engine's single-instance guard is the named mutex `GenomeMutex`
