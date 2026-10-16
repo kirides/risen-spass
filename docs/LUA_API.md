@@ -27,7 +27,7 @@ Globals: `mod` (`id, name, version, author, dir`), `risen`.
 
 **Editor support:** [`types/risen.d.lua`](../types/risen.d.lua) describes every function below for LuaLS (completion, hover docs, type
 checks); see [`types/README.md`](../types/README.md).
-**Examples:** eleven small, live-verified example mods (patching, balancing, materials/textures, custom NPC, fetch/kill quests, completion triggers, quest tracker, voiced dialogue, spells) are indexed in [`EXAMPLES.md`](EXAMPLES.md).
+**Examples:** thirteen small, live-verified example mods (patching, balancing, materials/textures, custom NPC, fetch/kill quests, completion triggers, quest tracker, voiced dialogue, spells, recipes, NPCs that appear and disappear) are indexed in [`EXAMPLES.md`](EXAMPLES.md).
 
 ## Events
 
@@ -55,6 +55,7 @@ checks); see [`types/README.md`](../types/README.md).
 | `entity.damaged` | `entity, attacker, damage, raw` | a hit took hit points (`damage` = hit points lost; `raw` = the weapon's own damage before protection, 0 for monster bites) |
 | `entity.spawned` | `entity, template` | `Entity::Spawn` created an entity: `risen.entity.spawn`, `risen.npc.spawn` and the game's scripts |
 | `entity.destroyed` | `name, kind, template` | an entity was removed from the world (`eCEntity::Kill`: picked-up items, `Entity:kill()`, despawns); `kind` `"npc"`, `"player"`, `"item"`, `"other"`; the entity itself is gone, so only its name |
+| `gamevar.changed` | `name, value, previous` | a game variable was set, changed or removed (the dialogue commands `SetGameEvent` / `ClearGameEvent`, the game's scripts, `risen.gamevar.set/remove`): `value` is `nil` for a removed one, `previous` `nil` for a new one; `SetGameEvent` creates the variable with the value 0; nothing while a savegame loads |
 | `input.action` | `ev` = `{ key, action, phase, value, duration }` | every action event the engine delivers (key press, hold each frame, release, analog look/move): **a handler that returns a value other than `nil`/`false` consumes it**, the engine never sees it (`phase` `"pressed"`, `"held"`, `"released"`, `"analog"`); see "Input" below |
 
 ```lua
@@ -102,6 +103,8 @@ every route that changes an inventory or kills / creates / removes an entity fir
   `Defeat`, `OnCheatKill`, a real fight (a wolf kills the player: `entity.died(PC_Hero, wolf, "combat")` with the `entity.damaged` before it).
 * **`entity.spawned`** is raised by `Entity::Spawn` (what `risen.entity.spawn`, `risen.npc.spawn` and the game's own spawn scripts call); entities the engine creates internally (items dropped from an inventory,
   equipment copies, effects) are not reported, and **neither is an entity that a savegame brings back** (the engine rebuilds it without calling `Entity::Spawn`, RE.md §32: `risen.npc.persistent`'s `on_ready` says "in the world"). **`entity.destroyed`** comes from `eCEntity::Kill`; effect entities (`VFX_*`) are skipped. **`entity.damaged`** only fires for hits that took hit points.
+* **`gamevar.changed(name, value, previous)`** comes from the engine's `gCInfoSystem::SetGameVariable` / `RemoveGameVariable` (RE.md §33), which the dialogue commands `SetGameEvent` / `ClearGameEvent`, the game's scripts and `risen.gamevar.set/remove`
+  all end in; it fires only when the value changed (or the variable is new / removed). `SetGameEvent` creates a variable with the **value 0**: `previous = nil, value = 0`. Verified live (`spawnwhen`: a real dialogue command, `risen.gamevar.set`, `remove`).
 * **Not covered:** "container opened" (opening a chest is a dialogue-less interaction that moves nothing by itself; its loot is reported as `"loot"`), `item.used` for food (the use scripts call `ConsumeItems`, reported as
   `item.consumed`; not driven live: `risen.item.consume` is), per-item property changes.
 
@@ -608,7 +611,7 @@ local hob = risen.npc.persistent({
     on_ready = function(entity, reason, handle) end,   -- reason: "spawned" | "restored" | "respawned" | "replaced" | "adopted"
     on_death = function(entity, killer, handle) end,
 })
-hob:state()      -- "alive" | "dead" | "missing" | "removed" | "pending"       hob:entity()   hob:deaths()   hob:respawn()   hob:remove()
+hob:state()      -- "alive" | "dead" | "missing" | "removed" | "pending" | "disabled"       hob:entity()   hob:deaths()   hob:respawn()   hob:remove()   hob:ensure()
 risen.npc.persistent_get("MyMod_Hob")   risen.npc.persistent_list()
 ```
 * **How it works.** The engine saves spawned entities (system dynamic layer) with their unique ID but without their name. The layer stores `{ id, template, version, home, last, dead, deaths }` per NPC in
@@ -622,11 +625,61 @@ risen.npc.persistent_get("MyMod_Hob")   risen.npc.persistent_list()
 * **Changed or missing**: a changed `template` or `version` replaces the saved NPC; a record whose name the mod no longer declares is pruned (its entity is removed) after the first session
   start; a mod that was removed altogether leaves the saved NPCs in the world as ordinary nameless NPCs; a missing template makes the engine drop the entity on load and the NPC `"missing"` (a warning
   is logged once per session) — it is made again as soon as the template exists (the next session start).
+* **Hold back until something happened.** `enabled = function() -> bool` (an option; `risen.spawn.when` sets it) keeps a declaration from creating, restoring or replacing its NPC while it answers false (`handle:state()` is `"disabled"`);
+  `handle:ensure()` makes the NPC exist now as declared (creates, restores or re-creates, brings a `remove()`d one back; `nil, reason` while the world is not ready). Conditional spawning is built on both (next section).
 * **Declare while the mod loads.** `define` and the handlers need to exist before a savegame is read. A declaration made later (inside a running session, e.g. a boss when its quest starts) creates or
   finds the NPC at once, and has to be made again on every `session.start` of a savegame that needs it (see `mods/example_kill_quest`, `example_quest_rewards`): the record is pruned otherwise.
 * **Events.** `entity.spawned` fires when the layer creates the NPC (spawned, respawned, replaced), **not** for a restored one: use `on_ready` for "the NPC is in the world". `entity.died` fires as usual.
 * **Limits.** The record lives in the savegame's sidecar file: a savegame copied without its `.lua` sidecar (or from before the mod existed) is not recognised and the NPC is made again (an old unnamed
   copy of an earlier mod version stays). Hit points regenerate as for every NPC. A mod name collision is refused (`nil, reason`). No timers, no facing, no routines (M10).
+
+## Conditional spawning — `risen.spawn.when`, `risen.cond` (see `mods/example_spawn_when`, `mods/spawnwhen`, [RE.md §33](RE.md))
+An NPC that does not exist until something happened — a quest was finished, the player carries enough of an item, a game variable was set, another NPC died — and that may go away again. It is a
+**persistent NPC** (the previous section) with a rule in front of it: the layer creates it when the condition holds, removes it when another one does, remembers per savegame what it did and makes the
+world consistent after every load. Nothing is polled.
+```lua
+local C = risen.cond
+risen.spawn.when({
+    name = "MyMod_Smith", template = "Peasant_1_02", offset = { -150, 20, 150 }, label = "Smith Bram", peaceful = true,    -- every option of risen.npc.persistent
+    when         = C.quest("Q_MyMod_Errand", "Success"),        -- created when this holds
+    despawn_when = C.event("MyMod_Smith_Leaves"),               -- removed when this holds (optional)
+    once = true,                                                -- default; false = follow the condition in both directions
+    on_fire    = function(rule, why, entity) end,               -- why: "condition" (it happened now) | "load" (found true when a game was loaded or started)
+    on_despawn = function(rule, why) end,
+})
+risen.spawn.when({ name = "MyMod_Guard", template = "Peasant_1_03", offset = { 0, 20, 200 }, once = false,
+                   when = C.all { C.item("It_Apple", 3), C.negate(C.var("MyMod_Peace")) } })      -- exists while the player holds 3 apples and the variable is 0
+```
+**Conditions** (`risen.cond`; a plain `function() -> boolean` is a condition too; a bad argument raises an error):
+
+| Constructor | Holds when | Looked at again after |
+|---|---|---|
+| `quest(name [, status])` | the quest has the status (`"Success"` by default; a list accepts any: `{ "Failed", "Lost" }`; `"None"` = no such quest) | `quest.status_changed` of that quest |
+| `item(template [, count [, holder]])` | the holder (the player; or an entity name) carries `count` (1) or more of the template | `inventory.changed` of that template |
+| `var(name [, value [, op]])` | the game variable (`risen.gamevar`) is non-zero / equals `value` / compares with `op` (`== ~= >= <= > <`); a missing variable counts as 0 | `gamevar.changed` of that name |
+| `event(name)` | the game variable **exists**: what the dialogue command `SetGameEvent` does (it creates the variable with the value **0**) | `gamevar.changed` |
+| `dead(who)` / `alive(who)` | the NPC (unique name, or a persistent / rule handle) is dead (corpse, or recorded dead) / exists and lives | `entity.died` / `entity.destroyed` of it, and when a rule's NPC changes |
+| `fn(f [, { on = "event" or {...}, poll = frames }])` | the predicate returns true | the events in `on`, every `poll` frames; without either only after a load, with the other conditions of the rule, and `risen.spawn.check()` |
+| `all{...}`, `any{...}`, `negate(c)` | and / or / not | what their members need |
+
+`risen.cond.test(c)` answers `true`, `false` or `nil` ("cannot tell": no player yet, a predicate that raised an error — logged once; the rule then does nothing). `tostring(c)` describes a condition (it is what the log says).
+
+**Rules.**
+* **One-shot** (`once = true`, default): `waiting` -> (`when` holds) -> `present` (the NPC exists) -> (`despawn_when` holds) -> `gone` (removed; never again in this savegame). Before `despawn_when` the condition may become false again: the NPC stays.
+  Both holding the first time it is looked at: nothing is created (the rule is `gone`).
+* **Tracking** (`once = false`): the NPC exists exactly while `when` holds and `despawn_when` does not; it is removed (`handle:remove()`) and made again (a new body at the same home position, `handle:respawn()`) as often as that flips; the state goes `waiting` <-> `present`.
+* **Remembered.** The state `{ state, spawns }` per rule is stored in the mod's `risen.save` (key `spawn_rules`), i.e. next to every savegame and rolled back by a load: a savegame made before the trigger has the rule `waiting`
+  (and, because the engine's savegame has no such NPC, none appears), one made after has it `present` (the NPC is restored by the persistent layer, exactly once), one made after he left keeps him `gone`. Loading an
+  earlier savegame in the same process removes what the later one had created. A new game starts everything `waiting`.
+* **Event driven.** A matching event only marks the rules that use it; they are evaluated on the next `tick` (events can fire inside engine code, e.g. `quest.status_changed` inside `gCQuest::SetStatus`). Without a polling predicate nothing runs per frame.
+  After **every new game and load** (40 frames after `world.ready`, the persistent NPCs reconcile after 30) each rule is evaluated once: a condition that became true or false behind the layer's back (an old savegame, an edited rule, a variable
+  restored by the savegame) is caught up, with `why = "load"`.
+* **`define`** of the NPC (its quests and dialogues) runs on `load.before` and `session.start` as for any persistent NPC, so its dialogue options exist while the NPC does not.
+* **Handle** (`SpawnRule`): `state()` (`"waiting"`, `"present"`, `"gone"`, `"pending"` before the world settled), `entity()`, `fired()` (how often it created the NPC in this savegame), `check()` (look now), `reset()` (back to `waiting`, the NPC removed; fires again when the
+  condition still holds), `npc` (the `PersistentNpc`). `risen.spawn.get(name)`, `risen.spawn.rules()`, `risen.spawn.check()`. Same name twice: the same handle.
+* **Limits.** NPCs only (items and other entities: use `risen.entity.spawn` in an event handler); a rule's record only exists once it fired; no timers ("N days after"): use a `fn` predicate with `poll`; the sidecar caveat of persistent
+  NPCs applies (a savegame without its `.lua` file knows nothing: the rule is `waiting` and fires again when its condition holds, and an old nameless copy of the NPC stays).
+  **Game variables**: the event comes from the engine's own `gCInfoSystem::Set/RemoveGameVariable`, so dialogue commands, scripts and `risen.gamevar.set` all report; variables restored by a savegame load are not reported (the look after the load catches them).
 
 ## Dialogues — `risen.dialog` (see `mods/dialogdemo`)
 A dialogue option is an *info* owned by an NPC (by entity name). Its lines are commands; the text of the **first
@@ -705,7 +758,7 @@ risen.on("session.start", content)
 ```lua
 risen.quest.open|run|close|fail|succeed("Quest_Id")   risen.quest.is_running("Quest_Id")
 risen.gamevar.get("Name") -> int|nil                   risen.gamevar.set("Name", 1)
-risen.gamevar.exists("Name")   risen.gamevar.remove("Name")      -- dialogue commands SetGameEvent / ClearGameEvent create / remove a variable
+risen.gamevar.exists("Name")   risen.gamevar.remove("Name")      -- dialogue commands SetGameEvent (value 0) / ClearGameEvent create / remove a variable; event `gamevar.changed`; conditions: `risen.cond.var/event`
 risen.world.is_game_running()  risen.world.new_game()  risen.world.quick_load()
 risen.world.quick_save()  risen.world.auto_save("name")  risen.world.is_save_allowed()
 ```

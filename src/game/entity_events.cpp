@@ -39,6 +39,8 @@ Hook<void* (*)(void*, void*, void*, bool, int)> g_spawnNear;
 Hook<void (*)(void*)> g_entityKill;
 Hook<bool (*)(void*, void*)> g_doDamage;
 Hook<std::int64_t (*)(void*, void*, void*, std::int64_t)> g_scriptCheatKill;
+Hook<bool (*)(void*, const void*, int)> g_gameVarSet;
+Hook<bool (*)(void*, const void*)> g_gameVarRemove;
 
 // A script argument is an `Entity` holder (its first qword is the eCEntity*) or null (then the unit's self/other entity is meant).
 void* entityArg(void* holder, void* unitFallback) {
@@ -198,6 +200,45 @@ void detourEntityKill(void* self) {
     g_entityKill.original(self);
 }
 
+// gamevar.changed(name, value, previous): gCInfoSystem::SetGameVariable / RemoveGameVariable (Game.dll). The dialogue commands SetGameEvent (a variable with
+// value 0) / ClearGameEvent call these members directly; the Script.dll statics (InfoSystem::Set/RemoveGameVariable: risen.gamevar.set/remove, the game's scripts)
+// are thin wrappers around them. `value` is nil for a removed variable, `previous` nil for a new one.
+bool detourGameVarSet(void* self, const void* name, int value) {
+    const bool want = name != nullptr && bus::active() && bus::wanted("gamevar.changed");
+    std::string key;
+    int previous = 0;
+    bool had = false;
+    if (want) {
+        guarded([&] {
+            key = sym().bstring_get_text(name);
+            had = sym().gamevar_get != nullptr && sym().gamevar_get(name, &previous);
+        });
+    }
+    const bool ok = g_gameVarSet.original(self, name, value);
+    if (want && ok && !key.empty() && (!had || previous != value)) {
+        bus::post("gamevar.changed", {key, static_cast<double>(value), had ? bus::Arg(static_cast<double>(previous)) : bus::Arg()});
+    }
+    return ok;
+}
+
+bool detourGameVarRemove(void* self, const void* name) {
+    const bool want = name != nullptr && bus::active() && bus::wanted("gamevar.changed");
+    std::string key;
+    int previous = 0;
+    bool had = false;
+    if (want) {
+        guarded([&] {
+            key = sym().bstring_get_text(name);
+            had = sym().gamevar_get != nullptr && sym().gamevar_get(name, &previous);
+        });
+    }
+    const bool ok = g_gameVarRemove.original(self, name);
+    if (want && ok && had && !key.empty()) {
+        bus::post("gamevar.changed", {key, bus::Arg(), static_cast<double>(previous)});
+    }
+    return ok;
+}
+
 }  // namespace
 
 void resetEntityEvents() {
@@ -244,6 +285,12 @@ void installEntityEventHooks() {
     const Symbols& s = sym();
     if (s.gdmg_do_damage != nullptr && !g_doDamage.install("gCDamage_PS::DoDamage", s.gdmg_do_damage, &detourDoDamage)) {
         spdlog::warn("event hook 'gCDamage_PS::DoDamage' could not be installed");
+    }
+    if (s.gamevar_sys_set != nullptr && !g_gameVarSet.install("gCInfoSystem::SetGameVariable", s.gamevar_sys_set, &detourGameVarSet)) {
+        spdlog::warn("event hook 'gCInfoSystem::SetGameVariable' could not be installed");
+    }
+    if (s.gamevar_sys_remove != nullptr && !g_gameVarRemove.install("gCInfoSystem::RemoveGameVariable", s.gamevar_sys_remove, &detourGameVarRemove)) {
+        spdlog::warn("event hook 'gCInfoSystem::RemoveGameVariable' could not be installed");
     }
     if (s.eent_kill != nullptr) {
         if (!g_entityKill.install("eCEntity::Kill", s.eent_kill, &detourEntityKill)) {

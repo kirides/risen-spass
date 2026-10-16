@@ -102,6 +102,10 @@ for fn in re.findall(r'^function r\.(\w+)\(', (root / 'src/game/recipe_lua.h').r
 # per-mod risen.npc.persistent / persistent_get / persistent_list (the chunk in persistent_npc_lua.h defines `function npc.<name>(` on the mod's npc table)
 for fn in re.findall(r'^function npc\.(\w+)\(', (root / 'src/game/persistent_npc_lua.h').read_text(encoding='utf-8'), flags=re.M):
     bound[f'npc.{fn}'] = 'src/game/persistent_npc_lua.h'
+# per-mod risen.cond.* / risen.spawn.* (the chunk in spawn_when_lua.h defines `function cond.<name>(` and `function spawn.<name>(`)
+for ns in ('cond', 'spawn'):
+    for fn in re.findall(rf'^function {ns}\.(\w+)\(', (root / 'src/game/spawn_when_lua.h').read_text(encoding='utf-8'), flags=re.M):
+        bound[f'{ns}.{fn}'] = 'src/game/spawn_when_lua.h'
 # spec-less sol properties of usertypes use `"name", sol::property(` : include them
 for path in (root / 'src/game/script_bridge.cpp', root / 'src/game/lua_entity.cpp'):
     text = path.read_text(encoding='utf-8')

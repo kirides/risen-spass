@@ -251,7 +251,7 @@
     X(ctext_saysvm, L"Game.dll", "?AccessText@gCInfoCommandSaySVM@@QEAAAEAVgCInfoLocString@@XZ", void* (*)(void* self), false) \
     X(gamevar_exists, L"Script.dll", "?ExistsGameVariable@InfoSystem@@SA_NAEBVbCString@@@Z", bool (*)(const void*), false) \
     X(gamevar_remove, L"Script.dll", "?RemoveGameVariable@InfoSystem@@SA_NAEBVbCString@@@Z", bool (*)(const void*), false) \
-    X(is_refresh_children, L"Game.dll", "?RefreshParentChildInfos@gCInfoSystem@@QEAAXXZ", void (*)(void* self), false) \
+    X(gamevar_sys_set, L"Game.dll", "?SetGameVariable@gCInfoSystem@@QEAA_NAEBVbCString@@H@Z", bool (*)(void* self, const void* name, int value), false)     X(gamevar_sys_remove, L"Game.dll", "?RemoveGameVariable@gCInfoSystem@@QEAA_NAEBVbCString@@@Z", bool (*)(void* self, const void* name), false)     X(is_refresh_children, L"Game.dll", "?RefreshParentChildInfos@gCInfoSystem@@QEAAXXZ", void (*)(void* self), false) \
     X(element_base_name, L"Engine.dll", "?GetFileBaseName@eCProcessibleElement@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false) \
     /* ---- entity templates at runtime (eCTemplateEntity, docs/RE.md section 22) ---------------------------- */ \
     X(tpl_proxy_get_entity, L"Engine.dll", "?GetEntity@eCTemplateEntityProxy@@QEAAPEAVeCTemplateEntity@@XZ", void* (*)(void* proxy), false) \

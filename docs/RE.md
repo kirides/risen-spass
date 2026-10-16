@@ -1140,3 +1140,42 @@ pruned (its entity killed). Verified live in four processes (save with a quick l
 removal of a second entity with the name were only run against the unit-test mock. The record lives in the sidecar file `bin/spass/saves/<savegame>.lua`: a savegame copied without it makes the layer create the NPC
 again next to the unnamed saved one. `gCSector::SaveGameRelevant` and the `0x8` flag in the write condition (`eCEntity+0x28`) were not investigated further (the default flags of a spawned entity pass them).
 Only entities in the system layer were examined; native world entities are saved by their own mechanism (the "removed native entities" list, property sets `IsPersistable`).
+
+## 33. Game variables, game events and conditional spawning (M8) [confirmed in-game unless marked]
+
+**Game variables.** `gCInfoSystem::SetGameVariable(name, value)` (Game.dll `0x8b3570`) looks `name` up in the system's `bTArrayMap<bCString,long>` (`this + 0x78`, elements of 16 bytes: the `bCString` and the int at `+8`), overwrites the value or appends
+a new element and sets a dirty byte at `this + 0x88`; `RemoveGameVariable(name)` (`0x8b3670`) deletes the element (read in the decompilation). The Script.dll statics `InfoSystem::Set/RemoveGameVariable`
+(`0x215a50` / `0x215100`, what `risen.gamevar.set/remove` and the game's scripts call) fetch `gCInfoModule::GetInstance()->GetSystem()` and tail-call these members.
+**The dialogue commands call the members directly**: `gCInfoCommandSetGameEvent::Execute` (Game `0x896580`) is `gCInfoSystem::SetGameVariable(this + 0x10 /* GameEvent */, 0)` and `gCInfoCommandClearGameEvent::Execute` (`0x887e00`)
+is `RemoveGameVariable`; both first run `OnInfoStarted("IS_2_Running_ProcessInfo")` when the second argument is false. So **a "game event" is a game variable with the value 0** (the dialogue-commands note in §11 "creates the game
+variable with value 0" was right: it exists but is not non-zero). A first hook on the Script.dll statics did **not** see `SetGameEvent` (verified: variable existed with value 0, no event); hooking the two Game.dll members covers every route.
+`gamevar.changed(name, value, previous)` is posted through the event bus (queued, dispatched at the end of the frame) from detours of those members (`src/game/entity_events.cpp`; symbols `gamevar_sys_set`, `gamevar_sys_remove`, optional);
+it is skipped when nobody listens, when the value did not change and while a savegame loads. Verified live: the real dialogue command (`SW_Open:0:nil`), `risen.gamevar.set`, `risen.gamevar.remove` (`SW_Open:nil:0`).
+Variables restored by a savegame load are written by the load itself and not reported.
+
+**Conditional spawning** (`src/game/spawn_when_lua.h`, `docs/LUA_API.md` "Conditional spawning") adds no engine hook besides the one above. It is pure Lua over the persistent NPC layer (§32), `risen.save` and the events:
+* `risen.spawn.when{...}` declares a persistent NPC with the new `enabled` gate (`persistent_npc_lua.h`: a closed gate means reconcile neither creates, restores nor replaces the NPC; `Handle:ensure()` reconciles one NPC now and brings a
+  `remove()`d one back). Without the gate a rule that was waiting would have created its NPC at the first reconciliation of every load; with it, nothing of the NPC exists while the rule waits, and a later in-process load of an
+  earlier savegame (record rolled back, world rebuilt without the NPC) stays consistent although the Lua declaration of the persistent NPC survives the load.
+* The rule state `{ state = "waiting" | "present" | "gone", spawns }` lives in the mod's `risen.save` (key `spawn_rules`), i.e. in the same sidecar as the persistent record, so the engine's saved entity, the persistent record and the rule state always come from the same savegame.
+* Conditions are small Lua nodes with the events that can change them (`quest.status_changed`, `inventory.changed`, `gamevar.changed`, `entity.died/destroyed`, mod events, an internal "a rule's NPC changed"); an event only marks the rules
+  that use it and the next `tick` evaluates them (`quest.status_changed` fires inside `gCQuest::SetStatus`; evaluating there would run engine calls inside engine code). Rules with a `poll` predicate are evaluated every n frames.
+  Three-valued logic: a predicate that raises or cannot tell makes the answer "unknown" and the rule does nothing.
+* After every `world.ready` the rules wait 40 frames (the persistent NPCs reconcile after 30) and are all evaluated once (`why = "load"`); a failed load restores readiness (`load.after(name, false)`).
+
+**Verified live** (scenario `spawnwhen`, four game processes, 19 + 37 + 10 + 9 = 75 checks; `ex_spawn_when`, 22 checks), every statement with exact counts of live entities per template:
+* *new game*: no rule NPC exists, the rules are `waiting`, `risen.save` has no record; the quest completed through the giver's real dialogue options creates the reward NPC exactly once (`on_fire` reason `condition`); a new game in the same process
+  removes it, the quest and the records again; quick save "A" with nothing fired.
+* *fresh process loads A* (an earlier save): nothing exists, every rule waits, no record. Then: quest (dialogue), items (2 tokens: nothing; 3: the tracking guard appears; 7: still the same entity; 2: removed; 3: a **new** entity at the same home),
+  a game event (the dialogue command `SetGameEvent`: `gamevar.changed` seen, the visitor appears; `risen.gamevar.set("SW_Gone")` removes it for good; setting the spawn condition again does nothing; `reset()` lets it fire again),
+  a death (`Kill` script) combined with `all{ dead(), negate(var()) }` (not while the variable is set, fires when it is cleared).
+* *in-process quick load of the earlier save*: every rule NPC disappears (the world is the saved one), every rule waits, the records are gone, the victim lives again; the same triggers fire again, one NPC per rule, one `entity.spawned` each.
+* *in-process quick load of the later save B*: one entity each, the same entity IDs as before the save, no `entity.spawned`, the rules `present` with `fired() == 1`, no `on_fire` call.
+* *fresh process loads B*: the same; then the tracking rule removes its NPC when a token is taken away, `SW_Gone` removes the visitor, the one-shot reward stays.
+* *fresh process loads B with edited rules*: a tracking threshold raised so the condition is false at the load removes the NPC (`on_despawn` reason `load`); a new `despawn_when` that already holds removes a one-shot NPC (`gone`);
+  a rule added after the savegame was made fires at the load because its quest is already `Success` in the savegame (`on_fire` reason `load`); unchanged rules keep their entities (same IDs).
+* Timing: 62 s (new game phase), 99 s (main), 33 s per load phase; the unit tests (`tests/spawn_when_tests.inc`, 10 tests) cover the same state machine against a mock world plus validation, three-valued logic, predicates with `on`/`poll`.
+
+**Limits / inferred.** Not run live: `cond.item` with another holder than the player, `cond.alive`, a rule declared inside a running session (unit-tested only), `fn` conditions with `on` / `poll` (unit-tested only), a failed savegame load (the readiness
+restore is inferred), a rule whose template is missing (the persistent layer warns once and tries again at the next session start: shared behaviour of §32). A savegame whose sidecar is missing knows no rule state: the rule waits and fires again when its condition holds.
+Events are evaluated one frame after they happen. `Entity:kill()`ed rule NPCs are treated like vanished persistent NPCs (made again at the next session start); use `despawn_when` to remove one on purpose.

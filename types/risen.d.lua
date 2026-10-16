@@ -905,6 +905,7 @@ local npcApi = {}
 ---@field define? fun(handle: PersistentNpc) Called on `load.before` and on every `session.start`: create the NPC's quests and dialogues here (the engine only restores their saved state into objects that exist).
 ---@field on_ready? fun(entity: Entity, reason: "spawned"|"restored"|"respawned"|"replaced"|"adopted", handle: PersistentNpc) Called whenever the NPC is in the world after a session start or load. `spawned`: made now for the first time, `restored`: found again in the loaded savegame, `respawned`: a new body for a dead or vanished one, `replaced`: made again because `template`/`version` changed, `adopted`: an entity that already had the name was taken over. Not called for a dead NPC that stays dead.
 ---@field on_death? fun(entity: Entity, killer: Entity|nil, handle: PersistentNpc) Called once when the NPC dies (after `entity.died`).
+---@field enabled? fun(): boolean While it answers `false` the NPC is neither created, restored nor replaced (what `risen.spawn.when` uses to keep an NPC away until its condition holds).
 
 ---A declared persistent NPC.
 ---@class PersistentNpc
@@ -916,9 +917,15 @@ local PersistentNpc = {}
 ---@return Entity|nil
 function PersistentNpc:entity() end
 
----`"alive"`, `"dead"` (corpse or removed after dying), `"missing"` (it should exist but does not, e.g. its template is not available), `"removed"` (after `remove()`), `"pending"` (not created yet in this session).
----@return "alive"|"dead"|"missing"|"removed"|"pending"
+---`"alive"`, `"dead"` (corpse or removed after dying), `"missing"` (it should exist but does not, e.g. its template is not available), `"removed"` (after `remove()`), `"pending"` (not created yet in this session),
+---`"disabled"` (its `enabled` function says no and it does not exist).
+---@return "alive"|"dead"|"missing"|"removed"|"pending"|"disabled"
 function PersistentNpc:state() end
+
+---Makes the NPC exist now as its declaration says (what the reconciliation after a load does): creates a new one, restores or re-creates one the savegame lost, brings a `remove()`d one back, leaves a living one alone. `nil, reason` while the world is not ready or the declaration is disabled.
+---@return Entity|nil entity
+---@return string|nil reason
+function PersistentNpc:ensure() end
 
 ---@return boolean
 function PersistentNpc:is_dead() end
@@ -953,6 +960,147 @@ function npcApi.persistent_get(name) end
 ---The persistent NPCs declared by the calling mod, in declaration order.
 ---@return PersistentNpc[]
 function npcApi.persistent_list() end
+
+-- ---- Conditional spawning (M8): risen.cond, risen.spawn ------------------------------------------------------------------------------------------------------------------------------
+
+---A condition built with `risen.cond.*` (an opaque value; `tostring(c)` describes it: `"quest Q_X is Success"`). Anywhere a condition is expected a plain `function() -> boolean` is accepted too.
+---@class Condition
+
+---@alias ConditionLike Condition|fun(): boolean|nil
+
+---@class RisenCondApi
+local condApi = {}
+
+---The quest has this status (`"Success"` by default; a list accepts any of them; the `gEQuestStatus_` prefix is optional; `"None"` = the quest does not exist). Looked at again after `quest.status_changed` of that quest.
+---Raises an error for an unknown status or a non-string name.
+---@param name string
+---@param status? "Open"|"Running"|"Success"|"Failed"|"Obsolete"|"Cancelled"|"Lost"|"Won"|"None"|string|string[]
+---@return Condition
+function condApi.quest(name, status) end
+
+---The holder (the player by default, or an entity's unique name) carries at least `count` (default 1) of the item template (all stacks, equipped included). Looked at again after `inventory.changed` of that template.
+---@param template string
+---@param count? integer
+---@param holder? string|PersistentNpc|SpawnRule
+---@return Condition
+function condApi.item(template, count, holder) end
+
+---A game variable (`risen.gamevar`) compares as wanted; a variable that does not exist counts as 0. `var("X")` = non-zero, `var("X", 3)` = equals 3, `var("X", 3, ">=")` with `op` one of `"=="`, `"~="`, `">="`, `"<="`, `">"`, `"<"`.
+---For "the dialogue command SetGameEvent ran" use `risen.cond.event`. Looked at again after `gamevar.changed` of that variable.
+---@param name string
+---@param value? number
+---@param op? "=="|"~="|">="|"<="|">"|"<"
+---@return Condition
+function condApi.var(name, value, op) end
+
+---The game variable exists, whatever its value: what the dialogue command `SetGameEvent` makes true (it creates the variable with the value 0) and `ClearGameEvent` undoes. Looked at again after `gamevar.changed`.
+---@param name string
+---@return Condition
+function condApi.event(name) end
+
+---The NPC with this unique name (or a persistent NPC / rule handle) is dead: its corpse exists, or its persistent record says it died. Looked at again after `entity.died` of it and when a rule's NPC changes.
+---@param who string|PersistentNpc|SpawnRule
+---@return Condition
+function condApi.dead(who) end
+
+---The NPC with this unique name exists and is not dead. Looked at again after `entity.died` / `entity.destroyed` of it and when a rule's NPC changes.
+---@param who string|PersistentNpc|SpawnRule
+---@return Condition
+function condApi.alive(who) end
+
+---Options of `risen.cond.fn`.
+---@class CondFnOptions
+---@field on? string|string[] Event name(s) after which the predicate is looked at again (also mod events: `risen.emit("my_mod.changed")`).
+---@field poll? integer Look at it every n frames (>= 1): costs one call each time, needs no event.
+
+---Any Lua predicate (a plain function is accepted wherever a condition is, this adds `on` / `poll`). Without either the predicate is only evaluated after a load, when another condition of
+---the same rule changes and by `risen.spawn.check()` / `SpawnRule:check()`. A predicate that raises an error is logged once and counts as "cannot tell": the rule does nothing then.
+---@param predicate fun(): boolean|nil
+---@param opts? CondFnOptions
+---@return Condition
+function condApi.fn(predicate, opts) end
+
+---True when every condition holds. (Unknown answers, see `fn`, make the whole answer unknown unless another condition is false.)
+---@param list ConditionLike[]
+---@return Condition
+function condApi.all(list) end
+
+---True when at least one condition holds.
+---@param list ConditionLike[]
+---@return Condition
+function condApi.any(list) end
+
+---The opposite of a condition.
+---@param condition ConditionLike
+---@return Condition
+function condApi.negate(condition) end
+
+---What a condition says right now: `true`, `false`, or `nil` (cannot tell: no player yet, a predicate that raised an error); `nil, reason` for something that is no condition. Handy in tests.
+---@param condition ConditionLike
+---@return boolean|nil
+---@return string|nil reason
+function condApi.test(condition) end
+
+---Declaration of a conditional NPC (`risen.spawn.when`): all options of `risen.npc.persistent` (`name`, `template`, `position`/`offset`, `label`, `define`, `respawn`, `version`, `on_ready`, `on_death` and the spawn
+---options) plus the rule. `enabled` is managed by the layer.
+---@class SpawnRuleSpec: PersistentNpcSpec
+---@field when ConditionLike The NPC is created when this holds (a one-shot rule: once, a tracking rule: for as long as it holds).
+---@field despawn_when? ConditionLike The NPC is removed when this holds (a tracking rule removes it when `when` stops holding, too).
+---@field once? boolean Default `true`: the rule fires once per savegame (`waiting` -> `present`, then `gone` after `despawn_when`; `when` holding or not afterwards changes nothing). `false`: the NPC exists exactly while `when` holds and `despawn_when` does not; it is removed and made again (a new body at its home position) as often as the condition flips.
+---@field on_fire? fun(rule: SpawnRule, why: "condition"|"load", entity: Entity|nil) Called when the rule creates its NPC. `why`: `"condition"` the condition became true while playing, `"load"` it was found true when a game was loaded or started (the first look after world.ready).
+---@field on_despawn? fun(rule: SpawnRule, why: "condition"|"load") Called when the rule removes its NPC.
+
+---A declared spawn rule. Its NPC is `rule.npc` (a `PersistentNpc`).
+---@class SpawnRule
+---@field name string
+---@field template string
+---@field npc PersistentNpc
+local SpawnRule = {}
+
+---`"waiting"` (not fired: no NPC), `"present"` (fired: the NPC exists, restored on every load), `"gone"` (a one-shot rule that despawned: never fires again in this savegame), `"pending"` (the world has not settled: after a load the rules are looked at 40 frames after `world.ready`).
+---@return "waiting"|"present"|"gone"|"pending"
+function SpawnRule:state() end
+
+---The NPC's entity right now (see `PersistentNpc:entity`).
+---@return Entity|nil
+function SpawnRule:entity() end
+
+---How often the rule created its NPC in this savegame.
+---@return integer
+function SpawnRule:fired() end
+
+---Looks at the rule now (after something changed that no event announces) and returns its state.
+---@return "waiting"|"present"|"gone"|"pending"
+function SpawnRule:check() end
+
+---Back to `"waiting"`: the NPC is removed and the rule may fire again (the next look does so at once when the condition still holds).
+function SpawnRule:reset() end
+
+---@class RisenSpawnApi
+local spawnApi = {}
+
+---Declares an NPC that exists only while or after a condition holds. It is a persistent NPC (`risen.npc.persistent`: restored with its ID, position, hit points and inventory on every load, no duplicates)
+---that is not created until `when` holds. The rule is event driven (a condition names the events that can change it; the rule is looked at on the next frame), remembers `waiting` / `present` / `gone`
+---in the calling mod's `risen.save` (key `spawn_rules`: written next to every savegame, so a savegame made before the trigger has the rule waiting and one made after has it fired) and is looked at once
+---40 frames after `world.ready` of every new game and load, so a savegame whose world changed behind the layer's back is made consistent. Declare it while the mod loads (a late declaration is looked
+---at on the next frame). Idempotent per name. Returns `nil, reason` (also logged) for an invalid spec.
+---@param spec SpawnRuleSpec
+---@return SpawnRule|nil handle
+---@return string|nil reason
+function spawnApi.when(spec) end
+
+---The rule declared by the calling mod with this NPC name.
+---@param name string
+---@return SpawnRule|nil
+function spawnApi.get(name) end
+
+---The rules declared by the calling mod, in declaration order.
+---@return SpawnRule[]
+function spawnApi.rules() end
+
+---Looks at every rule now (a no-op while the world has not settled).
+function spawnApi.check() end
+
 
 ---Guild numbers by name: `None` 0, `Don` 1 (Don's camp), `Dig` 2 (diggers), `Grd` 3 (guards), `Cit` 4 (citizens), `Inq` 5 (Inquisition),
 ---`Mag` 6 (mages), `Pir` 7 (pirates/bandits). Pirates attack Don, Grd, Inq and Mag, but not Cit, Dig or None.
@@ -2651,6 +2799,8 @@ function logApi.error(...) end
 ---@field item RisenItemApi
 ---@field balance RisenBalanceApi
 ---@field npc RisenNpcApi
+---@field cond RisenCondApi
+---@field spawn RisenSpawnApi
 ---@field spell RisenSpellApi
 ---@field recipe RisenRecipeApi
 ---@field interact RisenInteractApi
@@ -2690,7 +2840,7 @@ local risen_ = {}
 ---`inventory.changed(owner, template, delta, total, cause, other)`, `item.picked_up(owner, template, amount)`,
 ---`item.equipped/unequipped(owner, template, slot)`, `item.consumed(owner, template, count)`, `entity.died(entity, killer, cause)`,
 ---`entity.defeated(entity, attacker)`, `npc.killed(entity, killer)`, `npc.defeated(entity, attacker)`, `entity.damaged(entity, attacker, damage, raw)`,
----`entity.spawned(entity, template)`, `entity.destroyed(name, kind, template)`, `crafting(crafter, recipe, result, count, ingredients)` (once per craft, after the `inventory.*`
+---`entity.spawned(entity, template)`, `entity.destroyed(name, kind, template)`, `gamevar.changed(name, value, previous)` (a game variable was set, changed or removed: `value` is `nil` for a removed one, `previous` `nil` for a new one; the dialogue command `SetGameEvent` creates one with the value 0), `crafting(crafter, recipe, result, count, ingredients)` (once per craft, after the `inventory.*`
 ---events of it; `ingredients` is `{ { item = "It_IronOre", count = 2 }, ... }` for the whole `count`).
 ---@param event string
 ---@param handler function
@@ -2715,6 +2865,7 @@ local risen_ = {}
 ---@overload fun(event: "entity.damaged", handler: fun(entity: Entity|nil, attacker: Entity|nil, damage: integer, raw: integer), priority?: integer): EventHandle
 ---@overload fun(event: "entity.spawned", handler: fun(entity: Entity|nil, template: string), priority?: integer): EventHandle
 ---@overload fun(event: "entity.destroyed", handler: fun(name: string, kind: "npc"|"player"|"item"|"other", template: string), priority?: integer): EventHandle
+---@overload fun(event: "gamevar.changed", handler: fun(name: string, value: integer|nil, previous: integer|nil), priority?: integer): EventHandle
 ---@overload fun(event: "input.action", handler: fun(ev: InputActionEvent): boolean|nil, priority?: integer): EventHandle
 ---@overload fun(event: "crafting", handler: fun(crafter: Entity|nil, recipe: string, result: string, count: integer, ingredients: { item: string, count: integer }[]), priority?: integer): EventHandle
 ---@overload fun(event: "inventory.added", handler: fun(owner: Entity|nil, template: string, count: integer, total: integer, cause: InventoryCause, other: Entity|nil), priority?: integer): EventHandle

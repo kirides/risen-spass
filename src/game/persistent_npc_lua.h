@@ -33,7 +33,7 @@ local reported = {}                  -- warnings already logged for this session
 
 local SPAWN_KEYS = { "hp", "hp_max", "level", "mana", "guild", "group", "peaceful", "state", "items", "equip" }
 local KNOWN = { name = true, template = true, position = true, offset = true, version = true, respawn = true, label = true, define = true,
-                on_ready = true, on_death = true }
+                on_ready = true, on_death = true, enabled = true }
 for _, k in ipairs(SPAWN_KEYS) do KNOWN[k] = true end
 
 local function tr(...) local t = api.trace if t and t.enabled("spawn") then t("spawn", ...) end end
@@ -148,9 +148,18 @@ local function wants_respawn(d, rec)
     return false
 end
 
+-- `enabled = function() -> bool` of a declaration (risen.spawn.when uses it): while it answers false the NPC is neither created, restored nor replaced.
+local function gate_open(d)
+    if d.enabled == nil then return true end
+    local ok, res = pcall(d.enabled)
+    if not ok then say("error", "'%s' enabled: %s", d.name, tostring(res)) return false end
+    return res and true or false
+end
+
 -- Brings one declared NPC into the state its record says: restore (find by ID, give the name back), replace (outdated), respawn (dead + policy,
 -- or vanished) or create (no record).
 local function reconcile(d)
+    if not gate_open(d) then return end
     local recs = records(true)
     local rec = recs[d.name]
     if rec and rec.removed then return end
@@ -295,7 +304,7 @@ function Handle:entity()
     return nil
 end
 
--- handle:state() -> "alive" | "dead" | "missing" | "removed" | "pending"
+-- handle:state() -> "alive" | "dead" | "missing" | "removed" | "pending" | "disabled"
 function Handle:state()
     local recs = records(false)
     local rec = recs and recs[self.name]
@@ -303,6 +312,7 @@ function Handle:state()
     local e = self:entity()
     if e then return e:is_dead() and "dead" or "alive" end
     if rec and rec.dead then return "dead" end
+    if not rec and not gate_open(declared[self.name]) then return "disabled" end
     if rec and ready then return "missing" end
     return "pending"
 end
@@ -327,6 +337,20 @@ function Handle:respawn()
     if old then old.removed = nil; old.dead = false end
     recs[self.name] = old
     return do_spawn(declared[self.name], old, "respawned")
+end
+
+-- handle:ensure() -> Entity | nil, reason: makes the NPC exist now as its declaration says (what the reconciliation does after a load): creates it when it is new, restores or
+-- re-creates it when the savegame lost it, brings a removed one back, leaves a living one alone. A declaration whose `enabled` says no is not touched.
+function Handle:ensure()
+    if not ready then return nil, "the world is not ready" end
+    local d = declared[self.name]
+    if not gate_open(d) then return nil, "disabled" end
+    local recs = records(true)
+    local rec = recs[self.name]
+    if rec and rec.removed then return self:respawn() end
+    local ok, err = pcall(reconcile, d)
+    if not ok then say("error", "'%s': %s", self.name, tostring(err)) return nil, tostring(err) end
+    return self:entity()
 end
 
 -- handle:remove(): takes the NPC out of the world for good (it stays gone in this savegame until handle:respawn())
@@ -363,7 +387,7 @@ function npc.persistent(spec)
     if spec.offset ~= nil and not is_xyz(spec.offset) then return fail(("'%s': offset must be {dx, dy, dz}"):format(name)) end
     if spec.version ~= nil and (type(spec.version) ~= "number" or spec.version ~= math.floor(spec.version)) then return fail(("'%s': version must be an integer"):format(name)) end
     if spec.respawn ~= nil and type(spec.respawn) ~= "boolean" and type(spec.respawn) ~= "function" then return fail(("'%s': respawn must be true, false or a function"):format(name)) end
-    for _, f in ipairs { "define", "on_ready", "on_death" } do
+    for _, f in ipairs { "define", "on_ready", "on_death", "enabled" } do
         if spec[f] ~= nil and type(spec[f]) ~= "function" then return fail(("'%s': %s must be a function"):format(name, f)) end
     end
     if owner[name] and owner[name] ~= modid then return fail(("'%s' is already declared by the mod '%s'"):format(name, owner[name])) end

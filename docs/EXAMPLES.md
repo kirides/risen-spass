@@ -1,6 +1,6 @@
 # Example mods
 
-Twelve small, self-contained mods (their NPCs are declared with `risen.npc.persistent`, M7) under `mods/example_*`: each is the simplest realistic form of one thing a modder wants, written to be copied
+Thirteen small, self-contained mods (their NPCs are declared with `risen.npc.persistent`, M7, or `risen.spawn.when`, M8) under `mods/example_*`: each is the simplest realistic form of one thing a modder wants, written to be copied
 (`main.lua` with a header that says what you learn, `mod.toml`, and a `test_*.lua` that is loaded **only** in a test run). Every one of them has a
 `risen.test` scenario that was **run live in the game**; nothing in this table is claimed that was not. The scenarios are registered in
 `scripts\smoke-test.ps1` (`ex_*`), so the regression suite covers them.
@@ -9,7 +9,7 @@ Run one (about a minute; use your own test copy, never the real install, always 
 
 ```powershell
 .\scripts\test-run.ps1 -Instance 2 -Mods example_kill_quest -WaitForResult -Seconds 300 -Scenario example_kill_quest -ShowChecks
-.\scripts\smoke-test.ps1 -Scenario ex_template_patch,ex_balance,ex_custom_npc,ex_fetch_turnin,ex_fetch_pickup,ex_kill_quest,ex_quest_rewards,ex_quest_tracker,ex_material,ex_voice,ex_spell,ex_recipe -Parallel 3
+.\scripts\smoke-test.ps1 -Scenario ex_template_patch,ex_balance,ex_custom_npc,ex_fetch_turnin,ex_fetch_pickup,ex_kill_quest,ex_quest_rewards,ex_quest_tracker,ex_material,ex_voice,ex_spell,ex_recipe,ex_spawn_when -Parallel 3
 ```
 
 ## Index
@@ -28,6 +28,7 @@ Run one (about a minute; use your own test copy, never the real install, always 
 | 9 | `example_voice` | an NPC whose dialogue lines are **spoken** from audio files of the mod: ogg, wav and mp3, one file per language (voice language of the game), subtitles per language, a sound made by Lua code, a sound-only `SaySound` line, a bark | `risen.dialog.create` (`sound`, `text` per language), `risen.voice.load_dir/set/say/speaking/language`, `risen.assets.import_sound/sound` | `ex_voice` (English, then German voice language: two processes), 140 s | the engine asked for the line's text id and took the variant of the voice language; FMOD created ogg/mp3/wav sounds; an option with a 0.4 s voice took 53 frames instead of 467; speaking state; refusal of bad files; a shipped NPC line shadowed by a loose sound (22 checks per language). The user heard the tones. **Not** lip sync (no `._xmot` for custom lines) |
 | 10 | `example_spell` | edit shipped spells (Fireball mana cost and damage, Light's rune and scroll cost) and add a **Strong Fireball** (double damage, double cost, needs Fireball 2) as a crystal and a scroll that is used up | `risen.balance.install` (`spells`, `new_spells`), `risen.spell.get/equipped/consume`, `risen.item.can_use` | `ex_spell`, 55 s | the player really casts (`PS_Magic` -> `PS_MagicBall_Shoot`): mana taken 10 / 20 / 10, projectile damage 140 / 280 / 280, the engine's hit script takes `damage + 25 * Fireball - protection` (191 / 331), the last scroll is gone, the edited rune cost (9 checks). **Not** the look of the fireball, NPC casters |
 | 11 | `example_recipe` | a **new smithing recipe**: a regular sword (`It_1H_Sword`) and two iron ore (`It_IronOre`) become a **Slightly Improved Sword** (a new item with its own numbers and a localized label) at the anvil; the plan item that is the recipe is given once; crafted items, the plan and the equipped sword survive a quick save and load in a fresh process, and a game without the mod keeps them dormant | `risen.balance.install` (`new_items`, `new_recipes`), `risen.recipe.info/known/can_craft/craft`, `risen.interact.begin`, the `crafting` event | `ex_recipe`, 4 processes ~190 s | real anvil twice with exact counts and events, refusal for a missing skill and for 1 ore, equipped sword, load / missing / again phases (see header of `test_recipe.lua`) |
+| 12 | `example_spawn_when` | NPCs that **appear and disappear**: a messenger who exists exactly while a quest runs (tracking rule), a smith who appears when it succeeded and leaves after a dialogue choice (`SetGameEvent` -> `despawn_when`), correct after saving and loading | `risen.spawn.when{ when, despawn_when, once, on_fire }`, `risen.cond.quest/event`, `risen.npc.persistent` | `ex_spawn_when`, 100 s | the real dialogue options start / finish the quest; the messenger comes and goes, the smith appears exactly once (`on_fire` reason `condition`), a quick load restores the same smith entity and does not fire again, he leaves after the dialogue command and stays gone after a save + load, a new game starts clean (22 checks). The thorough test is `mods/spawnwhen` (scenario `spawnwhen`, four processes) |
 
 ## A real mod, not an example: Quick Loot
 
@@ -65,8 +66,13 @@ the old "recreate it on every `session.start` if `risen.entity.get(NAME)` is nil
 
 **Persistent NPCs (M7).** `risen.npc.persistent{ name, template, offset = {dx, dy, dz}, label, define = define_content, ... }` replaces the old `ensure_npc` boilerplate in every example: one declaration in `main.lua`, no
 `load.before`/`session.start` plumbing, no position bookkeeping in `risen.save`, no duplicates after a load. `define` runs on `load.before` and every `session.start`. An NPC that exists only after something happened
-(a boss when its quest starts, a guard after the reward) is declared at that moment *and* again in a `session.start` handler when the savegame needs it (`example_kill_quest`, `example_quest_rewards`).
+(a boss when its quest starts, a guard after the reward) is declared at that moment *and* again in a `session.start` handler when the savegame needs it (`example_kill_quest`, `example_quest_rewards`). Since M8 `risen.spawn.when` does exactly this bookkeeping (see "Conditional spawning" below); those two examples still show the manual way.
 `mods/persistnpc` is the executable reference (save, load, fresh process, changed declaration, lost templates; scenario `persistnpc`).
+
+**Conditional spawning (M8).** `risen.spawn.when{ <persistent NPC options>, when = risen.cond.quest(Q, "Success"), despawn_when = risen.cond.event("MyMod_Leaves"), once = true }` replaces the hand-written "quest completed -> flag in `risen.save` -> `declare_guard()` on `session.start`"
+plumbing of `example_quest_rewards`: the NPC does not exist until the condition holds, is restored by ID on every load, is never made twice, is removed when `despawn_when` holds, and every rule is looked at once after each load so a savegame made before the trigger, after it and after the despawn are all consistent
+(`once = false` follows the condition in both directions). Conditions: `quest`, `item`, `var`, `event` (what `SetGameEvent` makes true), `dead`, `alive`, `fn(predicate, { on = events, poll = frames })`, `all`, `any`, `negate`; React to game variables with the `gamevar.changed(name, value, previous)` event.
+`mods/example_spawn_when` is the readable example, `mods/spawnwhen` the executable reference (quest, items, variable, death, saves before and after, fresh processes, edited rules).
 
 **Triggers must be idempotent.** `quest.status_changed` may be seen again after a load. Check a flag in `risen.save` first, set it, then act (`example_quest_rewards`); count
 deaths by entity name in a set, because the engine can report one death twice (`example_kill_quest`, `tracker.lua`).
@@ -135,6 +141,7 @@ are not events; a mod that must not poll for *positions* ("an NPC came near") st
   and the checks stop at "the engine loaded the loose file": there is no way to look at the rendered result (screenshots of the D3D9 window are black). Material variants
   (`MaterialSwitch`) are only numbers; which numbers are valid for a mesh has to be found by scanning shipped templates (see Patterns).
 * **No position filter on events.** `entity.died` reports every death in the world, also those far away from the player (the killer is given: compare it with the player, `entity:distance_to(player)` filters by distance).
+* **"Spawn only after X" and "remove when Y" boilerplate** (a flag in `risen.save`, a declaration repeated on `session.start`, a poll for variables): resolved by M8, `risen.spawn.when` / `risen.cond`, and the `gamevar.changed` event (a game variable change is no longer invisible; `SetGameEvent` sets the value **0**, the variable merely exists).
 * **Per-entity "create if missing" boilerplate** (`ensure_npc`): resolved by M7, `risen.npc.persistent` (all examples were migrated; they also had a hidden bug: the NPC was spawned again after every load next to the
   unnamed copy the savegame had kept).
 * **Combat-driven scenarios are slow and flaky; item pick-up scenarios are impossible** (see above), so the examples are verified with stand-ins. What the stand-ins do not prove is

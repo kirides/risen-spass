@@ -110,6 +110,8 @@ Helper chunks written in Lua live inside the `.cpp` file next to the binding (`c
   saves fail silently. `$(localappdata)` is expanded via `SHGetFolderPathA`, not the environment variable.
 - Entity templates are editable at runtime (`risen.template.get/patch`, RE.md §22): apply on the first `tick` (not `mods.loaded`) and again with `instances = true` on
   `session.start`; existing entities and savegame/new-game worlds keep their own property copies, inventory stacks and new spawns follow the template.
+- Conditional spawning (M8): `risen.spawn.when{...}` / `risen.cond.*` sit on top of persistent NPCs (an `enabled` gate keeps the NPC away while the rule waits) and the events; the rule state lives in `risen.save` (`spawn_rules`) next to the persistent record.
+  The dialogue command `SetGameEvent` calls `gCInfoSystem::SetGameVariable(name, 0)` directly (a "game event" is a variable with the value **0**, it bypasses the Script.dll statics): the `gamevar.changed` event hooks the Game.dll members.
 - `risen.vfs` lists/reads the packed archives through the engine's own VFS; template names come from
   `data/common/templates/**/*.tple`.
 - Loose resource files work (meshes, materials, images, actors; RE.md §26): resources are found by the bare compiled file name (`X._xmsh`) in a name cache that every mounted directory feeds; `risen.assets` / `mod.toml` `assets` mount them, `risen.template.create` checks `mesh`/`icon` names. Entity templates themselves cannot be loose files.

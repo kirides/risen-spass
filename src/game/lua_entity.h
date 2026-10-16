@@ -112,5 +112,7 @@ sol::object makeEntityObject(sol::state_view lua, void* entity);
 // Defines the per-mod risen.npc.persistent / persistent_get / persistent_list on `api` (the mod's view of `risen`; must run after bindSave's per-mod
 // risen.save exists, i.e. register it after bindSave()). `modId` names the owner of the declared names. (lua_persistent_npc.cpp)
 void installPersistentNpcModApi(sol::state_view lua, sol::table api, const std::string& modId);
+// risen.spawn.when / risen.cond (spawn_when_lua.h): per-mod, after installPersistentNpcModApi. (lua_persistent_npc.cpp)
+void installSpawnWhenModApi(sol::state_view lua, sol::table api, const std::string& modId);
 
 }  // namespace spass::game

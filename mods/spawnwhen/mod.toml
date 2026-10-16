@@ -1,0 +1,6 @@
+id          = "spawnwhen"
+name        = "Conditional spawning: live test mod"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Declares a quest giver and NPCs that exist only after a quest, items, a game variable or a death (risen.spawn.when); the scenario `spawnwhen` (docs/DEVELOPMENT.md) plays new game, saves before / after the triggers and loads them in fresh processes. Only meaningful in a test run."
+main        = "main.lua"
