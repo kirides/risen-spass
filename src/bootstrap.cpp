@@ -11,6 +11,7 @@
 #include "common/trace.h"
 #include "config.h"
 #include "game/bindings.h"
+#include "game/events.h"
 #include "game/folder_redirect.h"
 #include "game/hooks.h"
 #include "game/instance_mutex.h"
@@ -99,6 +100,7 @@ void onProcessAttach(HMODULE self) {
         game::setFileTraceFilter(g_config.traceFiles);
     }
 
+    game::configureEngineGuards(g_config.engineGuards, g_config.raceProbe);
     game::registerBindings();
     game::installCallTrace(g_config.traceScripts);  // before enableAll: the `calls` trace channel
     if (!game::installHooks() || !hooks::enableAll()) {

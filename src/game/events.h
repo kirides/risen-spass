@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace spass::game {
 
 // Installs the engine lifecycle hooks that feed the Lua events (session.start, save.before, load.before,
@@ -25,5 +27,11 @@ void resetEntityEvents();
 
 // The hook that lets NPC templates be cloned while a world is loaded (docs/RE.md section 25). (lua_template.cpp)
 void installTemplateHooks();
+
+// Guards for engine bugs found by the crash hunt (docs/RE.md section 43, engine_guards.cpp).
+// [debug] engine_guards = "all" | "findroom" | "none", [debug] race_probe: call before installHooks().
+void configureEngineGuards(const std::string& mode, bool raceProbe);
+void installEngineGuards();
+void engineGuardsFrame(void* session);  // once per frame on the game thread (gCSession::Process)
 
 }  // namespace spass::game

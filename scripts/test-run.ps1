@@ -76,6 +76,10 @@ param(
     [ValidateSet('off', 'mini', 'full')][string]$CrashDump = 'mini',
     # keep bin\spass\crash.log and the dumps of an earlier run (they are deleted at the start otherwise)
     [switch]$KeepCrash,
+    # [debug] engine_guards: 'all' (default), 'findroom' (only the fault guard of FindPortalRoom) or 'none' (the engine as shipped); docs/DEVELOPMENT.md "Crashes"
+    [ValidateSet('all', 'findroom', 'none')][string]$EngineGuards = 'all',
+    # [debug] race_probe: a thread asks gCSession::GetHud2Location in a tight loop (the rich-presence thread's call, amplified): with -EngineGuards none it reproduces the load crash
+    [switch]$RaceProbe,
     # print every check of the result, not only the failed ones
     [switch]$ShowChecks
 )
@@ -243,7 +247,8 @@ try {
     if ($Unsafe) { $cfg += '[lua]', 'unsafe = true' }
     $cfg += '[debug]', "app_data = `"$appData`""
     if ($Instance -ge 1) { $cfg += "instance = `"$Instance`"" }
-    $cfg += "trace_files = `"$TraceFiles`"", "trace = `"$Trace`"", "trace_scripts = `"$TraceScripts`"", "crash_dump = `"$CrashDump`""
+    $cfg += "trace_files = `"$TraceFiles`"", "trace = `"$Trace`"", "trace_scripts = `"$TraceScripts`"", "crash_dump = `"$CrashDump`"", "engine_guards = `"$EngineGuards`""
+    if ($RaceProbe) { $cfg += 'race_probe = true' }
     if ($TraceFile) { $cfg += 'trace_file = true' }
     if ($WaitForResult) {
         $deadline = if ($DeadlineSeconds -ge 0) { $DeadlineSeconds } else { [math]::Max($Seconds - 10, 10) }

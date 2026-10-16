@@ -281,6 +281,9 @@
     X(cast_can_cast, L"Script.dll", "?CanCast@PSCastInfo@@QEBA_NAEAVEntity@@@Z", bool (*)(const void* self, const void* caster), false) \
     X(cast_consume, L"Script.dll", "?Consume@PSCastInfo@@QEAA_NAEAVEntity@@H@Z", bool (*)(void* self, const void* caster, int stack), false) \
     X(tple_patch_entity, L"Engine.dll", "?PatchEntity@eCTemplateEntity@@QEBA?AW4bEResult@@PEAVeCEntity@@_N1@Z", int (*)(const void* self, void* entity, bool replaceAll, bool arg), false) \
+    /* ---- the Discord rich-presence thread reads the live world; the portal room lookup it ends in (engine_guards.cpp, docs/RE.md section 43) ---- */ \
+    X(session_hud2_location, L"Game.dll", "?GetHud2Location@gCSession@@QEAA?BVbCString@@XZ", void* (*)(void* self, void* ret), false) \
+    X(portal_find_room, L"Engine.dll", "?FindPortalRoom@eCPortalAdmin@@QEAAPEAVeCPortalRoom_PS@@AEBVbCVector@@@Z", void* (*)(void* self, const void* position), false) \
     /* ---- item skill arrays: gCSkillValue (requirements) / gCModifySkill (modifiers), docs/RE.md section 23 ---- */ \
     X(skillvalue_ctor, L"Game.dll", "??0gCSkillValue@@QEAA@XZ", void* (*)(void* self), false) \
     X(skillvalue_dtor, L"Game.dll", "??1gCSkillValue@@UEAA@XZ", void (*)(void* self), false) \

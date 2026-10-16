@@ -59,6 +59,7 @@ void detourSessionProcess(void* self) {
     g_sessionProcess.original(self);
     g_sessionTicked = true;
     crash::Scope trail("frame");
+    engineGuardsFrame(self);
     lua::Runtime::instance().processPending();  // queued mod reloads, the development file watcher
     test::onTick();  // risen.test: pending wait_for/sleep, heartbeat, first-tick mark
     onInputFrame();  // risen.input: the key states of this frame
@@ -106,6 +107,7 @@ bool installHooks() {
     installEventHooks();
     installFocusHook();
     installTemplateHooks();
+    installEngineGuards();
     installFileTrace();
     installModMountHook();
     return ok;

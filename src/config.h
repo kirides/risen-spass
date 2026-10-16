@@ -21,6 +21,9 @@ namespace spass {
 //   trace      = ""         # opt-in trace channels, e.g. "template,balance,save,events" or "all" (see common/trace.h)
 //   trace_file = false      # also write the trace lines to <bin>/spass/trace.log
 //   trace_scripts = ""      # substrings of script names (comma separated) the `calls` trace channel reports
+//   engine_guards = "all"   # "all" | "findroom" | "none": the guards against the Discord rich-presence thread reading the live world (engine_guards.cpp, RE.md section 43);
+//                           # "findroom" = only the fault guard of FindPortalRoom, "none" = the engine as shipped (to reproduce the crash with race_probe)
+//   race_probe = false      # test tool: a thread asks gCSession::GetHud2Location in a tight loop, like the rich-presence thread does once (docs/DEVELOPMENT.md "Crashes")
 //   crash_handler = true    # a crash (or a fault outside guarded(), or a guarded() call that faulted) is reported in spass.log and spass\crash.log with the stack
 //   crash_dump = "off"      # "mini" | "full": also write a minidump <bin>\spass\crash\crash-<time>-pid<pid>.dmp of a crash (scripts/test-run.ps1 -CrashDump); docs/DEVELOPMENT.md "Crashes"
 //   [mods]
@@ -43,6 +46,8 @@ struct Config {
     bool traceFile = false;
     std::string traceScripts;
     bool crashHandler = true;
+    std::string engineGuards = "all";
+    bool raceProbe = false;
     std::string crashDump = "off";
     bool modsWatch = false;
     double modsWatchInterval = 1.0;

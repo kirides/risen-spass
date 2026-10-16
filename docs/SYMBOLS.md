@@ -5,13 +5,17 @@ decorated export name (`GetProcAddress`), so nothing depends on addresses; the R
 see `risen.engine.build()`). **Required** symbols must resolve or the layer stays off; for an optional one only its own feature is
 disabled (`risen.engine.missing()` lists what failed). To add one: see the developer guide in `docs/DEVELOPMENT.md`.
 
-360 symbols, 153 required.
+441 symbols, 159 required.
 
 ## Engine.dll
 
 | Field | Function | RVA | Required |
 |---|---|---|---|
 | `anim_ps_dependencies` | `void eCAnimation_PS::GetDependencies(class bTObjArray<class bCString> &,class bTObjArray<class bCString> &,class bTObjArray<class eCTemplateEntityProxy> &)` | 0x4d8a20 | no |
+| `app_current_camera` | `class eCCameraBase & eCApplication::GetCurrentCamera(void)` | 0x4c19f0 | no |
+| `app_do_render` | `void eCApplication::DoRender(bool)` | 0x4c0d40 | no |
+| `app_handle_message` | `bool eCApplication::OnHandleMessage(unsigned int,unsigned __int64,__int64,__int64 *)` | 0x4bf0b0 | no |
+| `app_instance` | `class eCApplication & eCApplication::GetInstance(void)` | 0x4c64e0 | no |
 | `archive_file_close` | `void eCArchiveFile::Close(void)` | 0x723af0 | no |
 | `archive_file_ctor` | `eCArchiveFile::eCArchiveFile(void)` | 0x7234e0 | no |
 | `archive_file_dtor` | `eCArchiveFile::~eCArchiveFile(void)` | 0x7238f0 | no |
@@ -20,7 +24,12 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `archive_file_read` | `unsigned long eCArchiveFile::Read(void *,unsigned long)` | 0x723850 | no |
 | `archive_get_file` | `bool eCArchiveManager::GetFile(class bCString const &,class eCArchiveFile &)` | 0x724290 | no |
 | `archive_instance` | `class eCArchiveManager & eCArchiveManager::GetInstance(void)` | 0x724600 | no |
+| `area_access_names` | `class bCString & eCGuiBitmapList2::AccessBitmapListName(void)` | 0x85370 | no |
 | `bodypart_ps_dependencies` | `void eCBodyPart_PS::GetDependencies(class bTObjArray<class bCString> &,class bTObjArray<class bCString> &,class bTObjArray<class eCTemplateEntityProxy> &)` | 0x4daf60 | no |
+| `cam_get_aspect` | `float & eCCameraBase::AccessAspectRatio(void)` | 0x80f00 | no |
+| `cam_get_fov` | `float & eCCameraBase::AccessFieldOfView(void)` | 0x80ea0 | no |
+| `cam_get_position` | `float & eCSkydome_PS::AccessCloudThickness(void)` | 0x80c00 | no |
+| `cam_get_view` | `class bCBox & eCSubMesh::AccessExtends(void)` | 0x7f9c0 | no |
 | `eent_is_save_relevant` | `bool eCEntity::IsSaveGameRelevant(void)const ` | 0x6a5830 | no |
 | `eent_kill` | `void eCEntity::Kill(void)` | 0x6a5dd0 | no |
 | `eent_set_save_relevant` | `void eCEntity::SetSaveGameRelevant(bool)` | 0x6a35c0 | no |
@@ -39,12 +48,15 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `evfs_mount_dir` | `bool eCVirtualFileSystem::MountDirectory(class bCString const &,class bCString const &)` | 0x734390 | no |
 | `evfs_process_mountlist_file` | `bool eCVirtualFileSystem::ProcessMountList(class bCString const &)` | 0x735360 | no |
 | `evfs_unmount` | `bool eCVirtualFileSystem::Unmount(class bCString const &)` | 0x734310 | no |
+| `geo_is_free_los` | `bool eCGeometryEntity::IsFreeLOS(class eCGeometryEntity *,bool)const ` | 0x6a69b0 | no |
 | `gui_collection_save_xml` | `bool eCGuiImageCollection2::SaveXml(char const *)` | 0x530140 | no |
 | `gui_deferred_bitmap` | `class eCGuiBitmap2 * eCDeferredGuiBitmap2::GetBitmap(void)const ` | 0x52a380 | no |
+| `gui_handle_message` | `bool eCGuiModule2::OnHandleMessage(unsigned int,unsigned int,long)` | 0x5197a0 | no |
 | `gui_load_bitmap` | `class IFFGuiBitmap2 * eCGuiDevice2::LoadBitmapA(char const *,struct HINSTANCE__ *)` | 0x9ce50 | no |
 | `gui_load_collection` | `class eCGuiImageCollection2 * eCGuiDevice2::LoadImageCollectionA(char const *,struct HINSTANCE__ *)` | 0x5192b0 | no |
 | `gui_load_image_list` | `class IFFGuiImageList2 * eCGuiDevice2::LoadImageListA(char const *,struct HINSTANCE__ *)` | 0x9cf10 | no |
 | `gui_module_device` | `class eCGuiDevice2 * eCGuiModule2::GetDevice(void)` | 0x51a2c0 | no |
+| `gui_module_instance` | `class eCGuiModule2 & eCGuiModule2::GetInstance(void)` | 0x51a320 | no |
 | `gui_query_bitmap` | `class eCDeferredGuiBitmap2 * eCGuiDevice2::QueryBitmapA(char const *)` | 0x517720 | no |
 | `loc_exists_id` | `bool eCLocAdmin2::ExistsID(class bCString const &)const ` | 0x7376a0 | yes |
 | `loc_get_string` | `class bCUnicodeString eCLocAdmin2::GetString(class bCString const &)const ` | 0x7372f0 | yes |
@@ -60,6 +72,10 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `module_admin_instance` | `class eCModuleAdmin & eCModuleAdmin::GetInstance(void)` | 0x4ccca0 | no |
 | `module_find_by_class` | `class eCEngineComponentBase * eCModuleAdmin::FindModule(class bCString const &)const ` | 0x4cd1f0 | no |
 | `node_attach_child` | `bool eCNode::AttachChild(class eCNode *)` | 0x69d3e0 | no |
+| `phys_instance` | `class eCPhysicsScene & eCPhysicsScene::GetInstance(void)` | 0x1c5400 | no |
+| `phys_set_ignore` | `void eCPhysicsScene::SetQueryIgnoreEntities(class bTPtrArray<class eCGeometryEntity *> &)` | 0x5e6d20 | no |
+| `phys_trace_nearest` | `bool eCPhysicsScene::TraceRayNearestHit(class bCVector const &,class bCVector const &,class eCGeometryEntity const *,unsigned long,class eCGeometryEntity const *,enum eEPropertySetType,enum eEShapeGroup)` | 0x5e95b0 | no |
+| `portal_find_room` | `class eCPortalRoom_PS * eCPortalAdmin::FindPortalRoom(class bCVector const &)` | 0x672610 | no |
 | `ps_class_name` | `class bCString const & eCEntityPropertySet::GetPropertySetClassName(void)const ` | 0x6b0600 | no |
 | `ps_get_entity` | `class eCEntity * eCEntityPropertySet::GetEntity(void)` | 0x6b0470 | no |
 | `res_file_path` | `class bCString eCResource2::GetFilePath(void)const ` | 0x683cc0 | no |
@@ -70,8 +86,14 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `scene_get_entity_by_id` | `class eCNode * eCSceneAdmin::GetEntity(class bCPropertyID const &,enum eEEntityType)` | 0x697b80 | no |
 | `scene_unregister_tpl_name` | `bool eCSceneAdmin::UnregisterNameInfo(class eCTemplateEntity &)` | 0x698330 | no |
 | `script_map_get` | `struct eSScriptBase const * eCScriptFunctionMap::GetScript(class bCString const &)const ` | 0x6b47b0 | yes |
+| `script_map_get_callback` | `struct eSScriptBase const * eCScriptFunctionMap::GetScriptAICallback(class bCString const &)const ` | 0x6b47c0 | no |
+| `script_map_get_function` | `struct eSScriptBase const * eCScriptFunctionMap::GetScriptAIFunction(class bCString const &)const ` | 0x6b47d0 | no |
+| `script_map_get_state` | `struct eSScriptBase const * eCScriptFunctionMap::GetScriptAIState(class bCString const &)const ` | 0x6b47e0 | no |
 | `script_map_instance` | `class eCScriptFunctionMap & eCScriptFunctionMap::GetInstance(void)` | 0x6b5230 | yes |
 | `script_map_register` | `struct eSScriptBase * eCScriptFunctionMap::RegisterScript(class bCString const &)` | 0x6b48a0 | yes |
+| `script_map_register_callback` | `struct eSScriptBase * eCScriptFunctionMap::RegisterScriptAICallback(class bCString const &)` | 0x6b4940 | no |
+| `script_map_register_function` | `struct eSScriptBase * eCScriptFunctionMap::RegisterScriptAIFunction(class bCString const &)` | 0x6b49e0 | no |
+| `script_map_register_state` | `struct eSScriptBase * eCScriptFunctionMap::RegisterScriptAIState(class bCString const &)` | 0x6b4a80 | no |
 | `script_proxy_assign` | `class eCScriptProxyScript & eCScriptProxyScript::operator=(class eCScriptProxyScript const &)` | 0x92c70 | yes |
 | `script_proxy_call` | `__int64 eCScriptProxyScript::operator()(class eCEntity *,class eCEntity *,__int64)const ` | 0x92cb0 | no |
 | `script_proxy_ctor_name` | `eCScriptProxyScript::eCScriptProxyScript(class bCString const &)` | 0x6b5b80 | yes |
@@ -87,6 +109,29 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `tple_read_all` | `enum bEResult eCTemplateEntity::ReadAll(void)` | 0x6ad6d0 | no |
 | `tple_set_id` | `void eCTemplateEntity::SetID(class bCPropertyID const &)` | 0x6ae450 | no |
 | `tple_set_name` | `void eCTemplateEntity::SetName(class bCString const &)` | 0x6ae020 | no |
+| `win_abs_position` | `class bCPoint eCGuiWindow2::GetWindowAbsPosition(void)` | 0x565ea0 | no |
+| `win_clone_into` | `class eCGuiWindow2 * eCGuiWindow2::Clone(class eCGuiWindow2 *)` | 0x5639d0 | no |
+| `win_first_child` | `class eCGuiWindow2 * eCGuiWindow2::GetFirstChild(void)const ` | 0x5650a0 | no |
+| `win_get_disabled` | `bool eCGuiWindow2::GetDisabled(void)const ` | 0x566310 | no |
+| `win_get_id` | `unsigned short eCGuiWindow2::GetID(void)const ` | 0x5663a0 | no |
+| `win_get_name` | `float & eCColorSrcConstantAnimation::AccessAnimationLength(void)` | 0x8e8c0 | no |
+| `win_get_position` | `class bCPoint eCGuiWindow2::GetPosition(void)const ` | 0x5696a0 | no |
+| `win_get_size` | `class bCPoint eCGuiWindow2::GetSize(void)const ` | 0x569c40 | no |
+| `win_get_text` | `class bCUnicodeString eCGuiWindow2::GetText(void)const ` | 0x569cb0 | no |
+| `win_get_visible` | `bool eCGuiWindow2::GetVisible(void)const ` | 0x569e60 | no |
+| `win_next_sibling` | `class eCGuiWindow2 * eCGuiWindow2::GetNextSibling(void)const ` | 0x565110 | no |
+| `win_parent` | `class eCGuiWindow2 * eCGuiWindow2::GetParent(void)const ` | 0x565050 | no |
+| `win_perform_layout` | `void eCGuiWindow2::PerformLayout(void)` | 0x565e60 | no |
+| `win_set_disabled` | `void eCGuiWindow2::SetDisabled(bool const &)` | 0x569710 | no |
+| `win_set_focus` | `bool eCGuiWindow2::SetFocus(void)` | 0x565180 | no |
+| `win_set_hot` | `bool eCGuiWindow2::SetHot(void)` | 0x564c20 | no |
+| `win_set_id` | `void eCGuiWindow2::SetID(unsigned short const &)` | 0x566370 | no |
+| `win_set_name` | `void eCGuiWindow2::SetName(class bCString const &)` | 0x92cd0 | no |
+| `win_set_parent` | `bool eCGuiWindow2::SetParent(class eCGuiWindow2 *)` | 0x564d20 | no |
+| `win_set_position` | `void eCGuiWindow2::SetPosition(class bCPoint const &)` | 0x569e20 | no |
+| `win_set_size` | `void eCGuiWindow2::SetSize(class bCPoint const &)` | 0x569de0 | no |
+| `win_set_text` | `void eCGuiWindow2::SetText(class bCUnicodeString const &)` | 0x569db0 | no |
+| `win_set_visible` | `void eCGuiWindow2::SetVisible(bool const &)` | 0x569d50 | no |
 ## FFC.dll
 
 | Field | Function | RVA | Required |
@@ -128,6 +173,8 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `admin_run_function` | `bool gCScriptAdmin::RunScriptFunction(class bCString const &,class bTObjStack<struct gScriptRunTimeSingleState> &,class gCScriptProcessingUnit *)` | 0x963cf0 | no |
 | `combat_admin_instance` | `class gCCombatAdmin * gCCombatAdmin::GetInstance(void)` | 0x7ca470 | no |
 | `combat_get_species` | `class gCCombatSpecies * gCCombatAdmin::GetSpecies(class bCString const &)const ` | 0x7ca3b0 | no |
+| `condskill_access_value` | `class bTPropertyContainer<enum gECombatAction> & gCCombatMoveMelee::AccessAction(void)` | 0x4ab150 | yes |
+| `condteach_access_skill` | `class bCString & gCInfoCommandRunAIScript::AccessAIScriptName(void)` | 0x499bb0 | yes |
 | `craft_ingredient_ctor` | `gCCraftIngredient::gCCraftIngredient(void)` | 0x9a1d90 | no |
 | `craft_ingredient_dtor` | `gCCraftIngredient::~gCCraftIngredient(void)` | 0x9a1dd0 | no |
 | `ctext_description` | `class bCString & gCInfoCommandRunAIScript::AccessAIScriptName(void)` | 0x499bb0 | no |
@@ -137,6 +184,8 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `focus_get_entity` | `class eCEntity * gCFocusModule2::GetFocusEntity(void)const ` | 0x82e3a0 | no |
 | `focus_instance` | `class gCFocusModule2 & gCFocusModule2::GetInstance(void)` | 0x82ebc0 | no |
 | `focus_set_entity` | `void gCFocusModule2::SetFocusEntity(class eCEntity *)` | 0x82e2a0 | no |
+| `gamevar_sys_remove` | `bool gCInfoSystem::RemoveGameVariable(class bCString const &)` | 0x8b3670 | no |
+| `gamevar_sys_set` | `bool gCInfoSystem::SetGameVariable(class bCString const &,int)` | 0x8b3570 | no |
 | `gdmg_do_damage` | `bool gCDamage_PS::DoDamage(class eCEntity *)` | 0x8081b0 | no |
 | `gi_assure_items` | `int gCInventory_PS::AssureItems(class bCPropertyID const &,unsigned long,enum gEStackType)` | 0x8c32c0 | no |
 | `gi_consume_items` | `bool gCInventory_PS::ConsumeItems(int,unsigned long)` | 0x8c5140 | no |
@@ -159,6 +208,7 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `gi_transfer_items` | `bool gCInventory_PS::TransferItemsTo(class gCInventory_PS *,int,int,enum gEStackType)` | 0x8c4100 | no |
 | `gi_transfer_stack` | `bool gCInventory_PS::TransferStackTo(class gCInventory_PS *,int,enum gEStackType)` | 0x8c3fe0 | no |
 | `gi_unequip` | `bool gCInventory_PS::UnEquipStack(int,bool)` | 0x8c4a70 | no |
+| `gui_page_names` | `class bCString * g_strStringIDPage` | 0x11ebad0 | no |
 | `info_access_condition` | `class eCEntityProxy & gCCombatSystem_PS::AccessActiveAttacker(void)` | 0x49a130 | yes |
 | `info_access_given` | `class bCString & gCProject::AccessActiveWorld(void)` | 0x49a0c0 | yes |
 | `info_access_name` | `class gCQuestActor & gCInfoCommandAddQuestActor::AccessActor(void)` | 0x499c70 | yes |
@@ -168,12 +218,16 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `info_access_quest` | `class bTValArray<enum gEDirection> & gCNavOffset_PS::AccessAniDirection(void)` | 0x4a8a30 | yes |
 | `info_access_type` | `class bCString & gCCombatStyle::AccessActiveFightAI(void)` | 0x4a7f80 | yes |
 | `info_command_count` | `int gCInfo::GetComSeqItemCount(void)const ` | 0x8ad700 | yes |
+| `info_condition_count` | `int gCInfo::GetCondSeqItemCount(void)const ` | 0x8adc30 | yes |
 | `info_conditions_ok` | `bool gCInfo::AreConditionsFulfilled(void)` | 0x8a6eb0 | yes |
 | `info_get_command` | `class gCInfoCommand * gCInfo::GetComSeqItem(int)const ` | 0x8ad710 | yes |
+| `info_get_condition` | `class gCInfoCondition * gCInfo::GetCondSeqItem(int)const ` | 0x8adc40 | yes |
 | `info_insert_command` | `int gCInfo::InsertComSeqItem(class bCString)` | 0x8acf50 | yes |
 | `info_insert_command_ptr` | `int gCInfo::InsertComSeqItem(class gCInfoCommand *)` | 0x8ad150 | yes |
 | `info_insert_command_type` | `int gCInfo::InsertComSeqItem(enum gEInfoCommand)` | 0x8ac330 | yes |
+| `info_insert_condition` | `int gCInfo::InsertCondSeqItem(class gCInfoCondition *)` | 0x8adad0 | yes |
 | `info_is_available` | `bool gCInfo::IsAvailable(void)` | 0x8a85e0 | yes |
+| `info_remove_conditions` | `void gCInfo::RemoveAllCondSeqItems(void)` | 0x8adb90 | yes |
 | `infocmd_create_item` | `bool gCInfoCommandCreateItem::Execute(class gCRuntimeInfo &,bool)` | 0x8882d0 | no |
 | `infocmd_destroy_item` | `bool gCInfoCommandDestroyItem::Execute(class gCRuntimeInfo &,bool)` | 0x888eb0 | no |
 | `infocmd_give` | `bool gCInfoCommandGive::Execute(class gCRuntimeInfo &,bool)` | 0x88b200 | no |
@@ -198,7 +252,15 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `item_set_required_skills` | `void gCItem_PS::SetRequiredSkills(class bTObjArray<class gCSkillValue> const &)` | 0x4fd310 | no |
 | `modifyskill_ctor` | `gCModifySkill::gCModifySkill(void)` | 0x976ab0 | no |
 | `modifyskill_dtor` | `gCModifySkill::~gCModifySkill(void)` | 0x4b0990 | no |
+| `nav_get_relax` | `class eCEntity * gCNavigation_PS::GetCurrentRelaxingPoint(void)const ` | 0x9356d0 | no |
+| `nav_get_routine_name` | `class bCString const & gCNavigation_PS::GetRoutine(void)const ` | 0x935b40 | no |
+| `nav_get_sleep` | `class eCEntity * gCNavigation_PS::GetCurrentSleepingPoint(void)const ` | 0x935670 | no |
+| `nav_get_work` | `class eCEntity * gCNavigation_PS::GetCurrentWorkingPoint(void)const ` | 0x9356a0 | no |
 | `nav_post_copy` | `void gCNavigation_PS::OnPostCopy(class eCEntityPropertySet const &)` | 0x92b830 | no |
+| `nav_select_routine` | `bool gCNavigation_PS::SetRoutine(class bCString const &)` | 0x935bf0 | no |
+| `nav_set_relax` | `bool gCNavigation_PS::SetCurrentRelaxingPoint(class eCEntity *)` | 0x935cc0 | no |
+| `nav_set_sleep` | `bool gCNavigation_PS::SetCurrentSleepingPoint(class eCEntity *)` | 0x935af0 | no |
+| `nav_set_work` | `bool gCNavigation_PS::SetCurrentWorkingPoint(class eCEntity *)` | 0x935aa0 | no |
 | `qm_add_quest` | `bool gCQuestManager::AddQuest(class gCQuest *,class bCString const &)` | 0x960880 | yes |
 | `qm_get_quest` | `class gCQuest * gCQuestManager::GetQuest(class bCString const &)` | 0x961a70 | yes |
 | `qm_info_system` | `class gCInfoSystem * gCQuestManager::GetInfoManager(void)` | 0x960d40 | yes |
@@ -227,6 +289,7 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `scan_description` | `class bCUnicodeString gCActionAdmin::GetScanCodeDescription(enum eEScanCode)` | 0x7f9340 | no |
 | `script_admin_call` | `__int64 gCScriptAdmin::CallScript(class bCString const &,class eCEntity *,class eCEntity *,__int64)` | 0x964460 | yes |
 | `script_admin_post_init` | `enum bEResult gCScriptAdmin::PostInitialize(void)` | 0x962450 | yes |
+| `session_hud2_location` | `class bCString const gCSession::GetHud2Location(void)` | 0x970cf0 | no |
 | `session_process` | `void gCSession::Process(void)` | 0x9711e0 | yes |
 | `session_start` | `void gCSession::Start(enum gESession_StartMode)` | 0x973da0 | no |
 | `session_stop` | `void gCSession::Stop(void)` | 0x9743c0 | no |
@@ -240,7 +303,12 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `unit_get_arg` | `__int64 gCScriptProcessingUnit::GetIntParameter(void)` | 0x96d960 | yes |
 | `unit_get_other` | `class eCGeometryEntity * gCScriptProcessingUnit::GetOtherEntity(void)` | 0x96c740 | yes |
 | `unit_get_self` | `class eCGeometryEntity * gCScriptProcessingUnit::GetSelfEntity(void)` | 0x96c7c0 | yes |
+| `unit_get_state_time` | `float gCScriptProcessingUnit::AIGetStateTime(void)` | 0x96ca30 | no |
+| `unit_get_task_time` | `float gCScriptProcessingUnit::AIGetTaskTime(void)` | 0x96cab0 | no |
+| `unit_set_exit_script` | `void gCScriptProcessingUnit::AISetExitScript(class bCString)` | 0x96c950 | no |
+| `unit_set_local_callback` | `void gCScriptProcessingUnit::AISetLocalCallback(class bCString)` | 0x96d1d0 | no |
 | `unit_set_state` | `enum bEResult gCScriptProcessingUnit::SetCurrentAIState(class bCString &)` | 0x96bed0 | no |
+| `unit_set_task_callback` | `void gCScriptProcessingUnit::AISetTaskCallback(class bCString)` | 0x96d030 | no |
 | `world_activate` | `bool gCWorld::Activate(void)` | 0x994760 | no |
 ## Script.dll
 
@@ -251,6 +319,7 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `dialog_start` | `bool InfoSystem::StartInfoSystem(class Entity const &,class Entity const &)` | 0x215280 | yes |
 | `ent_distance_to` | `float Entity::GetDistanceTo(class Entity const &)const ` | 0x20cd70 | yes |
 | `ent_enable_rendering` | `void Entity::EnableRendering(bool)` | 0x209ce0 | yes |
+| `ent_get_at` | `class bCVector Entity::GetAtVector(void)const ` | 0x20d110 | no |
 | `ent_get_display_name` | `class bCString Entity::GetDisplayName(void)const ` | 0x20c790 | yes |
 | `ent_get_entity` | `class Entity Entity::GetEntity(class bCString)` | 0x20f4c0 | yes |
 | `ent_get_name` | `class bCString Entity::GetName(void)const ` | 0x20c880 | yes |
@@ -266,6 +335,7 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `ent_is_npc` | `bool Entity::IsNPC(void)const ` | 0x20e030 | yes |
 | `ent_is_player` | `bool Entity::IsPlayer(void)const ` | 0x20e000 | yes |
 | `ent_kill` | `void Entity::Kill(void)` | 0x2069c0 | yes |
+| `ent_nearest_nav_point` | `class bCVector Entity::GetNearestNavigationPoint(class bCVector,float)` | 0x208600 | no |
 | `ent_set_frozen` | `void Entity::SetFrozen(bool)` | 0x209c40 | yes |
 | `ent_set_name` | `void Entity::SetName(class bCString const &)` | 0x20c830 | yes |
 | `ent_spawn` | `class Entity Entity::Spawn(class Template,class bCMatrix const &,bool)` | 0x20e4d0 | yes |
@@ -279,13 +349,18 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `gamevar_remove` | `bool InfoSystem::RemoveGameVariable(class bCString const &)` | 0x215100 | no |
 | `gamevar_set` | `bool InfoSystem::SetGameVariable(class bCString const &,int)` | 0x215a50 | yes |
 | `gui2_object` | `gui2` | 0x40e9e4 | no |
+| `gui_close_menu` | `void GUI2::CloseMenu(void)` | 0x20fb60 | no |
+| `gui_close_page` | `bool GUI2::Close(enum gEHudPage)` | 0x210780 | no |
+| `gui_find_page` | `class gCHudPage2 * GUI2::FindPage(enum gEHudPage)` | 0x210c60 | no |
 | `gui_get_mode` | `enum gEHudMode GUI2::GetMode(void)const ` | 0x210520 | no |
 | `gui_is_browsing` | `bool GUI2::IsBrowsing(void)const ` | 0x2106a0 | no |
 | `gui_is_browsing_game` | `bool GUI2::IsBrowsingGame(void)const ` | 0x210620 | no |
 | `gui_is_browsing_loot` | `bool GUI2::IsBrowsingLoot(void)` | 0x210ed0 | no |
 | `gui_is_visible` | `bool GUI2::IsVisible(enum gEHudPage)const ` | 0x210740 | no |
+| `gui_open_page` | `bool GUI2::Open(enum gEHudPage)` | 0x2107c0 | no |
 | `gui_print_item_log` | `void GUI2::PrintItemLog(class Entity,int)` | 0x20fd60 | no |
 | `gui_print_log` | `void GUI2::PrintGameLog(class bCUnicodeString const &,enum gELogMessageType,bool,char *)` | 0x213b10 | no |
+| `gui_show_page` | `bool GUI2::Show(enum gEHudPage,bool)` | 0x2106e0 | no |
 | `input_current_event` | `struct gSAction const & Input::GetCurrentActionEvent(void)const ` | 0x215fc0 | no |
 | `input_is_pressed` | `bool Input::IsKeyPressed(enum gEActionKey)const ` | 0x216100 | no |
 | `input_object` | `input` | 0x412b93 | no |
@@ -303,8 +378,10 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `inv_stack_count` | `int PSInventory::GetStackCount(void)const ` | 0x226ad0 | yes |
 | `inv_template_item` | `class Entity PSInventory::GetTemplateItem(int)const ` | 0x2262e0 | no |
 | `npc_get_group` | `PSNpc::PropertyGroup::operator class bCString const (void)const ` | 0x22b690 | yes |
+| `npc_get_guard_point` | `class Entity PSNpc::GetGuardPoint(void)const ` | 0x22af00 | no |
 | `npc_get_guild` | `PSNpc::PropertyGuild::operator enum gEGuild const (void)const ` | 0x22b750 | yes |
 | `npc_set_group` | `class PSNpc::PropertyGroup & PSNpc::PropertyGroup::operator=(class bCString const &)` | 0x22b640 | yes |
+| `npc_set_guard_point` | `bool PSNpc::SetGuardPoint(class Entity const &)const ` | 0x22ae80 | no |
 | `npc_set_guild` | `class PSNpc::PropertyGuild & PSNpc::PropertyGuild::operator=(enum gEGuild const &)` | 0x22b6f0 | yes |
 | `proj_get_shooter` | `class Entity PSProjectile::GetShooter(void)const ` | 0x2309e0 | no |
 | `psinter_begin` | `bool PSInteraction::BeginInteraction(class Entity)` | 0x221b50 | no |
@@ -335,6 +412,7 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `quest_open` | `bool QuestManager::OpenQuest(class bCString const &)` | 0x231b80 | yes |
 | `quest_run` | `bool QuestManager::RunQuest(class bCString const &)` | 0x231b50 | yes |
 | `quest_succeed` | `bool QuestManager::SucceedQuest(class bCString const &)` | 0x231ab0 | yes |
+| `rt_continue_routine` | `void PSRoutine::ContinueRoutine(void)` | 0x232e90 | no |
 | `rt_full_stop` | `void PSRoutine::FullStop(void)` | 0x232e20 | yes |
 | `rt_get_state` | `class bCString PSRoutine::GetCurrentState(void)const ` | 0x233750 | yes |
 | `rt_set_state` | `void PSRoutine::SetState(class bCString)` | 0x233350 | yes |
@@ -354,11 +432,13 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `tpl_dtor` | `Template::~Template(void)` | 0x235d50 | yes |
 | `tpl_is_valid` | `bool Template::IsValid(void)const ` | 0x235cb0 | yes |
 | `world_auto_save` | `void World::AutoSave(class bCString const &)` | 0x2367c0 | no |
+| `world_get_time` | `float Entity::GetWorldTime(void)` | 0x207f50 | no |
 | `world_is_game_running` | `bool World::IsGameRunning(void)const ` | 0x236010 | yes |
 | `world_is_save_allowed` | `bool World::IsSaveAllowed(void)const ` | 0x235fd0 | no |
 | `world_new_game` | `void World::NewGame(void)` | 0x236810 | yes |
 | `world_quick_load` | `void World::QuickLoad(void)` | 0x236b90 | yes |
 | `world_quick_save` | `void World::QuickSave(void)` | 0x2367f0 | no |
+| `world_set_time` | `void Entity::SetWorldTime(float)` | 0x207fa0 | no |
 ## Script_Game.dll
 
 | Field | Function | RVA | Required |
@@ -387,6 +467,7 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `mem_free` | `void bCMemoryAdmin::Free(void *)` | 0x723d0 | no |
 | `mem_instance` | `class bCMemoryAdmin & bCMemoryAdmin::GetInstance(void)` | 0x72370 | yes |
 | `mem_realloc` | `void * bCMemoryAdmin::Realloc(void *,unsigned long,char const *,char const *,char const *,int)` | 0x723e0 | yes |
+| `type_class_name` | `class bCString const & bCPropertyObjectTypeBase::GetClassName(void)const ` | 0xa78e0 | no |
 | `ustring_assign_wide` | `class bCUnicodeString & bCUnicodeString::operator=(wchar_t const *)` | 0xb4d70 | yes |
 | `ustring_ctor_wide` | `bCUnicodeString::bCUnicodeString(wchar_t const *)` | 0xb4f50 | yes |
 | `ustring_dtor` | `bCUnicodeString::~bCUnicodeString(void)` | 0xb4fd0 | yes |

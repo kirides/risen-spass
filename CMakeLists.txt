@@ -59,6 +59,7 @@ add_library(spass_core STATIC
     src/game/abi.cpp
     src/game/bindings.cpp
     src/game/call_trace.cpp
+    src/game/engine_guards.cpp
     src/game/entity_events.cpp
     src/game/event_bus.cpp
     src/game/events.cpp
