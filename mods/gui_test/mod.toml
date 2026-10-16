@@ -1,0 +1,6 @@
+id          = "gui_test"
+name        = "GUI scenario driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Checks risen.gui (pages, windows, clone, reflection, window messages, leaf pages), the ui.frame / ui.page events and risen.debug.screenshot against the engine's own menu (scenario `gui`). Only meaningful in a test run."
+main        = "main.lua"

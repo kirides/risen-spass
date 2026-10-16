@@ -95,7 +95,8 @@ struct LoadPlan {
 // the rest is ordered so that every `load_after`/`requires` target comes first. Ties are broken by the custom order of `cfg` (listed mods first, in
 // the listed order), then by id; without a custom order the result is alphabetical by id. A custom order can never put a mod before its dependencies
 // (the dependency wins and the conflict is reported as a warning). Dependency cycles are dropped (and logged).
-LoadPlan planLoad(std::vector<ModInfo> mods, const UserConfig& cfg);
+// `report` = false: plan without logging (the mod manager asks for plans all the time; only the start-up plan and the reloads say what they skip).
+LoadPlan planLoad(std::vector<ModInfo> mods, const UserConfig& cfg, bool report = true);
 
 // planLoad() with an empty configuration (kept for callers and tests that only care about the order).
 std::vector<ModInfo> resolveLoadOrder(std::vector<ModInfo> mods);

@@ -130,6 +130,27 @@ void** registryFnSlot(const std::string& name, bool create) {
     return ok ? result : nullptr;
 }
 
+// A registry entry is only "valid" for the engine's script proxies (a GUI event such as a button's OnClick, an AI state, ...) when its module record
+// (eSScriptBase +0x18, the Script_*.dll that registered it) is set: eCGuiWindow2::CallScriptEvent and eCScriptProxy::IsScriptValid test it (docs/RE.md sections 36 and 42).
+// An entry made by RegisterScript has none; it borrows the record of a stock script (nothing reads it except those tests and the unload of the DLL).
+void adoptModuleRecord(void** fnSlot) {
+    static void* record = nullptr;
+    const Symbols& s = sym();
+    guarded([&] {
+        if (record == nullptr) {
+            const BString key("OnClick_Menu_Credits");
+            void* stock = s.script_map_get(s.script_map_instance(), key.get());
+            if (stock != nullptr) {
+                record = *reinterpret_cast<void**>(static_cast<char*>(stock) + 0x18);
+            }
+        }
+        void** field = reinterpret_cast<void**>(reinterpret_cast<char*>(fnSlot) - kScriptFnOffset + 0x18);
+        if (record != nullptr && *field == nullptr) {
+            *field = record;
+        }
+    });
+}
+
 std::size_t findSlotByFn(void** fnSlot) {
     for (std::size_t i = 0; i < kMaxSlots; ++i) {
         if (g_slots[i].used && g_slots[i].fnSlot == fnSlot) {
@@ -184,6 +205,7 @@ std::string install(const std::string& name, sol::main_protected_function fn, Na
     slot.native = std::move(native);
     slot.owner = owner;
     *fnSlot = reinterpret_cast<void*>(kThunks[idx]);
+    adoptModuleRecord(fnSlot);
     spdlog::info("lua: script '{}' {} (slot {})", name, isOverride ? "overridden" : "defined", idx);
     SPASS_TRACE(trace::Channel::Script, "{} '{}' (slot {}, original {})", isOverride ? "override" : "define", name, idx, current != nullptr ? "kept" : "none");
     return {};

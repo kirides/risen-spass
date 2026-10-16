@@ -214,12 +214,14 @@ bool saveUserConfig(const std::filesystem::path& file, const UserConfig& cfg, st
 
 // ---- load plan ---------------------------------------------------------------------------------------------------------------------
 
-LoadPlan planLoad(std::vector<ModInfo> mods, const UserConfig& cfg) {
+LoadPlan planLoad(std::vector<ModInfo> mods, const UserConfig& cfg, bool report) {
     LoadPlan plan;
     std::map<std::string, ModInfo> byId;
     for (auto& m : mods) {
         if (!byId.emplace(m.id, m).second) {
-            spdlog::error("mods: duplicate id '{}' ({}) ignored", m.id, m.dir.string());
+            if (report) {
+                spdlog::error("mods: duplicate id '{}' ({}) ignored", m.id, m.dir.string());
+            }
             plan.skipped.push_back(SkippedMod{m, "duplicate", "another mod folder already uses the id '" + m.id + "'"});
         }
     }
@@ -227,7 +229,9 @@ LoadPlan planLoad(std::vector<ModInfo> mods, const UserConfig& cfg) {
     // switched off by the user
     for (auto it = byId.begin(); it != byId.end();) {
         if (!cfg.isEnabled(it->first)) {
-            spdlog::info("mods: '{}' is switched off in mods.toml", it->first);
+            if (report) {
+                spdlog::info("mods: '{}' is switched off in mods.toml", it->first);
+            }
             plan.skipped.push_back(SkippedMod{it->second, "disabled", "switched off in mods.toml"});
             it = byId.erase(it);
         } else {
@@ -249,7 +253,9 @@ LoadPlan planLoad(std::vector<ModInfo> mods, const UserConfig& cfg) {
                 const bool known = gone.contains(*missing);
                 const std::string why = known ? "requires '" + *missing + "' which is not loaded (switched off or failed to qualify)"
                                               : "requires '" + *missing + "' which is not installed";
-                spdlog::error("mods: '{}' {}, skipping", it->first, why);
+                if (report) {
+                    spdlog::error("mods: '{}' {}, skipping", it->first, why);
+                }
                 plan.skipped.push_back(SkippedMod{it->second, known ? "dependency_unavailable" : "missing_dependency", why});
                 gone.insert(it->first);
                 it = byId.erase(it);
@@ -299,7 +305,9 @@ LoadPlan planLoad(std::vector<ModInfo> mods, const UserConfig& cfg) {
         if (best == nullptr) {
             for (const auto& [id, m] : byId) {
                 if (!done.contains(id)) {
-                    spdlog::error("mods: '{}' is part of a dependency cycle, skipping", id);
+                    if (report) {
+                        spdlog::error("mods: '{}' is part of a dependency cycle, skipping", id);
+                    }
                     plan.skipped.push_back(SkippedMod{m, "cycle", "part of a dependency cycle (requires / load_after)"});
                 }
             }

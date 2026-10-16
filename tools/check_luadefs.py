@@ -21,7 +21,7 @@ defs = (root / 'types' / 'risen.d.lua').read_text(encoding='utf-8')
 bound = {}      # "ns.fn" -> source
 members = {}    # "Type.member" -> source
 
-USERTYPES = {'LuaEntity': 'Entity', 'LuaTemplate': 'Template', 'LuaQuest': 'Quest', 'LuaInfo': 'Info', 'ScriptContext': 'ScriptContext', 'AiContext': 'AiContext'}
+USERTYPES = {'LuaEntity': 'Entity', 'LuaTemplate': 'Template', 'LuaQuest': 'Quest', 'LuaInfo': 'Info', 'ScriptContext': 'ScriptContext', 'AiContext': 'AiContext', 'GuiWindow': 'GuiWindow'}
 
 for path in sorted(list((root / 'src').rglob('*.cpp')) + [root / 'src/game/npc_balance_lua.h', root / 'src/game/template_create_lua.h', root / 'src/game/spell_lua.h', root / 'src/game/recipe_lua.h']):   # the .h files hold the Lua chunks of NPC balancing, template creation and spells
     text = path.read_text(encoding='utf-8', errors='replace')
@@ -66,6 +66,9 @@ for path in sorted(list((root / 'src').rglob('*.cpp')) + [root / 'src/game/npc_b
                 members[f'{USERTYPES[cpp]}.{key}'] = rel
     for key in re.findall(r'\n\s+ut\["(\w+)"\]\s*=', text):
         members[f'Entity.{key}'] = rel
+    if 'new_usertype<GuiWindow>' in text:  # M16: the GuiWindow members are registered one by one with `ut.set_function("name", ...)`
+        for key in re.findall(r'\n\s+ut\.set_function\("(\w+)"', text):
+            members[f'GuiWindow.{key}'] = rel
 
 # runtime.cpp: per-mod api (risen.on/off/emit) and risen.log.*
 bound['risen.on'] = bound['risen.off'] = bound['risen.emit'] = 'src/lua/runtime.cpp'
@@ -142,6 +145,8 @@ for path in (root / 'src/game/script_bridge.cpp', root / 'src/game/lua_entity.cp
     for key in re.findall(r'"(\w+)",\s*sol::property', text):
         members['ScriptContext.' + key if 'script_bridge' in path.name else 'Entity.' + key] = path.name
 members.pop('Entity.__eq', None)
+members.pop('GuiWindow.__eq', None)
+members.pop('GuiWindow.__tostring', None)
 
 # ---- what the definitions describe -----------------------------------------------------------------------------------
 ns_class = dict(re.findall(r'---@field (\w+) (Risen\w+Api)\n', defs))
@@ -156,7 +161,7 @@ for var, fn in re.findall(r'^function (\w+)\.(\w+)\(', defs, flags=re.M):
     if var in var_ns:
         described[f'{var_ns[var]}.{fn}'] = True
 described_members = {}
-for typ, fn in re.findall(r'^function (Entity|Template|Quest|Info|ScriptContext|AiContext|RandomStream):(\w+)\(', defs, flags=re.M):
+for typ, fn in re.findall(r'^function (Entity|Template|Quest|Info|ScriptContext|AiContext|RandomStream|GuiWindow):(\w+)\(', defs, flags=re.M):
     described_members[f'{typ}.{fn}'] = True
 for typ in ('ScriptContext', 'AiContext'):
     block = re.search(rf'---@class {typ}\n((?:---.*\n)*)', defs).group(1)

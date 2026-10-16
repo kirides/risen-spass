@@ -258,7 +258,9 @@
     X(ctext_saysvm, L"Game.dll", "?AccessText@gCInfoCommandSaySVM@@QEAAAEAVgCInfoLocString@@XZ", void* (*)(void* self), false) \
     X(gamevar_exists, L"Script.dll", "?ExistsGameVariable@InfoSystem@@SA_NAEBVbCString@@@Z", bool (*)(const void*), false) \
     X(gamevar_remove, L"Script.dll", "?RemoveGameVariable@InfoSystem@@SA_NAEBVbCString@@@Z", bool (*)(const void*), false) \
-    X(gamevar_sys_set, L"Game.dll", "?SetGameVariable@gCInfoSystem@@QEAA_NAEBVbCString@@H@Z", bool (*)(void* self, const void* name, int value), false)     X(gamevar_sys_remove, L"Game.dll", "?RemoveGameVariable@gCInfoSystem@@QEAA_NAEBVbCString@@@Z", bool (*)(void* self, const void* name), false)     X(is_refresh_children, L"Game.dll", "?RefreshParentChildInfos@gCInfoSystem@@QEAAXXZ", void (*)(void* self), false) \
+    X(gamevar_sys_set, L"Game.dll", "?SetGameVariable@gCInfoSystem@@QEAA_NAEBVbCString@@H@Z", bool (*)(void* self, const void* name, int value), false) \
+    X(gamevar_sys_remove, L"Game.dll", "?RemoveGameVariable@gCInfoSystem@@QEAA_NAEBVbCString@@@Z", bool (*)(void* self, const void* name), false) \
+    X(is_refresh_children, L"Game.dll", "?RefreshParentChildInfos@gCInfoSystem@@QEAAXXZ", void (*)(void* self), false) \
     X(element_base_name, L"Engine.dll", "?GetFileBaseName@eCProcessibleElement@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false) \
     /* ---- entity templates at runtime (eCTemplateEntity, docs/RE.md section 22) ---------------------------- */ \
     X(tpl_proxy_get_entity, L"Engine.dll", "?GetEntity@eCTemplateEntityProxy@@QEAAPEAVeCTemplateEntity@@XZ", void* (*)(void* proxy), false) \
@@ -400,6 +402,41 @@
     X(gui_is_browsing_game, L"Script.dll", "?IsBrowsingGame@GUI2@@QEBA_NXZ", bool (*)(const void* gui), false) \
     X(gui_is_visible, L"Script.dll", "?IsVisible@GUI2@@QEBA_NW4gEHudPage@@@Z", bool (*)(const void* gui, int page), false) \
     X(gui_get_mode, L"Script.dll", "?GetMode@GUI2@@QEBA?AW4gEHudMode@@XZ", int (*)(const void* gui), false) \
+    /* ---- GUI windows (M16, docs/RE.md section 42): the page list of GUI2 and the eCGuiWindow2 tree under every page ---- */ \
+    X(gui_find_page, L"Script.dll", "?FindPage@GUI2@@QEAAPEAVgCHudPage2@@W4gEHudPage@@@Z", void* (*)(void* gui, int page), false) \
+    X(gui_open_page, L"Script.dll", "?Open@GUI2@@QEAA_NW4gEHudPage@@@Z", bool (*)(void* gui, int page), false) \
+    X(gui_close_page, L"Script.dll", "?Close@GUI2@@QEAA_NW4gEHudPage@@@Z", bool (*)(void* gui, int page), false) \
+    X(gui_close_menu, L"Script.dll", "?CloseMenu@GUI2@@QEAAXXZ", void (*)(void* gui), false) \
+    X(gui_page_names, L"Game.dll", "?g_strStringIDPage@@3PAVbCString@@A", unsigned char*, false) \
+    X(gui_module_instance, L"Engine.dll", "?GetInstance@eCGuiModule2@@SAAEAV1@XZ", void* (*)(), false) \
+    X(gui_handle_message, L"Engine.dll", "?OnHandleMessage@eCGuiModule2@@QEAA_NIIJ@Z", bool (*)(void* self, unsigned msg, unsigned wparam, long lparam), false) \
+    X(win_abs_position, L"Engine.dll", "?GetWindowAbsPosition@eCGuiWindow2@@QEAA?AVbCPoint@@XZ", void* (*)(void* w, int* ret), false) \
+    X(app_handle_message, L"Engine.dll", "?OnHandleMessage@eCApplication@@MEAA_NI_K_JPEA_J@Z", bool (*)(void* self, unsigned msg, unsigned long long wparam, long long lparam, long long* result), false) \
+    X(gui_show_page, L"Script.dll", "?Show@GUI2@@QEAA_NW4gEHudPage@@_N@Z", bool (*)(void* gui, int page, bool show), false) \
+    X(app_do_render, L"Engine.dll", "?DoRender@eCApplication@@IEAAX_N@Z", void (*)(void* self, bool flag), false) \
+    X(win_first_child, L"Engine.dll", "?GetFirstChild@eCGuiWindow2@@QEBAPEAV1@XZ", void* (*)(const void* w), false) \
+    X(win_next_sibling, L"Engine.dll", "?GetNextSibling@eCGuiWindow2@@QEBAPEAV1@XZ", void* (*)(const void* w), false) \
+    X(win_parent, L"Engine.dll", "?GetParent@eCGuiWindow2@@QEBAPEAV1@XZ", void* (*)(const void* w), false) \
+    X(win_get_name, L"Engine.dll", "?GetName@eCGuiWindow2@@QEBAAEBVbCString@@XZ", const void* (*)(const void* w), false) \
+    X(win_set_name, L"Engine.dll", "?SetName@eCGuiWindow2@@QEAAXAEBVbCString@@@Z", void (*)(void* w, const void* name), false) \
+    X(win_get_id, L"Engine.dll", "?GetID@eCGuiWindow2@@QEBAGXZ", unsigned short (*)(const void* w), false) \
+    X(win_set_id, L"Engine.dll", "?SetID@eCGuiWindow2@@QEAAXAEBG@Z", void (*)(void* w, const unsigned short* id), false) \
+    X(win_get_text, L"Engine.dll", "?GetText@eCGuiWindow2@@QEBA?AVbCUnicodeString@@XZ", void* (*)(const void* w, void* ret), false) \
+    X(win_set_text, L"Engine.dll", "?SetText@eCGuiWindow2@@QEAAXAEBVbCUnicodeString@@@Z", void (*)(void* w, const void* text), false) \
+    X(win_get_position, L"Engine.dll", "?GetPosition@eCGuiWindow2@@QEBA?AVbCPoint@@XZ", void* (*)(const void* w, int* ret), false) \
+    X(win_set_position, L"Engine.dll", "?SetPosition@eCGuiWindow2@@QEAAXAEBVbCPoint@@@Z", void (*)(void* w, const int* p), false) \
+    X(win_get_size, L"Engine.dll", "?GetSize@eCGuiWindow2@@QEBA?AVbCPoint@@XZ", void* (*)(const void* w, int* ret), false) \
+    X(win_set_size, L"Engine.dll", "?SetSize@eCGuiWindow2@@QEAAXAEBVbCPoint@@@Z", void (*)(void* w, const int* p), false) \
+    X(win_get_visible, L"Engine.dll", "?GetVisible@eCGuiWindow2@@QEBA_NXZ", bool (*)(const void* w), false) \
+    X(win_set_visible, L"Engine.dll", "?SetVisible@eCGuiWindow2@@QEAAXAEB_N@Z", void (*)(void* w, const bool* v), false) \
+    X(win_get_disabled, L"Engine.dll", "?GetDisabled@eCGuiWindow2@@QEBA_NXZ", bool (*)(const void* w), false) \
+    X(win_set_disabled, L"Engine.dll", "?SetDisabled@eCGuiWindow2@@QEAAXAEB_N@Z", void (*)(void* w, const bool* v), false) \
+    X(win_clone_into, L"Engine.dll", "?Clone@eCGuiWindow2@@QEAAPEAV1@PEAV1@@Z", void* (*)(void* w, void* parent), false) \
+    X(win_set_parent, L"Engine.dll", "?SetParent@eCGuiWindow2@@QEAA_NPEAV1@@Z", bool (*)(void* w, void* parent), false) \
+    X(win_set_focus, L"Engine.dll", "?SetFocus@eCGuiWindow2@@QEAA_NXZ", bool (*)(void* w), false) \
+    X(win_set_hot, L"Engine.dll", "?SetHot@eCGuiWindow2@@QEAA_NXZ", bool (*)(void* w), false) \
+    X(win_perform_layout, L"Engine.dll", "?PerformLayout@eCGuiWindow2@@QEAAXXZ", void (*)(void* w), false) \
+    X(type_class_name, L"SharedBase.dll", "?GetClassName@bCPropertyObjectTypeBase@@QEBAAEBVbCString@@XZ", const void* (*)(const void* type), false) \
     /* ---- trace of the engine's own script calls (the `calls` and `hud` trace channels) ---- */ \
     X(script_proxy_call, L"Engine.dll", "??ReCScriptProxyScript@@QEBA_JPEAVeCEntity@@0_J@Z", std::int64_t (*)(const void* proxy, void* self, void* other, std::int64_t arg), false) \
     X(script_proxy_name, L"Engine.dll", "?GetScriptName@eCScriptProxy@@QEBAAEBVbCString@@XZ", const void* (*)(const void* proxy), false) \

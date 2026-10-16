@@ -16,6 +16,8 @@ void registerBindings();
 // risen.debug.* (file_trace.cpp) and the CreateFile hooks behind it (installed by installHooks()).
 void bindDebug(sol::state_view lua, sol::table risen);
 void installFileTrace();
+// risen.debug.screenshot / screenshot_status (screenshot.cpp): a PNG of the D3D9 back buffer through a Present hook that is installed on the first request. Register after bindDebug.
+void bindScreenshot(sol::state_view lua, sol::table risen);
 // Starts tracing right away (config.toml [debug] trace_files); the same as risen.debug.trace_files(filter).
 void setFileTraceFilter(const std::string& filter);
 
@@ -49,6 +51,9 @@ void bindMods(sol::state_view lua, sol::table risen);
 void installMigrateModApi(sol::state_view lua, sol::table api, const lua::ModInfo& mod);
 // Per mod: risen.retire{ npcs, quests, game_vars, items, save_keys } and the `retire` table of mod.toml (migrate_lua.h).
 void installRetireModApi(sol::state_view lua, sol::table api, const lua::ModInfo& mod);
+
+// risen.gui.* (lua_gui.cpp, M16): the engine's GUI pages and eCGuiWindow2 trees.
+void bindGui(sol::state_view lua, sol::table risen);
 
 // risen.hud.* (lua_hud.cpp): the HUD game log and item log.
 void bindHud(sol::state_view lua, sol::table risen);

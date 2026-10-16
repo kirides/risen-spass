@@ -509,6 +509,7 @@ TEST(retire_declares_validates_and_applies_when_the_world_is_ready) {
             item = { count = function(p, t) return t == "It_Old" and 3 or 0 end, take = function(p, t, n) taken[#taken + 1] = t .. "=" .. n return true end },
             on = function(event, fn) local h = nexth nexth = nexth + 1 handlers[h] = { event = event, fn = fn } return h end,
             off = function(h) handlers[h] = nil end,
+            on_unload = function(f) on_unload_fn = f end,
         }
         registered = nil
         function register(id, handle) registered = handle end
@@ -537,6 +538,10 @@ TEST(retire_declares_validates_and_applies_when_the_world_is_ready) {
     CHECK(run("return table.concat(killed, ',') .. ' ' .. table.concat(removed_quests, ',') .. ' ' .. table.concat(removed_vars, ',') .. ' ' .. table.concat(taken, ',')") == "id-old Q_Old OldVar It_Old=3");
     CHECK(run("return tostring(store.persistent_npcs.Old) .. tostring(store.persistent_npcs.Keep ~= nil) .. tostring(store.spawn_rules.Old) .. tostring(store.ai_states['id-old']) .. tostring(store.npc_routines.npcs['id-old']) .. tostring(store.junk)") == "niltruenilnilnilnil");
     CHECK(run("return tostring(select(2, errors:gsub('retire', 'retire')) >= 3)") == "true");   // each refused declaration was logged as an error
+    // a torn-down instance stops answering for what it declared (the manager asks `orphans` after it switched the mod off)
+    CHECK(lua["registered"].get_type() == sol::type::table);
+    lua.script("on_unload_fn()");
+    CHECK(lua.script("return registered == nil").get<bool>());
 }
 
 TEST(orphans_list_undeclared_npcs_and_strays_of_created_templates_only) {

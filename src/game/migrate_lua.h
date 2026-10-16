@@ -254,6 +254,8 @@ if register then register(modid, {
         return out
     end,
 }) end
+-- a mod that is torn down (unloaded, switched off, reloaded: the new instance registers again) must not keep answering for what it declared: `orphans` / `retire` ask the *running* mod
+if register and api.on_unload then api.on_unload(function() register(modid, nil) end) end
 )LUA";
 
 // the global part: risen.mods.retire / orphans / remove_orphans (args: the shared risen table); returns the registrar the per-mod chunk above calls

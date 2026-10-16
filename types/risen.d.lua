@@ -1974,6 +1974,250 @@ function hudApi.item_log(item, amount) end
 function hudApi.state() end
 
 ---------------------------------------------------------------------------------------------------------------------
+-- GUI windows (M16, docs/RE.md section 42, docs/LUA_API.md "GUI windows")
+---------------------------------------------------------------------------------------------------------------------
+
+---What `GuiWindow:describe()` returns.
+---@class GuiWindowInfo
+---@field class string The engine class (`"gCHudPage2"`, `"eCScriptRadioButton"`, `"eCGuiStatic2"`, `"eCGuiPanel2"`, `"gCSpinButton"`, ...).
+---@field name string The window's `Name` property (empty for most children of the game's pages).
+---@field id integer The control ID (65535 = none).
+---@field text string
+---@field x integer Position relative to the parent, in the GUI's virtual resolution (1365 x 768, scaled to the window).
+---@field y integer
+---@field w integer
+---@field h integer
+---@field visible boolean
+---@field disabled boolean
+
+---A window of the engine's own GUI (`eCGuiWindow2`): a page, or something on it. A handle is only used after it was found again in the live page trees (or among the windows this API cloned): one the engine deleted answers `nil` / `false`
+---and never touches freed memory. Every setter returns `true` or `nil, reason`.
+---@class GuiWindow
+local GuiWindow = {}
+
+---Whether the window is still part of a page.
+---@return boolean
+function GuiWindow:valid() end
+
+---The engine class name.
+---@return string|nil
+function GuiWindow:class() end
+
+---Class, name, ID, text, position, size, visibility in one table.
+---@return GuiWindowInfo|nil
+function GuiWindow:describe() end
+
+---@return string|nil
+function GuiWindow:name() end
+
+---@return integer|nil
+function GuiWindow:id() end
+
+---The displayed text (the game's own texts are already translated).
+---@return string|nil
+function GuiWindow:text() end
+
+---@param text string
+---@return true|nil ok
+---@return string|nil reason
+function GuiWindow:set_text(text) end
+
+---Position relative to the parent (virtual 1365 x 768 coordinates).
+---@return integer|nil x
+---@return integer|nil y
+function GuiWindow:position() end
+
+---@return integer|nil w
+---@return integer|nil h
+function GuiWindow:size() end
+
+---@param x integer -20000..20000
+---@param y integer
+---@return true|nil ok
+---@return string|nil reason
+function GuiWindow:set_position(x, y) end
+
+---@param w integer 0..20000
+---@param h integer
+---@return true|nil ok
+---@return string|nil reason
+function GuiWindow:set_size(w, h) end
+
+---@return boolean|nil
+function GuiWindow:visible() end
+
+---Shows or hides the window itself (not through the page scripts). Gotcha: inside the `OnClick` script of the clicked button this has no lasting effect on that very button (the engine puts the click event's visible / disabled flags
+---back when the script returns): change the clicked button in a later frame (`ui.frame`).
+---@param visible boolean
+---@return true|nil ok
+---@return string|nil reason
+function GuiWindow:set_visible(visible) end
+
+---@return boolean|nil
+function GuiWindow:disabled() end
+
+---A disabled button cannot be clicked and is drawn grey.
+---@param disabled boolean
+---@return true|nil ok
+---@return string|nil reason
+function GuiWindow:set_disabled(disabled) end
+
+---@return GuiWindow|nil
+function GuiWindow:parent() end
+
+---The direct children, in the engine's order.
+---@return GuiWindow[]|nil
+function GuiWindow:children() end
+
+---The first descendant (depth first) with that `Name` (string) or control ID (number).
+---@param key string|integer
+---@return GuiWindow|nil
+function GuiWindow:find(key) end
+
+---A copy of the window with all its children, created below `parent` (default: the window's parent). Gotcha: a clone goes to the BACK of its parent's children, so clone the background last. The copy keeps every property
+---(text, fonts, images, the `OnClick` script ...). It is never deleted by this API.
+---@param parent? GuiWindow
+---@return GuiWindow|nil copy
+---@return string|nil reason
+function GuiWindow:clone(parent) end
+
+---@param parent GuiWindow
+---@return true|nil ok
+---@return string|nil reason
+function GuiWindow:set_parent(parent) end
+
+---Gives the window the keyboard focus (and the hot state).
+---@return true|nil ok
+---@return string|nil reason
+function GuiWindow:focus() end
+
+---Lets the engine lay the window's children out again (anchors, docking).
+---@return true|nil ok
+---@return string|nil reason
+function GuiWindow:layout() end
+
+---The window's centre in client pixels of the game window (where a click on it goes).
+---@return integer|nil x
+---@return integer|nil y
+function GuiWindow:center() end
+
+---Clicks the window with a mouse move, button down and button up delivered through the application's window message path (what the OS messages of the real mouse end in): a test aid, and a way to press a button of
+---the engine's menus. The window must be visible.
+---@return true|nil ok
+---@return string|nil reason
+function GuiWindow:click() end
+
+---The editor's property list of the window: `{ { name = "OnClick", type = "eCScriptProxyScript" }, { name = "Position", type = "bCPoint" }, ... }`; the names depend on the class.
+---@return { name: string, type: string }[]|nil
+function GuiWindow:properties() end
+
+---A property in the engine's text format (`"763; 653"`, `"255; 240; 202; 255"` for a colour, `"eETextAlign_Left_Middle"`, a script name for `OnClick`).
+---@param name string
+---@return string|nil value `nil` when the window has no such property.
+function GuiWindow:get(name) end
+
+---Sets a property by name (text format as in `get`). `OnClick` accepts the name of a script (`risen.script.define`): a click on the button calls it.
+---@param name string
+---@param value string
+---@return true|nil ok
+---@return string|nil reason
+function GuiWindow:set(name, value) end
+
+---One entry of `risen.gui.pages()`.
+---@class GuiPageInfo
+---@field id integer The `gEHudPage` number.
+---@field name string `"Game"`, `"Inventory"`, `"Menu_Main"` (13: Continue / Game / Settings / Credits / Quit), `"Menu_Game"`, `"Menu_Load"`, `"Menu_Cheats"` (25: never opened by the retail game), `"Menu_Start"` (26), `"Menu_Back"` (27), `"Loading"` (29) ...
+---@field visible boolean
+---@field window? GuiWindow
+
+---The engine's GUI: the pages (`gCHudPage2`, built from `compiled_windows.bin` at start-up and kept for the whole run) and the windows on them. The menu is a set of pages: ESC opens page 13, whose tabs open the others; while one is open the
+---world is paused (no `tick` event; `ui.frame` goes on). The game's menu code is script-driven: tabs have an `OnClick` script, pages a `PageControl` script that answers the page messages.
+---@class RisenGuiApi
+local guiApi = {}
+
+---The page list.
+---@return GuiPageInfo[]|nil pages
+---@return string|nil reason
+function guiApi.pages() end
+
+---A page window by number or name (`"Menu_Main"`, also `"gEHudPage_Menu_Main"`).
+---@param key integer|string
+---@return GuiWindow|nil
+function guiApi.page(key) end
+
+---Opens a page through the game's page system (`gCHudSystem2::Open`: the page controllers may deny it, the other pages hide).
+---@param page integer
+---@return true|nil ok
+---@return string|nil reason
+function guiApi.open(page) end
+
+---Closes a page (`gCHudSystem2::Close`).
+---@param page integer
+---@return true|nil ok
+---@return string|nil reason
+function guiApi.close(page) end
+
+---`GUI2::CloseMenu`: what the stock menu tabs call before they open a page.
+---@return true|nil ok
+---@return string|nil reason
+function guiApi.close_menu() end
+
+---Shows or hides a page window without the page scripts (what the menu pages do for the background page 27).
+---@param page integer
+---@param visible boolean
+---@return true|nil ok
+---@return string|nil reason
+function guiApi.show(page, visible) end
+
+---Gives a page the controller of the game's menu leaf pages (Credits, Load ...): ESC / back opens `parent` (default 13), the page hides when any other page opens, showing it also shows the menu background (27). The controller is a native
+---script `Spass_Leaf_<page>` set as the page's `PageControl`; it raises `ui.page`. Meant for a page nothing else uses (`Menu_Cheats`, 25). Calling it again is harmless.
+---@param page integer
+---@param parent? integer
+---@return true|nil ok
+---@return string|nil reason
+function guiApi.leaf_page(page, parent) end
+
+---Makes the game's controller of `host` (13: the main menu) hide its page when `other` opens (it keeps the page visible for pages it does not know). Needed for a tab of the host that opens a leaf page.
+---@param host integer
+---@param other integer
+---@return true|nil ok
+---@return string|nil reason
+function guiApi.hide_page_on(host, other) end
+
+---A left click at the client pixel (x, y) of the game window (mouse move, button down, up).
+---@param x integer
+---@param y integer
+---@return true|nil ok
+---@return string|nil reason
+function guiApi.click(x, y) end
+
+---One mouse message at the client pixel (x, y): `"move"`, `"down"` or `"up"` (left button).
+---@param action "move"|"down"|"up"
+---@param x integer
+---@param y integer
+---@return true|nil ok
+---@return string|nil reason
+function guiApi.mouse(action, x, y) end
+
+---A key press and release as window messages (Windows virtual-key code: 0x1B Escape, 0x26 Up, 0x28 Down, 0x0D Enter), through the application's message path (`eCApplication::OnHandleMessage`): ESC opens and closes the menu like the real key.
+---@param vk integer 1..254
+---@return true|nil ok
+---@return string|nil reason
+function guiApi.key(vk) end
+
+---The game window's client size in pixels (1600 x 900 in the test setup; the window is never resized at run time: the GUI and the mouse would misalign).
+---@return integer|nil w
+---@return integer|nil h
+function guiApi.client_size() end
+
+---Event `ui.frame()`: once per rendered frame of the application, also while the world is paused (a menu page is open), at the main menu and while a savegame loads (the session `tick` event does not run then). Keep handlers cheap. While a page
+---above the game view is open and no session tick runs, the layer also runs what waits for the next tick (queued mod reloads, the waits of `risen.test`), so the menu can be driven by mods and by test scenarios.
+---Event `ui.page(ev)`: a page given a controller by `risen.gui.leaf_page` was shown (`kind = "opened"`), hidden (`"closed"`) or got ESC / back (`"back"`, before it opens its parent).
+---@class GuiPageEvent
+---@field page integer
+---@field kind "opened"|"closed"|"back"
+
+---------------------------------------------------------------------------------------------------------------------
 -- Quests
 ---------------------------------------------------------------------------------------------------------------------
 
@@ -3773,6 +4017,19 @@ local debugApi = {}
 ---@param filter string
 function debugApi.trace_files(filter) end
 
+---Asks for a PNG of the game's back buffer: the D3D9 window cannot be captured from outside (screenshots made by the OS are black), so the layer hooks `IDirect3DDevice9::Present` (installed on the first request) and copies the back buffer
+---at the next frame (or after `wait_frames` rendered frames). The file is `<Risen>/bin/spass/screenshots/<name>.png`. Poll `screenshot_status`. A development aid: this is how the look of the menu page was verified.
+---@param name string 1-64 characters of letters, digits, `_`, `-` and `.`.
+---@param wait_frames? integer 0..600
+---@return true|nil ok
+---@return string|nil reason
+function debugApi.screenshot(name, wait_frames) end
+
+---`"pending"`, `"done"`, `"failed: <reason>"`, or `nil` when no screenshot of that name was asked for.
+---@param name string
+---@return string|nil
+function debugApi.screenshot_status(name) end
+
 ---What the layer found in the running game.
 ---@class RisenEngineApi
 local engineApi = {}
@@ -4257,6 +4514,7 @@ function logApi.error(...) end
 ---@field interact RisenInteractApi
 ---@field input RisenInputApi
 ---@field hud RisenHudApi
+---@field gui RisenGuiApi
 ---@field quest RisenQuestApi
 ---@field dialog RisenDialogApi
 ---@field script RisenScriptApi
@@ -4323,6 +4581,8 @@ local risen_ = {}
 ---@overload fun(event: "entity.destroyed", handler: fun(name: string, kind: "npc"|"player"|"item"|"other", template: string), priority?: integer): EventHandle
 ---@overload fun(event: "gamevar.changed", handler: fun(name: string, value: integer|nil, previous: integer|nil), priority?: integer): EventHandle
 ---@overload fun(event: "input.action", handler: fun(ev: InputActionEvent): boolean|nil, priority?: integer): EventHandle
+---@overload fun(event: "ui.frame", handler: fun(), priority?: integer): EventHandle
+---@overload fun(event: "ui.page", handler: fun(ev: GuiPageEvent), priority?: integer): EventHandle
 ---@overload fun(event: "crafting", handler: fun(crafter: Entity|nil, recipe: string, result: string, count: integer, ingredients: { item: string, count: integer }[]), priority?: integer): EventHandle
 ---@overload fun(event: "inventory.added", handler: fun(owner: Entity|nil, template: string, count: integer, total: integer, cause: InventoryCause, other: Entity|nil), priority?: integer): EventHandle
 ---@overload fun(event: "inventory.removed", handler: fun(owner: Entity|nil, template: string, count: integer, total: integer, cause: InventoryCause, other: Entity|nil), priority?: integer): EventHandle

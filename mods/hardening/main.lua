@@ -20,6 +20,15 @@ local EXCLUDED = {
     ["risen.world.auto_save"] = "writes a savegame",
     ["risen.off"] = "a number is a handler id: it would unhook the layer's own handlers (checked with non-number arguments only, below)",
     ["risen.assets.clear"] = "deletes the mod's generated files",
+    ["risen.gui.open"] = "a valid page number opens a menu page: the world pauses and the run would stall (checked with types that cannot be a page, below)",
+    ["risen.gui.close"] = "a valid page number closes a page (the game view): checked with wrong types only, below",
+    ["risen.gui.show"] = "a valid page number shows / hides a page window: checked with wrong types only, below",
+    ["risen.gui.close_menu"] = "changes the menu state of the GUI",
+    ["risen.gui.key"] = "a valid key code is a real key press for the game (ESC opens the menu): checked with wrong types only, below",
+    ["risen.gui.click"] = "a valid position is a real mouse click on the game's GUI: checked with wrong types only, below",
+    ["risen.gui.mouse"] = "a valid message is a real mouse event on the game's GUI: checked with wrong types only, below",
+    ["risen.gui.leaf_page"] = "installs a page controller on a page number: on the game view it would break the HUD (checked with wrong types only, below)",
+    ["risen.gui.hide_page_on"] = "overrides the controller script of a menu page (checked with wrong types only, below)",
     ["risen.log.error"] = "writes [error] lines on purpose, which the test harness counts as a failure (the log functions take any values; checked once below with the others)",
 }
 -- Every usertype's destructor (`<Type>.__gc`): calling it by hand frees the object's memory under its owner's feet. It is the garbage collector's entry, not a native a mod calls.
@@ -332,6 +341,10 @@ T.run(function()
     T.allow_errors(false)
     -- risen.off takes handle ids: only types that cannot be an id
     for _, v in ipairs { "x", true, {}, function() end, 0 / 0, -1 } do pcall(risen.off, v) end
+    -- the GUI functions that act on the real menu: wrong types and out-of-range numbers only
+    for _, name in ipairs { "open", "close", "show", "key", "click", "mouse", "leaf_page", "hide_page_on" } do
+        for _, v in ipairs { "x", true, {}, function() end, 0 / 0, -1, 1e300 } do pcall(risen.gui[name], v) pcall(risen.gui[name], v, v) pcall(risen.gui[name], v, v, v) end
+    end
     T.expect("fuzz finished", true, ("%d functions, %d calls: %d accepted, %d refused with an error, %d too slow (%s); excluded: %s"):format(
         stats.functions, stats.calls, stats.ok, stats.refused, #stats.slow, table.concat(stats.slow, ","), table.concat(stats.skipped, ",")))
 

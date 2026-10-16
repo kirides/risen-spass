@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 
 #include "bootstrap.h"
+#include "game/abi.h"
 #include "game/bindings.h"
 #include "game/event_bus.h"
 #include "game/events.h"
@@ -22,6 +23,8 @@ namespace {
 
 Hook<int (*)(void*)> g_scriptAdminPostInit;
 Hook<void (*)(void*)> g_sessionProcess;
+Hook<void (*)(void*, bool)> g_appRender;
+bool g_sessionTicked = false;  // gCSession::Process ran since the last GUI frame (it does not while the game is paused: a menu is open)
 
 // gCScriptAdmin::PostInitialize(this) -> bEResult  (docs/RE.md §4.2)
 // The original calls LoadAllScriptGame, i.e. every Script_*.dll is loaded and registered when it returns.
@@ -54,6 +57,7 @@ int detourScriptAdminPostInit(void* self) {
 // gCSession::Process(this): once per frame while a session exists. Emits the Lua "tick" event.
 void detourSessionProcess(void* self) {
     g_sessionProcess.original(self);
+    g_sessionTicked = true;
     lua::Runtime::instance().processPending();  // queued mod reloads, the development file watcher
     test::onTick();  // risen.test: pending wait_for/sleep, heartbeat, first-tick mark
     onInputFrame();  // risen.input: the key states of this frame
@@ -65,6 +69,29 @@ void detourSessionProcess(void* self) {
     }
 }
 
+// eCApplication::DoRender(this, flag): the application's frame (the main loop renders once per pass), which also runs while the game is paused (a menu page is open), at the
+// main menu and while loading (gCHudModule2::Process and gCSession::Process do not). Raises `ui.frame`. In a frame without a session tick the per-frame bookkeeping that would wait for the next tick (queued mod reloads, the test
+// runner's waits) runs here, so that a menu driven by mods (and by risen.test) does not stall while the world is paused.
+void detourAppRender(void* self, bool flag) {
+    auto& rt = lua::Runtime::instance();
+    if (!g_sessionTicked && rt.running()) {
+        const Symbols& s = sym();
+        bool menu = false;  // a page above the game view is open (a menu page, the title screen); false while the loading page is up
+        if (s.gui2_object != nullptr && s.gui_is_browsing != nullptr) {
+            guarded([&] { menu = s.gui_is_browsing(s.gui2_object); });
+        }
+        if (menu) {
+            rt.processPending();
+            test::onTick();
+        }
+    }
+    g_sessionTicked = false;
+    if (rt.running() && rt.hasHandlers("ui.frame")) {
+        rt.emit("ui.frame");
+    }
+    g_appRender.original(self, flag);
+}
+
 }  // namespace
 
 bool installHooks() {
@@ -73,6 +100,7 @@ bool installHooks() {
     ok &= g_scriptAdminPostInit.install("gCScriptAdmin::PostInitialize", s.script_admin_post_init,
                                         &detourScriptAdminPostInit);
     ok &= g_sessionProcess.install("gCSession::Process", s.session_process, &detourSessionProcess);
+    g_appRender.install("eCApplication::DoRender", s.app_do_render, &detourAppRender);  // optional: the ui.frame event
     ok &= installLocHooks();
     installEventHooks();
     installFocusHook();

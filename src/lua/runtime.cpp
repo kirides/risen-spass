@@ -652,7 +652,7 @@ std::vector<std::string> Runtime::neededBy(const std::string& id) { return depen
 
 void Runtime::rebuildOrder() {
     order_.clear();
-    const LoadPlan plan = planLoad(knownInfos(), userConfig_);
+    const LoadPlan plan = planLoad(knownInfos(), userConfig_, false);
     for (const auto& m : plan.ordered) {
         const Record* rec = findRecord(m.id);
         if (rec != nullptr && rec->state == ModState::Loaded) {
@@ -677,7 +677,7 @@ std::vector<std::string> Runtime::plannedOrder(bool useCustom) {
         cfg.order.clear();
     }
     std::vector<std::string> out;
-    for (const auto& m : planLoad(infos, cfg).ordered) {
+    for (const auto& m : planLoad(infos, cfg, false).ordered) {
         out.push_back(m.id);
     }
     return out;
@@ -1121,7 +1121,7 @@ ReloadReport Runtime::setEnabled(const std::string& id, bool enabled, bool casca
             }
         } else {
             // load what was switched on, requirements first
-            const LoadPlan plan = planLoad(knownInfos(), userConfig_);
+            const LoadPlan plan = planLoad(knownInfos(), userConfig_, false);
             for (const ModInfo& m : plan.ordered) {
                 Record& r = *findRecord(m.id);
                 if (r.state == ModState::Disabled || (r.state == ModState::Skipped && r.kind == "dependency_unavailable")) {

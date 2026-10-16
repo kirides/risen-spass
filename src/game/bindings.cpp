@@ -131,6 +131,7 @@ void registerBindings() {
     rt.addBinding(bindGameVars);
     rt.addBinding(bindWorld);
     rt.addBinding(bindDebug);
+    rt.addBinding(bindScreenshot);   // risen.debug.screenshot
     rt.addBinding(bindEngineInfo);
     rt.addBinding(bindLoc);
     rt.addBinding(bindEntity);
@@ -159,7 +160,8 @@ void registerBindings() {
     rt.addBinding(bindRecipe);          // after bindSpell: risen.recipe and the recipes/new_recipes sections
     rt.addBinding(bindInteractExtras);  // after bindRecipe: risen.interact.focus/info/...
     rt.addBinding(bindInput);           // risen.input
-    rt.addBinding(bindHud);             // risen.hud
+    rt.addBinding(bindHud);
+    rt.addBinding(bindGui);             // risen.gui (M16)             // risen.hud
     rt.addModBinding(bindConfigModApi);  // risen.config(defaults) reads <mod dir>/config.toml
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo&) { installRecipeModApi(lua, api); });  // after installBalanceModApi: learn = true recipes
     rt.addBinding(bindDialog);

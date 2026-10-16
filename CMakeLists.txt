@@ -71,6 +71,7 @@ add_library(spass_core STATIC
     src/game/lua_balance.cpp
     src/game/loc_files.cpp
     src/game/loc_overlay.cpp
+    src/game/screenshot.cpp
     src/game/lua_dialog.cpp
     src/game/lua_engine_info.cpp
     src/game/lua_entity.cpp
@@ -78,6 +79,7 @@ add_library(spass_core STATIC
     src/game/lua_combat.cpp
     src/game/lua_config.cpp
     src/game/lua_hud.cpp
+    src/game/lua_gui.cpp
     src/game/lua_input.cpp
     src/game/lua_interact.cpp
     src/game/lua_items.cpp

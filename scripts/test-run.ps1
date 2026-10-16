@@ -21,6 +21,7 @@
 .PARAMETER Seconds  Upper bound of the run (without -WaitForResult: how long the game runs).
 .PARAMETER Filter   Regex of log lines to print (default: everything of interest).
 .PARAMETER Keep     Do not delete spass.log and saves before the run (to test loading an earlier save).
+.PARAMETER KeepModsToml  Do not delete <bin>\spass\mods.toml before the run (the choices of the mod manager of an earlier run).
 .PARAMETER WaitForResult  Scenario mode: [test] enabled = true, return when test-result.json appears.
 .PARAMETER StallSeconds   Watchdog: kill the game after this long without a new log line (default 90: loading a new game is quiet for up to ~60 s).
 .PARAMETER DeadlineSeconds  [test] deadline_s: the layer itself reports FAIL "timeout" (with the unfinished checks) after this long
@@ -66,6 +67,8 @@ param(
     [string]$Trace = '',
     # mods that are deployed but switched off in <bin>\spass\mods.toml (a one-process suite loads them one after the other: risen.mods.load); the file is deleted otherwise
     [string[]]$Disable = @(),
+    # keep the player's mods.toml (enabled flags, custom order) of an earlier run: the phase after one that changed it through the mod manager checks what a restart does with it
+    [switch]$KeepModsToml,
     # [debug] trace_scripts: substrings (comma separated) of the engine script names the `calls` trace channel reports, e.g. 'Interact,Loot,Assess'
     [string]$TraceScripts = '',
     [switch]$TraceFile,
@@ -231,7 +234,7 @@ try {
     }
     Set-Content (Join-Path $bin 'spass\config.toml') $cfg
     $modsToml = Join-Path $bin 'spass\mods.toml'   # the player's choices (risen.mods.enable / disable / set_order): never let an earlier run leak into this one
-    Remove-Item $modsToml -Force -ErrorAction SilentlyContinue
+    if (-not $KeepModsToml) { Remove-Item $modsToml -Force -ErrorAction SilentlyContinue }
     if ($Disable.Count -gt 0) { Set-Content $modsToml (@('[enabled]') + @($Disable | ForEach-Object { "$_ = false" })) }
     Remove-Item $resultFile -ErrorAction SilentlyContinue
     if (-not $Keep) {
