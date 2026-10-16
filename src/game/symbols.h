@@ -332,6 +332,8 @@
     X(infocmd_give, L"Game.dll", "?Execute@gCInfoCommandGive@@UEAA_NAEAVgCRuntimeInfo@@_N@Z", bool (*)(void* self, void* runtimeInfo, bool flag), false) \
     X(eproxy_get_entity, L"Engine.dll", "?GetEntity@eCEntityProxy@@QEAAPEAVeCEntity@@XZ", void* (*)(void* proxy), false) \
     X(eent_kill, L"Engine.dll", "?Kill@eCEntity@@QEAAXXZ", void (*)(void* self), false) \
+    X(eent_set_save_relevant, L"Engine.dll", "?SetSaveGameRelevant@eCEntity@@QEAAX_N@Z", void (*)(void* self, bool relevant), false) \
+    X(eent_is_save_relevant, L"Engine.dll", "?IsSaveGameRelevant@eCEntity@@QEBA_NXZ", bool (*)(const void* self), false) \
     X(gdmg_do_damage, L"Game.dll", "?DoDamage@gCDamage_PS@@QEAA_NPEAVeCEntity@@@Z", bool (*)(void* self, void* victim), false) \
     X(sg_kill, L"Script_Game.dll", "?Kill@@YA_JPEAVgCScriptProcessingUnit@@PEAX1_J@Z", std::int64_t (*)(void* unit, void* self, void* other, std::int64_t arg), false) \
     X(sg_cheat_kill, L"Script_Game.dll", "?OnCheatKill@@YA_JPEAVgCScriptProcessingUnit@@PEAX1_J@Z", std::int64_t (*)(void* unit, void* self, void* other, std::int64_t arg), false) \

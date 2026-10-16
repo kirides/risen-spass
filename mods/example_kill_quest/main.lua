@@ -15,7 +15,8 @@
 --   * Humans are usually knocked out instead of killed: that is `entity.defeated(entity, attacker)`. Listen to both for "beat" objectives.
 --   * Entity:kill() removes an entity without a death (`entity.destroyed` fires, not `entity.died`). Setting hit points to 0 fires nothing either.
 --     The game's own script `risen.script.call("Kill", killer, victim)` is what the scenario of this example uses as a stand-in for a fight.
---   * The boss (runtime entity) is not saved: it is spawned again after a load while its quest runs and it was not killed yet.
+--   * Both NPCs are risen.npc.persistent: Garrick is declared once, the boss is declared when its quest starts (and again, before the load,
+--     whenever a savegame has that quest running or finished) so it keeps its name and its dead state across save/load.
 --
 -- Run the live check (about a minute and a half; see docs/EXAMPLES.md):
 --   .\scripts\test-run.ps1 -Instance 2 -Mods example_kill_quest -WaitForResult -Seconds 300 -Scenario example_kill_quest -ShowChecks
@@ -25,8 +26,6 @@ local WOLVES, BOSS_QUEST = "Q_EX_Wolves", "Q_EX_Boss"
 local BOSS = "EX_DireWolf"
 local WANTED = 3
 
-risen.loc.set("FO_" .. NPC, "Garrick the Hunter")
-risen.loc.set("FO_" .. BOSS, "The Dire Wolf")
 
 -- ---- the boss template (a clone of Wolf, applied on the first tick and on every session.start) -------------------------------
 risen.balance.install({
@@ -65,14 +64,20 @@ risen.on("entity.died", function(entity, killer)
     if template and template:name() == "Wolf" then wolf_killed(entity) end   -- any entity of a template
 end)
 
--- ---- spawning the boss -------------------------------------------------------------------------------------------------------------
+-- ---- the boss: a persistent NPC that exists only once its quest has started -----------------------------------------------------------
+-- `position` may be a function of the player: here the other end of the beach, 1200 units from Garrick. Declaring it while the game runs
+-- creates it at once; declaring it again on every session.start (below) is what brings it back after a load.
 local function spawn_boss()
-    if risen.entity.get(BOSS) then return end
-    local garrick = risen.entity.get(NPC)
-    if not garrick then return end
-    local x, y, z = garrick:position()
-    if not (x and y and z) then return end
-    risen.npc.spawn("Spass_Dire_Wolf", x + 1200, y + 20, z, { name = BOSS })   -- the other end of the beach
+    return risen.npc.persistent({
+        name = BOSS, template = "Spass_Dire_Wolf", label = "The Dire Wolf",
+        position = function()
+            local garrick = risen.entity.get(NPC)
+            local x, y, z = nil, nil, nil
+            if garrick then x, y, z = garrick:position() end
+            if not (x and y and z) then return nil, nil, nil end   -- not placed yet: tried again at the next session start
+            return x + 1200, y + 20, z
+        end,
+    })
 end
 
 -- ---- dialogue -------------------------------------------------------------------------------------------------------------------------
@@ -116,34 +121,18 @@ local function define_content()
     })
 end
 
--- ---- the hunter, and after a load the boss -------------------------------------------------------------------------------------------
-local function ensure_world()
-    if not risen.entity.get(NPC) then
-        local pos = risen.save.get("garrick_pos")
-        if not pos then
-            local player = risen.entity.player()
-            if not player then return end
-            local x, y, z = player:position()
-            if not x then return end
-            pos = { x + 150, y + 20, z + 150 }
-            risen.save.set("garrick_pos", pos)
-        end
-        risen.npc.spawn("Peasant_1_01", pos[1], pos[2], pos[3], { name = NPC, peaceful = true, level = 3, hp_max = 300 })
-    end
-    if risen.quest.is_running(BOSS_QUEST) then spawn_boss() end   -- runtime entities are not saved
-end
+-- ---- the hunter ---------------------------------------------------------------------------------------------------------------------
+risen.npc.persistent({
+    name = NPC, template = "Peasant_1_01", offset = { 150, 20, 150 }, label = "Garrick the Hunter",
+    peaceful = true, level = 3, hp_max = 300, define = define_content,
+})
 
-risen.on("load.before", define_content)
+-- A savegame whose boss quest has started (running, or finished with the corpse lying there) declares the boss again before the world is
+-- reconciled: its record in risen.save and its entity (saved by the engine) are found again. A new game has no such quest.
 risen.on("session.start", function()
-    define_content()
-    local waited, handle = 0, nil
-    handle = risen.on("tick", function()
-        waited = waited + 1
-        if waited == 60 then
-            ensure_world()
-            if handle then risen.off(handle) end
-        end
-    end)
+    local quest = risen.quest.get(BOSS_QUEST)
+    local status = quest and quest:get_property("Status") or ""
+    if status:find("Running") or status:find("Success") then spawn_boss() end
 end)
 
 -- the live check belongs to the test run only

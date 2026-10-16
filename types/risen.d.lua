@@ -39,6 +39,21 @@ function Entity:valid() end
 ---@return boolean ok
 function Entity:set_name(name) end
 
+---The entity's unique ID as `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` (a GUID). Unlike the unique name it is **written into savegames** and comes back unchanged after a load,
+---also for entities made by `risen.entity.spawn` / `risen.npc.spawn`: remember it (`risen.save`) and find the entity again with `risen.entity.by_id`.
+---@return string|nil id `nil` for a stale handle.
+function Entity:id() end
+
+---Whether the engine writes this entity into savegames (the `eCEntity` flag "save game relevant"). It is **true** for every entity made by `risen.entity.spawn`
+---(they are saved: position, hit points, inventory, state and `id()`, but not the unique name, see `risen.npc.persistent`).
+---@return boolean|nil saved `nil` when the engine function is missing or the handle is stale.
+function Entity:save_relevant() end
+
+---Makes the engine save (`true`) or skip (`false`) this entity in savegames. A skipped entity is gone after a load.
+---@param on boolean
+---@return boolean ok
+function Entity:set_save_relevant(on) end
+
 ---World position.
 ---@return number|nil x
 ---@return number|nil y
@@ -319,13 +334,20 @@ function entityApi.get(name) end
 ---@return Entity|nil
 function entityApi.player() end
 
----Spawns an entity from a template. Needs a running game. Spawned entities are **not** saved in savegames: spawn them
----again on `session.start` / `load.after`.
+---Looks an entity up by its unique ID (see `Entity:id`), also after a savegame was loaded. An entity restored from a savegame has no unique name any more (its name is the template's),
+---so the ID is how to find it again.
+---@param id string `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
+---@return Entity|nil
+function entityApi.by_id(id) end
+
+---Spawns an entity from a template. Needs a running game. Spawned entities **are saved** in savegames by the engine (same position, hit points, inventory, state and `Entity:id()`
+---after a load), **but without their unique name**: after a load the entity is nameless (named like its template) and `risen.entity.get(name)` does not find it. Do not spawn it
+---again on `session.start` (that makes a duplicate): use `risen.npc.persistent`, or remember `Entity:id()` in `risen.save` and name it again with `Entity:set_name` after the load.
 ---@param template string Template name, see docs/TEMPLATES.md (`risen.template.list`).
 ---@param x number
 ---@param y number
 ---@param z number
----@param temporary? boolean Spawn as a temporary entity.
+---@param temporary? boolean Spawn as a temporary entity: the engine never writes it into a savegame (effects, projectiles, props that must not persist).
 ---@return Entity|nil
 function entityApi.spawn(template, x, y, z, temporary) end
 
@@ -869,6 +891,68 @@ function balanceApi.modes() end
 
 ---@class RisenNpcApi
 local npcApi = {}
+
+---Declaration of a persistent NPC (`risen.npc.persistent`). The spawn options of `NpcSpawnOptions` (`level`, `hp_max`, `hp`, `mana`, `guild`, `peaceful`, `group`, `items`, `equip`, `state`) apply
+---when the NPC is created; `name` is also the unique entity name. Exactly one of `position` and `offset`.
+---@class PersistentNpcSpec: NpcSpawnOptions
+---@field name string Unique entity name: letters, digits, `_` and `-`. Names are global: no two declarations (of any mod) may share one.
+---@field template string Template of the NPC (a shipped one, or one made by `risen.template.create` / `risen.balance.install{new_npcs}`; it may be created later than the declaration).
+---@field position? number[]|fun(player: Entity): number|nil, number|nil, number|nil `{x, y, z}` or a function returning x, y, z (called when the NPC is first created in a savegame; returning `nil, nil, nil` means "not known yet": tried again at the next session start).
+---@field offset? number[] `{dx, dy, dz}` from the player's position when the NPC is first created in a savegame (the usual "next to the start").
+---@field version? integer Default 1. Raise it (or change `template`) to replace the NPC saved in existing savegames by a new one made from this declaration.
+---@field respawn? boolean|fun(state: { name: string, deaths: integer, handle: PersistentNpc }): boolean `false` (default): a dead NPC stays dead for good (in that savegame). `true`: at the next session start or load a dead NPC is replaced by a new one at its home position. A function decides each time (`true` = respawn now).
+---@field label? string Text shown when the player looks at the NPC (sets `FO_<name>`).
+---@field define? fun(handle: PersistentNpc) Called on `load.before` and on every `session.start`: create the NPC's quests and dialogues here (the engine only restores their saved state into objects that exist).
+---@field on_ready? fun(entity: Entity, reason: "spawned"|"restored"|"respawned"|"replaced"|"adopted", handle: PersistentNpc) Called whenever the NPC is in the world after a session start or load. `spawned`: made now for the first time, `restored`: found again in the loaded savegame, `respawned`: a new body for a dead or vanished one, `replaced`: made again because `template`/`version` changed, `adopted`: an entity that already had the name was taken over. Not called for a dead NPC that stays dead.
+---@field on_death? fun(entity: Entity, killer: Entity|nil, handle: PersistentNpc) Called once when the NPC dies (after `entity.died`).
+
+---A declared persistent NPC.
+---@class PersistentNpc
+---@field name string
+---@field template string
+local PersistentNpc = {}
+
+---The NPC's entity right now (a corpse counts), found by its unique name; `nil` before the first session reconciled it, while it is dead and removed, or when its template is missing.
+---@return Entity|nil
+function PersistentNpc:entity() end
+
+---`"alive"`, `"dead"` (corpse or removed after dying), `"missing"` (it should exist but does not, e.g. its template is not available), `"removed"` (after `remove()`), `"pending"` (not created yet in this session).
+---@return "alive"|"dead"|"missing"|"removed"|"pending"
+function PersistentNpc:state() end
+
+---@return boolean
+function PersistentNpc:is_dead() end
+
+---How often the NPC died in this savegame.
+---@return integer
+function PersistentNpc:deaths() end
+
+---Removes the NPC (or its corpse, with the loot) and makes a new one at its home position now; also brings back an NPC that was removed with `remove()`.
+---@return Entity|nil entity
+---@return string|nil reason
+function PersistentNpc:respawn() end
+
+---Takes the NPC out of the world for good: it does not come back on later loads of this savegame until `respawn()`.
+function PersistentNpc:remove() end
+
+---Declares an NPC that the layer keeps across new games, saves, loads and processes. It is created once per savegame (new game, or a savegame that does not know it) from the declaration and
+---afterwards **restored** on every load: the engine saves spawned entities with position, hit points, inventory and state but not their unique name, so the layer remembers the entity's ID in
+---`risen.save` (key `persistent_npcs`, per mod) and gives the restored entity its name again. Dead NPCs stay dead unless `respawn` says otherwise; an NPC whose declaration disappeared from the mod
+---is removed from the world; a changed `template`/`version` replaces it; a missing template only makes the NPC `"missing"` until it exists again. Declare NPCs while the mod loads (main.lua);
+---a declaration made later inside a running session creates/finds the NPC at once. Idempotent per name. Returns `nil, reason` (also logged) for an invalid spec.
+---@param spec PersistentNpcSpec
+---@return PersistentNpc|nil handle
+---@return string|nil reason
+function npcApi.persistent(spec) end
+
+---The handle of a persistent NPC declared by the calling mod.
+---@param name string
+---@return PersistentNpc|nil
+function npcApi.persistent_get(name) end
+
+---The persistent NPCs declared by the calling mod, in declaration order.
+---@return PersistentNpc[]
+function npcApi.persistent_list() end
 
 ---Guild numbers by name: `None` 0, `Don` 1 (Don's camp), `Dig` 2 (diggers), `Grd` 3 (guards), `Cit` 4 (citizens), `Inq` 5 (Inquisition),
 ---`Mag` 6 (mages), `Pir` 7 (pirates/bandits). Pirates attack Don, Grd, Inq and Mag, but not Cit, Dig or None.

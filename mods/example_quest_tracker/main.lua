@@ -12,7 +12,7 @@
 --     `entity.defeated(entity, attacker)` (knocked out humans), items -> `inventory.changed(owner, template, delta, total, cause, other)` for every source
 --     (pickup, loot, trade, gifts); nothing is polled. All three feed the same `advance(quest, n)`, which writes progress to risen.save and succeeds the quest.
 --   * A reward for ANY of them hangs on `on_complete` (or on `quest.status_changed`, see example_quest_rewards): the completion path does not matter.
---   * Progress persists with the savegame (risen.save), the quest status with the engine, runtime entities (Bram) are respawned.
+--   * Progress persists with the savegame (risen.save), the quest status with the engine, Bram is a risen.npc.persistent (kept across loads).
 --
 -- Run the live check (about 1.5 minutes; see docs/EXAMPLES.md):
 --   .\scripts\test-run.ps1 -Instance 3 -Mods example_quest_tracker -WaitForResult -Seconds 300 -Scenario example_quest_tracker -ShowChecks
@@ -20,7 +20,6 @@
 local tracker = require("tracker")
 
 local NPC = "EX_Bram"
-risen.loc.set("FO_" .. NPC, "Bram the Quartermaster")
 
 -- ---- the objectives: HOW each quest completes -----------------------------------------------------------------------------------------
 tracker.add { quest = "Q_EX_Report", kind = "talk",  info = "EX_Bram_Report" }
@@ -77,32 +76,10 @@ local function define_content()
 end
 
 -- ---- Bram ------------------------------------------------------------------------------------------------------------------------------------
-local function ensure_npc()
-    if risen.entity.get(NPC) then return end
-    local pos = risen.save.get("bram_pos")
-    if not pos then
-        local player = risen.entity.player()
-        if not player then return end
-        local x, y, z = player:position()
-        if not x then return end
-        pos = { x + 150, y + 20, z + 150 }
-        risen.save.set("bram_pos", pos)
-    end
-    risen.npc.spawn("Peasant_1_01", pos[1], pos[2], pos[3], { name = NPC, peaceful = true, level = 3, hp_max = 300 })
-end
-
-risen.on("load.before", define_content)
-risen.on("session.start", function()
-    define_content()
-    local waited, handle = 0, nil
-    handle = risen.on("tick", function()
-        waited = waited + 1
-        if waited == 60 then
-            ensure_npc()
-            if handle then risen.off(handle) end
-        end
-    end)
-end)
+risen.npc.persistent({
+    name = NPC, template = "Peasant_1_01", offset = { 150, 20, 150 }, label = "Bram the Quartermaster",
+    peaceful = true, level = 3, hp_max = 300, define = define_content,
+})
 
 -- the live check belongs to the test run only
 if risen.test.is_active() then

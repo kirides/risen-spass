@@ -103,7 +103,8 @@ Helper chunks written in Lua live inside the `.cpp` file next to the binding (`c
 ## Verified facts worth remembering (details in docs/RE.md)
 
 - Scripts are native functions in a registry; Lua scripts are registered/overridden by swapping the function slot.
-- Runtime-spawned entities are **not** saved; quests/infos must exist before the engine reads a savegame
+- Runtime-spawned entities **are** saved by the engine (position, inventory, state, entity ID) but **lose their unique name** (RE.md §32): never "respawn if `risen.entity.get(name)` is nil" (duplicates),
+  declare NPCs with `risen.npc.persistent`; `temporary` spawns are not saved. Quests/infos must exist before the engine reads a savegame
   (`load.before`), a new game removes runtime quests; mod data persists through `risen.save` sidecar files.
 - The test copy's `mountlist_packed.ini` must use the stock `$(localappdata)/Risen/...` lines; absolute paths there make all
   saves fail silently. `$(localappdata)` is expanded via `SHGetFolderPathA`, not the environment variable.

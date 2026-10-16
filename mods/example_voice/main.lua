@@ -16,7 +16,7 @@
 --   * The layer compiles the files into the engine's own sound format the first time (below <Risen>\bin\spass\generated\example_voice\voice); the same audio is not
 --     written twice, and a file that is not usable is refused with nil, reason before anything is created.
 --   * risen.voice.say(npc, key_or_sound) makes an NPC speak without a dialogue (a "bark"); risen.voice.speaking(npc) tells whether a sound is playing.
---   * Same as every other runtime content: dialogues are created on load.before AND session.start, the NPC is spawned again after a load.
+--   * Same as every other runtime content: dialogues are created on load.before AND session.start, the NPC is a risen.npc.persistent (kept across loads).
 --
 -- Run the live check (about a minute each, English and then German voices; see docs/EXAMPLES.md):
 --   .\scripts\test-run.ps1 -Instance 2 -Mods example_voice -WaitForResult -Seconds 240 -Scenario ex_voice -ShowChecks
@@ -86,30 +86,10 @@ local function define_content()
     })
 end
 
-risen.loc.set("FO_" .. NPC, "Voice Tester")
-
--- ---- the NPC: not saved with the game, so spawn it whenever it is missing -----------------------------------------------------------
-local function ensure_npc()
-    if risen.entity.get(NPC) then return end
-    local player = risen.entity.player()
-    if not player then return end
-    local x, y, z = player:position()
-    if not x then return end
-    risen.npc.spawn("Peasant_1_01", x + 150, y + 20, z + 150, { name = NPC, peaceful = true })
-end
-
-risen.on("load.before", define_content)
-risen.on("session.start", function()
-    define_content()
-    local frames, handle = 0, nil
-    handle = risen.on("tick", function()      -- the player entity exists a moment after the session started
-        frames = frames + 1
-        if frames == 60 then
-            ensure_npc()
-            if handle then risen.off(handle) end
-        end
-    end)
-end)
+-- ---- the NPC: declared once (`define` runs on load.before and every session.start) -----------------------------------------------------
+risen.npc.persistent({
+    name = NPC, template = "Peasant_1_01", offset = { 150, 20, 150 }, label = "Voice Tester", peaceful = true, define = define_content,
+})
 
 -- the live check belongs to the test run only
 if risen.test.is_active() then

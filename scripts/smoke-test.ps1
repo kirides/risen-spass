@@ -17,6 +17,7 @@
       recipes      - recipe balancing (mods/balance_recipes): the real anvil and alchemy table through the engine's interaction scripts
       ex_recipe    - example: a new smithing recipe (sword + 2 iron ore -> Slightly Improved Sword); four runs: save, load, load_missing, load_again
       ex_voice     - spoken dialogue lines from ogg/wav/mp3 files (mods/example_voice); two runs: voice language English, then German
+      persistnpc   - persistent NPCs (M7, mods/persistnpc): new game + in-process load + new game, then fresh-process loads (same declaration, changed declaration, lost templates)
 
 .DESCRIPTION
     Needs a built sentry.dll and the test copy (see CLAUDE.md). The [risen.test] scenarios end as soon as they are done
@@ -43,7 +44,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -139,6 +140,15 @@ $scenarios = [ordered]@{
     ex_spell          = @{ Est = 60; Title = 'example: spells (edit, new crystal and scroll)'; Kind = 'result'; Mods = @('example_spell'); Limit = 300 }
     # crafting recipes (M6b): the real smithing anvil and alchemy table are driven through the engine's interaction scripts (risen.interact.begin + the page's click script)
     recipes           = @{ Est = 75; Title = 'recipe balancing (M6b)'; Kind = 'result'; Mods = @('balance_recipes'); Limit = 300 }
+    # persistent NPCs (M7): "save" plays new game -> dialogue/quest -> state changes -> quick save -> quick load -> new game; the others load that quick save in a fresh process
+    # with the same declaration ("load"), a changed one ("load_changed": version bump, an NPC no longer declared) and without the mod's NPC templates ("load_missing")
+    persistnpc        = @{ Est = 190; Title = 'persistent NPCs (M7: save, load, changed, missing)'; Kind = 'result'; Mods = @('persistnpc'); Limit = 200
+                           Phases = @(
+                               @{ Name = 'save'; Param = @('phase=save'); Start = 'new'; Keep = $false; Limit = 200 }
+                               @{ Name = 'load'; Param = @('phase=load'); Start = 'load'; Keep = $true; Limit = 150 }
+                               @{ Name = 'load_changed'; Param = @('phase=load_changed'); Start = 'load'; Keep = $true; Limit = 150 }
+                               @{ Name = 'load_missing'; Param = @('phase=load_missing'); Start = 'load'; Keep = $true; Limit = 150 }
+                           ) }
     # quick loot (M5d): the standalone mod `quickloot` against the engine's own interaction; phase `config` repeats the key path with another config.toml (items = false, key = PrimaryAction) copied into the mod
     quickloot         = @{ Est = 120; Title = 'quick loot (M5d: default config, then config.toml options)'; Kind = 'result'; Mods = @('quickloot', 'quickloot_driver'); Limit = 300
                            Phases = @(

@@ -9,15 +9,14 @@
 --     "dialogue"). No polling: the handler below just asks the engine for the count whenever the player's berries changed.
 --   * Count relative to a baseline taken when the quest starts (the player may already carry berries) and keep the baseline in risen.save
 --     so it survives saving and loading (the Lua state itself is not saved).
---   * Entities spawned from Lua are not saved: the scattered berries are spawned again when a saved game with this quest running is loaded.
+--   * Entities spawned from Lua ARE saved by the engine (position, inventory, state), only their unique name is not: the scout is a
+--     risen.npc.persistent (named again after a load) and the scattered berries simply come back with the savegame.
 --
 -- Run the live check (about a minute; see docs/EXAMPLES.md):
 --   .\scripts\test-run.ps1 -Instance 2 -Mods example_fetch_pickup -WaitForResult -Seconds 240 -Scenario example_fetch_pickup -ShowChecks
 
 local NPC, QUEST = "EX_Scout", "Q_EX_Collect"
 local ITEM, WANTED = "It_Plant_Berry", 3
-
-risen.loc.set("FO_" .. NPC, "Finn the Scout")
 
 -- ---- progress: how many berries did the player collect since the quest started? ------------------------------------------------
 local reported = -1   -- last progress that was written to the log (Lua state: not saved, only used to avoid repeating lines)
@@ -49,7 +48,7 @@ risen.on("inventory.changed", function(owner, template)
     if template == ITEM and owner and owner:is_player() then on_item_count_changed() end
 end)
 
--- ---- scatter the berries around the scout (runtime entities: respawned after a load) -----------------------------------------------
+-- ---- scatter the berries around the scout (spawned entities are part of the savegame: no need to put them back after a load) -----
 local function scatter(count)
     local scout = risen.entity.get(NPC)
     if not scout then return end
@@ -85,38 +84,12 @@ local function define_content()
     })
 end
 
--- ---- the NPC (and, after a load, the berries that are still missing) ---------------------------------------------------------------
-local function ensure_world()
-    if not risen.entity.get(NPC) then
-        local pos = risen.save.get("scout_pos")
-        if not pos then
-            local player = risen.entity.player()
-            if not player then return end
-            local x, y, z = player:position()
-            if not x then return end
-            pos = { x + 150, y + 20, z + 150 }
-            risen.save.set("scout_pos", pos)
-        end
-        risen.npc.spawn("Peasant_1_01", pos[1], pos[2], pos[3], { name = NPC, peaceful = true, level = 3, hp_max = 300 })
-        if risen.quest.is_running(QUEST) then                -- a savegame with the quest running: put back what is still missing
-            scatter(math.max(0, WANTED - (collected() or 0)))
-        end
-    end
-end
-
-risen.on("load.before", define_content)
-risen.on("session.start", function()
-    define_content()
-    reported = -1
-    local waited, handle = 0, nil
-    handle = risen.on("tick", function()
-        waited = waited + 1
-        if waited == 60 then
-            ensure_world()
-            if handle then risen.off(handle) end
-        end
-    end)
-end)
+-- ---- the NPC ------------------------------------------------------------------------------------------------------------------
+risen.npc.persistent({
+    name = NPC, template = "Peasant_1_01", offset = { 150, 20, 150 }, label = "Finn the Scout",
+    peaceful = true, level = 3, hp_max = 300, define = define_content,
+})
+risen.on("session.start", function() reported = -1 end)
 
 -- the live check belongs to the test run only
 if risen.test.is_active() then

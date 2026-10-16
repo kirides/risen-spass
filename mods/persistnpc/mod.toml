@@ -1,0 +1,6 @@
+id          = "persistnpc"
+name        = "Persistent NPCs: live test mod"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Declares four persistent NPCs (risen.npc.persistent) with dialogue and a quest; the scenario `persistnpc` (docs/DEVELOPMENT.md) plays save, load, changed declaration and missing template. Only meaningful in a test run."
+main        = "main.lua"

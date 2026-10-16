@@ -101,7 +101,7 @@ every route that changes an inventory or kills / creates / removes an entity fir
   until something really kills them. `Entity:set_hp(0)` does not kill (the AI keeps fighting) and fires nothing; `Entity:kill()` removes the entity (`entity.destroyed`, no death). Verified: `Kill` with and without killer, twice on one victim,
   `Defeat`, `OnCheatKill`, a real fight (a wolf kills the player: `entity.died(PC_Hero, wolf, "combat")` with the `entity.damaged` before it).
 * **`entity.spawned`** is raised by `Entity::Spawn` (what `risen.entity.spawn`, `risen.npc.spawn` and the game's own spawn scripts call); entities the engine creates internally (items dropped from an inventory,
-  equipment copies, effects) are not reported. **`entity.destroyed`** comes from `eCEntity::Kill`; effect entities (`VFX_*`) are skipped. **`entity.damaged`** only fires for hits that took hit points.
+  equipment copies, effects) are not reported, and **neither is an entity that a savegame brings back** (the engine rebuilds it without calling `Entity::Spawn`, RE.md §32: `risen.npc.persistent`'s `on_ready` says "in the world"). **`entity.destroyed`** comes from `eCEntity::Kill`; effect entities (`VFX_*`) are skipped. **`entity.damaged`** only fires for hits that took hit points.
 * **Not covered:** "container opened" (opening a chest is a dialogue-less interaction that moves nothing by itself; its loot is reported as `"loot"`), `item.used` for food (the use scripts call `ConsumeItems`, reported as
   `item.consumed`; not driven live: `risen.item.consume` is), per-item property changes.
 
@@ -157,8 +157,10 @@ Return a number or boolean (nil = 0). Errors are logged and the original runs (f
 Limit: 1024 Lua scripts.
 
 ## risen.entity
-`risen.entity.get("UniqueName")`, `risen.entity.player()` → `Entity | nil`, `risen.entity.npcs([center, radius])` → every NPC/monster (or those within `radius` of `center`).
-Entity methods: `name()`, `display_name()`, `set_name(s)`, `position()` → `x, y, z`, `distance_to(e)`,
+`risen.entity.get("UniqueName")`, `risen.entity.player()` → `Entity | nil`, `risen.entity.by_id("xxxxxxxx-xxxx-…")` → the entity with that ID (see `Entity:id()`),
+`risen.entity.npcs([center, radius])` → every NPC/monster (or those within `radius` of `center`).
+Entity methods: `name()`, `display_name()`, `set_name(s)`, `id()` (the GUID the savegame stores: unlike the name it survives a load), `save_relevant()`, `set_save_relevant(b)` (whether the engine writes the entity
+into savegames; true for every spawned one), `position()` → `x, y, z`, `distance_to(e)`,
 `is_npc()`, `is_player()`, `is_dead()`, `is_item()`, `is_character()`, `kill()`, `set_frozen(b)`,
 `enable_rendering(b)`, `teleport(name_or_entity)`, `valid()`, `address`. A handle remembers the entity's unique
 name: after a savegame load, a session start/stop or a world change it looks the entity up **by name again** instead of
@@ -354,7 +356,7 @@ entity:dependencies()                        -- the mesh/actor files the engine 
   a mod's `strings/all.csv` with the same ids works too. A clone without `name` shows its base's label unless a mod already supplied one. A key set without table prefix (`FO_Bob`) now also answers the prefixed id the engine asks for (`focus:FO_Bob`).
 * **The ID** is derived from the name, so the same mod creates the same template in every process on every machine: **savegames that contain items of it resolve again** (a stack stores the template's ID). Create the templates on the first `tick` (as
   `install` does), before a savegame is loaded. Verified live in a fresh process: items in the player's and a world NPC's inventory survive a restart; if the template is **missing** in a session the stacks stay dormant (`risen.item.count` 0, `stack_item` nil, the game
-  runs, a save keeps them) and **resolve as soon as the template exists**, even when it is created after the load. Spawned entities are not saved by the engine (RE.md §14), so only inventories (and world entities that existed before) carry clones.
+  runs, a save keeps them) and **resolve as soon as the template exists**, even when it is created after the load. Entities spawned from a clone are saved as well (RE.md §32, they store the template's ID): in a session where the clone does not exist the engine drops them while it reads the savegame (see `risen.npc.persistent`: the NPC is `"missing"` until the template exists again).
 * **A clone is a snapshot** of its base when it is created (later edits of the base do not reach it); creating again with the same base only re-applies the overrides. Existing entities keep their own values (`instances = true` writes them). The clone lives until the
   process ends; `remove` only gives the names back (refused while live entities of it exist) -- items already handed out keep working -- and `create` with the same base brings it back with the same ID.
 * **Timing**: items and NPC templates can be cloned from the first `tick` on, also while a world is loaded (a hook skips `gCNavigation_PS::OnPostCopy` during the copy: it crashed on templates once a world existed). The base is loaded on demand.
@@ -587,13 +589,44 @@ Entity methods (every call returns `nil`/`false` instead of crashing on a bad ha
 | `goto_pos(x,y,z[,mode])`, `goto_entity(e[,mode])`, `stop_goto()`, `turn_to(e)` | `mode` is the engine's walk mode enum (0 default) |
 | `equip_all()`, `stack_count()`, `stack_item(i)` | equips every equippable inventory stack; number of stacks; the item of stack `i` (a template entity, see "Editing templates") |
 
-**Persistence:** entities created at runtime are **not** part of a savegame (verified in-game): after a load they are
-gone and must be spawned again. Use the guard pattern on `session.start` and `load.after`:
+**Persistence:** entities made by `risen.entity.spawn` / `risen.npc.spawn` **are** written into savegames by the engine (verified in the game, RE.md §32: position, hit points,
+inventory, guild, group, AI state and the entity's ID come back, also in a fresh process) — **except their unique name**. After a load the NPC stands there nameless (its name is the template's),
+so `risen.entity.get("SPASS_Bob")` does not find it, and a mod that "spawns it again if it is missing" creates a **duplicate** on every load. Do not write that guard. Declare the NPC with
+`risen.npc.persistent` (next section), or remember `bob:id()` in `risen.save` and find it again with `risen.entity.by_id(id)` + `set_name`.
+
+## Persistent NPCs — `risen.npc.persistent` (see `mods/example_custom_npc`, `mods/persistnpc`, [RE.md §32](RE.md))
+A modder declares an NPC **once**; the layer makes sure exactly one of it exists in every game, whatever happens: new game, quick save/load, load in a fresh process, a death, a moved NPC.
 ```lua
-local function ensure() if not risen.entity.get("SPASS_Bob") then risen.npc.spawn(...) end end
-risen.on("session.start", ensure)
-risen.on("load.after", function(_, ok) if ok then ensure() end end)
+local hob = risen.npc.persistent({
+    name = "MyMod_Hob", template = "Peasant_1_01",     -- unique entity name; the template may be one of this mod's new_npcs (created later is fine)
+    offset = { 150, 20, 150 },                         -- from the player when he is first created in a savegame; or position = { x, y, z } / function(player) return x, y, z end
+    label = "Hob the Tinkerer",                        -- shown when the player looks at him (FO_<name>)
+    peaceful = true, level = 3, hp_max = 300,          -- the spawn options of risen.npc.spawn: guild, group, items, equip, state, hp, mana ...
+    define = function(handle) ... end,                 -- quests and dialogues: called on load.before and on every session.start
+    respawn = false,                                   -- default: a dead NPC stays dead; true: replaced at the next session start/load; function(state) -> bool
+    version = 1,                                       -- raise it to replace the NPC in existing savegames after you changed the declaration
+    on_ready = function(entity, reason, handle) end,   -- reason: "spawned" | "restored" | "respawned" | "replaced" | "adopted"
+    on_death = function(entity, killer, handle) end,
+})
+hob:state()      -- "alive" | "dead" | "missing" | "removed" | "pending"       hob:entity()   hob:deaths()   hob:respawn()   hob:remove()
+risen.npc.persistent_get("MyMod_Hob")   risen.npc.persistent_list()
 ```
+* **How it works.** The engine saves spawned entities (system dynamic layer) with their unique ID but without their name. The layer stores `{ id, template, version, home, last, dead, deaths }` per NPC in
+  the mod's `risen.save` (key `persistent_npcs`, so it is written next to every savegame and rolled back by a load), spawns the NPC only if the savegame does not know it, and after a load finds it by
+  that ID (`risen.entity.by_id`) and gives the name back, 30 frames after `world.ready`. Position, hit points, inventory, guild, group and AI state are the engine's; the layer re-applies nothing.
+* **No duplicates**: new game (the world is reset, so are the records), quick load in the same process, load in a fresh process: one entity per name. An entity that already carries the name when the NPC
+  is first reconciled is adopted instead of spawned; a second entity of the same template with the name of a restored one is removed.
+* **Dead**: `entity.died` (and a `save.before` check) mark the record dead. `respawn = false` keeps the corpse (the engine saves it, lootable) and never replaces it; `true`/a function replaces it at the next
+  session start or load (the corpse is removed): there is no timer, "after N days" belongs to the mod (call `handle:respawn()`). An NPC taken out with `Entity:kill()` (destroyed, no death) counts as
+  vanished and is made again at the next session start or load; use `handle:remove()` to take it away for good.
+* **Changed or missing**: a changed `template` or `version` replaces the saved NPC; a record whose name the mod no longer declares is pruned (its entity is removed) after the first session
+  start; a mod that was removed altogether leaves the saved NPCs in the world as ordinary nameless NPCs; a missing template makes the engine drop the entity on load and the NPC `"missing"` (a warning
+  is logged once per session) — it is made again as soon as the template exists (the next session start).
+* **Declare while the mod loads.** `define` and the handlers need to exist before a savegame is read. A declaration made later (inside a running session, e.g. a boss when its quest starts) creates or
+  finds the NPC at once, and has to be made again on every `session.start` of a savegame that needs it (see `mods/example_kill_quest`, `example_quest_rewards`): the record is pruned otherwise.
+* **Events.** `entity.spawned` fires when the layer creates the NPC (spawned, respawned, replaced), **not** for a restored one: use `on_ready` for "the NPC is in the world". `entity.died` fires as usual.
+* **Limits.** The record lives in the savegame's sidecar file: a savegame copied without its `.lua` sidecar (or from before the mod existed) is not recognised and the NPC is made again (an old unnamed
+  copy of an earlier mod version stays). Hit points regenerate as for every NPC. A mod name collision is refused (`nil, reason`). No timers, no facing, no routines (M10).
 
 ## Dialogues — `risen.dialog` (see `mods/dialogdemo`)
 A dialogue option is an *info* owned by an NPC (by entity name). Its lines are commands; the text of the **first

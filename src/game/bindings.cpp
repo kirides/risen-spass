@@ -158,6 +158,7 @@ void registerBindings() {
     rt.addBinding(bindQuestObjects);
     rt.addBinding(scripts::bindScripts);
     bindSave();
+    rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installPersistentNpcModApi(lua, api, mod.id); });  // after bindSave: risen.npc.persistent keeps its records in the mod's risen.save
     bindModStrings();
 }
 

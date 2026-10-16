@@ -2,15 +2,14 @@
 --
 --   * Marta, an NPC, asks the player for 3 apples. Talking to her starts the quest; once the quest runs, a second option
 --     lets the player hand the apples in (reward: a machete). The quest, its log entries and "already given" flags are
---     saved by the engine; the NPC itself is not, so she is spawned again whenever a game starts or is loaded.
+--     saved by the engine; the NPC is declared with risen.npc.persistent: spawned once, kept (and named again) across loads.
 --   * Quests and dialogue options must exist *before* the engine reads a savegame (load.before) and again after a new game
 --     wiped the quest manager (session.start). risen.quest.define / risen.dialog.create are idempotent, so one function
 --     serves both.
---   * Where Marta stands is remembered in risen.save, so she reappears at the same spot in that savegame.
+--   * Marta stands where she stood in that savegame: the engine saves spawned entities (not their unique name); the layer finds her by
+--     her entity ID after a load and names her again.
 local NPC, QUEST = "SPASS_Marta", "Q_SPASS_Apples"
 local ITEM, WANTED = "It_Apple", 3
-
-risen.loc.set("FO_" .. NPC, "Marta the Orchardkeeper")
 
 -- ---- effects of the dialogue lines: plain scripts, referenced by name from the info commands ---------------------------
 
@@ -67,32 +66,8 @@ local function define_content()
     })
 end
 
--- ---- the NPC: not part of savegames, so spawn it whenever it is missing ---------------------------------------------------
-
-local function ensure_npc()
-    if risen.entity.get(NPC) then return end
-    local pos = risen.save.get("marta_pos")
-    if not pos then
-        local player = risen.entity.player()
-        if not player then return end
-        local x, y, z = player:position()
-        if not x then return end
-        pos = { x + 150, y + 20, z + 150 }
-        risen.save.set("marta_pos", pos)
-    end
-    risen.npc.spawn("Peasant_1_01", pos[1], pos[2], pos[3], { name = NPC, level = 3, hp_max = 300, peaceful = true, group = "SPASS" })
-end
-
-risen.on("load.before", define_content)             -- before the engine reads quests/infos of a savegame
-risen.on("session.start", function()                -- a new game, or the end of a load
-    define_content()
-    local frames = 0
-    local h
-    h = risen.on("tick", function()                 -- the player entity exists a moment after the session started
-        frames = frames + 1
-        if frames == 60 then
-            ensure_npc()
-            risen.off(h)
-        end
-    end)
-end)
+-- ---- the NPC: declared once; the layer spawns it in a new game and finds it (and names it again) after every load ------------------
+-- `define` runs on load.before (before the engine reads quests/infos of a savegame) and on every session.start.
+risen.npc.persistent({
+    name = NPC, template = "Peasant_1_01", offset = { 150, 20, 150 }, level = 3, hp_max = 300, peaceful = true, group = "SPASS", label = "Marta the Orchardkeeper", define = define_content,
+})

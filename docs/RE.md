@@ -433,8 +433,9 @@ Game.dll RVAs; every one of these is exported with a decorated name, so the hook
   first when a player entity exists. `gCWorld::Activate` (`0x994760`) makes a world current; its name is
   `eCProcessibleElement::GetFileBaseName()` (`"World"`).
 * **What a savegame contains** (tested with a runtime NPC, quest, info and mod data, loaded in the same process and in a fresh one):
-  * **Entities created with `Entity::Spawn` are not saved**: the NPC was gone after loading (also in the same process, where the
-    world is reloaded). Mods must respawn them (`session.start`, `load.after`).
+  * **Entities created with `Entity::Spawn` ARE saved, but lose their unique name** (corrected in M7, §32): the NPC looked gone after loading
+    because `risen.entity.get(name)` found nothing; the entity itself stood there nameless, with its saved ID. Find it again by ID (`Entity:id()`,
+    `risen.entity.by_id`) and name it again, or use `risen.npc.persistent`; a mod that spawns it again creates a duplicate.
   * **Quests**: `gCQuestManager::ReadSaveGame` (`0x961f00`) reads `(name, runtime data)` pairs and looks each name up in the manager;
     an unknown name is streamed into a temporary quest and *discarded* (`"Quest '%s' not found, streaming runtime data into
     temporary Quest!"`). With the quest created beforehand, status **and log entries** were restored. So runtime quests must be
@@ -1093,3 +1094,49 @@ channel is on at start. The focus system calls `CanInteract_Player_Loot`, `TE_Co
 
 **Limits / inferred.** Not driven live: a physical mouse click and the HUD's look; weapon states other than melee (`PS_Bow*`, `PS_Magic*` are assumed to start with something other than `PS_Normal`: read from the state list of Script_Game); the engine's theft reaction itself (no human was made to see a quick pick-up: the mod vetoes instead, which the scenario checks); chests with `OnLockStatusChanged` scripts are declined, so what the engine passes to
 that script (`other`) is unknown; `Interact_Player_PirateTreasure`/`ChestPirateTreasure` and `SarcophagusTitanlord` were only read.
+
+## 32. Spawned entities are saved: persistent NPCs [confirmed in-game unless marked]
+
+**Correction of §14.** "Entities created with `Entity::Spawn` are not saved" was wrong: they are saved and come back, **only their unique name is lost** (§14 looked them up by name). The M7 question "can spawned
+entities be made part of the savegame?" therefore needs no trick: they already are. (Engine DLL RVAs below are `Engine.dll` / `Game.dll` / `Script.dll` as named.)
+
+**Where a spawned entity lives.** `Entity::Spawn(Template, pose, temporary)` (Script `0x20e4d0`, read in the decompilation) does `gCWorld::GetCurrentWorld()->CreateDynamicEntity()` (Game `0x99a3e0`): the entity is
+created in the world's **system layer** (`gCWorld::GetSystemLayer` `0x998be0`; the layer file name in a savegame is `SysDyn_{GUID}`), under the layer's context root, then `eCEntity::CreateFromTemplate`, `SetInsertType(0)`,
+`SetToWorldMatrix`; `temporary = true` additionally calls `eCEntity::SetTemporary` (Engine `0x6a5d40`: flag `0x100000` in `eCEntity+0x28`, recursively). Hero, root and spawned entities share that layer.
+
+**How it is written.** `gCSaveGameManager::WriteSaveGame` -> `gCWorld::WriteSaveGame` (Game `0x9960b0`: header, the list of removed native entities, then every sector with `+0x31` set -> `gCSector::WriteSaveGame`
+`0x990ca0` -> every `gCDynamicLayer::WriteSaveGame` `0x8cfc20` (skips the temp layer `..._Temp`) -> `eCEntityDynamicContext::WriteSaveGame` Engine `0x69c330/0x69c530`). An entity is written only when **none of the flags
+`0x100000` (temporary) / `0x8` is set and `0x80000` ("save game relevant", `eCEntity::IsSaveGameRelevant` `0x6a5830`, `SetSaveGameRelevant` `0x6a35c0`) is set**; a spawned entity has the last one by default. Each record is
+`0x41` bytes of header (the entity's ID, its parent's ID, the ID of the creator template, a flag byte whose bit 0 is "native" = came from the world file, and the byte size of the data) followed by
+`eCDynamicEntity::WriteSaveGame` (`0x6a0550`: version `0xd6`, matrices/boxes, then every property set that `IsPersistable`). **Neither the unique name nor anything but the IDs identifies the entity.** The container is
+zlib (`RISNSG01` header, deflate stream at offset `0x1c`); in a savegame of a new game the `SysDyn` layer held three records (the layer root and the hero, both native, and our spawned peasant, non-native, parent = the root).
+
+**How it is read.** `gCWorld::ReadSaveGame` (`0x995b80`) first kills the entities named by the saved "removed native entities" list (this is how dead world NPCs stay gone), then every layer reads its records
+(`eCEntityDynamicContext::ReadSaveGame` `0x69bde0`): a **native** record is looked up by ID in the loaded world and read into it; a **non-native** one makes a new entity (`CreateSpecificEntity`), looks the *creator
+template* up by ID, `eCEntity::CreateFromTemplate`, `eCDynamicEntity::ReadSaveGame`, restores the ID and attaches it under the saved parent. **If the creator template does not exist the new entity is killed**
+(`eCEntity::Kill` in the same function): confirmed live, a process without the mod's cloned NPC template loads the savegame and the NPC is simply gone (no crash). A clone made by `risen.template.create`
+resolves because its ID derives from its name (§25). The load does not go through `Entity::Spawn`, so **no `entity.spawned` event fires for a restored entity**.
+
+**Verified live** (scenario `persistnpc`, `Entity:id()` / `risen.entity.by_id`; unit-tested logic in `tests/persistent_npc_tests.inc`):
+* a spawned NPC comes back after quick save + quick load in the same process **and in a fresh process** with the same entity ID, the same position (also 2500 units away from where it was made), its inventory (items given
+  after the spawn), its group, guild and AI state (`ZS_HangAround_Stand`), its dead state (a corpse comes back as a corpse with the same ID); hit points are saved too but NPCs regenerate within seconds (a peasant went from 200 to 500 in 2.5 s), so
+  they cannot be compared. `add_level` did not survive (a level changed with `Entity:add_level` was the template's again after the load: skills are not a reliable place for state).
+* the unique name is **not** saved: the restored entity's name is the template name (`risen.entity.get("MyNpc")` is nil, `Entity:name()` is `Peasant_1_01`), also for entities that were named with `Entity:set_name`
+  (searching the decompressed savegame for the name finds nothing). `Entity:set_name` after the load works and quest/dialogue owners resolve through it again.
+* `risen.entity.spawn(..., temporary = true)` is **not saved** (flag `0x100000`); `Entity:set_save_relevant(false)` (`eCEntity::SetSaveGameRelevant(false)`) makes the engine skip a normal spawn: both gone after a load.
+  `Entity:save_relevant()` reads the `0x80000` bit (true for every normal spawn; also true for a temporary one, whose other flag does the work).
+* `Entity:id()` reads the virtual `eCEntity::GetID` (vtable slot `0x148`/8, as `WriteSaveGame` does) = a 16 byte GUID + 4 byte counter; `risen.entity.by_id` is `eCSceneAdmin::GetEntity(id, 0)`
+  (type `0` finds dynamic entities; `2` is for templates).
+* a new game (`gCWorld::Restart`) and a quick load in the same process both drop the previous world's runtime entities, so nothing duplicates; items spawned by mods (`risen.entity.spawn("It_Plant_Berry", ...)`)
+  are saved the same way. **Consequence for older mods**: every mod that "respawned its NPC on `session.start` when `risen.entity.get(name)` was nil" produced one more nameless copy of the NPC per load.
+
+**`risen.npc.persistent`** (src/game/persistent_npc_lua.h, `docs/LUA_API.md` "Persistent NPCs") is built on exactly that and adds no engine hook: the record `{ id, template, version, home, last, dead, deaths, removed }` per NPC lives in the
+mod's `risen.save` (the sidecar belongs to the savegame, so entity and record always match), the NPC is created only if the savegame does not know it, found by ID and renamed otherwise, 30 frames after `world.ready`
+(the player exists a moment earlier). `entity.died` and a `save.before` check mark the dead state; a dead NPC is kept as a corpse unless the declaration's `respawn` says to replace it (the corpse is renamed to a throw-away
+name and killed first, because a killed entity can keep its name until the end of the frame). A declaration that changes `template`/`version` replaces the saved entity; a record whose declaration is gone is
+pruned (its entity killed). Verified live in four processes (save with a quick load and a new game inside, a fresh-process load, a load with a version bump + an undeclared NPC, a load without the NPC templates).
+
+**Limits / inferred.** Verified once by a throw-away probe: a savegame loaded in a process where the NPC templates exist but nothing declares the NPCs (mod removed) shows all four as ordinary nameless NPCs (one live entity each). *Inferred (not run):* adoption of an entity that already carries the name and the
+removal of a second entity with the name were only run against the unit-test mock. The record lives in the sidecar file `bin/spass/saves/<savegame>.lua`: a savegame copied without it makes the layer create the NPC
+again next to the unnamed saved one. `gCSector::SaveGameRelevant` and the `0x8` flag in the write condition (`eCEntity+0x28`) were not investigated further (the default flags of a spawned entity pass them).
+Only entities in the system layer were examined; native world entities are saved by their own mechanism (the "removed native entities" list, property sets `IsPersistable`).

@@ -1,6 +1,6 @@
 # Example mods
 
-Twelve small, self-contained mods under `mods/example_*`: each is the simplest realistic form of one thing a modder wants, written to be copied
+Twelve small, self-contained mods (their NPCs are declared with `risen.npc.persistent`, M7) under `mods/example_*`: each is the simplest realistic form of one thing a modder wants, written to be copied
 (`main.lua` with a header that says what you learn, `mod.toml`, and a `test_*.lua` that is loaded **only** in a test run). Every one of them has a
 `risen.test` scenario that was **run live in the game**; nothing in this table is claimed that was not. The scenarios are registered in
 `scripts\smoke-test.ps1` (`ex_*`), so the regression suite covers them.
@@ -14,12 +14,12 @@ Run one (about a minute; use your own test copy, never the real install, always 
 
 ## Index
 
-| # | Example | Shows | Key APIs | Smoke scenario / time | Verified (2026-10-15) |
+| # | Example | Shows | Key APIs | Smoke scenario / time | Verified (2026-10-15; M7 migration: 2026-10-16) |
 |---|---|---|---|---|---|
 | 1 | `example_template_patch` | edit existing item and NPC templates: gold value, weapon damage, a guild; first `tick` + every `session.start` | `risen.template.patch(name, sets, { instances })` | `ex_template_patch`, 45 s | template read-back, new spawn, inventory stack, all 30 live world apples, NPC spawn (8 checks) |
 | 2 | `example_balance` | declarative balancing of items (value, damage, requirements, modifiers), NPCs/monsters (hp, level, xp, skills, bravery, loot, relative `hp_mult`/`level_add`), groups by pattern/template group | `risen.balance.install` (`items`, `npcs`, `npc_groups`, `item_groups`), `risen.item.can_use` | `ex_balance`, 35 s | numbers on templates, spawns, loot, 98 live world wolves rewritten (11 checks) |
 | 3 | `example_material` | (A) other material variant of an existing mesh: `MaterialSwitch` on the health potion, a new black wolf; (B) a texture file that **shadows** a shipped one (red/blue swapped sword blades, written with `risen.assets.write`) | `risen.template.patch/create(material=)`, `risen.assets.read/write/info/resource` | `ex_material`, 40 s | switch values equal the shipped `It_Po_Mana_01` / `Wolf_Black`; the engine resolved and loaded (resource state 3) the loose file; shadow removed again (11 checks). **Not** how it looks: screenshots of the game window are black |
-| 4 | `example_custom_npc` | a new NPC template (`Spass_Hob`) and reward item (`Spass_Hob_Knife`), the NPC placed at the start, three dialogue options, a quest started by one option and finished by another that is only offered while it runs | `risen.balance.install{new_npcs,new_items}`, `risen.npc.spawn`, `risen.dialog.create`, `risen.script.define`, `risen.quest.define/succeed` | `ex_custom_npc`, 65 s | NPC uses the new template and label, quest runs, option offered only while running, quest succeeds, reward item of the new template (12 checks) |
+| 4 | `example_custom_npc` | a new NPC template (`Spass_Hob`) and reward item (`Spass_Hob_Knife`), the NPC placed at the start, three dialogue options, a quest started by one option and finished by another that is only offered while it runs | `risen.balance.install{new_npcs,new_items}`, `risen.npc.persistent`, `risen.dialog.create`, `risen.script.define`, `risen.quest.define/succeed` | `ex_custom_npc`, 65 s | NPC uses the new template and label, quest runs, option offered only while running, quest succeeds, reward item of the new template (12 checks) |
 | 5a | `example_fetch_turnin` | fetch quest: the NPC asks for 3 berries, a permanent hand-in option checks the inventory (too few: log line, nothing taken; enough: items taken, gold paid, quest succeeds) | `risen.item.count/take/give/money`, `condition = "Running"`, `permanent = true` | `ex_fetch_turnin`, 75 s | both hand-ins incl. the failed one (9 checks) |
 | 5b | `example_fetch_pickup` | fetch quest that completes **by itself** when the player carries 3 more berries than at the start (baseline in `risen.save`), progress log lines, berries scattered around the NPC, reward, items kept | `inventory.changed` event, `risen.save` | `ex_fetch_pickup`, 60 s | progress and completion through the event; the items arrive through `risen.item.give` (see Gaps: a script cannot pick up for the player; `risen.item.pick_up` exists for tests) (10 checks) |
 | 6 | `example_kill_quest` | kill 3 `Wolf` (counter in `risen.save`, log "Wolves: 2/3", duplicate death counted once, a clone of Wolf does not count), then a `Success`-conditioned option unlocks the boss quest: kill one named entity (`EX_DireWolf`, template `Spass_Dire_Wolf`) | `entity.died(entity, killer, cause)`, `Entity:template():name()`, `Entity:name()` | `ex_kill_quest`, 75 s | counting, negative cases, unlock, boss spawn and kill (12 checks); kills are driven with the game's `Kill` script (see Gaps) |
@@ -50,16 +50,23 @@ engine's: `risen.recipe.craft` for a script, `risen.interact.begin(player, anvil
 | `main.lua` (load time) | register handlers, `risen.script.define`, `risen.loc.set`, `risen.balance.install(...)` | no world and no templates exist yet; `install` schedules itself |
 | first `tick` | `risen.template.patch/create`, `risen.assets.write`, `risen.item.give` to templates (`npc.template_give`) | earliest moment templates resolve (`mods.loaded` is too early); textures must be on disk **before** the engine loads them |
 | `load.before` | `risen.quest.define`, `risen.dialog.create` | the engine restores quest state and "option used" flags only into objects that already exist; the `risen.save` data of the loaded savegame is already readable |
-| `session.start` (`"new"` **and** `"load"`) | the same define calls again; `risen.template.patch(..., { instances = true })`; spawn runtime entities (after ~60 frames: the player entity exists a moment later) | a new game wipes runtime quests; worlds keep their own copies of values; runtime entities are not saved |
+| `session.start` (`"new"` **and** `"load"`) | the same define calls again; `risen.template.patch(..., { instances = true })`; NPCs: nothing, `risen.npc.persistent` does it (it also runs its `define` callback on `load.before` and here) | a new game wipes runtime quests; worlds keep their own copies of values; spawned entities are saved by the engine but nameless after a load |
 | `quest.status_changed`, `npc.killed`, `info.finished`, ... | react | events fire for the game's own quests, NPCs and dialogues too: compare names |
 
 All `define`/`create` calls are idempotent, so one `define_content()` serves `load.before` and `session.start`.
 
 **What persists.** Quest status and log entries, "option used" flags, game variables (`risen.gamevar`), inventories (including stacks of templates created by the mod: create
 them on the first tick, before a load), values written into world entities (`instances = true`) are in the savegame. `risen.save.get/set` data is written next to every savegame
-(sidecar file, restored on load, empty in a new game): use it for counters, baselines, "reward already given", where a runtime NPC stands. **Not saved:** entities made with
-`risen.npc.spawn` / `risen.entity.spawn` (NPCs, bosses, scattered items), the Lua state, template edits and created templates (apply them again in every process). So: remember
-*that* something exists (and where) in `risen.save`, and recreate it on every `session.start` with a guard (`if not risen.entity.get(NAME) then ... end`).
+(sidecar file, restored on load, empty in a new game): use it for counters, baselines and "reward already given". **Entities made with `risen.npc.spawn` / `risen.entity.spawn` (NPCs, bosses,
+scattered items) are saved too** (position, inventory, state, entity ID; RE.md §32), **but without their unique name**: after a load `risen.entity.get(NAME)` is nil although the entity is standing there, so
+the old "recreate it on every `session.start` if `risen.entity.get(NAME)` is nil" guard makes a duplicate per load. Declare NPCs with `risen.npc.persistent` (below); for other spawns just do not spawn them again
+(`example_fetch_pickup`'s berries come back with the savegame), or keep `entity:id()` in `risen.save` and use `risen.entity.by_id`. **Not saved:** the Lua state, template edits and created templates (apply them again in every process),
+`risen.entity.spawn(.., true)` temporary entities. Dead NPCs: the corpse is saved; a persistent NPC keeps its dead state.
+
+**Persistent NPCs (M7).** `risen.npc.persistent{ name, template, offset = {dx, dy, dz}, label, define = define_content, ... }` replaces the old `ensure_npc` boilerplate in every example: one declaration in `main.lua`, no
+`load.before`/`session.start` plumbing, no position bookkeeping in `risen.save`, no duplicates after a load. `define` runs on `load.before` and every `session.start`. An NPC that exists only after something happened
+(a boss when its quest starts, a guard after the reward) is declared at that moment *and* again in a `session.start` handler when the savegame needs it (`example_kill_quest`, `example_quest_rewards`).
+`mods/persistnpc` is the executable reference (save, load, fresh process, changed declaration, lost templates; scenario `persistnpc`).
 
 **Triggers must be idempotent.** `quest.status_changed` may be seen again after a load. Check a flag in `risen.save` first, set it, then act (`example_quest_rewards`); count
 deaths by entity name in a set, because the engine can report one death twice (`example_kill_quest`, `tracker.lua`).
@@ -128,7 +135,7 @@ are not events; a mod that must not poll for *positions* ("an NPC came near") st
   and the checks stop at "the engine loaded the loose file": there is no way to look at the rendered result (screenshots of the D3D9 window are black). Material variants
   (`MaterialSwitch`) are only numbers; which numbers are valid for a mesh has to be found by scanning shipped templates (see Patterns).
 * **No position filter on events.** `entity.died` reports every death in the world, also those far away from the player (the killer is given: compare it with the player, `entity:distance_to(player)` filters by distance).
-* **Per-entity "create if missing" boilerplate** (`ensure_npc`) is repeated in every example; a `risen.npc.persistent(name, template, pos, opts)` helper that respawns on every
-  session start would remove it (positions are kept in `risen.save` by hand today).
+* **Per-entity "create if missing" boilerplate** (`ensure_npc`): resolved by M7, `risen.npc.persistent` (all examples were migrated; they also had a hidden bug: the NPC was spawned again after every load next to the
+  unnamed copy the savegame had kept).
 * **Combat-driven scenarios are slow and flaky; item pick-up scenarios are impossible** (see above), so the examples are verified with stand-ins. What the stand-ins do not prove is
   listed per example in the index (the "Verified" column) and in the header of each `test_*.lua`.

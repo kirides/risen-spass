@@ -8,8 +8,8 @@
 --   * The turn-in is a risen.script.define'd Lua function referenced from the option's lines ({ script = "..." }): it counts with
 --     risen.item.count, takes with risen.item.take, rewards with risen.item.give / risen.quest.succeed.
 --   * `permanent = true` on the hand-in option lets the player come back with more berries after a failed attempt.
---   * The quest, its log entries and the "option was used" flags are saved by the engine; the NPC is not (spawned again on every
---     session.start, at the position remembered in risen.save so she stays where she was in that savegame).
+--   * The quest, its log entries and the "option was used" flags are saved by the engine; the NPC is declared with risen.npc.persistent, so
+--     she is spawned once, stays where she was in that savegame and is found (and named) again after every load.
 --   * See example_fetch_pickup for the variant that completes without any dialogue.
 --
 -- Run the live check (about a minute; see docs/EXAMPLES.md):
@@ -17,8 +17,6 @@
 
 local NPC, QUEST = "EX_Hanna", "Q_EX_Berries"
 local ITEM, WANTED, REWARD_GOLD = "It_Plant_Berry", 3, 100
-
-risen.loc.set("FO_" .. NPC, "Hanna the Gatherer")
 
 -- ---- effects of the dialogue lines ------------------------------------------------------------------------------------------
 risen.script.define("EX_Hanna_Start", function()
@@ -67,33 +65,11 @@ local function define_content()
     })
 end
 
--- ---- the NPC ------------------------------------------------------------------------------------------------------------------
-local function ensure_npc()
-    if risen.entity.get(NPC) then return end
-    local pos = risen.save.get("hanna_pos")               -- the same spot after every load of this savegame
-    if not pos then
-        local player = risen.entity.player()
-        if not player then return end
-        local x, y, z = player:position()
-        if not x then return end
-        pos = { x + 150, y + 20, z + 150 }
-        risen.save.set("hanna_pos", pos)
-    end
-    risen.npc.spawn("Peasant_1_01", pos[1], pos[2], pos[3], { name = NPC, peaceful = true, level = 3, hp_max = 300 })
-end
-
-risen.on("load.before", define_content)
-risen.on("session.start", function()
-    define_content()
-    local frames, handle = 0, nil
-    handle = risen.on("tick", function()
-        frames = frames + 1
-        if frames == 60 then
-            ensure_npc()
-            if handle then risen.off(handle) end
-        end
-    end)
-end)
+-- ---- the NPC: declared once (`define` runs on load.before and every session.start) ----------------------------------------------
+risen.npc.persistent({
+    name = NPC, template = "Peasant_1_01", offset = { 150, 20, 150 }, label = "Hanna the Gatherer",
+    peaceful = true, level = 3, hp_max = 300, define = define_content,
+})
 
 -- the live check belongs to the test run only
 if risen.test.is_active() then

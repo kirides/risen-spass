@@ -556,6 +556,29 @@ void addTemplateMethods(sol::usertype<LuaEntity>& ut) {
         }
         return okResult(lua, out);
     };
+    // entity:id() -> "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" | nil: the entity's unique ID (a GUID the savegame stores with it, unlike its name).
+    ut["id"] = [](const LuaEntity& e) -> sol::optional<std::string> {
+        void* entity = ptr(e);
+        if (entity == nullptr) {
+            return sol::nullopt;
+        }
+        std::string out;
+        guarded([&] {
+            // eCEntity::GetID is virtual (vtable slot 0x148/8: the engine's own eCEntityDynamicContext::WriteSaveGame calls it this way)
+            using Fn = const unsigned char* (*)(void*);
+            void** vtable = *reinterpret_cast<void***>(entity);
+            const unsigned char* id = reinterpret_cast<Fn>(vtable[0x148 / 8])(entity);
+            if (id != nullptr) {
+                templates::TemplateId bytes{};
+                std::memcpy(bytes.data(), id, bytes.size());
+                out = templates::guidText(bytes);
+            }
+        });
+        if (out.empty()) {
+            return sol::nullopt;
+        }
+        return out;
+    };
     ut["focus_name"] = textMethod("gCInteraction_PS", &Symbols::interaction_focus_name);
     ut["description"] = textMethod("gCItem_PS", &Symbols::item_plain_description);
     ut["template"] = [](sol::this_state ts, const LuaEntity& e) -> Two {
@@ -956,6 +979,47 @@ void bindTemplates(sol::state_view lua, sol::table risen) {
             }
         }
         return {sol::make_object(lua, out), sol::make_object(lua, total)};
+    });
+
+    // risen.entity.by_id("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx") -> Entity | nil: looks an entity up by its unique ID (see Entity:id()) in the scene admin.
+    sol::table entityTable = risen["entity"];
+    entityTable.set_function("by_id", [&s](sol::this_state ts, const std::string& text) -> sol::object {
+        sol::state_view lua(ts);
+        templates::TemplateId bytes{};
+        {
+            // parse the text form of Entity:id() (guidText's inverse)
+            std::string hex;
+            for (char c : text) {
+                if (c != '-') {
+                    hex.push_back(c);
+                }
+            }
+            if (hex.size() != 32 || hex.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos) {
+                return sol::make_object(lua, sol::lua_nil);
+            }
+            unsigned char t[16];
+            for (int i = 0; i < 16; ++i) {
+                t[i] = static_cast<unsigned char>(std::stoi(hex.substr(static_cast<std::size_t>(i) * 2, 2), nullptr, 16));
+            }
+            // text order is byte 3 2 1 0 - 5 4 - 7 6 - 8 9 - 10..15
+            const int order[16] = {3, 2, 1, 0, 5, 4, 7, 6, 8, 9, 10, 11, 12, 13, 14, 15};
+            for (int i = 0; i < 16; ++i) {
+                bytes[static_cast<std::size_t>(order[i])] = t[i];
+            }
+        }
+        void* admin = sceneAdmin();
+        if (admin == nullptr || s.scene_get_entity_by_id == nullptr) {
+            return sol::make_object(lua, sol::lua_nil);
+        }
+        PropertyId id;
+        std::memcpy(id.guid, bytes.data(), bytes.size());
+        void* node = nullptr;
+        guarded([&] { node = s.scene_get_entity_by_id(admin, &id, 0); });
+        if (node == nullptr) {
+            return sol::make_object(lua, sol::lua_nil);
+        }
+        // the lookup returns the eCNode; an entity is the same object (eCEntity derives from it)
+        return makeEntityObject(lua, node);
     });
 
     installTemplatePatchHelper(lua, risen);

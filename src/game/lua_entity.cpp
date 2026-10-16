@@ -154,7 +154,18 @@ void bindEntity(sol::state_view lua, sol::table risen) {
         "is_item", [&s](const LuaEntity& self) { return tryCall<bool>("is_item", [&] { EntityHolder h{ptr(self)}; return s.ent_is_item(&h); }).value_or(false); },
         "is_character", [&s](const LuaEntity& self) { return tryCall<bool>("is_character", [&] { EntityHolder h{ptr(self)}; return s.ent_is_character(&h); }).value_or(false); },
         "kill", [&s](const LuaEntity& self) { return tryRun("kill", [&] { EntityHolder h{ptr(self)}; s.ent_kill(&h); }); },
-        "set_frozen", [&s](const LuaEntity& self, bool on) { return tryRun("set_frozen", [&] { EntityHolder h{ptr(self)}; s.ent_set_frozen(&h, on); }); },
+        // entity:save_relevant() -> bool | nil: whether the engine writes this entity into savegames (eCEntity flag 0x80000, docs/RE.md section 32)
+        "save_relevant", [&s](const LuaEntity& self) -> sol::optional<bool> {
+            if (s.eent_is_save_relevant == nullptr) {
+                return sol::nullopt;
+            }
+            return tryCall<bool>("save_relevant", [&] { return s.eent_is_save_relevant(ptr(self)); });
+        },
+        // entity:set_save_relevant(on) -> bool: makes the engine save (true) or skip (false) this entity
+        "set_save_relevant", [&s](const LuaEntity& self, bool on) {
+            return s.eent_set_save_relevant != nullptr && tryRun("set_save_relevant", [&] { s.eent_set_save_relevant(ptr(self), on); });
+        },
+        "set_frozen",[&s](const LuaEntity& self, bool on) { return tryRun("set_frozen", [&] { EntityHolder h{ptr(self)}; s.ent_set_frozen(&h, on); }); },
         "enable_rendering", [&s](const LuaEntity& self, bool on) { return tryRun("enable_rendering", [&] { EntityHolder h{ptr(self)}; s.ent_enable_rendering(&h, on); }); },
         // entity:teleport("EntityName")  or  entity:teleport(otherEntity)
         "teleport", [&s](const LuaEntity& self, sol::object target) -> bool {

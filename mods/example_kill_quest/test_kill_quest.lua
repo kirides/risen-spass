@@ -6,7 +6,7 @@ local T = risen.test
 
 return function(NPC, WOLVES, BOSS_QUEST, BOSS, WANTED)
     T.plan { "NPC exists", "a clone of Wolf does not count as Wolf", "wolf quest started", "wolf kills counted", "wolf quest succeeded", "wolf reward",
-             "boss option unlocked by the first quest", "boss is a Spass_Dire_Wolf", "boss quest running", "boss quest succeeded", "boss reward" }
+             "boss option unlocked by the first quest", "boss is a Spass_Dire_Wolf", "boss survives a load: same entity, one of it", "boss quest running after the load", "boss quest running", "boss quest succeeded", "boss reward" }
 
     local function status(q) return risen.quest.get(q) and risen.quest.get(q):get_property("Status") or "missing" end
     local function converse(player, npc, info_name)
@@ -67,6 +67,25 @@ return function(NPC, WOLVES, BOSS_QUEST, BOSS, WANTED)
         local boss = assert(risen.entity.get(BOSS))
         local tpl = boss:template()
         T.eq("boss is a Spass_Dire_Wolf", { tpl and tpl:name(), boss:hp_max() }, { "Spass_Dire_Wolf", 600 })
+
+        -- a quick save and load in the middle of the boss quest: the boss is the same entity (restored by the engine, named again by the layer)
+        local boss_id = boss:id()
+        T.wait_until(function() return risen.world.is_save_allowed() end, 20, "saving allowed")
+        local saved = false
+        risen.on("save.after", function(_, ok) saved = ok end)
+        risen.world.quick_save()
+        T.wait_until(function() return saved end, 60, "savegame written")
+        T.sleep(100)
+        risen.world.quick_load()
+        T.wait_event("session.start", 120, function(m) return m == "load" end)
+        T.wait_until(function() return risen.entity.get(BOSS) ~= nil and risen.entity.get(NPC) ~= nil end, 40, "the boss and Garrick are back")
+        T.sleep(100)
+        boss = assert(risen.entity.get(BOSS))
+        local alive = 0
+        for _, e in ipairs(risen.template.get("Spass_Dire_Wolf"):instances(50) or {}) do if not e:is_dead() then alive = alive + 1 end end
+        T.eq("boss survives a load: same entity, one of it", { boss:id() == boss_id, alive }, { true, 1 })
+        T.expect("boss quest running after the load", risen.quest.is_running(BOSS_QUEST), status(BOSS_QUEST))
+        player = assert(risen.entity.player())
         kill(boss)
         T.wait_until(function() return status(BOSS_QUEST):find("Success") ~= nil end, 150, "boss quest succeeded")
         T.expect("boss quest succeeded", status(BOSS_QUEST):find("Success") ~= nil, status(BOSS_QUEST))

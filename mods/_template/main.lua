@@ -12,18 +12,13 @@ local function define_content()
     -- risen.quest.define({ name = "Q_MyMod_Intro", title = "Hello World", type = "Report" })
 end
 
--- Entities spawned from Lua are not saved: spawn them again when a game starts or a savegame was loaded, if they are missing.
-local function ensure_entities()
-    -- if not risen.entity.get("MyMod_Bob") then risen.npc.spawn("Peasant_1_01", x, y, z, { name = "MyMod_Bob" }) end
-end
+-- NPCs: declare them once. The engine saves spawned entities (but not their unique names); risen.npc.persistent spawns the NPC in a new game, finds and names it
+-- again after every load and calls `define` on load.before and every session.start. Do NOT "spawn it again if risen.entity.get(name) is nil": that duplicates it.
+-- risen.npc.persistent({ name = "MyMod_Bob", template = "Peasant_1_01", offset = { 150, 20, 150 }, label = "Bob", peaceful = true, define = define_content })
 
 risen.on("load.before", define_content)
 risen.on("session.start", function(mode)
     define_content()
-    ensure_entities()
-end)
-risen.on("load.after", function(name, ok)
-    if ok then ensure_entities() end
 end)
 
 -- ---- your own data in the savegame -----------------------------------------------------------------------------------------

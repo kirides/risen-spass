@@ -5,7 +5,7 @@ decorated export name (`GetProcAddress`), so nothing depends on addresses; the R
 see `risen.engine.build()`). **Required** symbols must resolve or the layer stays off; for an optional one only its own feature is
 disabled (`risen.engine.missing()` lists what failed). To add one: see the developer guide in `docs/DEVELOPMENT.md`.
 
-358 symbols, 153 required.
+360 symbols, 153 required.
 
 ## Engine.dll
 
@@ -21,7 +21,9 @@ disabled (`risen.engine.missing()` lists what failed). To add one: see the devel
 | `archive_get_file` | `bool eCArchiveManager::GetFile(class bCString const &,class eCArchiveFile &)` | 0x724290 | no |
 | `archive_instance` | `class eCArchiveManager & eCArchiveManager::GetInstance(void)` | 0x724600 | no |
 | `bodypart_ps_dependencies` | `void eCBodyPart_PS::GetDependencies(class bTObjArray<class bCString> &,class bTObjArray<class bCString> &,class bTObjArray<class eCTemplateEntityProxy> &)` | 0x4daf60 | no |
+| `eent_is_save_relevant` | `bool eCEntity::IsSaveGameRelevant(void)const ` | 0x6a5830 | no |
 | `eent_kill` | `void eCEntity::Kill(void)` | 0x6a5dd0 | no |
+| `eent_set_save_relevant` | `void eCEntity::SetSaveGameRelevant(bool)` | 0x6a35c0 | no |
 | `element_base_name` | `class bCString eCProcessibleElement::GetFileBaseName(void)const ` | 0x4ee900 | no |
 | `ent_get_property_set` | `class eCEntityPropertySet * eCEntity::GetPropertySet(class bCString const &)` | 0x21e4a0 | no |
 | `ent_ps_at` | `class eCEntityPropertySet * eCEntity::GetPropertySetAt(int)` | 0x21e430 | no |

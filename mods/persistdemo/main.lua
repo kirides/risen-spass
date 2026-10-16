@@ -45,7 +45,8 @@ local function ensure_npc()
     end
 end
 
--- Quests and infos must exist before the engine reads the savegame; the NPC can only be created afterwards.
+-- Quests and infos must exist before the engine reads the savegame. (This legacy probe looks the NPC up by NAME: after a load the engine has
+-- brought the entity back, but without its name, so the lookup finds nothing -- real mods declare NPCs with risen.npc.persistent instead.)
 risen.on("load.before", function() ensure_quest_and_dialog() end)
 
 local os_new_game_after_load = true

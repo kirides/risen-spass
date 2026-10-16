@@ -3,8 +3,9 @@
 -- What you learn
 --   * risen.balance.install{ new_npcs = ..., new_items = ... } creates NEW templates (clones of existing ones with other numbers, texts,
 --     meshes; the ID derives from the name, so savegames resolve them again). The NPC template carries the label, level and hit points.
---   * risen.npc.spawn(template, x, y, z, { name = unique entity name, peaceful = true }) places the NPC. Entities made from Lua are NOT
---     saved in a savegame: spawn it again whenever a game starts or a savegame was loaded (session.start fires for both).
+--   * risen.npc.persistent{ name, template, offset = {dx, dy, dz} from the player, ... } declares the NPC once. The layer spawns him in a new
+--     game and keeps him across save/load (the engine saves spawned entities but not their unique name: the layer finds him again by his
+--     entity ID and names him again), no "spawn it again on every session.start" code, no duplicates.
 --   * risen.dialog.create adds dialogue options to an NPC (owner = the entity's unique name). A line is either spoken text or an engine
 --     command ({ command = "End" }) or a script (risen.script.define'd Lua function that starts/finishes the quest and hands out the reward).
 --   * Quests and dialogue options must exist BEFORE the engine reads a savegame (load.before) and again after a new game (session.start);
@@ -27,7 +28,6 @@ risen.balance.install({
         Spass_Hob = { base = "Peasant_1_01", name = "Hob the Tinkerer", level = 5, hp_max = 300, guild = "Cit" },
     },
 })
-risen.loc.set("FO_" .. NPC, "Hob the Tinkerer")   -- the focus label of the entity (FO_<unique entity name>)
 
 -- ---- effects of the dialogue: plain scripts, referenced by name from the lines -----------------------------------------------
 risen.script.define("EX_Hob_StartQuest", function()
@@ -79,28 +79,13 @@ local function define_content()
     })
 end
 
--- ---- the NPC itself: not saved with the game, so spawn it whenever it is missing ----------------------------------------------
-local function ensure_npc()
-    if risen.entity.get(NPC) then return end
-    local player = risen.entity.player()
-    if not player then return end
-    local x, y, z = player:position()
-    if not x then return end
-    risen.npc.spawn("Spass_Hob", x + 150, y + 20, z + 150, { name = NPC, peaceful = true })
-end
-
-risen.on("load.before", define_content)       -- before the engine reads quests and infos of a savegame
-risen.on("session.start", function()          -- a new game, or a savegame that was just loaded
-    define_content()
-    local frames, handle = 0, nil
-    handle = risen.on("tick", function()      -- the player entity exists a moment after the session started
-        frames = frames + 1
-        if frames == 60 then
-            ensure_npc()
-            if handle then risen.off(handle) end
-        end
-    end)
-end)
+-- ---- the NPC itself: declared once; the layer spawns and restores him -----------------------------------------------------------
+-- `label` is the name shown when the player looks at him (FO_<name>). `define` runs on load.before and on every session.start: the quest and
+-- the dialogue options must exist before the engine restores their saved state, and a new game removes runtime quests.
+risen.npc.persistent({
+    name = NPC, template = "Spass_Hob", offset = { 150, 20, 150 }, peaceful = true,
+    label = "Hob the Tinkerer", define = define_content,
+})
 
 -- the live check belongs to the test run only
 if risen.test.is_active() then
