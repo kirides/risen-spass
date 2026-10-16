@@ -17,6 +17,7 @@ Contents: [1 Install](#1-install) · [2 What a mod is](#2-what-a-mod-is) · [3 T
 .\uninstall.ps1 -GameDir 'C:\...\Risen'                       # puts the original sentry.dll back
 ```
 
+* The installer also puts the **Mod Manager** (`mods\modmanager`) there: a *Mods* tab in the game's ESC menu to switch mods on and off, reload them and change the load order ([4.22](#422-managing-mods-in-the-game-the-mods-page)).
 * Mods go to `<Risen>\bin\spass\mods\<mod>\`; the log is `<Risen>\bin\spass\spass.log` (read it first when something does not work: the engine itself is silent).
 * `<Risen>\bin\spass\config.toml` with `enabled = false` switches the layer off without uninstalling.
 * Editor support: open `bin\spass\mods` in VS Code with the *Lua* extension; the installer puts `types\risen.d.lua` and a `.luarc.json` there (completion, hover documentation, type checks; see [../types/README.md](../types/README.md)).
@@ -334,6 +335,17 @@ The engine copes with a missing mod: a savegame made with your old version loads
 5. **Removing the whole mod:** nothing breaks; to clean up first, ship a last version that only has the `retire` list, or use a mod manager's `risen.mods.orphans(id)` (dry run) and `remove_orphans`, `forget_data` afterwards. Items of a removed mod stay dormant in the inventory and come back when the mod does.
 6. **Test it** like `mods/upd_check`: play the old version, keep the savegame, load it with the new version and without the mod.
 
+### 4.22 Managing mods in the game (the Mods page)
+Press **ESC**: next to *Continue / Game / Settings / Credits / Quit* the menu has a **Mods** tab (at the title screen too). The page lists every mod folder with its version and state: normal = loaded, **red** = failed or skipped (the reason is in the details: an error in `main.lua`, a bad `mod.toml`, a required mod that is missing or switched off), grey = switched off, amber = it made something only a restart can change.
+Click a mod to see its details (id, author, `requires` / `load_after`, what needs it, what it left in the savegame of this game, its description) and use the buttons:
+* **Switch off / Switch on** is kept in `<Risen>\bin\spass\mods.toml` for the next starts and takes effect at once (the mod is unloaded / loaded). A mod that others `require` asks first ("switch all off"), a mod whose requirement is off asks to switch that on too. A mod that left NPCs or rules in *this* game (`risen.npc.persistent`, `risen.spawn.when`, saved AI states) asks what to do with them:
+  **Switch off and remove its NPCs** (the mod is switched off, then the NPCs it left are removed: `risen.mods.orphans` / `remove_orphans`) or **Switch off only**. Nothing is removed without that answer.
+* **Reload** runs the mod again from its files (good for a mod you edit; "Reloaded ..." or the error in red; a mod that is `failed` can be tried again). What a reload cannot change (quests, dialogue infos, created templates ...) is listed as *Restart required*.
+* **Move up / Move down** change the load order, saved in `mods.toml` and applied at the **next start** (the page says so). The dependencies always win: a mod cannot be moved before a mod it `requires` or `load_after`s (the button reads "(blocked)" and a click shows why: *'ext' cannot be loaded before 'base' (requires)*). **Default order** goes back to the automatic order (alphabetical by id, dependencies first).
+The page works without a running game too (at the title screen the menu is behind the console-style "Press START" splash of this copy of the game: in the tests that page is closed first). **ESC** on the page goes back to the main menu; *Continue* returns to the game.
+For a modder: a good `name`, `version`, `author` and `description` in `mod.toml` are what the page shows; declare `requires` for a mod that cannot work without another (it is then switched off and on with it) and `load_after` for a soft ordering; `risen.mods.note_restart("text")` adds a line to *Restart required*. The page is the mod `mods/modmanager` (installed by `install.ps1`; switch it off like any mod, but then the tab is
+gone and `mods.toml` has to be edited by hand to bring it back); its logic (`model.lua`) is plain Lua you can read, the widgets are cloned from the game's own, see [LUA_API.md](LUA_API.md) "GUI windows" to build a page of your own. Limits: the menu is mouse driven (keyboard and gamepad navigation of the page were not driven), the tab exists on the four PC menu pages (not on the gamepad variants), the texts are English only.
+
 ## 5. Configuration
 
 * **Your mod's options:** `config.toml` next to `main.lua`; `local cfg = risen.config{ enabled = true, key = "SecondaryAction", repeat_ms = 80 }` returns the merged table (types are taken from your defaults, problems are logged as `config: [my_mod] ...` and the default is used).
@@ -381,7 +393,7 @@ Collected from the milestones; each is verified or marked as inferred in [RE.md]
 **General**
 * Risen Enhanced x64 only; the English text version was tested. Entity *templates* cannot be loose files (the engine terminates on a loose `.tple`); new templates are clones made at run time. Human appearance (heads, body parts) is not part of the NPC template.
 * A game process starts in about 30 s; a new game 5 s later. A hung engine call is not recoverable (the stall watchdog of `test-run.ps1` kills it): the layer guards the known ones (unknown script names, endless names, NaN positions).
-* Screenshots of the game window are black (D3D9): nothing about *appearance* is verified, only properties, loaded resources and engine state.
+* Screenshots made *from outside* are black (D3D9), but `risen.debug.screenshot("name")` captures the back buffer from inside (`bin\spass\screenshots\name.png`): the earlier milestones verified only properties, loaded resources and engine state; the menu page of M16 was looked at.
 * The engine's log is silent; a failing engine call shows up as `nil`/`false` and a warning in `spass.log`.
 
 **Saving and loading**

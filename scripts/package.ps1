@@ -40,11 +40,11 @@ foreach ($d in 'MODDING_GUIDE.md', 'LUA_API.md', 'EXAMPLES.md', 'QUICKLOOT.md', 
 }
 Copy-Item (Join-Path $repo 'README.md') $stage
 
-# Example mods that make sense for end users; the *_driver/probe/dump mods are development tools.
+# The Mod Manager (the Mods tab of the game's menu) is installed by install.ps1 itself; the rest are example mods that make sense for end users; the *_driver/probe/dump mods are development tools.
 $mods = Join-Path $stage 'mods'
 New-Item -ItemType Directory -Force $mods | Out-Null
 Copy-Item (Join-Path $repo 'mods\.luarc.json') $mods
-foreach ($m in 'hello', 'fetchquest', 'stringsdemo', 'eventlog', 'quickloot', '_template') {
+foreach ($m in 'hello', 'fetchquest', 'stringsdemo', 'eventlog', 'quickloot', 'modmanager', '_template') {
     Copy-Item (Join-Path $repo "mods\$m") $mods -Recurse
 }
 

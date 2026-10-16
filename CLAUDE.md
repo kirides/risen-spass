@@ -66,7 +66,7 @@ Parallel runs use separate test copies `B:\DevDrive\risen-test`, `risen-test2`, 
 the scripts only ever kill the `Risen.exe` of their own copy. Check free RAM before parallel runs (`Get-CimInstance Win32_OperatingSystem`); a leaking Steam `steamwebhelper.exe` (tens of GB) once starved the machine and got a run killed: kill any `steamwebhelper.exe` above 5 GiB (user instruction; `B:\DevDrive\risen-ghidra\kill-steamwebhelper.ps1` is a watchdog loop for it).
 The test copy has its own empty `data\extern\videos\logo.ini` (no intro videos); `test-run.ps1 -ExtraArgs` passes switches to `Risen.exe`; `scripts\measure-startup.ps1` measures start-up variants (nothing helped, DEVELOPMENT.md "Startup time").
 `Risen.exe` calls `SteamAPI_RestartAppIfNecessary`; `run-windowed.ps1` sets `SteamAppId` to prevent a relaunch of the real
-install. Screenshots of the D3D9 window are black: verify through engine state and log lines.
+install. Screenshots made by the OS are black (D3D9), but **`risen.debug.screenshot(name)` captures the back buffer from inside** (`<spass>\screenshots\name.png`, a PNG: open it with the Read tool): look at what you draw, and still verify behaviour through engine state and log lines.
 
 ## Architecture (src/)
 
@@ -78,6 +78,7 @@ install. Screenshots of the D3D9 window are black: verify through engine state a
 | `game/hooks.cpp`, `events.cpp` | lifecycle hooks -> Lua events (`session.*`, `save.*`, `load.*`, `quest.status_changed`, ...) |
 | `game/inventory_events.cpp`, `entity_events.cpp`, `event_bus.cpp` | gameplay events (`inventory.*`, `item.*`, `entity.died/spawned/...`, `world.ready`): scoped hooks on the engine operations, queued and dispatched at the end of the frame (RE.md §27, scenario `events`) |
 | `game/lua_*.cpp`, `bindings.cpp`, `loc_overlay.cpp`, `script_bridge.cpp` | the Lua API (`risen.*`) |
+| `game/lua_gui.cpp`, `game/screenshot.cpp`, `hooks.cpp` (`ui.frame`) | `risen.gui` (the engine's GUI pages and windows, window messages, leaf pages), `risen.debug.screenshot`, the per-frame hook that also runs while a menu pauses the world (RE.md §42); the Mods tab / page is the Lua mod `mods/modmanager` |
 | `common/trace.*`, `common/test_run.*`, `game/lua_test.cpp` | opt-in trace channels (`SPASS_TRACE`), test-run bookkeeping + result JSON, `risen.test` |
 | `lua/runtime.*`, `lua/mods.*` | LuaJIT state, sandboxed per-mod environments (an instance per mod: torn down and run again by `risen.mods.reload`), event dispatch, mod discovery/load plan (`mods.toml`: enabled flags, custom order) |
 | `game/lua_mods.cpp`, `game/migrate_lua.h` | `risen.mods` (list/reload/enable/order/orphans/retire), `risen.migrate`, `risen.retire`; registries tear down per owner (`Runtime::addTeardown`, `currentOwner`) |
@@ -116,6 +117,7 @@ Natives may use typed parameters: argument types are checked (`SOL_EXCEPTIONS_SA
 - Conditional spawning (M8): `risen.spawn.when{...}` / `risen.cond.*` sit on top of persistent NPCs (an `enabled` gate keeps the NPC away while the rule waits) and the events; the rule state lives in `risen.save` (`spawn_rules`) next to the persistent record.
   The dialogue command `SetGameEvent` calls `gCInfoSystem::SetGameVariable(name, 0)` directly (a "game event" is a variable with the value **0**, it bypasses the Script.dll statics): the `gamevar.changed` event hooks the Game.dll members.
 - Dialogue options can carry more than a quest state (M9, RE.md §34): `risen.dialog.create{ when = <risen.cond condition> }` becomes native `gCInfoCondition*` objects (item amount, game variable, skill, NPC dead/alive, quest state) plus **one** `Script` condition that calls a Lua function for the rest (any / negate / guild / var with a value / predicates); the engine evaluates the sequence in order only when it builds the option list or on `Info:available()`.
+- The game's menu (ESC) is script-driven GUI pages built from `compiled_windows.bin` (RE.md §42): a **menu page pauses the world, so there is no `tick`** (use `ui.frame`); a button's `OnClick` script must have a module record (the layer gives `risen.script.define` scripts one); the engine writes the click event's visible/disabled flags back after the script (redraw in the next frame); a clone goes to the back of its siblings. `mods/modmanager` is the Mods tab + page (ESC), verified by the scenarios `gui` and `modmanager`.
 - `risen.vfs` lists/reads the packed archives through the engine's own VFS; template names come from
   `data/common/templates/**/*.tple`.
 - Loose resource files work (meshes, materials, images, actors; RE.md §26): resources are found by the bare compiled file name (`X._xmsh`) in a name cache that every mounted directory feeds; `risen.assets` / `mod.toml` `assets` mount them, `risen.template.create` checks `mesh`/`icon` names. Entity templates themselves cannot be loose files.

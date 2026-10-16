@@ -501,6 +501,7 @@ TEST(balance_install_reports_each_application_to_on_applied) {
 #include "geometry_tests.inc"
 #include "combat_tests.inc"
 #include "mods_tests.inc"
+#include "modmanager_tests.inc"
 
 }  // namespace
 

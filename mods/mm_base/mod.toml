@@ -1,0 +1,6 @@
+id          = "mm_base"
+name        = "Mod manager fixture: base"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "A plain mod; mm_ext requires it. Fixture of the scenario `modmanager`."
+main        = "main.lua"

@@ -1,0 +1,7 @@
+id          = "mm_ext"
+name        = "Mod manager fixture: extension"
+version     = "1.2.0"
+author      = "risen-spass"
+description = "Requires mm_base (so it cannot be moved before it and is switched off with it). Fixture of the scenario `modmanager`."
+requires    = ["mm_base"]
+main        = "main.lua"

@@ -64,6 +64,8 @@ checks); see [`types/README.md`](../types/README.md).
 | `gamevar.changed` | `name, value, previous` | a game variable was set, changed or removed (the dialogue commands `SetGameEvent` / `ClearGameEvent`, the game's scripts, `risen.gamevar.set/remove`): `value` is `nil` for a removed one, `previous` `nil` for a new one; `SetGameEvent` creates the variable with the value 0; nothing while a savegame loads |
 | `ai.finished` | `entity, state, reason, loops, run` | a Lua AI state ended (`reason` `"done"`, `"stopped"`, `"error"` or `"replaced"`; `run` is the run's id, see `risen.ai.generation`); not for an NPC that was removed or when the world is torn down; see "AI states and perception" |
 | `input.action` | `ev` = `{ key, action, phase, value, duration }` | every action event the engine delivers (key press, hold each frame, release, analog look/move): **a handler that returns a value other than `nil`/`false` consumes it**, the engine never sees it (`phase` `"pressed"`, `"held"`, `"released"`, `"analog"`); see "Input" below |
+| `ui.frame` | - | once per rendered frame of the application: also while the world is paused (a menu page is open), at the title screen and while loading, when `tick` does not fire; see "GUI windows" |
+| `ui.page` | `ev` = `{ page, kind = "opened" / "closed" / "back" }` | a page given a controller by `risen.gui.leaf_page` was shown, hidden, or got ESC / back |
 
 ```lua
 local h = risen.on("tick", function() ... end, 10)   -- optional priority, higher runs first
@@ -485,6 +487,29 @@ each option's type; a wrong type, an unknown key or a broken file is ignored and
 (`script Name(self=.., other=.., arg=..)` and `-> result`), every AI function a character starts (`ai-function PreInteract_Player_Chest (unit of PC_Hero)`) and AI state change (`ai-state ZS_Interact_PreInteract`)
 whose name contains one of the comma separated substrings (`^` = starts with); nothing without the list. `hud` logs every HUD line the engine prints. With these and `-Trace events` the animated
 engine path and a shortcut can be compared line by line.
+
+### GUI windows — `risen.gui`, `ui.frame`, `ui.page`, `risen.debug.screenshot` (M16, see `mods/modmanager`, `mods/gui_test`, [RE.md §42](RE.md))
+The engine's own GUI as a tree of windows: the **pages** (`risen.gui.pages()`: `Game`, `Inventory`, `Menu_Main` = 13 ... `Loading` = 29) and the widgets on them (buttons, labels, panels, spin buttons). Everything the game's menu is made of can be read, cloned and changed:
+```lua
+local main = risen.gui.page("Menu_Main")                       -- a page by number (13) or name; GuiWindow handles are valid as long as the engine keeps the window
+for _, w in ipairs(main:children()) do                          -- the five tabs
+    local d = w:describe()                                      -- { class = "eCScriptRadioButton", name, id, text = "Credits", x, y, w, h, visible, disabled }
+    print(d.text, w:get("OnClick"))                             -- "Credits  OnClick_Menu_Credits": find stock widgets by what they do, not by their translated text
+end
+local tab = main:find("some_name") or credits:clone(main)       -- a copy with every property (fonts, images, the OnClick script); NOTE: a clone lies behind its siblings
+tab:set_text("Mods") ; tab:set_position(843, 653) ; tab:set("OnClick", "My_Script")   -- properties by name (w:properties() lists them: Text, Position, Size, FontColorNormal "r; g; b; a", TextAlign, ImgPushFaceNormal ...)
+risen.script.define("My_Script", function() risen.gui.open(25) end)                       -- a click calls the script (scripts made by risen.script.define work as button handlers)
+```
+* **Pages:** `risen.gui.open(id)` / `close(id)` go through the game's page system (the page controllers may deny a request, `nil, "the request was denied"`), `show(id, visible)` only flips a page window. While a menu page is open the **world is paused: no `tick` event**; `ui.frame` fires once per rendered frame (also at the title screen and while loading; keep the handler cheap), and the layer runs the work that waits for a tick (queued mod reloads, the waits of
+  `risen.test`) in those frames too, so a menu can be driven by a mod. The title screen shows `Menu_Start` (26) "Press START" (the test start leaves it open, which blocks ESC: `risen.gui.close(26)`); `Loading` (29) ignores ESC.
+* **Your own page:** the retail game never opens `Menu_Cheats` (25). `risen.gui.leaf_page(25)` gives it the controller of the game's menu leaf pages (ESC / back opens the main menu, it hides when another page opens, it shows the menu background) and raises `ui.page({ page, kind = "opened" | "closed" | "back" })`; `risen.gui.hide_page_on(13, 25)` makes the main menu hide when it opens (the game's controller keeps the main menu visible for pages it does not
+  know). Fill the page with clones of stock widgets (clone the background last).
+* **Click handlers are not allowed to change the button that was clicked:** when the script returns, the engine puts the click event's visible / disabled flags back on that window. Mark the page dirty and redraw in the next `ui.frame`.
+* **Window messages** (a test aid, and a way to drive the stock menu): `risen.gui.key(0x1B)` is the Escape key as the window procedure delivers it (opens and closes the menu), `risen.gui.click(x, y)` / `w:click()` a left click at client pixels (`w:center()` converts the GUI's virtual 1365 x 768 coordinates), `risen.gui.mouse("move" | "down" | "up", x, y)`, `risen.gui.client_size()`.
+  The window is never resized at run time (that misaligns the GUI and the mouse).
+* **Handles are checked:** a `GuiWindow` is used only after it was found again in the live page trees (or among the clones); one the engine deleted answers `nil` / `false` and nothing is touched. Setters return `true` or `nil, reason` (positions and sizes are range checked).
+* **Screenshots:** `risen.debug.screenshot("name" [, wait_frames])` writes `<Risen>\bin\spass\screenshots\name.png` (the D3D9 back buffer; the OS cannot capture it), `risen.debug.screenshot_status("name")` is `"pending"`, `"done"` or `"failed: ..."`. The hook is installed on the first request only.
+**Limits:** the special list widgets (savegames, achievements, key bindings) are not a generic API; windows are never deleted (a clone stays); keyboard / gamepad navigation of the menu was not driven (the PC menu is mouse driven; controller mode uses the `_C` page variants); texts you put on a page are not localized.
 
 ### New meshes, textures and icons — `risen.assets` (see `mods/newassets`, [RE.md §26](RE.md))
 A mod can bring its own **loose resource files** and use them for new items and creatures. The engine finds a resource by the bare, case-insensitive name of the *compiled* file in a cache of everything that is mounted
@@ -1119,6 +1144,15 @@ Manager side (for [M16](NEXT_STEPS.md) / tools): `risen.mods.retire(id [, { dry_
 running mod does not declare, or the mod is not installed, and his entity still exists) and `stray` (an NPC of a template this process created for the mod that no record owns: the savegame had no sidecar); `risen.mods.remove_orphans(id, list)` removes the entities of a list `orphans` returned (and the records of undeclared ones), `risen.mods.forget_data(id)` drops a removed mod's record,
 `risen.mods.record(id)` reads it. Shipped-template NPCs are only found through a record (a census of `Peasant_1_02` would hit thousands of unrelated NPCs).
 
+### The mod manager page (M16, the built-in mod `mods/modmanager`, [MODDING_GUIDE.md](MODDING_GUIDE.md) 4.22, [RE.md §42](RE.md))
+A **Mods** tab in the game's menu (ESC) opens a page with the list of the mods and what the manager API above can do, per mod: state (loaded, failed / skipped in red with the reason, off in grey, `restart_required` in amber), version, author, `requires` / `load_after` / `needed_by`, the data it left in this game, **Switch off / Switch on** (asks before it switches the mods that need it off too, and before it leaves NPCs of a switched-off mod in the
+savegame: "Switch off and remove its NPCs" = `disable`, then `orphans` + `remove_orphans`), **Reload**, **Move up / Move down** (the load order is the custom order of `mods.toml`; a move that would put a mod before something it `requires` / `load_after`s is refused with the host's reason, the button reads "(blocked)"), **Default order**. Everything it does is an API call, so a mod can do the same. The page is `mods/modmanager` (`model.lua` = the logic with no GUI,
+unit-tested; `ui.lua` = the widgets; `main.lua`), shipped with the layer and switchable off like any mod.
+```lua
+local st = {} ; risen.emit("modmanager.state", st)      -- st.snapshot = what the page shows { rows, detail, buttons, prompt, message, ... }, st.model, st.ui (for tests and other mods)
+st.model:select("my_mod") ; st.model:press("reload")       -- "toggle" | "reload" | "up" | "down" | "reset"; st.model:answer("yes" | "alt" | "no") for a question that was asked
+```
+
 ### One-process test suites (`risen.test.reset / suite_begin / suite_finish`, `mods/testsuite`)
 `scripts/test-run.ps1 -Disable a,b` writes those mods as switched off into `mods.toml`; the driver mod `mods/testsuite` (parameter `suite=name:modA+modB,name2:modC`) waits for a running game, then per scenario: `risen.test.reset(name)`, `risen.mods.load` of the scenario's mods (they are told the
 `session.start` / `world.ready` they missed), waits for `risen.test.finish`, unloads them, starts a **new game** (so each scenario meets an untouched world) and goes on; `suite_finish` writes one result with the checks named `<scenario>: <check>`.
@@ -1142,6 +1176,7 @@ risen.vfs.size(path)                             -- unreliable for packed files 
 `mods/vfsprobe` crawls the tree and logs it. Paths are mount-relative (`ini`, `scripts`, `data/...`) or start with `#G3:/`.
 ```lua
 risen.debug.trace_files("SaveGames")  -- log every file the engine opens whose path contains that text; "" stops
+risen.debug.screenshot("menu", 30)    -- a PNG of the game window in <Risen>\bin\spass\screenshots\menu.png after 30 rendered frames (the OS cannot capture the D3D9 window); risen.debug.screenshot_status("menu") -> "pending" | "done" | "failed: ..."
 ```
 
 ## risen.engine — what the layer found in the running game

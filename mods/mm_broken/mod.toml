@@ -1,0 +1,6 @@
+id          = "mm_broken"
+name        = "Mod manager fixture: broken"
+version     = "0.9.0"
+author      = "risen-spass"
+description = "main.lua raises an error: the mod is `failed` (shown in red with the reason). Fixture of the scenario `modmanager`."
+main        = "main.lua"

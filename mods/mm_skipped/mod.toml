@@ -1,0 +1,7 @@
+id          = "mm_skipped"
+name        = "Mod manager fixture: missing dependency"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Requires a mod that is not installed: `skipped` with the reason. Fixture of the scenario `modmanager`."
+requires    = ["mm_ghost"]
+main        = "main.lua"

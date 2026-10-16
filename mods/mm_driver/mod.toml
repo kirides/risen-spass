@@ -1,0 +1,6 @@
+id          = "mm_driver"
+name        = "Mod manager scenario driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Drives the in-game mod manager through the engine's input path (scenario `modmanager`). Only meaningful in a test run."
+main        = "main.lua"

@@ -60,7 +60,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'modmanager', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -264,6 +264,19 @@ $scenarios = [ordered]@{
                                @{ Name = 'save_v1'; Param = @('phase=save_v1'); Start = 'new'; Keep = $false; Limit = 200; Unsafe = $true }
                                @{ Name = 'load_v2'; Param = @('phase=load_v2'); Start = 'load'; Keep = $true; Limit = 150; Unsafe = $true; CopyInto = @('hr_target', 'mods\hotreload\fixtures\v2\hr_target') }
                            ) }
+    # the engine's GUI as building blocks (M16): pages, windows, clone, a Lua script as OnClick, window messages (ESC, mouse), a leaf page, ui.frame / ui.page, risen.debug.screenshot
+    gui               = @{ Est = 60; Title = 'GUI building blocks (M16: pages, windows, clone, clicks, ESC, leaf page, screenshot)'; Kind = 'result'; Mods = @('gui_test'); Limit = 200
+                           Phases = @(
+                               @{ Name = ''; Param = @(); Start = 'new'; Keep = $false; Limit = 200; Unsafe = $true }
+                           ) }
+    # the in-game mod manager (M16): "main" drives the menu page through ESC and real clicks (reload, reorder with refusals, cascades, data prompt, quick save + load), "restart" is a fresh process that
+    # keeps mods.toml (what the page chose is in force), "menu" runs at the main menu without a game
+    modmanager        = @{ Est = 200; Title = 'in-game mod manager (M16: menu tab and page, enable/disable, reload, order, cascades, restart, no game)'; Kind = 'result'; Mods = @('modmanager', 'mm_driver', 'mm_base', 'mm_ext', 'mm_broken', 'mm_skipped', 'mm_data'); Limit = 300
+                           Phases = @(
+                               @{ Name = 'main'; Param = @('phase=main'); Start = 'new'; Keep = $false; Limit = 300; Unsafe = $true }
+                               @{ Name = 'restart'; Param = @('phase=restart'); Start = 'new'; Keep = $false; Limit = 200; Unsafe = $true; KeepModsToml = $true }
+                               @{ Name = 'menu'; Param = @('phase=menu'); Start = 'new'; Keep = $false; Limit = 200; Unsafe = $true; NoAutostart = $true }
+                           ) }
     # one process per phase: "save" crafts at the anvil (twice) and saves, "load" crafts again in a fresh process, "load_missing" runs without the mod's content, "load_again" has it again
     ex_recipe         = @{ Est = 250; Title = 'example: a new smithing recipe (save, load, missing, again)'; Kind = 'result'; Mods = @('example_recipe'); Limit = 300
                            Phases = @(
@@ -405,6 +418,8 @@ foreach ($name in $selected) {
             if ($ph.Keep) { $testArgs.Keep = $true }
             if ($ph.VoiceLanguage) { $testArgs.VoiceLanguage = $ph.VoiceLanguage }
             if ($ph.Unsafe) { $testArgs.Unsafe = $true }
+            if ($ph.KeepModsToml) { $testArgs.KeepModsToml = $true }
+            if ($ph.NoAutostart) { $testArgs.NoAutostart = $true }
             if ($s.Disable) { $testArgs.Disable = $s.Disable }
             if ($ph.CopyInto) { $testArgs.CopyInto = "$($ph.CopyInto[0])=$(Join-Path (Split-Path -Parent $here) $ph.CopyInto[1])" }
         }

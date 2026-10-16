@@ -1,0 +1,6 @@
+id          = "mm_data"
+name        = "Mod manager fixture: data in the savegame"
+version     = "2.0.1"
+author      = "risen-spass"
+description = "Declares a persistent NPC and keeps a value in risen.save: switching it off asks what to do with them. Fixture of the scenario `modmanager`."
+main        = "main.lua"

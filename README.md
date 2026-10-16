@@ -33,6 +33,7 @@ engine's lifecycle, and exposes it to Lua with a sandbox per mod.
 | State | `risen.save`: per-mod data stored with every savegame; entity handles that survive loads and refuse to dereference deleted entities |
 | Texts | `risen.loc` overlay and `strings/*.csv` files per mod and language |
 | Scripts | define or override the game's native scripts from Lua |
+| Mod manager | a **Mods** tab in the game's own ESC menu: every mod with version and state (failures in red with the reason), switch on / off with the dependencies asked and enforced, reload, load order with a default order, a warning before a mod that left NPCs in your game is switched off; built from the game's own widgets ([docs/MODDING_GUIDE.md](docs/MODDING_GUIDE.md) 4.22) |
 | Tooling | editor completion and type checks (LuaLS `types/risen.d.lua`), a test framework that plays your mod in an isolated windowed game and reports in a minute (`risen.test`), virtual file system access, template list ([docs/TEMPLATES.md](docs/TEMPLATES.md)) |
 | Safe | argument types are checked, a wrong call from Lua is an error and never a crash (a fuzz scenario calls every function with 1.6 million wrong arguments on each test run) |
 

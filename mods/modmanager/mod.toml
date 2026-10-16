@@ -1,0 +1,6 @@
+id          = "modmanager"
+name        = "Mod Manager"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "A Mods page in the game's menu: lists the mods with their state, switches them on and off, reloads them and changes the load order, with the dependencies shown and enforced."
+main        = "main.lua"

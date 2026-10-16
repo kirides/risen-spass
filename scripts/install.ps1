@@ -50,6 +50,12 @@ Copy-Item (Join-Path $repo 'types') $data -Recurse -Force
 $luarc = Join-Path $data 'mods\.luarc.json'
 if (-not (Test-Path $luarc)) { Copy-Item (Join-Path $repo 'mods\.luarc.json') $luarc }
 Write-Host "copied the Lua definitions (types\risen.d.lua)"
+# The Mod Manager (a Mods tab in the game's ESC menu) belongs to the layer: it is installed with it (switch it off in mods.toml or delete the folder to remove the tab)
+$manager = Join-Path $repo 'mods\modmanager'
+if (Test-Path $manager) {
+    Copy-Item $manager (Join-Path $data 'mods') -Recurse -Force
+    Write-Host "installed the Mod Manager (Mods tab in the menu)"
+}
 if ($WithExamples) {
     Copy-Item (Join-Path $repo 'mods\*') (Join-Path $data 'mods') -Recurse -Force
     Write-Host "copied example mods"
