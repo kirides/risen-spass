@@ -184,6 +184,7 @@ bool detourDoDamage(void* self, void* victim) {
 
 void detourEntityKill(void* self) {
     if (self != nullptr) {
+        noteEntityRemoved(self);  // Lua handles to this entity are stale from now on
         focusEntityKilled(self);
         aiEntityKilled(self);
         const bool wantDestroyed = bus::active() && bus::wanted("entity.destroyed");

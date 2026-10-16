@@ -25,6 +25,11 @@ Every mod gets its own sandboxed environment: base functions, `string`, `table`,
 
 Globals: `mod` (`id, name, version, author, dir`), `risen`.
 
+**Argument types are checked.** Every function of the API checks the type of its arguments before it does anything: a wrong one (`risen.item.count({}, "It_Apple")`, `entity:set_frozen(1)`, a numeric string
+where a number is wanted, a fractional number where an integer is wanted) raises an ordinary Lua error that `pcall` catches, and an optional parameter given a wrong type counts as absent. Where an input is merely
+unusable (an unknown name, a missing entity, an entity that was deleted) the functions return `nil, "reason"` / `false` instead. No input from Lua may crash or hang the game; the scenario `hardening`
+calls every function with ~1.6 million wrong or hostile argument combinations on every smoke run (DEVELOPMENT.md "Hardening"). An `Entity` handle to an entity the engine has since deleted answers like a missing one (`address == 0`, every call returns its nil/false answer).
+
 **Editor support:** [`types/risen.d.lua`](../types/risen.d.lua) describes every function below for LuaLS (completion, hover docs, type
 checks); see [`types/README.md`](../types/README.md).
 **Examples:** sixteen small, live-verified example mods (patching, balancing, materials/textures, custom NPC, fetch/kill quests, completion triggers, quest tracker, voiced dialogue, spells, recipes, NPCs that appear and disappear, dialogue conditions, routines, AI states) are indexed in [`EXAMPLES.md`](EXAMPLES.md).
@@ -125,6 +130,7 @@ T.run(function()                                     -- a scenario as a coroutin
     T.eq("hero hit points", player:hp(), 80)         -- detail "expected 80, got 70" on a mismatch; tables compare by content, `tolerance` 4th argument for numbers
     T.matches("log line", text, "value=%d+")         -- Lua pattern
 end, "my_scenario")                                  -- returning from the function calls T.finish()
+T.allow_errors(true)     -- error-level log lines no longer count towards the final "no errors logged" check (the hardening scenario provokes them on purpose); false switches it back
 T.finish("summary")      -- writes <Risen>\bin\spass\test-result.json and (with [test] enabled) ends the game
 T.fail("reason")         -- records a failed check and ends the run as "aborted: reason"
 T.wait_for(pred, 30, function(ok, why) end, "name")  -- callback style, without a coroutine; T.wait_ticks(n, cb)

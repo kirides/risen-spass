@@ -98,7 +98,8 @@ function Entity:teleport(target) end
 ---@return Entity[]
 function Entity:children() end
 
----Makes `child` a child of this entity (`eCNode::AttachChild`): a freepoint attached below an anchor becomes one of its interact points.
+---Makes `child` a child of this entity (`eCNode::AttachChild`): a freepoint attached below an anchor becomes one of its interact points. Refused (`false`) for a character (the player, an NPC) or an item as the child
+---and when this entity is the child or one of its descendants: that would corrupt the scene tree.
 ---@param child Entity
 ---@return boolean ok
 function Entity:attach(child) end
@@ -2354,7 +2355,7 @@ function dialogApi.compile(when, owner) end
 ---@return DialogConditionPlan|nil
 function dialogApi.describe(name) end
 
----Low-level: creates an empty info.
+---Low-level: creates an empty info. The name has 1..200 characters, the owner at most 200 (`nil` otherwise).
 ---@param name string
 ---@param owner string
 ---@return Info|nil
@@ -2428,7 +2429,7 @@ function scriptApi.override(name, fn) end
 ---@return boolean
 function scriptApi.exists(name) end
 
----Calls a script (needs a running game).
+---Calls a script (needs a running game). Raises an error for a name that is not a registered script (the engine would hang on it).
 ---@param name string
 ---@param self? Entity|nil
 ---@param other? Entity|nil
@@ -2714,7 +2715,8 @@ function worldApi.points(opts) end
 ---@return string|nil reason
 function worldApi.add_point(kind, x, y, z, opts) end
 
----Takes a point out of the world (`Entity:kill()`). Not while an NPC uses it: `risen.npc.clear_routine` removes the points it made for an NPC safely.
+---Takes a point out of the world (`Entity:kill()`). Only freepoints (`FP_*`), anchors (`Anchor_*`) and helpers (`Hlp_*`) are removed; any other entity (the player, an NPC, an item) gives `false`.
+---Not while an NPC uses it: `risen.npc.clear_routine` removes the points it made for an NPC safely.
 ---@param point Entity
 ---@return boolean ok
 function worldApi.remove_point(point) end
@@ -3210,6 +3212,11 @@ function testApi.scenario(name) end
 ---@param default? any Returned when the parameter is not set.
 ---@return string|any
 function testApi.param(name, default) end
+
+---While `on` is true, error-level log lines do not count towards the final "no errors logged" check (the `hardening` scenario provokes them on purpose with garbage arguments). Returns the new state.
+---@param on boolean
+---@return boolean
+function testApi.allow_errors(on) end
 
 ---Whether the run writes a result file and has a deadline (`[test] enabled` or `[lua] unsafe`).
 ---@return boolean

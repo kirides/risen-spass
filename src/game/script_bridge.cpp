@@ -298,6 +298,11 @@ void bindScripts(sol::state_view lua, sol::table risen) {
         if (admin == nullptr) {
             throw sol::error("risen.script.call: script system is not initialised yet");
         }
+        // an unknown script name hangs the engine (it waits for something that never happens): only registered scripts are called
+        void** fnSlot = registryFnSlot(name, /*create=*/false);
+        if (name.empty() || fnSlot == nullptr || *fnSlot == nullptr) {
+            throw sol::error("risen.script.call: no script named '" + name.substr(0, 80) + "'");
+        }
         std::int64_t result = 0;
         ++g_luaCallDepth;
         const bool ok = guarded([&] {

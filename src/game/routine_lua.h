@@ -99,9 +99,13 @@ function world.add_point(kind, x, y, z, opts)
     return e
 end
 
--- risen.world.remove_point(entity) -> bool: takes a point out of the world
+-- risen.world.remove_point(entity) -> bool: takes a point (freepoint FP_*, anchor Anchor_*, helper Hlp_*) out of the world. Any other entity (the player, an NPC, an item) is refused:
+-- the removal is the engine's, and removing the player takes the world down with him.
 function world.remove_point(point)
-    if type(point) ~= "userdata" or type(point.kill) ~= "function" then return false end
+    if type(point) ~= "userdata" or type(point.kill) ~= "function" or type(point.template) ~= "function" then return false end
+    local ok, tpl = pcall(point.template, point)
+    local name = ok and type(tpl) == "userdata" and type(tpl.name) == "function" and tpl:name() or nil
+    if type(name) ~= "string" or not (name:find("^FP_") or name:find("^Anchor_") or name:find("^Hlp_")) then return false end
     return point:kill() and true or false
 end
 )LUA";

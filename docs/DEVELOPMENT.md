@@ -128,6 +128,56 @@ no clean-quit function was needed: `finish` ends the process itself (`TerminateP
 (`mods/newtemplates` + `newtemplates_driver`: `save`, `load`, `load_missing`, `load_again`, `load_late`, about 3.5 minutes in all). A phase of your own is run by hand like this:
 `.\scripts\test-run.ps1 -Mods a,b -WaitForResult -Seconds 150 -Scenario name -Param phase=load -Start load -Keep` (`-Keep` keeps the savegames; call it from PowerShell, a `-File` call passes `-Mods a,b` as one string).
 
+## Hardening: wrong arguments must never crash the game
+
+A mod is user input. Whatever a Lua mod passes to the API, the answer is an error, `nil, reason` or `false`, never a crashed or hung game.
+
+**Typed natives are checked.** A native bound with typed parameters (`const LuaEntity&`, `int`, `const std::string&`, `sol::table`, ...) used to read whatever
+was on the Lua stack: `risen.npc.routine_points(5)` dereferenced a null `LuaEntity&` and killed the game, `int` took a table as 0 and a `std::string`
+parameter took it as an empty string. The cause was not the natives but the sol2 configuration: with LuaJIT sol2 assumes that C++ exceptions can travel through Lua's frames
+(`SOL_PROPAGATE_EXCEPTIONS`) and **skips the argument check** that `SOL_ALL_SAFETIES_ON` is meant to switch on. `CMakeLists.txt` defines `SOL_EXCEPTIONS_SAFE_PROPAGATION=0`:
+every native now checks the type of every parameter before its body runs and raises a normal Lua error ("stack index 1, expected userdata, received number ...", catchable with
+`pcall`). Consequences for the API: a `boolean` parameter wants a boolean (not 1), a number parameter a number (not the string `"5"`), an integer parameter a whole number;
+`sol::optional<T>` parameters still treat a wrong type as absent. `tests/hardening_tests.inc` has a `#error` if the define is lost and a table of wrong values per parameter kind.
+New natives may use typed parameters; take a `sol::object` and check it yourself when the failure should be `nil, reason` instead of an error.
+
+**The fuzz scenario `hardening`** (`mods/hardening`, `smoke-test.ps1 -Scenario hardening`, about a minute): after a new game and a quick save + load (so that entity handles from before the
+load are stale) it calls **every function it finds at run time** -- the `risen` table (the mod's view, including the per-mod functions) and the methods of the Entity, Info, Quest and
+Template objects, ~440 in all, so a new binding is covered without touching the test -- under `pcall`, about 1.6 million times each run: with no argument, with each value of a battery
+repeated 1..4 times, with each *object* (the player, an NPC, an item, a handle stale across a load, a handle to a world item the engine has since deleted, an Info, a Quest, a Template) in each
+of the first positions combined with each battery value, and with random combinations (including spec tables with plausible keys and wrong-typed values). The battery holds nil, integers
+and floats up to 1e300, NaN, +-inf, strings (empty, a 70000-character one, with a NUL, with `%` formats, `../..` paths, a template name), booleans, tables (empty, arrays, maps, cyclic, 3000 levels deep,
+proxies whose `__index` / `__len` raise or return themselves), functions (one that raises), `risen` itself and `_G`. Then the same battery is used as the **return values of callbacks** (60 scripts defined with `risen.script.define` and called, 60 `risen.cond.fn` predicates, a `tick` handler, 24 AI states whose `begin` / `loop` / `finish` return garbage and are started on an NPC), because what a mod hands to the engine is input too. The scenario passes when afterwards the game still ticks, the player is still
+there and an engine call (spawn) still works; the player is also checked after every function ("the player survived every function" names the one that removed him). A crash writes no result: the last
+`[hardening] fuzz <function>` log line names the function, and
+
+```powershell
+.\scripts\test-run.ps1 -Mods hardening -WaitForResult -Seconds 400 -Scenario hardening -Param "only=^Entity%.attach$#v"
+```
+
+reruns just that one with every call logged before it is made (`only` is a list of Lua patterns separated by `;`, the suffix `#v` is `verbose`; `-Param seed=7`, `-Param random=300` change the random part).
+Four instances in parallel (`-Instance 1..4`, each with another `only=`) take a minute for the whole API. **Not called** (listed in `EXCLUDED` at the top of `mods/hardening/main.lua`, each with its reason): `risen.world.new_game / quick_load / quick_save / auto_save`
+(the world and the savegames of the test), `risen.off` (a number is a handler id: it would unhook the layer's own handlers; called with non-numbers), `risen.assets.clear`, `risen.log.error` (writes `[error]` lines on purpose),
+all of `risen.test.*` (the harness) and every `<Type>.__gc` (the garbage collector's entry, not an API); the functions that write files or mount paths get every wrong *type* but no string. `Entity.kill` is not called with the player (it does what it says).
+`risen.test.allow_errors(true)` keeps the error-level lines that bad specs produce on purpose out of the final "no errors logged" check.
+
+**What the first runs found and what was done** (RE.md section 35 has the engine side):
+
+| Crash / hang | Cause | Fix |
+|---|---|---|
+| any typed native called with the wrong type (`risen.npc.routine_points(5)`, `risen.item.count({})`, ...) | sol2 skipped the argument checks (above) | `SOL_EXCEPTIONS_SAFE_PROPAGATION=0` |
+| a method on a handle to a deleted entity (`risen.item.pick_up` of a world item, then `item:is_item()`) -- freed memory | `LuaEntity` kept the raw pointer for the whole world generation | the `eCEntity::Kill` hook counts removals per address (`noteEntityRemoved`), a handle remembers the count: `ptr()` returns nullptr once its entity was removed, even when the engine reused the memory |
+| `Entity:attach(child)` with the player, an NPC or an item as the child, or with a parent that is a descendant of the child | the scene tree was corrupted (access violation in the next frame) | refused (`false`) |
+| `risen.world.remove_point(player)` | the "point" was removed through the engine's deferred removal: the world went down 40 frames later | only freepoints (`FP_*`), anchors (`Anchor_*`) and helpers (`Hlp_*`) are removed |
+| `Entity:can_use()` / `skill_total()` / `requirements()` ... with no argument at all | `sol::variadic_args` after a fixed parameter has a negative size when the call had fewer arguments: the range loop ran for ever | the arguments are collected by index |
+| `risen.script.call("")` or of a name that is no script | the engine hangs on an unknown script name | only registered scripts are called, otherwise an error |
+| `risen.dialog.new_info(<70000 characters>, ...)` | the engine hangs on an endless info name | names are 1..200 characters |
+| `risen.world.nav_point(x, y, z, NaN)` / infinite radius | the engine's search never ends | positions are finite numbers below 1e9, the radius is in (0, 20000] |
+
+**Limits.** The scenario cannot tell a function that silently did the wrong thing from one that did nothing; it looks for crashes, hangs and a broken world. A slow function is capped at four seconds per function (`risen.balance.scale_npcs`, `risen.dialog.rebuild`,
+`risen.template.census`, `risen.config` are cut off: they scan the whole template library, which is legitimate). A handle to an entity that was freed without passing `eCEntity::Kill` (the world is unloaded: handled by the world generation) is the one gap known.
+Values that are right in type but absurd (an NPC with `hp_max = 1e300`) are the business of the individual validations, which the fuzz exercises with the same battery.
+
 ## Parallel instances (M4c)
 
 Several `Risen.exe` can run at the same time when each has its **own test copy** and its own id. The engine's single-instance guard is the named mutex `GenomeMutex`

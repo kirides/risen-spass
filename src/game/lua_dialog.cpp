@@ -336,6 +336,11 @@ void bindDialog(sol::state_view lua, sol::table risen) {
     sol::table dialog = lua.create_table();
     // risen.dialog.new_info("Unique_Info_Name", "OwnerEntityName") -> Info | nil
     dialog.set_function("new_info", [&s](const std::string& name, const std::string& owner) -> sol::optional<LuaInfo> {
+        // the engine hangs on endless names (70000 characters were tried): names are identifiers
+        if (name.empty() || name.size() > 200 || owner.size() > 200) {
+            spdlog::warn("dialog.new_info: the name must be 1..200 characters and the owner at most 200");
+            return sol::nullopt;
+        }
         void* info = nullptr;
         const bool ok = guarded([&] {
             void* is = infoSystem();

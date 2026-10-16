@@ -1,7 +1,9 @@
 #include "game/lua_entity.h"
 
 #include <atomic>
+#include <mutex>
 #include <tuple>
+#include <unordered_map>
 
 #include <spdlog/spdlog.h>
 
@@ -35,6 +37,17 @@ bool tryRun(const char* what, F&& f) {
 namespace {
 std::atomic<unsigned> g_generation{1};
 
+// Removals seen per entity address in this world generation: a handle remembers the count from when it was made, so a handle to a removed entity (whose memory
+// the engine may have freed and reused) is recognised as stale instead of dereferencing freed memory.
+std::mutex g_removedMutex;
+std::unordered_map<void*, unsigned> g_removed;
+
+unsigned removalsOf(void* entity) {
+    std::lock_guard lock(g_removedMutex);
+    const auto it = g_removed.find(entity);
+    return it == g_removed.end() ? 0u : it->second;
+}
+
 // Unique name of an entity pointer straight from the engine; empty if it cannot be read.
 std::string nameOf(void* entity) {
     std::string name;
@@ -62,7 +75,23 @@ void* lookupByName(const std::string& name) {
 }
 }  // namespace
 
-void bumpEntityGeneration() { ++g_generation; }
+void bumpEntityGeneration() {
+    {
+        std::lock_guard lock(g_removedMutex);
+        g_removed.clear();  // every older handle re-resolves by name (and takes the then-current count)
+    }
+    ++g_generation;
+}
+
+unsigned entityRemovalCount(void* entity) { return removalsOf(entity); }
+
+void noteEntityRemoved(void* entity) {
+    if (entity == nullptr) {
+        return;
+    }
+    std::lock_guard lock(g_removedMutex);
+    ++g_removed[entity];
+}
 
 unsigned currentEntityGeneration() { return g_generation.load(); }
 
@@ -71,12 +100,16 @@ std::string entityNameOf(void* entity) { return nameOf(entity); }
 void* ptr(const LuaEntity& h) {
     const unsigned now = g_generation.load();
     if (h.generation == now) {
+        if (h.e != nullptr && removalsOf(h.e) != h.epoch) {
+            h.e = nullptr;  // removed since the handle was made: the pointer dangles
+        }
         return h.e;
     }
     // The world changed since this handle was made: the pointer may dangle. Trust only a lookup by name.
     void* fresh = lookupByName(h.name);
     h.e = fresh;
     h.generation = now;
+    h.epoch = fresh != nullptr ? removalsOf(fresh) : 0;
     if (fresh == nullptr) {
         spdlog::debug("entity '{}' is gone after a world change; the handle is stale", h.name);
     }
@@ -87,7 +120,7 @@ sol::object makeEntityObject(sol::state_view lua, void* entity) {
     if (entity == nullptr) {
         return sol::make_object(lua, sol::lua_nil);
     }
-    return sol::make_object(lua, LuaEntity{entity, nameOf(entity), g_generation.load()});
+    return sol::make_object(lua, LuaEntity{entity, nameOf(entity), g_generation.load(), removalsOf(entity)});
 }
 
 void bindEntity(sol::state_view lua, sol::table risen) {

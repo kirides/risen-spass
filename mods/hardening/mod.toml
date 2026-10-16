@@ -1,0 +1,6 @@
+id          = "hardening"
+name        = "Hardening fuzz"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Test-only scenario: calls every public risen.* function and every Entity/Info/Quest/Template method with wrong-typed arguments and checks that the game survives. See docs/DEVELOPMENT.md \"Hardening\"."
+main        = "main.lua"

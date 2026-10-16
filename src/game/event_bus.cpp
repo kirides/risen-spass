@@ -113,7 +113,7 @@ sol::object toLua(sol::state_view lua, const Arg& a) {
             if (name.empty()) {
                 name = e.name;
             }
-            LuaEntity h{e.ptr, name, currentEntityGeneration()};
+            LuaEntity h{e.ptr, name, currentEntityGeneration(), e.epoch};
             return sol::make_object(lua, h);
         }
     };
@@ -129,6 +129,7 @@ EntityRef capture(void* entity) {
     }
     r.ptr = entity;
     r.name = entityNameOf(entity);
+    r.epoch = entityRemovalCount(entity);
     return r;
 }
 

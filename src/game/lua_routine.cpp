@@ -64,11 +64,16 @@ bool entityArg(const sol::object& o, LuaEntity& out) {
     return true;
 }
 
+// A finite number of a sane size: positions, yaws and radii of 1e9 or NaN/inf make the engine's searches run forever or divide by nothing.
 bool numberArg(const sol::object& o, float& out) {
     if (!o.valid() || !o.is<double>()) {
         return false;
     }
-    out = static_cast<float>(o.as<double>());
+    const double v = o.as<double>();
+    if (!std::isfinite(v) || std::fabs(v) > 1.0e9) {
+        return false;
+    }
+    out = static_cast<float>(v);
     return true;
 }
 
@@ -514,6 +519,9 @@ Two navPoint(sol::this_state ts, sol::object xArg, sol::object yArg, sol::object
     if (radiusArg.valid() && !radiusArg.is<sol::lua_nil_t>() && !numberArg(radiusArg, radiusValue)) {
         return failResult(L, "the radius must be a number");
     }
+    if (radiusValue <= 0.0f || radiusValue > 20000.0f) {
+        return failResult(L, "the radius must be between 0 and 20000");
+    }
     const sol::optional<float> radius = radiusValue;
     if (s.ent_nearest_nav_point == nullptr) {
         return failResult(L, "the engine function Entity::GetNearestNavigationPoint is unavailable");
@@ -588,7 +596,8 @@ void addTreeMethods(sol::usertype<LuaEntity>& ut) {
         }
         return {v[0], v[1], v[2]};
     };
-    // Entity:attach(child) -> bool: makes `child` a child of this entity (eCNode::AttachChild)
+    // Entity:attach(child) -> bool: makes `child` a child of this entity (eCNode::AttachChild). Refused (false) for what would corrupt the scene tree and crash the
+    // engine: a character (the player, an NPC) or an item as the child, an entity below itself or below one of its own descendants.
     ut["attach"] = [](const LuaEntity& parent, sol::object childArg) {
         const Symbols& s = sym();
         LuaEntity child;
@@ -598,6 +607,39 @@ void addTreeMethods(sol::usertype<LuaEntity>& ut) {
         void* p = ptr(parent);
         void* c = ptr(child);
         if (p == nullptr || c == nullptr || p == c || s.node_attach_child == nullptr) {
+            return false;
+        }
+        bool movable = false;
+        if (!guarded([&] {
+                EntityHolder h{c};
+                movable = !s.ent_is_character(&h) && !s.ent_is_item(&h) && !s.ent_is_player(&h);
+            }) || !movable) {
+            return false;
+        }
+        // the parent must not be a descendant of the child (a cycle in the tree); walk the child's subtree (first child +0x20, next sibling +0x18)
+        bool cycle = false;
+        guarded([&] {
+            std::vector<char*> stack{static_cast<char*>(c)};
+            int visited = 0;
+            while (!stack.empty() && !cycle) {
+                char* node = stack.back();
+                stack.pop_back();
+                if (node == p) {
+                    cycle = true;
+                    break;
+                }
+                if (++visited > 5000) {
+                    cycle = true;  // too big to prove it harmless
+                    break;
+                }
+                for (char* kid = *reinterpret_cast<char**>(node + 0x20); kid != nullptr && stack.size() < 5000;) {
+                    stack.push_back(kid);
+                    char* next = *reinterpret_cast<char**>(kid + 0x18);
+                    kid = (next == kid) ? nullptr : next;
+                }
+            }
+        });
+        if (cycle) {
             return false;
         }
         bool ok = false;

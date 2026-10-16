@@ -37,6 +37,7 @@ bool g_firstTick = false;
 
 double since() { return std::chrono::duration<double>(Clock::now() - g_start).count(); }
 
+std::atomic<bool> g_allowErrors{false};  // risen.test.allow_errors(true): error-level log lines are not counted (the hardening scenario provokes them on purpose)
 // Counts everything the layer logged at error level (Lua handler errors, engine failures) except the test's own FAIL lines:
 // finish() turns the count into one more check, the equivalent of the old "no [error] in the log" regex.
 class ErrorCounter final : public spdlog::sinks::base_sink<std::mutex> {
@@ -52,7 +53,7 @@ public:
 
 protected:
     void sink_it_(const spdlog::details::log_msg& msg) override {
-        if (msg.level < spdlog::level::err) {
+        if (msg.level < spdlog::level::err || g_allowErrors.load()) {
             return;
         }
         const std::string text(msg.payload.data(), msg.payload.size());
@@ -379,6 +380,11 @@ void bindTest(sol::state_view lua, sol::table risen) {
             return fallback;
         }
         return sol::make_object(ts, it->second);
+    });
+    // risen.test.allow_errors(on): while on, error-level log lines do not count towards the final "no errors logged" check
+    t.set_function("allow_errors", [](sol::object on) {
+        g_allowErrors = truthy(on);
+        return g_allowErrors.load();
     });
     t.set_function("is_active", [] { return g_settings.active; });
     t.set_function("elapsed", [] { return since(); });

@@ -696,10 +696,12 @@ bool runChunk(sol::state_view lua, const char* chunk, const char* name, sol::obj
     return true;
 }
 
+// The arguments after the ones the native names. NOT `for (auto a : va)`: when the call had fewer arguments than the native names (`entity.can_use()` with
+// no argument at all) sol's variadic_args has a negative size and the range loop runs on forever (the game hung).
 std::vector<sol::object> collect(sol::variadic_args va) {
     std::vector<sol::object> out;
-    for (auto a : va) {
-        out.push_back(sol::object(a));
+    for (int i = va.stack_index(); i <= va.top(); ++i) {
+        out.push_back(sol::object(va.lua_state(), i));
     }
     return out;
 }
@@ -716,7 +718,8 @@ sol::variadic_results forward(sol::this_state ts, const char* fn, sol::object se
     }
     sol::protected_function f = holder.as<sol::table>()[fn];
     std::vector<sol::object> args;
-    args.push_back(self);
+    // called without any argument `self` is an invalid object: pushing it onto the stack is undefined (the call hung); it is nil
+    args.push_back(self.valid() ? self : sol::make_object(L, sol::lua_nil));
     args.insert(args.end(), extra.begin(), extra.end());
     sol::protected_function_result r = f(sol::as_args(args));
     if (!r.valid()) {

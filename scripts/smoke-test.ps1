@@ -26,6 +26,7 @@
       ex_routines  - example: a gatekeeper with a day, an evening and a night post and a patrol (mods/example_routines)
       aistates     - Lua AI states, callbacks and perception handlers (M11, mods/aistates): begin / loop / finish on real NPCs, walking, errors, a bitten NPC that flees; save + in-process load, then fresh-process loads (the states defined, the mod removed)
       ex_ai        - example: a follower and a sentry who warns the player, a guard who flees when hit (mods/example_ai)
+      hardening    - every public function and method called with ~1.6 million wrong-typed / hostile argument combinations (mods/hardening): the game must survive and keep ticking
 
 .DESCRIPTION
     Needs a built sentry.dll and the test copy (see CLAUDE.md). The [risen.test] scenarios end as soon as they are done
@@ -52,7 +53,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -193,6 +194,8 @@ $scenarios = [ordered]@{
                                @{ Name = 'load_missing'; Param = @('phase=load_missing'); Start = 'load'; Keep = $true; Limit = 150 }
                            ) }
     ex_ai             = @{ Est = 110; Title = 'example: a companion, a sentry and a coward (Lua AI states)'; Kind = 'result'; Mods = @('example_ai'); Limit = 300 }
+    # hardening: the fuzz scenario (docs/DEVELOPMENT.md "Hardening"); one process, about a minute
+    hardening         = @{ Est = 70; Title = 'hardening: wrong-typed arguments to every API function'; Kind = 'result'; Mods = @('hardening'); Limit = 300 }
     # quick loot (M5d): the standalone mod `quickloot` against the engine's own interaction; phase `config` repeats the key path with another config.toml (items = false, key = PrimaryAction) copied into the mod
     quickloot         = @{ Est = 120; Title = 'quick loot (M5d: default config, then config.toml options)'; Kind = 'result'; Mods = @('quickloot', 'quickloot_driver'); Limit = 300
                            Phases = @(

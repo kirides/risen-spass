@@ -495,6 +495,7 @@ TEST(balance_install_reports_each_application_to_on_applied) {
 #include "ai_tests.inc"
 #include "test_risen_test.inc"
 #include "quickloot_tests.inc"
+#include "hardening_tests.inc"
 
 }  // namespace
 

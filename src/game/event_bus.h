@@ -19,6 +19,7 @@ namespace spass::game::bus {
 struct EntityRef {
     void* ptr = nullptr;
     std::string name;
+    unsigned epoch = 0;  // removals seen at this address when the hook ran (a handle made from it is stale once the entity was removed, even if it is dispatched later)
 };
 
 // Reads the unique name now (SEH guarded). A null pointer gives an empty ref (nil in Lua).

@@ -104,7 +104,7 @@ target_include_directories(spass_core PUBLIC src)
 target_compile_features(spass_core PUBLIC cxx_std_20)
 target_compile_definitions(spass_core PUBLIC
     WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
-    SOL_LUAJIT=1 SOL_ALL_SAFETIES_ON=1
+    SOL_LUAJIT=1 SOL_ALL_SAFETIES_ON=1 SOL_EXCEPTIONS_SAFE_PROPAGATION=0
     SPASS_VERSION="${PROJECT_VERSION}")
 target_link_libraries(spass_core PUBLIC
     spdlog::spdlog minhook::minhook sol2::sol2 tomlplusplus::tomlplusplus luajit::luajit)

@@ -16,6 +16,7 @@ struct LuaEntity {
     mutable void* e = nullptr;
     mutable std::string name;
     mutable unsigned generation = 0;
+    mutable unsigned epoch = 0;  // how often the engine had removed an entity at this address when the handle was made (see noteEntityRemoved)
 };
 
 // Pointer of `h` valid for the current world generation, or nullptr if the entity is gone (or was never named).
@@ -23,6 +24,12 @@ void* ptr(const LuaEntity& h);
 
 // Advances the world generation (called by the lifecycle hooks); every older handle revalidates on next use.
 void bumpEntityGeneration();
+
+// Called by the eCEntity::Kill hook (the engine's one entry for removing an entity) before the entity goes: handles made earlier for that address are stale from now
+// on (ptr() returns nullptr), even when the engine reuses the memory for a new entity. Cleared with every world generation.
+void noteEntityRemoved(void* entity);
+// How often noteEntityRemoved() was called for this address in the current world generation: what a handle made now remembers in `epoch`.
+unsigned entityRemovalCount(void* entity);
 
 // The current world generation (a handle made with another one re-resolves by name), and an entity's unique name read straight from the engine
 // (empty when it cannot be read).
