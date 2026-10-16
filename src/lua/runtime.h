@@ -15,6 +15,7 @@
 #include <sol/sol.hpp>
 #include <spdlog/spdlog.h>
 
+#include "common/crash.h"
 #include "lua/mods.h"
 
 namespace spass::lua {
@@ -174,6 +175,7 @@ public:
         const std::vector<Handler> snapshot = it->second;
         for (const Handler& h : snapshot) {
             ActiveGuard active(*this, h.mod);
+            crash::Scope trail(event, h.mod);
             try {
                 sol::protected_function_result r = h.fn(sol::as_args(args));
                 if (!r.valid()) {
@@ -279,6 +281,7 @@ private:
                 continue;
             }
             ActiveGuard active(*this, h.mod);
+            crash::Scope trail(event, h.mod);
             try {
                 sol::protected_function_result r = h.fn(args...);
                 if (!r.valid()) {

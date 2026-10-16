@@ -5,6 +5,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "common/crash.h"
 #include "common/log.h"
 #include "common/paths.h"
 #include "common/trace.h"
@@ -41,6 +42,14 @@ void onProcessAttach(HMODULE self) {
     g_config = loadConfig(paths::dataDir() / "config.toml");
     spdlog::set_level(parseLevel(g_config.logLevel));
     spdlog::info("risen-spass {} loaded in {}", SPASS_VERSION, paths::binDir().string());
+    if (g_config.crashHandler) {
+        crash::Options co;
+        co.dump = crash::parseDumpKind(g_config.crashDump);
+        co.dumpDir = paths::dataDir() / "crash";
+        co.logFile = paths::dataDir() / "spass.log";
+        crash::install(co);
+        spdlog::info("crash handler installed (minidump: {})", g_config.crashDump);
+    }
 
     if (!g_config.trace.empty() || g_config.traceFile) {
         trace::init(g_config.trace, g_config.traceFile ? paths::dataDir() / "trace.log" : std::filesystem::path());
@@ -63,6 +72,9 @@ void onProcessAttach(HMODULE self) {
     }
     if (!hooks::initialize()) {
         return;
+    }
+    if (g_config.crashHandler) {
+        crash::installHooks();  // before enableAll(): the game's crash reporter must not take over the top-level filter
     }
 
     const auto missing = game::resolveSymbols();
@@ -111,6 +123,7 @@ void onProcessDetach() {
 void onGameReady() {
     std::call_once(g_readyFlag, [] {
         spdlog::info("game ready: starting Lua runtime");
+        crash::setGameThread();
         game::test::startWatchdog();
         auto& rt = lua::Runtime::instance();
         rt.start(paths::modsDir(), g_config.unsafeLua, paths::dataDir() / "mods.toml");

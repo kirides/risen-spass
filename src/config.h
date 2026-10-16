@@ -21,6 +21,8 @@ namespace spass {
 //   trace      = ""         # opt-in trace channels, e.g. "template,balance,save,events" or "all" (see common/trace.h)
 //   trace_file = false      # also write the trace lines to <bin>/spass/trace.log
 //   trace_scripts = ""      # substrings of script names (comma separated) the `calls` trace channel reports
+//   crash_handler = true    # a crash (or a fault outside guarded(), or a guarded() call that faulted) is reported in spass.log and spass\crash.log with the stack
+//   crash_dump = "off"      # "mini" | "full": also write a minidump <bin>\spass\crash\crash-<time>-pid<pid>.dmp of a crash (scripts/test-run.ps1 -CrashDump); docs/DEVELOPMENT.md "Crashes"
 //   [mods]
 //   watch     = false       # development: a changed .lua / .toml / .csv file of a loaded mod reloads that mod (risen.mods.reload; docs/LUA_API.md "Hot reload")
 //   watch_interval = 1.0    # seconds between two looks at the files
@@ -40,6 +42,8 @@ struct Config {
     std::string trace;
     bool traceFile = false;
     std::string traceScripts;
+    bool crashHandler = true;
+    std::string crashDump = "off";
     bool modsWatch = false;
     double modsWatchInterval = 1.0;
     bool testEnabled = false;

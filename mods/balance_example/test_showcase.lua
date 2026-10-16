@@ -89,11 +89,25 @@ return function(story, balance, assets_state, reports)
             "load: one of each NPC, Tilda restored not made again", "load: the quest is done and its options are gone", "load: Tilda's routine and Rolf's state are back", "load: the voiced reply still plays",
         },
     }
-    T.plan(PLAN[phase] or {})
+    local lean = phase == "load" and T.param("lean", "") ~= ""   -- scripts/load-stress.ps1: only prove that the fresh-process load survives
+    T.plan(lean and { "lean load survived" } or PLAN[phase] or {})
 
     T.run(function()
         T.wait_event("session.start", 180, function(m) return m == (phase == "play" and "new" or "load") end)
         settled()
+        if lean then
+            -- loops=N: load the savegame again N times in this process, the next one after a random 0.1 - 3 s (a load meets worlds in every state of settling)
+            local loops = tonumber(T.param("loops", "0")) or 0
+            for i = 1, loops do
+                T.sleep(math.random(8, 240))
+                if not risen.world.quick_load() then T.expect("loop load " .. i .. " started", false, "quick_load refused") break end
+                T.wait_event("session.start", 120, function(m) return m == "load" end)
+                if i % 10 == 0 then risen.log.info(("[loadloop] %d of %d loads done"):format(i, loops)) end
+            end
+            T.sleep(480)
+            T.expect("lean load survived", risen.entity.player() ~= nil, "six seconds after the world settled")
+            return
+        end
         local p = player_now()
         local rule = assert(risen.spawn.get(TILDA))
         local before = counts() .. "/" .. rule:state()

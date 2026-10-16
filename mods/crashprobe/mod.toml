@@ -1,0 +1,6 @@
+id          = "crashprobe"
+name        = "Crash probe"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Crashes the game on purpose (needs the sandbox off: [lua] unsafe) to prove the crash diagnostics: scripts/test-run.ps1 -Mods crashprobe -Unsafe -Param kind=av (docs/DEVELOPMENT.md 'Crashes')."
+main        = "main.lua"

@@ -72,6 +72,10 @@ param(
     # [debug] trace_scripts: substrings (comma separated) of the engine script names the `calls` trace channel reports, e.g. 'Interact,Loot,Assess'
     [string]$TraceScripts = '',
     [switch]$TraceFile,
+    # [debug] crash_dump: write a minidump (bin\spass\crash\*.dmp) when the game crashes; 'full' = all memory (1-2 GB), 'off' = only the banner in spass.log / crash.log. docs/DEVELOPMENT.md "Crashes"
+    [ValidateSet('off', 'mini', 'full')][string]$CrashDump = 'mini',
+    # keep bin\spass\crash.log and the dumps of an earlier run (they are deleted at the start otherwise)
+    [switch]$KeepCrash,
     # print every check of the result, not only the failed ones
     [switch]$ShowChecks
 )
@@ -129,6 +133,23 @@ function Get-CopyRisen { Get-Process Risen -ErrorAction SilentlyContinue | Where
 function Stop-Risen {
     Get-CopyRisen | Stop-Process -Force -ErrorAction SilentlyContinue
     Get-CopyRisen | Wait-Process -Timeout 30 -ErrorAction SilentlyContinue
+}
+
+# name of a process exit code (NTSTATUS); compared as hex text because PowerShell reads 0xC0000005 as a negative Int32
+function Get-ExitName($code) {
+    switch ('{0:X8}' -f [uint32]$code) {
+        '00000000' { 'normal exit' }
+        'C0000005' { 'ACCESS_VIOLATION' }
+        'C0000006' { 'IN_PAGE_ERROR' }
+        'C000001D' { 'ILLEGAL_INSTRUCTION' }
+        'C0000094' { 'INT_DIVIDE_BY_ZERO' }
+        'C00000FD' { 'STACK_OVERFLOW' }
+        'C0000374' { 'HEAP_CORRUPTION' }
+        'C0000409' { 'STACK_BUFFER_OVERRUN / fast fail' }
+        'C000013A' { 'CONTROL_C_EXIT' }
+        '40010004' { 'DBG_TERMINATE_PROCESS' }
+        default    { if ([uint32]$code -ge 3221225472) { 'an NTSTATUS error' } else { 'exit code' } }
+    }
 }
 
 # seconds of a "[HH:MM:SS.mmm]" log prefix (time of day)
@@ -222,7 +243,7 @@ try {
     if ($Unsafe) { $cfg += '[lua]', 'unsafe = true' }
     $cfg += '[debug]', "app_data = `"$appData`""
     if ($Instance -ge 1) { $cfg += "instance = `"$Instance`"" }
-    $cfg += "trace_files = `"$TraceFiles`"", "trace = `"$Trace`"", "trace_scripts = `"$TraceScripts`""
+    $cfg += "trace_files = `"$TraceFiles`"", "trace = `"$Trace`"", "trace_scripts = `"$TraceScripts`"", "crash_dump = `"$CrashDump`""
     if ($TraceFile) { $cfg += 'trace_file = true' }
     if ($WaitForResult) {
         $deadline = if ($DeadlineSeconds -ge 0) { $DeadlineSeconds } else { [math]::Max($Seconds - 10, 10) }
@@ -237,6 +258,10 @@ try {
     if (-not $KeepModsToml) { Remove-Item $modsToml -Force -ErrorAction SilentlyContinue }
     if ($Disable.Count -gt 0) { Set-Content $modsToml (@('[enabled]') + @($Disable | ForEach-Object { "$_ = false" })) }
     Remove-Item $resultFile -ErrorAction SilentlyContinue
+    if (-not $KeepCrash) {
+        Remove-Item (Join-Path $bin 'spass\crash.log') -Force -ErrorAction SilentlyContinue
+        Remove-Item (Join-Path $bin 'spass\crash') -Recurse -Force -ErrorAction SilentlyContinue
+    }
     if (-not $Keep) {
         Remove-Item $log -ErrorAction SilentlyContinue
         Remove-Item (Join-Path $bin 'spass\trace.log') -ErrorAction SilentlyContinue
@@ -250,8 +275,25 @@ try {
     & (Join-Path $PSScriptRoot 'run-windowed.ps1') @windowed 6>&1 |
         Select-String -Pattern $Filter | ForEach-Object { $_.Line }
     $launched = $global:SpassRun
-    $run = [pscustomobject]@{ Reason = $launched.Reason; Seconds = $launched.Seconds; Total = ((Get-Date) - $runStart).TotalSeconds; Result = $null; Timing = $null; Verdict = 'none' }
+    $run = [pscustomobject]@{ Reason = $launched.Reason; Seconds = $launched.Seconds; Total = ((Get-Date) - $runStart).TotalSeconds; Result = $null; Timing = $null; Verdict = 'none'
+                              ExitCode = $launched.ExitCode; ExitName = ''; Crashed = $false; Banner = ''; Dumps = @(); Summary = '' }
     $global:SpassRun = $run
+    # ---- did the game crash? the exit code of a game that ended by itself, the banner of the crash handler (spass\crash.log), the minidump ----
+    $crashLogFile = Join-Path $bin 'spass\crash.log'
+    if (Test-Path $crashLogFile) { $run.Banner = (Get-Content $crashLogFile -Raw -ErrorAction SilentlyContinue) }
+    $run.Dumps = @(Get-ChildItem (Join-Path $bin 'spass\crash') -Filter *.dmp -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName })
+    if ($null -ne $run.ExitCode) { $run.ExitName = Get-ExitName $run.ExitCode }
+    $fatalFirstChance = $run.Banner -match 'CRASH \((fatal|UNHANDLED)'
+    $run.Crashed = ($launched.Reason -eq 'exited' -and $null -ne $run.ExitCode -and $run.ExitCode -ge 3221225472) -or $fatalFirstChance
+    if ($run.Crashed) {
+        $head = if ($run.Banner) { ($run.Banner -split "`n" | Where-Object { $_ -match 'CRASH \(' } | Select-Object -First 1) -replace '^\[[^\]]*\] \[fatal\] \[t\d+\] ', '' } else { '' }
+        $run.Summary = ("crashed" + $(if ($null -ne $run.ExitCode) { (' (exit code 0x{0:X8} {1})' -f $run.ExitCode, $run.ExitName) } else { '' }) +
+                        $(if ($head) { ": $head" } else { ' (no banner: the crash handler did not see it, e.g. a fast fail)' }) +
+                        $(if ($run.Dumps.Count -gt 0) { "; dump $($run.Dumps[0])" } else { '' }))
+    } elseif ($launched.Reason -eq 'exited' -and $null -ne $run.ExitCode) {
+        $run.Summary = ('the game exited by itself with code 0x{0:X8} ({1})' -f $run.ExitCode, $(if ($run.ExitCode -eq 0) { 'a normal quit' } else { $run.ExitName }))
+    }
+    if ($run.Summary) { Write-Host $run.Summary -ForegroundColor Red }
 
     # ---- timing from the log: relative to the first line (the mod layer loaded) ----
     $t = [ordered]@{}
@@ -287,10 +329,11 @@ try {
             $why = switch ($run.Reason) {
                 'stall'   { "STALL: no new log line for $StallSeconds s, the game was killed" }
                 'seconds' { "TIMEOUT: no result within -Seconds $Seconds, the game was killed" }
-                'exited'  { 'the game exited without writing a result (crash?)' }
+                'exited'  { if ($run.Summary) { "the game exited without writing a result: $($run.Summary)" } else { 'the game exited without writing a result (crash?)' } }
                 default   { "no result ($($run.Reason))" }
             }
             Show-Stopped $why
+            if ($run.Banner) { Write-Host '---- crash.log ----' -ForegroundColor Red; Write-Host $run.Banner }
         } else {
             $run.Verdict = $result.status
             Write-Host ("result: {0} '{1}': {2} check(s), {3} failed, {4:N1} s{5}" -f $result.status.ToUpper(), $result.scenario, $result.counts.total, $result.counts.failed, $result.elapsed_s, $(if ($result.reason) { " - " + $result.reason } else { '' }))

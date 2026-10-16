@@ -103,6 +103,7 @@ std::string infoOwner(void* info) {
 
 bool detourSave(void* self, const void* name, const void* title, unsigned long flags, bool overwrite, void* saveGame) {
     const std::string n = bstr(name);
+    crash::Scope trail("save", n);
     const auto t0 = std::chrono::steady_clock::now();
     SPASS_TRACE(trace::Channel::Save, "save '{}': begin", n);
     fire("save.before", n);
@@ -132,6 +133,7 @@ bool detourSave(void* self, const void* name, const void* title, unsigned long f
 
 bool detourLoad(void* self, const void* name, void* stream) {
     const std::string n = bstr(name);
+    crash::Scope trail("load", n);
     spdlog::info("load: loading '{}'", n);
     const auto t0 = std::chrono::steady_clock::now();
     SPASS_TRACE(trace::Channel::Save, "load '{}': begin", n);
@@ -165,6 +167,7 @@ bool detourLoad(void* self, const void* name, void* stream) {
 // ---- session / world ------------------------------------------------------------------------------------------
 
 void detourSessionStart(void* self, int mode) {
+    crash::Scope trail("session.start", mode == 0 ? "new" : mode == 1 ? "load" : "other");
     bumpEntityGeneration();
     aiResetRuns();
     if (mode == 0) {
@@ -182,6 +185,7 @@ void detourSessionStart(void* self, int mode) {
 }
 
 void detourSessionStop(void* self) {
+    crash::Scope trail("session.stop");
     lua::Runtime::instance().noteSessionStop();
     fire("session.stop");
     aiResetRuns();
@@ -192,6 +196,7 @@ void detourSessionStop(void* self) {
 }
 
 bool detourWorldActivate(void* self) {
+    crash::Scope trail("world.activate");
     const bool ok = g_worldActivate.original(self);
     bumpEntityGeneration();
     std::string name;

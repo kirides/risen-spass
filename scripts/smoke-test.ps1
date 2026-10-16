@@ -431,7 +431,7 @@ foreach ($name in $selected) {
         if ($s.Kind -eq 'result') {
             $res = $run.Result
             if ($null -eq $res) {
-                $note = switch ($run.Reason) { 'stall' { "stalled (no log line for $StallSeconds s), killed" } 'seconds' { "no result within $phLimit s, killed" } 'exited' { 'the game exited without a result' } default { "no result ($($run.Reason))" } }
+                $note = switch ($run.Reason) { 'stall' { "stalled (no log line for $StallSeconds s), killed" } 'seconds' { "no result within $phLimit s, killed" } 'exited' { $(if ($run.Summary) { "the game exited without a result: $($run.Summary)" } else { 'the game exited without a result' }) } default { "no result ($($run.Reason))" } }
                 Write-Host "  FAIL  $note" -ForegroundColor Red
                 $badPhases += $label; $notes += "${label}: $note"
             } else {

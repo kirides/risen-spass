@@ -11,6 +11,7 @@
 #include <fstream>
 #include <chrono>
 #include <functional>
+#include <memory>
 #include <set>
 #include <string>
 #include <thread>
@@ -19,12 +20,14 @@
 #include <spdlog/spdlog.h>
 
 #include "common/asset_names.h"
+#include "common/crash.h"
 #include "common/input_names.h"
 #include "common/sound_file.h"
 #include "common/template_id.h"
 #include "common/test_run.h"
 #include "common/trace.h"
 #include "game/ai_lua.h"
+#include "game/abi.h"
 #include "game/ai_names.h"
 #include "game/combat_names.h"
 #include "game/bindings.h"
@@ -502,6 +505,7 @@ TEST(balance_install_reports_each_application_to_on_applied) {
 #include "combat_tests.inc"
 #include "mods_tests.inc"
 #include "modmanager_tests.inc"
+#include "crash_tests.inc"
 
 }  // namespace
 

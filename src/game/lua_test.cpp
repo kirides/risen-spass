@@ -12,6 +12,7 @@
 #include <spdlog/sinks/base_sink.h>
 #include <spdlog/spdlog.h>
 
+#include "common/crash.h"
 #include "common/trace.h"
 #include "lua/runtime.h"
 
@@ -193,6 +194,7 @@ void finishRun(const std::string& summary, const std::string& abortReason, bool 
             if (auto logger = spdlog::default_logger()) {
                 logger->flush();
             }
+            crash::expectExit();
             TerminateProcess(GetCurrentProcess(), code);
         }).detach();
     }

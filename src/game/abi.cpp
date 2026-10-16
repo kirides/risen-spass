@@ -2,6 +2,8 @@
 
 #include <windows.h>
 
+#include "common/crash.h"
+
 namespace spass::game {
 
 std::wstring UString::widen(const std::string& utf8) {
@@ -25,18 +27,25 @@ std::string UString::narrow(const wchar_t* w) {
 }
 
 namespace {
-int filter(unsigned /*code*/, EXCEPTION_POINTERS* /*info*/) {
+int filter(unsigned code, EXCEPTION_POINTERS* info) {
+    crash::noteGuardedFault(code, info);
     return EXCEPTION_EXECUTE_HANDLER;
 }
-}  // namespace
 
-bool invokeGuarded(void (*fn)(void*), void* ctx) {
+// The __try lives in its own function: it must not share a frame with the GuardScope object.
+bool runSeh(void (*fn)(void*), void* ctx) {
     __try {
         fn(ctx);
         return true;
     } __except (filter(GetExceptionCode(), GetExceptionInformation())) {
         return false;
     }
+}
+}  // namespace
+
+bool invokeGuarded(void (*fn)(void*), void* ctx, const char* file, int line) {
+    crash::GuardScope scope(file != nullptr ? file : "?", line);
+    return runSeh(fn, ctx);
 }
 
 }  // namespace spass::game

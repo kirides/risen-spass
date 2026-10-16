@@ -51,6 +51,7 @@ set_target_properties(luajit::luajit PROPERTIES
 add_library(spass_core STATIC
     src/bootstrap.cpp
     src/config.cpp
+    src/common/crash.cpp
     src/common/log.cpp
     src/common/paths.cpp
     src/common/test_run.cpp

@@ -22,6 +22,8 @@ Config loadConfig(const std::filesystem::path& file) {
         cfg.trace = t["debug"]["trace"].value_or(cfg.trace);
         cfg.traceFile = t["debug"]["trace_file"].value_or(cfg.traceFile);
         cfg.traceScripts = t["debug"]["trace_scripts"].value_or(cfg.traceScripts);
+        cfg.crashHandler = t["debug"]["crash_handler"].value_or(cfg.crashHandler);
+        cfg.crashDump = t["debug"]["crash_dump"].value_or(cfg.crashDump);
         cfg.modsWatch = t["mods"]["watch"].value_or(cfg.modsWatch);
         cfg.modsWatchInterval = t["mods"]["watch_interval"].value_or(cfg.modsWatchInterval);
         cfg.testEnabled = t["test"]["enabled"].value_or(cfg.testEnabled);

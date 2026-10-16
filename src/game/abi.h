@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <source_location>
 #include <string>
 #include <type_traits>
 
@@ -111,11 +112,12 @@ static_assert(sizeof(EntityHolder) == 8);
 // Runs `fn(ctx)` under SEH. Returns false if it raised an access violation or other hardware
 // exception, which we prefer over taking the whole game down when a script API is called before the
 // engine singletons exist or with a dead entity.
-bool invokeGuarded(void (*fn)(void*), void* ctx);
+bool invokeGuarded(void (*fn)(void*), void* ctx, const char* file = nullptr, int line = 0);
 
+// The call site (file:line) is noted in the crash breadcrumbs and in the log line of a fault caught here (src/common/crash.h).
 template <class F>
-bool guarded(F&& f) {
-    return invokeGuarded([](void* p) { (*static_cast<std::remove_reference_t<F>*>(p))(); }, &f);
+bool guarded(F&& f, std::source_location where = std::source_location::current()) {
+    return invokeGuarded([](void* p) { (*static_cast<std::remove_reference_t<F>*>(p))(); }, &f, where.file_name(), static_cast<int>(where.line()));
 }
 
 }  // namespace spass::game

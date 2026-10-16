@@ -72,7 +72,7 @@ $env:SteamAppId = '40300'
 $env:SteamGameId = '40300'
 $started = Get-Date
 $p = Start-Process -FilePath (Join-Path $bin 'Risen.exe') -ArgumentList (@('-nosplash') + $ExtraArgs) -WorkingDirectory $bin -PassThru
-$global:SpassRun = [pscustomobject]@{ Reason = 'seconds'; Seconds = 0.0; Pid = $p.Id }
+$global:SpassRun = [pscustomobject]@{ Reason = 'seconds'; Seconds = 0.0; Pid = $p.Id; ExitCode = $null }
 
 Add-Type -AssemblyName System.Drawing
 $shotDue = $null
@@ -127,6 +127,8 @@ try {
     }
     $global:SpassRun.Reason = $reason
     $global:SpassRun.Seconds = ((Get-Date) - $started).TotalSeconds
+    # the exit code of a game that ended by itself (0xC0000005 = access violation, 0xC0000409 = fast fail, ... : a crash); test-run.ps1 reports it
+    if ($reason -eq 'exited') { try { $global:SpassRun.ExitCode = [BitConverter]::ToUInt32([BitConverter]::GetBytes([int]$p.ExitCode), 0) } catch { } }
     Write-Host ("game alive: {0}, window resized: {1}, ended by: {2} after {3:N0} s" -f (-not $p.HasExited), $resized, $reason, $global:SpassRun.Seconds)
     if (Test-Path $log) { Get-Content $log }
 }
