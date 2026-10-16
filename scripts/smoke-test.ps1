@@ -20,6 +20,8 @@
       persistnpc   - persistent NPCs (M7, mods/persistnpc): new game + in-process load + new game, then fresh-process loads (same declaration, changed declaration, lost templates)
       spawnwhen    - conditional spawning (M8, mods/spawnwhen): quest / items / game variable / death triggers, saves before and after them, loaded in the same and in fresh processes; four runs
       ex_spawn_when - example: a messenger while a quest runs, a smith after it succeeded who leaves after a dialogue choice (mods/example_spawn_when)
+      dialogcond   - dialogue conditions (M9, mods/dialogcond): engine conditions (item, event, skill, NPC status, quest) and a Lua script condition (any, negate, guild, predicates); two runs: save (state switched step by step), fresh-process load
+      ex_dialog_when - example: a smuggler whose secret needs iron ore AND trust AND a guild (mods/example_dialog_when)
 
 .DESCRIPTION
     Needs a built sentry.dll and the test copy (see CLAUDE.md). The [risen.test] scenarios end as soon as they are done
@@ -46,7 +48,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -161,6 +163,14 @@ $scenarios = [ordered]@{
                                @{ Name = 'load_changed'; Param = @('phase=load_changed'); Start = 'load'; Keep = $true; Limit = 150 }
                            ) }
     ex_spawn_when     = @{ Est = 100; Title = 'example: NPCs that appear and disappear'; Kind = 'result'; Mods = @('example_spawn_when'); Limit = 300 }
+    # dialogue conditions (M9): "save" (new game: every kind of condition against the engine, the world changed step by step, conversations, call counts, bad specs; leaves a quick save),
+    # "load" (a fresh process loads it: the options defined in load.before offer what the saved world says, the state is switched again)
+    dialogcond        = @{ Est = 120; Title = 'dialogue conditions (M9: engine and Lua script conditions; save, fresh-process load)'; Kind = 'result'; Mods = @('dialogcond'); Limit = 200
+                           Phases = @(
+                               @{ Name = 'save'; Param = @('phase=save'); Start = 'new'; Keep = $false; Limit = 200 }
+                               @{ Name = 'load'; Param = @('phase=load'); Start = 'load'; Keep = $true; Limit = 150 }
+                           ) }
+    ex_dialog_when    = @{ Est = 90; Title = 'example: dialogue options that depend on items, a variable and a guild'; Kind = 'result'; Mods = @('example_dialog_when'); Limit = 300 }
     # quick loot (M5d): the standalone mod `quickloot` against the engine's own interaction; phase `config` repeats the key path with another config.toml (items = false, key = PrimaryAction) copied into the mod
     quickloot         = @{ Est = 120; Title = 'quick loot (M5d: default config, then config.toml options)'; Kind = 'result'; Mods = @('quickloot', 'quickloot_driver'); Limit = 300
                            Phases = @(

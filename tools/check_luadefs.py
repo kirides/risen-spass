@@ -106,6 +106,9 @@ for fn in re.findall(r'^function npc\.(\w+)\(', (root / 'src/game/persistent_npc
 for ns in ('cond', 'spawn'):
     for fn in re.findall(rf'^function {ns}\.(\w+)\(', (root / 'src/game/spawn_when_lua.h').read_text(encoding='utf-8'), flags=re.M):
         bound[f'{ns}.{fn}'] = 'src/game/spawn_when_lua.h'
+# per-mod risen.dialog.create (wrapped) / compile / describe (the chunk in dialog_cond_lua.h defines `function own.<name>(` on the mod's dialog table)
+for fn in re.findall(r'^function own\.(\w+)\(', (root / 'src/game/dialog_cond_lua.h').read_text(encoding='utf-8'), flags=re.M):
+    bound[f'dialog.{fn}'] = 'src/game/dialog_cond_lua.h'
 # spec-less sol properties of usertypes use `"name", sol::property(` : include them
 for path in (root / 'src/game/script_bridge.cpp', root / 'src/game/lua_entity.cpp'):
     text = path.read_text(encoding='utf-8')

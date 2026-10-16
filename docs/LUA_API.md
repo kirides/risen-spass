@@ -266,7 +266,7 @@ risen.item.consume(player, "It_Po_Health_01")                   -- what using a 
 * **Skill names** (`risen.balance.skills()`): attributes `Strength`, `Dexterity`, `Intelligence`; `HitPoints`, `ManaPoints` (the *current* values: a potion with `HitPoints = 75` heals), `MaxHitPoints`,
   `MaxManaPoints`, `LearnPoints`, `Experience`, `Level`; weapon skills `Axe`, `Sword`, `Staff`, `Bow`, `CrossBow`; protection `ProtEdge`, `ProtBlunt`, `ProtPoint`, `ProtFire`, `ProtIce`, `ProtMagic`;
   magic `Missile`, `Frost`, `Fireball`, `Circle`; `Scribe`, `Trophy`, `Acrobat`, `Pickpocket`, `Lockpick`, `Sneak`, `Mining`, `Smith`, `Alchemy`. The engine suffix (`Stat_STR`) and the full enum name
-  (`gESkill_Stat_STR`) are accepted too. An unknown name is an error that lists the valid ones.
+  (`gESkill_Stat_STR`) are accepted too. An unknown name is an error that lists the valid ones. `risen.balance.skill_enum(name)` returns the engine's enum name (`"gESkill_Stat_STR"`, `nil` if unknown).
 * **Modifier modes** (`risen.balance.modes()`): `add` (default; the shipped value of every item), `set`, `max`, `percent`. Amounts are integers (negative allowed).
 * **`items` settings**: `value`, `damage`, `requires`, `modifies`, `use_type`, `category`, `mana_cost` and `properties = { Set = { Property = value } }` (anything else, validated like `risen.template.patch`);
   an unknown setting or template is an error listing the valid settings. More sections: `npcs`, `npc_groups` and `item_groups` (see "Balancing NPCs"); `spells` and `new_spells` (see "Spells"); later features register theirs with `risen.balance.register_section`.
@@ -655,14 +655,17 @@ risen.spawn.when({ name = "MyMod_Guard", template = "Peasant_1_03", offset = { 0
 | Constructor | Holds when | Looked at again after |
 |---|---|---|
 | `quest(name [, status])` | the quest has the status (`"Success"` by default; a list accepts any: `{ "Failed", "Lost" }`; `"None"` = no such quest) | `quest.status_changed` of that quest |
-| `item(template [, count [, holder]])` | the holder (the player; or an entity name) carries `count` (1) or more of the template | `inventory.changed` of that template |
+| `item(template [, count [, holder]])` | the holder (the player; or an entity name; in a dialogue `"npc"` = the owner of the option) carries `count` (1) or more of the template | `inventory.changed` of that template |
 | `var(name [, value [, op]])` | the game variable (`risen.gamevar`) is non-zero / equals `value` / compares with `op` (`== ~= >= <= > <`); a missing variable counts as 0 | `gamevar.changed` of that name |
 | `event(name)` | the game variable **exists**: what the dialogue command `SetGameEvent` does (it creates the variable with the value **0**) | `gamevar.changed` |
+| `skill(skill, value [, op [, who]])` | a skill or attribute of the player (or `who`: an entity's unique name; in a dialogue `"npc"` = the owner of the option) compares as wanted (`risen.balance.skills()`, `op` `>=` by default; the total, worn items included) | nothing announces it: `risen.spawn.check()` or a polling predicate |
+| `guild(guild [, who])` | the player (or `who`) belongs to the guild: a name of `risen.npc.guilds`, a number, or a list of them | nothing announces it (as `skill`) |
 | `dead(who)` / `alive(who)` | the NPC (unique name, or a persistent / rule handle) is dead (corpse, or recorded dead) / exists and lives | `entity.died` / `entity.destroyed` of it, and when a rule's NPC changes |
 | `fn(f [, { on = "event" or {...}, poll = frames }])` | the predicate returns true | the events in `on`, every `poll` frames; without either only after a load, with the other conditions of the rule, and `risen.spawn.check()` |
 | `all{...}`, `any{...}`, `negate(c)` | and / or / not | what their members need |
 
 `risen.cond.test(c)` answers `true`, `false` or `nil` ("cannot tell": no player yet, a predicate that raised an error — logged once; the rule then does nothing). `tostring(c)` describes a condition (it is what the log says).
+The same conditions decide which **dialogue options** are offered (`risen.dialog.create{ when = ... }`, next sections but one: "Dialogue conditions"); `skill` and `guild` exist for them (a spawn rule has no event for either, so combine them with `risen.spawn.check()` or a polling predicate).
 
 **Rules.**
 * **One-shot** (`once = true`, default): `waiting` -> (`when` holds) -> `present` (the NPC exists) -> (`despawn_when` holds) -> `gone` (removed; never again in this savegame). Before `despawn_when` the condition may become false again: the NPC stays.
@@ -724,7 +727,44 @@ offered: list of `Info`), `risen.dialog.is_running()`, `risen.dialog.has_infos(n
 already knows), `available()`, `set_property(name, value)`/`get_property(name)` (any engine property by name),
 `add_command("Say"|"Description"|"End"|"Back"|"SetGameEvent"|"ClearGameEvent"|"GiveXP"|"Give"|"RunQuest"|"SucceedQuest"|
 "CloseQuest"|"Attack"|"MoveTo"|"StartEffect"|"SetRoutine"|"DoTrade"|"Heal"|"FullStop"|"InfoWait"|"RunInfo"|"SaySVM"|
-"SaySound"|"ShowSubtitle")`, `add_script_command()`, `set_say(i, speaker, listener, key)`, `set_script(i, name)`.
+"SaySound"|"ShowSubtitle")`, `add_script_command()`, `set_say(i, speaker, listener, key)`, `set_script(i, name)`, and the low-level condition
+sequence (`add_condition(class)`, `set_condition_property`, `get_condition_property`, `list_condition_properties`, `set_condition_skill`, `condition_count`, `clear_conditions`: "Dialogue conditions" below).
+
+### Dialogue conditions — `when`, `engine` (see `mods/example_dialog_when`, `mods/dialogcond`, [RE.md §34](RE.md))
+An option is offered when its **condition type** (`condition = "Running", quest = ...`, the engine's own switch) holds **and** every condition of its **condition sequence**. `when` fills the sequence from the vocabulary of `risen.cond` (the one `risen.spawn.when` uses):
+```lua
+local C = risen.cond
+risen.dialog.create({ name = "Rurik_Secret", owner = "Rurik",
+    when = C.all { C.item("It_IronOre", 3), C.var("Rurik_Trust", 2, ">="), C.guild("Pir") },      -- 3+ iron ore AND trust >= 2 AND the player is a bandit
+    lines = { ... } })
+risen.dialog.create({ name = "Rurik_Hideout", owner = "Rurik", when = C.any { C.event("Rurik_Heard"), C.guild("Pir") }, lines = { ... } })      -- variable set OR guild == Pir
+risen.dialog.create({ name = "Rurik_Mood", owner = "Rurik", when = function(npc, player) return npc:hp() > 100 end, lines = { ... } })              -- any Lua predicate
+risen.dialog.create({ name = "Rurik_Near", owner = "Rurik", engine = { { class = "OwnerNearEntity", Entity = "PC_Hero" } }, lines = { ... } })    -- a raw engine condition
+```
+* **What the layer makes of a condition.** The engine evaluates the conditions of the sequence **natively, in order, and stops at the first that fails**. Leaves with an engine equivalent become such conditions, `all{...}` is several of them:
+
+  | Condition | Engine condition (`risen.dialog.describe` shows it) |
+  |---|---|
+  | `item(t, n)` of the player or `"npc"` (the owner) | `ItemAmount{ Owner, Item, ItemAmount }` (the owner of the option is named by its unique name, the player is `PC_Hero`) |
+  | `negate(item(t))` (exactly "none") | `ItemAmount` with amount 0 |
+  | `event(name)` / `negate(event(name))` | `PlayerKnows` / `PlayerNotKnows` (the game variable exists / does not exist) |
+  | `skill(s, v, op, who)` / its negation | `SkillValue{ Entity, CompareOperation, SkillValue = skill + amount }` (the negation inverts the operator) |
+  | `dead(npc)` / `alive(npc)` | `NPCStatus{ SecondaryNPC, SecondaryNPCStatus = Dead / Alive }`; `dead` of a **persistent** NPC stays Lua (its record can say "dead" with no corpse in the world) |
+  | `quest(q, S)` for one status `Running` `Success` `Failed` `Cancelled` `Won` `Lost` | `QuestStatus{ Quest, CondType = gEInfoCondType_S, IsCurrentStatus = true }` |
+
+  **Everything else** (`any`, `negate` of anything but the cases above, `var` — the engine cannot compare a variable's value —, `guild`, `fn`/a plain function, `quest` with `Open`/`Obsolete`/`None` or a list of statuses, `item` of another holder) is **one** `Script` condition at the end of the sequence:
+  the engine calls a script of this layer (`SPASS_Cond_<mod>_<option>`, made with `risen.script.define`), which evaluates what is left with `risen.cond.test` and answers 1 or 0. So `all { item, var, guild }` is `ItemAmount` + `Script{ var AND guild }`: the Lua only runs when the engine's own condition holds.
+  `risen.dialog.compile(when [, owner])` -> `{ engine = { "ItemAmount{...}", ... }, lua = "all(...)" | nil }` tells what `create` would make (changes nothing); `risen.dialog.describe(option_name)` what it made.
+* **When the engine looks at an option**: whenever it builds the list of options (a conversation opens, an option finished playing), and on `Info:available()`, `Info:conditions_fulfilled()` and `risen.dialog.has_infos(npc)`; the Lua script is called **once per look** (verified: one call per `available()`, one per option when a conversation opens, none while nothing looks).
+  **The list does not change while it is shown**: change the world, then talk again (or finish an option) and the options follow. Nothing is polled.
+* **Errors**: a predicate (or any Lua leaf) that raises an error, or answers `nil` ("cannot tell"), makes the option **not offered**; the error is logged **once** as a warning (`dialogue 'Name': condition 'predicate' raised an error ...`), never as an error line, and the game goes on.
+  If something cannot be attached (the engine refuses a condition or a property), `create` returns `nil, reason`, the option exists but is marked as already given (**never offered**; an option must not turn unconditional by accident).
+* **Predicates** get `(npc, player)`: the entity that owns the option and the player. `risen.cond.test(c, { npc = "Rurik" })` evaluates a condition the way an option does.
+* **`engine = { { class = "<Class>", <Property> = value, ... }, ... }`** adds raw engine conditions (checked against the class's property list first; strings, numbers, booleans): `ItemAmount` (`Owner`, `Item`, `ItemAmount`), `NPCStatus` (`SecondaryNPC`, `SecondaryNPCStatus` = `gEInfoNPCStatus_Alive|UnHarmed|Defeated|Dead|TalkedToPlayer|NotTalkedToPlayer`),
+  `OwnerInArea` (`AreaPropertyName`), `OwnerNearEntity` (`Entity`: the owner is within the engine's talking distance of it), `PlayerKnows` / `PlayerNotKnows` (`PlayerKnows` / `PlayerNotKnows` = a game variable name), `QuestStatus` (`Quest`, `CondType` = `gEInfoCondType_<state>`, `IsCurrentStatus`), `Script` (`ScriptName`, `Self`, `Other`, `Param`: a script that
+  answers non-zero), `SkillValue` / `CanTeachSkill` (`Skill = "Strength"`, `Amount`; `SkillValue` also `Entity` and `CompareOperation = "GreaterEqual"` ...), `TeachEnabled` (`TeachEnabled`). The values are the engine's text format; one it cannot parse is refused (read back and compared).
+* **Limits.** The engine's `ItemAmount` reads the item's first stack (the same number as `risen.item.count` for every item tried); `OwnerNearEntity` was only seen true, `OwnerInArea`, `TeachEnabled`, `CanTeachSkill` and the `NPCStatus` values other than `Dead`/`Alive` were attached but not evaluated in a game;
+  engine conditions of a **quest that does not exist** are false (no message box, unlike `condition = "Running"` with a missing quest, which `create` refuses); conditions on a dialogue are created again on every load like the dialogue itself (define it in `load.before`/`session.start`, see below). `when` needs the `owner` as an entity name (like the option).
 
 ## Quests — `risen.quest.define` / `add_log` (see `mods/questdemo`)
 ```lua

@@ -859,6 +859,11 @@ function balanceApi.scale_npcs(opts, apply_opts) end
 ---@return string[]
 function balanceApi.skills() end
 
+---The engine's enum name of a skill: `"Strength"`, `"Stat_STR"` and `"gESkill_Stat_STR"` all give `"gESkill_Stat_STR"`; `nil` for an unknown name. This is the spelling dialogue conditions and property text use.
+---@param name string
+---@return string|nil
+function balanceApi.skill_enum(name) end
+
 ---Validates a friendly skill table (`{ Smith = 1 }` or a list of `{ skill =, amount = }`) the way the `requires` setting of items is and converts it to engine entries (the
 ---input of `risen.item.set_skill_array`). Nothing is written.
 ---@param spec table
@@ -978,7 +983,7 @@ local condApi = {}
 ---@return Condition
 function condApi.quest(name, status) end
 
----The holder (the player by default, or an entity's unique name) carries at least `count` (default 1) of the item template (all stacks, equipped included). Looked at again after `inventory.changed` of that template.
+---The holder (the player by default, or an entity's unique name; in a dialogue `"npc"` is the owner of the option) carries at least `count` (default 1) of the item template (all stacks, equipped included). Looked at again after `inventory.changed` of that template.
 ---@param template string
 ---@param count? integer
 ---@param holder? string|PersistentNpc|SpawnRule
@@ -997,6 +1002,23 @@ function condApi.var(name, value, op) end
 ---@param name string
 ---@return Condition
 function condApi.event(name) end
+
+---A skill or attribute of a character compares as wanted (`risen.balance.skills()`: `"Strength"`, `"Sword"`, `"Smith"`, ...). The value is the total, worn items included (`Entity:skill_total`); `op` is `">="` by default;
+---`who` is `"player"` by default, an entity's unique name, or in a dialogue `"npc"` (the owner of the option). No event announces a change: a spawn rule needs `risen.spawn.check()` or a polling predicate. In a
+---dialogue it is an engine condition (`SkillValue`). Raises an error for an unknown skill, a non-integer value or an unknown operator.
+---@param skill string
+---@param value integer
+---@param op? "=="|"~="|">="|"<="|">"|"<"
+---@param who? string|PersistentNpc|SpawnRule
+---@return Condition
+function condApi.skill(skill, value, op, who) end
+
+---The character belongs to a guild: a name of `risen.npc.guilds` (`"Cit"`, `"Pir"`, ...), a number, or a list of them (any of them). `who` as for `skill` (`"player"` by default). In a dialogue it is evaluated in Lua
+---(the engine has no guild condition). Raises an error for an unknown guild.
+---@param guild string|integer|(string|integer)[]
+---@param who? string|PersistentNpc|SpawnRule
+---@return Condition
+function condApi.guild(guild, who) end
 
 ---The NPC with this unique name (or a persistent NPC / rule handle) is dead: its corpse exists, or its persistent record says it died. Looked at again after `entity.died` of it and when a rule's NPC changes.
 ---@param who string|PersistentNpc|SpawnRule
@@ -1036,10 +1058,18 @@ function condApi.any(list) end
 function condApi.negate(condition) end
 
 ---What a condition says right now: `true`, `false`, or `nil` (cannot tell: no player yet, a predicate that raised an error); `nil, reason` for something that is no condition. Handy in tests.
+---With `ctx` the condition is evaluated as a dialogue option would be: `"npc"` holders mean `ctx.npc`, a predicate receives `(npc, player)` and an error in a predicate is logged as a warning (`ctx.level`, default `"warn"`; `ctx.name` names the option).
 ---@param condition ConditionLike
+---@param ctx? DialogConditionContext
 ---@return boolean|nil
 ---@return string|nil reason
-function condApi.test(condition) end
+function condApi.test(condition, ctx) end
+
+---The context a dialogue option evaluates its conditions in.
+---@class DialogConditionContext
+---@field npc? string Unique name of the NPC that owns the option (`"npc"` holders and the first argument of predicates).
+---@field name? string Name of the option (shown in warnings).
+---@field level? "warn"|"error" Log level of an error inside a predicate (default `"warn"` when a context is given).
 
 ---Declaration of a conditional NPC (`risen.spawn.when`): all options of `risen.npc.persistent` (`name`, `template`, `position`/`offset`, `label`, `define`, `respawn`, `version`, `on_ready`, `on_death` and the spawn
 ---options) plus the rule. `enabled` is managed by the layer.
@@ -1992,6 +2022,50 @@ function Info:available() end
 ---@return integer
 function Info:command_count() end
 
+---Attaches an engine condition (`gCInfoCondition<Class>`) to the option's **condition sequence**: all of them must hold, on top of the info's condition type. Classes: `ItemAmount` (`Owner`, `Item`, `ItemAmount`: the
+---owner carries at least that many; 0 = none), `NPCStatus` (`SecondaryNPC`, `SecondaryNPCStatus` = `gEInfoNPCStatus_Alive|UnHarmed|Defeated|Dead|TalkedToPlayer|NotTalkedToPlayer`), `OwnerInArea` (`AreaPropertyName`),
+---`OwnerNearEntity` (`Entity`), `PlayerKnows` / `PlayerNotKnows` (`PlayerKnows` / `PlayerNotKnows` = a game variable's name: it exists / does not), `QuestStatus` (`Quest`, `CondType` = `gEInfoCondType_Running|Success|Failed|...`,
+---`IsCurrentStatus`), `Script` (`ScriptName`, `Self`, `Other`, `Param`: calls a script, non-zero = holds), `SkillValue` (`Entity`, `CompareOperation` = `gECompareOperation_Equal|NotEqual|Less|LessEqual|Greater|GreaterEqual`, and the
+---nested skill: `set_condition_skill`), `TeachEnabled` (`TeachEnabled`), `CanTeachSkill` (nested skill). Most callers use `risen.dialog.create{ when = ... }` instead. Returns the 1-based index of the condition, `nil, reason` for an unknown class.
+---@param class string
+---@return integer|nil index
+---@return string|nil reason
+function Info:add_condition(class) end
+
+---Number of engine conditions in the condition sequence.
+---@return integer
+function Info:condition_count() end
+
+---Removes every engine condition of the sequence (the option is then only governed by its condition type).
+---@return boolean ok
+function Info:clear_conditions() end
+
+---The properties (name and type) of the condition at `index`.
+---@param index integer
+---@return PropertyInfo[]|nil
+function Info:list_condition_properties(index) end
+
+---@param index integer
+---@param name string
+---@return string|nil
+function Info:get_condition_property(index, name) end
+
+---Sets a property of a condition by its text format (enums as `gECompareOperation_Less`, numbers as `"3"`, entity names and keywords `"player"` / `"npc"` as they are). Returns `true` when the property exists; the engine ignores a value
+---it cannot parse, so read it back with `get_condition_property` to be sure.
+---@param index integer
+---@param name string
+---@param value string
+---@return boolean ok
+function Info:set_condition_property(index, name, value) end
+
+---Sets the nested skill value of a `SkillValue` (member `"SkillValue"`) or `CanTeachSkill` (member `"TeachSkill"`) condition: the skill by its enum name (`gESkill_Stat_STR`, see `risen.balance.skill_enum`) and the amount. Checked by reading the skill back.
+---@param index integer
+---@param member "SkillValue"|"TeachSkill"
+---@param skill string
+---@param amount integer
+---@return boolean ok
+function Info:set_condition_skill(index, member, skill, amount) end
+
 ---Appends a command by its editor name (`"Say"`, `"Description"`, `"End"`, `"Back"`, `"SetGameEvent"`, `"ClearGameEvent"`,
 ---`"GiveXP"`, `"Give"`, `"RunQuest"`, `"SucceedQuest"`, `"CloseQuest"`, `"Attack"`, `"MoveTo"`, `"StartEffect"`,
 ---`"SetRoutine"`, `"DoTrade"`, `"Heal"`, `"FullStop"`, `"InfoWait"`, `"RunInfo"`, `"SaySVM"`, `"SaySound"`, `"ShowSubtitle"`).
@@ -2104,7 +2178,24 @@ function Info:set_command_text(index, command, text_key) end
 ---@field quest? string Required for quest-state conditions; must exist.
 ---@field parent? string Name of the parent option: this option becomes a child shown in the sub-menu after the parent ran (branching conversations, `mods/dialogbranch`).
 ---@field permanent? boolean Stays available after use.
+---@field when? ConditionLike The option is offered only while this holds (also `condition` / `quest` when given, both must hold): any condition of `risen.cond` (`quest`, `item`, `var`, `event`, `skill`, `guild`, `dead`, `alive`, `fn`,
+---`all`, `any`, `negate`) or a plain `function(npc, player) -> boolean`. Leaves and negations the engine knows (item amount, a game variable existing, skill value, NPC dead / alive, a quest in Running / Success / Failed / Cancelled /
+---Won / Lost, "carries none of an item", "variable does not exist") become engine conditions, `all{}` several of them; the rest is **one** Lua script condition evaluated when the engine looks at the option, after the engine
+---conditions (`risen.dialog.describe` tells which is which). An error in a Lua condition is a warning in the log and the option is not offered. The conditions are read whenever the engine builds the option list (when a conversation
+---opens or an option finished), not while the list is shown.
+---@field engine? DialogEngineCondition[] Raw engine conditions added after `when`'s (all must hold): see `Info:add_condition` for the classes and their properties.
 ---@field lines DialogLine[]
+
+---A raw engine condition of a `DialogSpec.engine` list: `class` plus the class's properties by name (strings, numbers or booleans), e.g. `{ class = "OwnerNearEntity", Entity = "PC_Hero" }`. `SkillValue` and `CanTeachSkill` take the nested skill
+---as `Skill = "Strength"` (a name of `risen.balance.skills()`) and `Amount = 5`; `CompareOperation` may be written `"GreaterEqual"`.
+---@class DialogEngineCondition
+---@field class "ItemAmount"|"NPCStatus"|"OwnerInArea"|"OwnerNearEntity"|"PlayerKnows"|"PlayerNotKnows"|"QuestStatus"|"Script"|"SkillValue"|"TeachEnabled"|"CanTeachSkill"
+---@field [string] string|number|boolean|nil
+
+---What `risen.dialog.compile` / `describe` report about a condition: the engine conditions made (`"ItemAmount{Item=It_IronOre, ItemAmount=3, Owner=PC_Hero}"`) and the description of what is left for the Lua script condition.
+---@class DialogConditionPlan
+---@field engine string[] One text per engine condition, in the order they are attached.
+---@field lua string|nil The remaining condition evaluated by the Lua script condition (`nil`: none, the engine decides alone).
 
 ---@class RisenDialogApi
 local dialogApi = {}
@@ -2115,6 +2206,18 @@ local dialogApi = {}
 ---@return Info|nil info
 ---@return string|nil error
 function dialogApi.create(spec) end
+
+---What `create` would make of a `when` condition for an option owned by `owner` (default `"npc"`): the engine conditions and the Lua remainder. Changes nothing. `nil, reason` for something that is no condition.
+---@param when ConditionLike
+---@param owner? string
+---@return DialogConditionPlan|nil plan
+---@return string|nil reason
+function dialogApi.compile(when, owner) end
+
+---What `create` made for an option of the calling mod that has `when` / `engine` (`nil` for any other).
+---@param name string
+---@return DialogConditionPlan|nil
+function dialogApi.describe(name) end
 
 ---Low-level: creates an empty info.
 ---@param name string

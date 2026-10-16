@@ -322,6 +322,8 @@ end
 -- risen.balance.skills() / modes() -> the valid friendly names
 function risen.balance.skills() local out = {} for i, n in ipairs(skill_names) do out[i] = n end return out end
 function risen.balance.modes() local out = {} for i, n in ipairs(mode_names) do out[i] = n end return out end
+-- risen.balance.skill_enum("Strength" | "Stat_STR" | "gESkill_Stat_STR") -> "gESkill_Stat_STR" | nil: the engine's enum name of a skill (what dialogue conditions and property text use)
+function risen.balance.skill_enum(name) return engine_skill(name) end
 
 local function sorted_keys(t)
     local keys = {}

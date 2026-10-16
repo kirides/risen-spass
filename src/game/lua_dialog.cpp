@@ -1,3 +1,5 @@
+#include <tuple>
+
 #include <windows.h>
 
 #include <spdlog/spdlog.h>
@@ -58,6 +60,29 @@ bool tryDo(const char* what, F&& f) {
     return true;
 }
 
+// The classes of the engine's info conditions (Game.dll exports a CreateObject factory for each).
+constexpr const char* kConditionClasses[] = {"ItemAmount", "NPCStatus", "OwnerInArea", "OwnerNearEntity", "PlayerKnows", "PlayerNotKnows",
+                                             "QuestStatus", "Script", "SkillValue", "TeachEnabled", "CanTeachSkill"};
+
+bool isConditionClass(const std::string& name) {
+    for (const char* c : kConditionClasses) {
+        if (name == c) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string conditionClassList() {
+    std::string out = "valid: ";
+    for (const char* c : kConditionClasses) {
+        out += c;
+        out += ", ";
+    }
+    out.resize(out.size() - 2);
+    return out;
+}
+
 }  // namespace
 
 void bindDialog(sol::state_view lua, sol::table risen) {
@@ -80,6 +105,78 @@ void bindDialog(sol::state_view lua, sol::table risen) {
             void* cmd = nullptr;
             guarded([&] { cmd = s.info_get_command(i.p, index - 1); });
             return cmd != nullptr ? propertyGet(cmd, name) : sol::nullopt;
+        },
+        // The condition sequence (docs/RE.md section 34): engine gCInfoCondition* objects that must all hold, on top of the ConditionType.
+        // info:add_condition("ItemAmount") -> 1-based index | nil, reason: creates the object through its class factory and inserts it
+        "add_condition", [&s](sol::this_state ts, const LuaInfo& i, const std::string& cls) -> std::tuple<sol::object, sol::object> {
+            sol::state_view L(ts);
+            auto fail = [&](const std::string& why) {
+                return std::make_tuple(sol::object(sol::make_object(L, sol::lua_nil)), sol::object(sol::make_object(L, why)));
+            };
+            if (!isConditionClass(cls)) {
+                return fail("unknown condition class '" + cls + "' (" + conditionClassList() + ")");
+            }
+            int idx = -1;
+            std::string why;
+            const bool ok = guarded([&] {
+                using Factory = void* (*)();
+                const auto make = exports::resolveAs<Factory>(L"Game.dll", ("?CreateObject@gCInfoCondition" + cls + "@@SAPEAVbCObjectBase@@XZ").c_str());
+                if (make == nullptr) {
+                    why = "the engine has no factory for gCInfoCondition" + cls;
+                    return;
+                }
+                if (void* cond = make()) {
+                    idx = s.info_insert_condition(i.p, cond);
+                }
+            });
+            if (!ok) {
+                return fail("the engine raised an exception");
+            }
+            if (idx < 0) {
+                return fail(why.empty() ? "the engine could not create or insert the condition" : why);
+            }
+            return std::make_tuple(sol::object(sol::make_object(L, idx + 1)), sol::object(sol::make_object(L, sol::lua_nil)));
+        },
+        "condition_count", [&s](const LuaInfo& i) { return tryGet<int>("condition_count", [&] { return s.info_condition_count(i.p); }).value_or(0); },
+        "clear_conditions", [&s](const LuaInfo& i) { return tryDo("clear_conditions", [&] { s.info_remove_conditions(i.p); }); },
+        "list_condition_properties", [&s](sol::this_state ts, const LuaInfo& i, int index) -> sol::object {
+            void* cond = nullptr;
+            guarded([&] { cond = s.info_get_condition(i.p, index - 1); });
+            return cond != nullptr ? sol::make_object(ts, propertyListTable(ts, cond)) : sol::make_object(ts, sol::lua_nil);
+        },
+        "get_condition_property", [&s](const LuaInfo& i, int index, const std::string& name) -> sol::optional<std::string> {
+            void* cond = nullptr;
+            guarded([&] { cond = s.info_get_condition(i.p, index - 1); });
+            return cond != nullptr ? propertyGet(cond, name) : sol::nullopt;
+        },
+        "set_condition_property", [&s](const LuaInfo& i, int index, const std::string& name, const std::string& value) {
+            void* cond = nullptr;
+            guarded([&] { cond = s.info_get_condition(i.p, index - 1); });
+            return cond != nullptr && propertySet(cond, name, value);
+        },
+        // info:set_condition_skill(index, "SkillValue" | "TeachSkill", "gESkill_Stat_STR", amount): the nested gCSkillValue of a SkillValue / CanTeachSkill condition
+        // (a struct member the text format cannot set); the skill is checked by reading it back
+        "set_condition_skill", [&s](const LuaInfo& i, int index, const std::string& member, const std::string& skill, int amount) {
+            bool ok = false;
+            guarded([&] {
+                void* cond = s.info_get_condition(i.p, index - 1);
+                if (cond == nullptr) {
+                    return;
+                }
+                void* value = nullptr;
+                if (member == "SkillValue") {
+                    value = s.condskill_access_value(cond);
+                } else if (member == "TeachSkill") {
+                    value = s.condteach_access_skill(cond);
+                }
+                if (value == nullptr) {
+                    return;
+                }
+                ok = propertySet(value, "Skill", skill) && propertySet(value, "Amount", std::to_string(amount));
+                const auto back = propertyGet(value, "Skill");
+                ok = ok && back && *back == skill;
+            });
+            return ok;
         },
         // info:set_command_text(index, "ShowSubtitle", key): the localized text of a command that has one
         // (Say, SaySVM, PickPocket, Description, ShowSubtitle, AddLogText); the text is the key of a risen.loc string.

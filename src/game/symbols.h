@@ -171,6 +171,13 @@
     X(addlog_create, L"Game.dll", "?CreateObject@gCInfoCommandAddLogText@@SAPEAVbCObjectBase@@XZ", void* (*)(), true) \
     X(info_get_command, L"Game.dll", "?GetComSeqItem@gCInfo@@QEBAPEAVgCInfoCommand@@H@Z", void* (*)(const void* self, int index), true) \
     X(info_command_count, L"Game.dll", "?GetComSeqItemCount@gCInfo@@QEBAHXZ", int (*)(const void* self), true)  \
+    /* the condition sequence of an info (all members must hold, after the ConditionType): docs/RE.md section 34 */ \
+    X(info_insert_condition, L"Game.dll", "?InsertCondSeqItem@gCInfo@@QEAAHPEAVgCInfoCondition@@@Z", int (*)(void* self, void* condition), true) \
+    X(info_get_condition, L"Game.dll", "?GetCondSeqItem@gCInfo@@QEBAPEAVgCInfoCondition@@H@Z", void* (*)(const void* self, int index), true) \
+    X(info_condition_count, L"Game.dll", "?GetCondSeqItemCount@gCInfo@@QEBAHXZ", int (*)(const void* self), true) \
+    X(info_remove_conditions, L"Game.dll", "?RemoveAllCondSeqItems@gCInfo@@QEAAXXZ", void (*)(void* self), true) \
+    X(condskill_access_value, L"Game.dll", "?AccessSkillValue@gCInfoConditionSkillValue@@QEAAAEAVgCSkillValue@@XZ", void* (*)(void* self), true) \
+    X(condteach_access_skill, L"Game.dll", "?AccessTeachSkill@gCInfoConditionCanTeachSkill@@QEAAAEAVgCSkillValue@@XZ", void* (*)(void* self), true) \
     X(say_access_text, L"Game.dll", "?AccessText@gCInfoCommandSay@@QEAAAEAVgCInfoLocString@@XZ", void* (*)(void* self), true) \
     X(say_set_speaker, L"Game.dll", "?SetSpeaker@gCInfoCommandSay@@QEAAXAEBVbCString@@@Z", void (*)(void* self, const void* s), true) \
     X(say_set_listener, L"Game.dll", "?SetListener@gCInfoCommandSay@@QEAAXAEBVbCString@@@Z", void (*)(void* self, const void* s), true) \

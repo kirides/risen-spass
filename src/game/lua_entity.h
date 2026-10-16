@@ -114,5 +114,7 @@ sol::object makeEntityObject(sol::state_view lua, void* entity);
 void installPersistentNpcModApi(sol::state_view lua, sol::table api, const std::string& modId);
 // risen.spawn.when / risen.cond (spawn_when_lua.h): per-mod, after installPersistentNpcModApi. (lua_persistent_npc.cpp)
 void installSpawnWhenModApi(sol::state_view lua, sol::table api, const std::string& modId);
+// risen.dialog.create learns `when` / `engine` (dialog_cond_lua.h): per-mod, after installSpawnWhenModApi. (lua_persistent_npc.cpp)
+void installDialogCondModApi(sol::state_view lua, sol::table api, const std::string& modId);
 
 }  // namespace spass::game

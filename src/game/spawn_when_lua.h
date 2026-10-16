@@ -11,6 +11,8 @@
 //     the trigger has the rule waiting and one made after has it fired / gone. After a load (and in a new game) every rule is evaluated once, 40 frames after world.ready
 //     (the persistent NPCs are reconciled 30 frames after it), so a savegame whose world already satisfies a condition, or no longer does, is made consistent.
 //   * The NPC is a persistent NPC with an `enabled` gate: nothing of it exists while the rule is waiting, however often the world is loaded.
+// The same conditions are the vocabulary of dialogues (dialog_cond_lua.h, M9: `risen.dialog.create{ when = ... }` compiles them to engine conditions where the engine has an equivalent and evaluates the rest
+// in Lua): `cond.skill` and `cond.guild` exist for them, `cond.test(c, ctx)` takes the dialogue's context ({ npc = the owner's name }) and a predicate then receives (npc, player).
 // Arguments: the per-mod `risen` table and the mod id (installed after the persistent NPC chunk).
 namespace spass::game {
 
@@ -63,6 +65,9 @@ local function normalize(c)
     end
     return nil, "expected a condition (risen.cond.*) or a function"
 end
+
+cond.is_node = is_node
+cond.normalize = function(c) return normalize(c) end
 
 local function must(c, what)
     local n, why = normalize(c)
@@ -131,6 +136,33 @@ function cond.event(name)
     })
 end
 
+-- cond.skill(skill, value [, op [, who]]) -> condition: a skill or attribute of the character compares as wanted (risen.balance.skills(): "Strength", "Sword", "Smith", ...; op ">=" by default; who "player" by default,
+-- or an entity's unique name; in a dialogue "npc" is the owner of the option). The value is the total (worn items included), as Entity:skill_total. No event announces a change: a spawn rule needs a poll or risen.spawn.check().
+function cond.skill(skill, value, op, who)
+    if type(skill) ~= "string" or skill == "" then bad("cond.skill: the skill name must be a string (risen.balance.skills())") end
+    local engine = api.balance.skill_enum and api.balance.skill_enum(skill)
+    if not engine then bad(("cond.skill: unknown skill '%s' (valid: %s)"):format(skill, table.concat(api.balance.skills(), ", "))) end
+    if type(value) ~= "number" or value ~= math.floor(value) then bad("cond.skill: the value must be an integer") end
+    if op ~= nil and not OPS[op] then bad("cond.skill: unknown operator '" .. tostring(op) .. "' (== ~= >= <= > <)") end
+    who = who == nil and "player" or name_of(who, "cond.skill")
+    return node("skill", ("%s of %s %s %d"):format(skill, who, op or ">=", value), { skill = skill, engine = engine, value = value, op = op or ">=", who = who, watch = {} })
+end
+
+-- cond.guild(guild [, who]) -> condition: the NPC (or the player) belongs to the guild (a name of risen.npc.guilds: "Cit", "Pir", ...; a number; or a list of them: any of them)
+function cond.guild(guild, who)
+    local given = type(guild) == "table" and guild or { guild }
+    if #given == 0 then bad("cond.guild: the guild list is empty") end
+    local set, list = {}, {}
+    for _, g in ipairs(given) do
+        local number = type(g) == "string" and api.npc.guilds[g] or type(g) == "number" and g or nil
+        if number == nil then bad(("cond.guild: unknown guild '%s' (valid: a number or a name of risen.npc.guilds)"):format(tostring(g))) end
+        set[number] = true
+        list[#list + 1] = tostring(g)
+    end
+    who = who == nil and "player" or name_of(who, "cond.guild")
+    return node("guild", ("%s guild is %s"):format(who, table.concat(list, "/")), { set = set, who = who, watch = {} })
+end
+
 -- cond.dead(name) / cond.alive(name) -> conditions on an NPC by its unique name (or a persistent / rule handle): dead = a corpse exists (or the persistent NPC is recorded dead),
 -- alive = the entity exists and is not dead
 function cond.dead(who)
@@ -187,14 +219,32 @@ function cond.negate(c)
 end
 
 -- The answer of one condition now: true, false, or nil = cannot tell (no player yet, a predicate that raised an error): a rule does nothing then.
+-- `cx` is the context of the evaluation in progress (cond.test(c, ctx)): in a dialogue { npc = the owner's unique name, name = the option's name, level = "warn" } - "npc" holders mean that entity, predicates receive (npc, player),
+-- and a predicate that raised an error is reported as a warning (the option is simply not offered).
 local reported = {}
+local cx = nil
 local function leaf(n, fn)
     local ok, res = pcall(fn, n)
     if not ok then
-        if not reported[n] then reported[n] = true say("error", "condition '%s': %s", n.text, tostring(res)) end
+        if not reported[n] then
+            reported[n] = true
+            if cx then log[cx.level or "warn"](("dialogue '%s': condition '%s' raised an error, so the option is not offered: %s"):format(tostring(cx.name or cx.npc), n.text, tostring(res)))
+            else say("error", "condition '%s': %s", n.text, tostring(res)) end
+        end
         return nil
     end
     return res
+end
+
+-- The entity a holder / who refers to: nil = cannot tell (no player, or "npc" outside a dialogue), false = it does not exist
+local function resolve(who)
+    if who == "player" then return api.entity.player() end
+    if who == "npc" then
+        local name = cx and cx.npc
+        if not name then return nil end
+        return api.entity.get(name) or false
+    end
+    return api.entity.get(who) or false
 end
 
 local function quest_status(name)
@@ -208,13 +258,26 @@ end
 local EVAL = {}
 function EVAL.quest(n) return n.set[quest_status(n.quest)] == true end
 function EVAL.item(n)
-    local e
-    if n.holder == "player" then e = api.entity.player() else e = api.entity.get(n.holder) end
-    if not e then
-        if n.holder == "player" then return nil end   -- no player yet: cannot tell
-        return false
-    end
+    local e = resolve(n.holder)
+    if e == nil then return nil end   -- no player yet: cannot tell
+    if not e then return false end
     return (api.item.count(e, n.template) or 0) >= n.count
+end
+function EVAL.skill(n)
+    local e = resolve(n.who)
+    if e == nil then return nil end
+    if not e then return false end
+    local v = api.item.skill_total(e, n.skill)
+    if type(v) ~= "number" then return nil end
+    return OPS[n.op](v, n.value)
+end
+function EVAL.guild(n)
+    local e = resolve(n.who)
+    if e == nil then return nil end
+    if not e then return false end
+    local g = e:guild()
+    if type(g) ~= "number" then return nil end
+    return n.set[g] == true
 end
 function EVAL.event(n) return api.gamevar.exists(n.var) and true or false end
 function EVAL.var(n)
@@ -234,7 +297,8 @@ function EVAL.alive(n)
     return e ~= nil and not e:is_dead()
 end
 function EVAL.fn(n)
-    local r = n.fn()
+    local r
+    if cx and cx.npc then r = n.fn(api.entity.get(cx.npc) or nil, api.entity.player()) else r = n.fn() end
     if r == nil then return nil end
     return r and true or false
 end
@@ -272,11 +336,16 @@ eval = function(n)
     return leaf(n, f)
 end
 
--- cond.test(condition) -> boolean | nil: what the condition says right now (nil = cannot tell, e.g. outside a running game)
-function cond.test(c)
+-- cond.test(condition [, ctx]) -> boolean | nil: what the condition says right now (nil = cannot tell, e.g. outside a running game). `ctx` is the dialogue context { npc = name, name = option, level = "warn" } (see `cx`)
+function cond.test(c, ctx)
     local n, why = normalize(c)
     if not n then return nil, why end
-    return eval(n)
+    local previous = cx
+    cx = ctx
+    local ok, res = pcall(eval, n)
+    cx = previous
+    if not ok then error(res, 0) end
+    return res
 end
 
 -- ---- rules ------------------------------------------------------------------------------------------------------------------------------------

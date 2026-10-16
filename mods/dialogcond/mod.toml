@@ -1,0 +1,6 @@
+id          = "dialogcond"
+name        = "Dialogue conditions: live test mod"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Options with engine conditions (item amount, game variable, skill, NPC status, quest state) and Lua-script conditions (any, negate, guild, predicates); the scenario `dialogcond` (docs/DEVELOPMENT.md) switches the state and checks which options the engine offers, saves and loads in a fresh process. Only meaningful in a test run."
+main        = "main.lua"

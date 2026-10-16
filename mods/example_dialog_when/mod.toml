@@ -1,0 +1,6 @@
+id          = "example_dialog_when"
+name        = "Example: dialogue options that depend on items, variables, guilds (risen.dialog.create when = ...)"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "A smuggler who only talks about his secret when the player carries enough iron ore AND has earned his trust (a game variable) AND belongs to the bandits; engine conditions and a Lua condition combined. See docs/EXAMPLES.md."
+main        = "main.lua"
