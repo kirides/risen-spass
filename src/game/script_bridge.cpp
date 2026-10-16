@@ -192,6 +192,23 @@ std::string installNative(const std::string& name, NativeScript fn, bool isOverr
     return install(name, sol::main_protected_function{}, std::move(fn), isOverride);
 }
 
+std::string hookKind(const std::string& name) {
+    void** fnSlot = registryFnSlot(name, /*create=*/false);
+    if (fnSlot == nullptr) {
+        return {};
+    }
+    const std::size_t i = findSlotByFn(fnSlot);
+    if (i == kMaxSlots) {
+        return {};
+    }
+    return g_slots[i].native ? "native" : "lua";
+}
+
+bool scriptExists(const std::string& name) {
+    void** fnSlot = registryFnSlot(name, /*create=*/false);
+    return fnSlot != nullptr && *fnSlot != nullptr;
+}
+
 void setAdmin(void* admin) { g_admin = admin; }
 
 bool inLuaScriptCall() { return g_luaCallDepth > 0; }

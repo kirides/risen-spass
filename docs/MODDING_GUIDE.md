@@ -272,6 +272,31 @@ if p then risen.npc.spawn("Wolf", p.x, p.y + 5, p.z) end
 * **Randomness:** `risen.random` is your mod's own stream (`int`, `float`, `chance`, `choice`, `shuffle`, `sample`, `weighted`, `point_in_ring`); `R.seed(42)` makes it repeatable for a test, `R.persist("name")` saves its state with the savegame. **Do not use `math.random` for anything that matters:** all mods share one generator that starts the same way every run.
 * Examples and tests: `example_unseen_spawn`, `geometry`. Details: [LUA_API.md](LUA_API.md) "Geometry, line of sight and randomness", [RE.md](RE.md) §38.
 
+### 4.18 Custom damage: a fireball that hits harder every time, armor that ignores a damage type, no friendly fire
+
+```lua
+-- mods/example_stacking_fireball: the player's Fireball does 50% more damage for every earlier hit on the same target
+local STEP = 0.5
+risen.combat.on_damage(function(hit)
+    local all = risen.save.get("stacks", {})                       -- counters per victim, saved next to every savegame
+    local n = all[hit.victim:name()] or 0
+    all[hit.victim:name()] = n + 1
+    risen.save.set("stacks", all)
+    return hit.damage * (1 + STEP * n)                              -- nil = unchanged, a number = this damage, false or 0 = cancel the hit
+end, { attacker = "player", spell = "fireball" })                  -- kind = "melee" | "spell" | "ranged", weapon = "It_Fist_Monster", type = "Edge", victim = entity ...
+risen.on("entity.died", function(e) local all = risen.save.get("stacks", {}); all[e:name()] = nil; risen.save.set("stacks", all) end)
+
+-- other shapes of the same hook
+risen.combat.on_damage(function(hit) return false end, { attacker = "player", victim = ally })           -- the player's hits cannot hurt this NPC
+risen.combat.on_damage(function(hit) return hit.damage * 0.5 end, { victim = "player", kind = "melee" }) -- half melee damage for the player
+```
+* **What you get:** `hit.attacker`, `hit.victim`, `hit.source` (the projectile / weapon entity), `hit.weapon` (its template), `hit.kind`, `hit.spell`, `hit.type`, `hit.damage`, `hit.original_damage`, `hit.multiplier`, `hit.protection`. The number you return is the damage **before**
+  the victim's protection: return `hit.damage * factor`, not a constant, and the Fireball skill bonus, the **area falloff** at the edge of a blast (`hit.multiplier`), the protection skills and the minimum damage keep working.
+* **Calls and order:** once per victim and hit (every victim in a blast gets its own call), in registration order, each handler sees the previous one's result; `false` / `0` cancels and ends the chain. An error in a handler is a warning and the stock damage applies.
+* **Counters belong in `risen.save`** (restored by a load, empty in a new game, keyed by the victim's unique name); decide when they reset (death, a new game, never) and write it into the header of your mod, as the example does.
+* **Reactions:** a cancelled hit makes no stumble, but the NPC may still notice the fight; making NPCs ignore hits that land is not part of this hook. `-Trace combat` shows every hit with the damage before and after.
+* Examples and tests: `example_stacking_fireball` (`ex_combat`), `damagehooks` (real casts, wolf bites, club blows). Details: [LUA_API.md](LUA_API.md) "Damage hooks", [RE.md](RE.md) §39.
+
 ## 5. Configuration
 
 * **Your mod's options:** `config.toml` next to `main.lua`; `local cfg = risen.config{ enabled = true, key = "SecondaryAction", repeat_ms = 80 }` returns the merged table (types are taken from your defaults, problems are logged as `config: [my_mod] ...` and the default is used).
@@ -350,6 +375,10 @@ Collected from the milestones; each is verified or marked as inferred in [RE.md]
 * Line of sight is the engine's own ray test between two points: terrain, rocks, trees and buildings block, characters never do (unless `bodies = true`), one ray per question (a head above a wall is not noticed). The camera's field-of-view axis is inferred, not proven. `camera = true` is only meaningful for the player. During the first seconds of a new game the camera flies in.
 * `math.random` is one generator for all mods and starts from the same state in every run: use `risen.random` (own stream per mod, seedable, `persist`).
 
+**Combat**
+* `risen.combat.on_damage` sees hits that reach the engine script `DoDamage` (weapons, fists, monster attacks, Fireball / Frost / Missile, arrows, fire, falling objects); poison, `Entity:set_hp` and the cheats are not hits. It works on the damage *before* the victim's protection; the difficulty factor (player victim) and the party halving come after and are not in `hit.damage`.
+  Live-verified: Fireball casts, wolf bites, club blows; arrows, bolts, Frost, Missile and NPC mages' fireballs share the hook but were not driven. Do not combine it with `risen.script.override("DoDamage", ...)`.
+
 **Events**
 * `item.used` for food is `item.consumed` (inferred for a real meal), no "container opened" event, `entity.spawned` only for `Entity::Spawn` (not for what a savegame brings back), `Entity:set_hp(0)` is not a death, humans knocked out are `entity.defeated`, not `entity.died`.
 * The interactive buy/sell screen and interactive loot/pick-up are the same engine operations as the Lua functions (checked in the decompilation) but cannot be driven from a script, so they are not run live.
@@ -361,7 +390,7 @@ Collected from the milestones; each is verified or marked as inferred in [RE.md]
 | You want | Read |
 |---|---|
 | every function, option, event | [LUA_API.md](LUA_API.md), [../types/risen.d.lua](../types/risen.d.lua) (the same, for the editor) |
-| a working pattern | [EXAMPLES.md](EXAMPLES.md) (seventeen small examples, the showcase `balance_example`, the real mod Quick Loot) |
+| a working pattern | [EXAMPLES.md](EXAMPLES.md) (eighteen small examples, the showcase `balance_example`, the real mod Quick Loot) |
 | names of items, NPCs, monsters | [TEMPLATES.md](TEMPLATES.md) |
 | where the numbers live | [ITEM_PROPERTIES.md](ITEM_PROPERTIES.md), [NPC_PROPERTIES.md](NPC_PROPERTIES.md), [SPELL_PROPERTIES.md](SPELL_PROPERTIES.md), [RECIPE_PROPERTIES.md](RECIPE_PROPERTIES.md), [PROPERTIES.md](PROPERTIES.md) |
 | how the engine behaves (verified findings, RVAs) | [RE.md](RE.md) |

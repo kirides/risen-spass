@@ -26,6 +26,7 @@
 #include "common/trace.h"
 #include "game/ai_lua.h"
 #include "game/ai_names.h"
+#include "game/combat_names.h"
 #include "game/bindings.h"
 #include "game/loc_files.h"
 #include "game/lua_config.h"
@@ -497,6 +498,7 @@ TEST(balance_install_reports_each_application_to_on_applied) {
 #include "quickloot_tests.inc"
 #include "hardening_tests.inc"
 #include "geometry_tests.inc"
+#include "combat_tests.inc"
 
 }  // namespace
 

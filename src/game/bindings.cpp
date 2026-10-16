@@ -167,6 +167,7 @@ void registerBindings() {
     rt.addBinding(bindQuestObjects);
     rt.addBinding(scripts::bindScripts);
     rt.addBinding(bindAi);  // after the script bridge: risen.ai (M11)
+    rt.addBinding(bindCombat);  // after the script bridge: risen.combat.on_damage (M14)
     bindSave();
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installAiModApi(lua, api, mod.id); });  // after bindSave: risen.ai.start(persist = true) keeps its records in the mod's risen.save (M11)
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installRoutineModApi(lua, api, mod.id); });  // after bindSave, before the persistent NPCs (their `routine` option calls risen.npc.set_routine)

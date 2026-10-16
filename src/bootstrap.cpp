@@ -101,6 +101,7 @@ void onProcessDetach() {
     if (g_active) {
         game::test::shutdown();
         game::aiShutdown();
+        game::combatShutdown();
         lua::Runtime::instance().stop();
         hooks::shutdown();
     }

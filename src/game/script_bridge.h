@@ -27,6 +27,12 @@ using NativeScript = std::function<std::int64_t(void* unit, void* a, void* b, st
 // message, or an empty string on success. Installing again on the same name swaps the function.
 std::string installNative(const std::string& name, NativeScript fn, bool isOverride);
 
+// Whether the registry has a script of that name with a function (the same test as risen.script.exists).
+bool scriptExists(const std::string& name);
+
+// What intercepts the registry entry `name` right now: "native" (installNative), "lua" (risen.script.define / override) or an empty string (nothing of ours).
+std::string hookKind(const std::string& name);
+
 // Registers risen.script.* (define, override, exists, call) with the Lua state.
 void bindScripts(sol::state_view lua, sol::table risen);
 

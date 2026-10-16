@@ -35,6 +35,10 @@ void aiShutdown();       // releases every Lua reference (before the Lua state c
 // Per mod, after bindSave(): risen.ai.start learns `persist` (kept in the mod's risen.save and started again after a load), risen.ai.stop / forget / persisted. (ai_lua.h)
 void installAiModApi(sol::state_view lua, sol::table api, const std::string& modId);
 
+// risen.combat.* (lua_combat.cpp, M14): damage handlers on the script DoDamage. Register after the script bridge.
+void bindCombat(sol::state_view lua, sol::table risen);
+void combatShutdown();   // releases every Lua reference (before the Lua state closes)
+
 // risen.hud.* (lua_hud.cpp): the HUD game log and item log.
 void bindHud(sol::state_view lua, sol::table risen);
 

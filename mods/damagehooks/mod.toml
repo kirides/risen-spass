@@ -1,0 +1,6 @@
+id          = "damagehooks"
+name        = "Damage hooks test (M14)"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Live scenario for risen.combat.on_damage: real fireball casts, wolf bites and sword blows on dummies, cancel, area falloff, errors, save/load. Test only."
+main        = "main.lua"

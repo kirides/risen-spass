@@ -29,6 +29,8 @@
       showcase     - the showcase mod (M12, mods/balance_example): balance of items/monsters/spells, new items (one with loose mesh and texture), a recipe, a persistent smith with a voiced dialogue and an iron-ore quest, an apprentice who appears afterwards (routine), a watchman (Lua AI); play + quick save/load, then a fresh-process load
       geometry     - vectors, the engine's ray test and field of view, the render camera, random streams (M13, mods/geometry): yaw convention against real entities, open air / terrain / rock, can_see against the AI's CanSee, camera, risen.random.persist across a quick save + load
       ex_unseen_spawn - example: an enemy appears at a waypoint/freepoint the player cannot see and that lies behind him (mods/example_unseen_spawn)
+      damagehooks  - damage hooks (M14, mods/damagehooks): risen.combat.on_damage against real fireball casts (three dummies, area falloff), wolf bites and club blows; scaling, cancel, chains, filters, errors, unregister, a nested DoDamage; save, then a fresh-process load
+      ex_combat    - example: a Fireball that hits harder every time it hits the same target, counters in risen.save, reset on death (mods/example_stacking_fireball); save, then a fresh-process load where the count continues
       hardening    - every public function and method called with ~1.6 million wrong-typed / hostile argument combinations (mods/hardening): the game must survive and keep ticking
 
 .DESCRIPTION
@@ -56,7 +58,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -206,6 +208,17 @@ $scenarios = [ordered]@{
     # geometry (M13): one process: conventions against real entities, rays (air, terrain, rock, characters), can_see against the AI's CanSee, camera, risen.random.persist across a quick save + load
     geometry          = @{ Est = 60; Title = 'geometry (M13: vectors, line of sight, field of view, camera, random streams)'; Kind = 'result'; Mods = @('geometry'); Limit = 300 }
     ex_unseen_spawn   = @{ Est = 45; Title = 'example: an enemy where the player cannot see it'; Kind = 'result'; Mods = @('example_unseen_spawn'); Limit = 300 }
+    # damage hooks (M14): "save" plays everything in a new game and leaves a quick save, "load" (a fresh process) registers the handler at start and casts again
+    damagehooks       = @{ Est = 175; Title = 'damage hooks (M14: real casts, bites and blows; save, fresh-process load)'; Kind = 'result'; Mods = @('damagehooks'); Limit = 300
+                           Phases = @(
+                               @{ Name = 'save'; Param = @('phase=save'); Start = 'new'; Keep = $false; Limit = 300 }
+                               @{ Name = 'load'; Param = @('phase=load'); Start = 'load'; Keep = $true; Limit = 150 }
+                           ) }
+    ex_combat         = @{ Est = 120; Title = 'example: a Fireball that hits harder every time (counters survive a load)'; Kind = 'result'; Mods = @('example_stacking_fireball'); Limit = 300
+                           Phases = @(
+                               @{ Name = 'save'; Param = @('phase=save'); Start = 'new'; Keep = $false; Limit = 300 }
+                               @{ Name = 'load'; Param = @('phase=load'); Start = 'load'; Keep = $true; Limit = 150 }
+                           ) }
     # hardening: the fuzz scenario (docs/DEVELOPMENT.md "Hardening"); one process, about a minute
     hardening         = @{ Est = 70; Title = 'hardening: wrong-typed arguments to every API function'; Kind = 'result'; Mods = @('hardening'); Limit = 300 }
     # quick loot (M5d): the standalone mod `quickloot` against the engine's own interaction; phase `config` repeats the key path with another config.toml (items = false, key = PrimaryAction) copied into the mod

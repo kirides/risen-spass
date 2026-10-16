@@ -2622,6 +2622,78 @@ function aiApi.failures() end
 function aiApi.generation() end
 
 ---------------------------------------------------------------------------------------------------------------------
+-- Combat: damage hooks (M14, docs/RE.md section 39)
+---------------------------------------------------------------------------------------------------------------------
+
+---What a damage handler is told about one hit, just before the engine applies it. Every hit of the game ends in the script `DoDamage`: sword, axe, staff, fist and monster attacks
+---(`DoMeleeDamage`), Fireball / Frost / Missile (`DoMagic*Damage`), arrows and bolts, fire, falling objects. The numbers are the ones that are about to go in: `damage` already contains the
+---projectile's / weapon's own numbers, the attacker's strength or spell skill bonus and, for a blast, the falloff (`multiplier`); the engine subtracts the victim's `protection` AFTER the handlers.
+---@class DamageHit
+---@field attacker Entity|nil Who hit (the damage property set's Agressor): the caster, the wielder, the monster. `nil` for a hit nobody caused (a falling object, a trap).
+---@field victim Entity Who is hit.
+---@field source Entity|nil The damaging item: the projectile entity of a spell or arrow, the weapon item of a blow, the monster's attack item (`It_Fist_Monster` for bites). It may be gone after the hit.
+---@field weapon string Template name of `source` (`"It_Projectile_Fireball_S0"`, `"It_1H_Club"`, `"It_Fist_Monster"`), empty when unknown.
+---@field kind "spell"|"melee"|"ranged"|"other" `"spell"`: Fireball, Frost, Missile, Inferno; `"melee"`: weapons, fists, monster attacks; `"ranged"`: arrows, bolts, other projectiles; `"other"`: fire, falling objects, touch, everything unknown.
+---@field spell? "fireball"|"frost"|"missile"|"inferno" Which spell, for `kind == "spell"`.
+---@field type string The damage type of the item: `"Edge"`, `"Blunt"`, `"Point"`, `"Fire"`, `"Ice"`, `"Magic"` (empty when unknown). It picks the protection skill that is subtracted.
+---@field damage_script string The item's `gCDamage_PS.DamageScript` (`"DoMagicFireballDamage"`, `"DoSwordDamage"`, `"DoFistDamage"`, ...), the specific script that led to this hit.
+---@field damage integer The damage that is about to be applied (before the victim's protection). With several handlers: what the handlers before this one made of it.
+---@field original_damage integer What the engine passed in (before any handler).
+---@field multiplier number The item's damage multiplier at this moment: 1 for a normal hit, below 1 for a victim at the edge of a Fireball blast (the falloff, already part of `damage`).
+---@field protection? integer The victim's total protection against `type` (`Entity:skill_total("ProtMagic")` ...): the engine subtracts it from the final damage, but never goes below `multiplier * 10`.
+
+---What a damage handler returns: `nil` (or `true`) leaves the damage as it is, a number replaces it (rounded, at most 1 000 000; the engine still subtracts the victim's protection and applies its
+---minimum, so a replacement keeps the rules of the game), `false` or a number that rounds to 0 cancels the hit (the victim loses nothing, nothing reacts to the hit, later handlers are not called).
+---Anything else (a negative or non-finite number, a string, a table) is reported as a warning and treated like `nil`.
+---@alias DamageHandlerResult number|boolean|nil
+
+---@alias DamageHandler fun(hit: DamageHit): DamageHandlerResult
+
+---Which hits a handler is called for. Every key is optional and a hit must match all of them; a list matches when the hit's value is in it.
+---@class DamageFilter
+---@field kind? "spell"|"melee"|"ranged"|"other"|("spell"|"melee"|"ranged"|"other")[]
+---@field spell? "fireball"|"frost"|"missile"|"inferno"|("fireball"|"frost"|"missile"|"inferno")[]
+---@field type? string|string[] Damage type(s): `"Magic"`, `"Edge"`, ...
+---@field weapon? string|string[] Template name(s) of the damaging item.
+---@field script? string|string[] `DamageScript` name(s).
+---@field attacker? Entity|"player"|(Entity|"player")[] Only hits by these (the entity's unique name is compared at the time of the hit, so a handle that went stale across a load still works).
+---@field victim? Entity|"player"|(Entity|"player")[]
+
+---Damage hooks: custom damage calculations. `risen.combat.on_damage(fn, filter)` runs `fn(hit)` for every hit that matches `filter` before the engine applies it, and `fn` answers with the damage to
+---apply (see `DamageHandlerResult`). Handlers run in registration order, each sees what the earlier ones made of the damage. The hook sits on the engine's script `DoDamage`: every hit passes it exactly once,
+---also the weak hits at the edge of a blast. A handler that raises an error is a warning (once per call, the first 10 per handler) and the stock damage applies. DoDamage calls made from inside a handler
+---(`risen.script.call("DoDamage", ...)`) are not offered to the handlers again. Installing the first handler overrides the registry entry of `DoDamage` (a later `risen.script.override("DoDamage", ...)` removes the hook).
+---@class RisenCombatApi
+local combatApi = {}
+
+---Registers a damage handler. Returns a handle for `off_damage`, or `nil, reason` for a wrong argument (not a function, an unknown filter key or value, a stale entity) or when the script system is not ready.
+---@param fn DamageHandler
+---@param filter? DamageFilter
+---@return integer|nil handle
+---@return string|nil reason
+function combatApi.on_damage(fn, filter) end
+
+---Removes a handler made with `on_damage`. False for a handle that is not (or no longer) registered.
+---@param handle integer
+---@return boolean removed
+function combatApi.off_damage(handle) end
+
+---The handles of the registered damage handlers, oldest first.
+---@return integer[] handles
+function combatApi.handlers() end
+
+---How many times a damage handler raised an error or returned a bad value so far (each time the stock damage was applied), and the last message.
+---@return integer count
+---@return string last
+function combatApi.failures() end
+
+---How a `DamageScript` name is sorted into `kind` and `spell` of a hit (`"DoMagicFireballDamage"` is `"spell", "fireball"`, `"DoSwordDamage"` is `"melee", nil`, unknown names `"other", nil`). `nil` for a non-string.
+---@param damage_script string
+---@return string|nil kind
+---@return string|nil spell
+function combatApi.classify(damage_script) end
+
+---------------------------------------------------------------------------------------------------------------------
 -- Game variables, world, localization
 ---------------------------------------------------------------------------------------------------------------------
 
@@ -3809,7 +3881,7 @@ function testApi.wait_event(event, timeout_s, filter) end
 ---Opt-in trace channels (`config.toml` `[debug] trace = "template,balance,save,events"`, `"all"`, or at run time `risen.trace.enable`). A disabled channel
 ---costs one bit test. Lines read `[HH:MM:SS.mmm] [trace:channel] ...` in `spass.log` (and in `trace.log` with `[debug] trace_file = true`).
 ---Built-in channels: `events` (every event the layer emits, with its arguments), `template`, `balance` (every applied job), `save` (save/load phases with
----durations), `spawn`, `script` (define/override/call), `lua` (handler errors with traceback), `test`. A mod may use any other name.
+---durations), `spawn`, `script` (define/override/call), `lua` (handler errors with traceback), `test`, `combat` (every hit a damage handler saw, with the damage before and after). A mod may use any other name.
 ---Calling `risen.trace(channel, ...)` writes the `tostring`-ed arguments, joined by spaces, when the channel is on.
 ---@class RisenTraceApi
 ---@overload fun(channel: string, ...: any)
@@ -3877,6 +3949,7 @@ function logApi.error(...) end
 ---@field dialog RisenDialogApi
 ---@field script RisenScriptApi
 ---@field ai RisenAiApi
+---@field combat RisenCombatApi
 ---@field gamevar RisenGamevarApi
 ---@field world RisenWorldApi
 ---@field math RisenMathApi

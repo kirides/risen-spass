@@ -1,0 +1,6 @@
+id          = "example_stacking_fireball"
+name        = "Example: a fireball that hits harder every time"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "The player's Fireball does 50% more damage for every earlier hit on the same target (up to 8 hits); the counters live in risen.save and are reset when the target dies. risen.combat.on_damage. See docs/EXAMPLES.md."
+main        = "main.lua"

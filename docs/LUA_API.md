@@ -149,7 +149,7 @@ risen.trace.disable("save");  risen.trace.enabled("template");  risen.trace.chan
 ```
 Built-in channels: `events` (every event the layer emits, with arguments, also when nobody listens; `tick` excluded), `template` (get/patch/propagation counts),
 `balance` (every applied job), `save` (save/load phases with durations), `spawn`, `script` (define/override/call and every engine call into a Lua script),
-`lua` (handler errors with traceback), `test`, `voice` (every sample title the engine asks for and what was answered, voice registrations, barks), `ai` (Lua AI states: definitions, starts, begin / finish, every perception handler call). A disabled channel costs one bit test; use `risen.trace.enabled(ch)` to guard expensive message building.
+`lua` (handler errors with traceback), `test`, `voice` (every sample title the engine asks for and what was answered, voice registrations, barks), `ai` (Lua AI states: definitions, starts, begin / finish, every perception handler call), `combat` (every hit a damage handler saw with the damage before and after, cancelled hits, handler failures). A disabled channel costs one bit test; use `risen.trace.enabled(ch)` to guard expensive message building.
 
 ## risen.script — the game's scripts are native functions looked up by name
 ```lua
@@ -784,6 +784,36 @@ risen.ai.exists(kind, name)   risen.ai.info(kind, name)       -- { module = "Scr
 risen.ai.defined()                                            -- { states = {...}, callbacks = {...} }
 ```
 AI *functions* (`_AI_Goto_Ext`, `PreInteract_*`) are listed but cannot be defined or replaced: only a state calls one, and a Lua state does the same in `loop` with `goto_pos`, `turn_to` and the like. Limits: 128 Lua states, 128 callbacks. The trace channel `ai` (`-Trace ai`) logs definitions, starts, begin / finish, and every perception handler call.
+
+## Damage hooks — `risen.combat.on_damage` (see `mods/example_stacking_fireball`, `mods/damagehooks`, [RE.md §39](RE.md))
+Custom damage calculations: a handler sees every hit before the engine applies it and answers with the damage to apply.
+```lua
+local h = risen.combat.on_damage(function(hit)           -- hit: attacker, victim, source, weapon, kind, spell, type, damage_script, damage, original_damage, multiplier, protection
+    return hit.damage * 1.5                              -- nil = unchanged, a number = this damage, false or 0 = cancel the hit
+end, { attacker = "player", spell = "fireball" })        -- the filter is optional; every key narrows it: kind, spell, type, weapon, script, attacker, victim
+risen.combat.off_damage(h)                               -- true; false for a handle that is not registered
+risen.combat.handlers()  risen.combat.failures()  risen.combat.classify("DoSwordDamage")
+```
+* **What a hit is.** Every hit of the game (a sword, an axe, a staff, fists and monster bites, Fireball / Frost / Missile, arrows and bolts, fire, falling objects) ends in the engine script `DoDamage`; the layer puts its handlers in front of it
+  (RE.md §39). `hit.attacker` (the caster, the wielder, the monster; `nil` when nobody caused it) and `hit.victim` are entities; `hit.source` is the damaging item (the projectile, the weapon, the monster's attack item) and `hit.weapon` its template name
+  (`"It_Projectile_Fireball_S0"`, `"It_1H_Club"`, `"It_Fist_Monster"`); `hit.kind` is `"spell"`, `"melee"`, `"ranged"` or `"other"`, `hit.spell` `"fireball"` / `"frost"` / `"missile"` / `"inferno"` for spells; `hit.type` the damage type of the item
+  (`"Magic"`, `"Edge"`, `"Blunt"`, `"Point"`, `"Fire"`, `"Ice"`); `hit.damage_script` the item's `DamageScript` (`"DoMagicFireballDamage"`, `"DoSwordDamage"`, `"DoFistDamage"`).
+* **The numbers.** `hit.damage` is the damage that is about to go in: the item's own numbers, the attacker's strength or spell skill bonus (a Fireball at skill 3 is 100 + 25 * 3 = 175) and the **area falloff** (`hit.multiplier` is below 1 for a victim at the edge of a Fireball
+  blast and already part of `damage`). `hit.original_damage` is what the engine passed (differs from `damage` once an earlier handler changed it); `hit.protection` the victim's protection against `hit.type`. The engine subtracts the protection **after** the handlers and never goes
+  below `multiplier * 10`, applies the difficulty factor when the victim is the player and halves the damage for party members: **return a scaled number, not a constant, and protection, falloff and the minimum keep working** (verified: x4 on a blast gave 700 and four times the falloff
+  damage for the outer targets; a returned 50 against a protection of 100 still took the minimum 10).
+* **The answer.** `nil` (or `true`) keeps the damage, a number replaces it (rounded to an integer, at most 1 000 000), `false` or a number that rounds to 0 **cancels** the hit: the victim loses nothing and the stumble / knock-out scripts do not run, `entity.damaged` does not fire,
+  later handlers are not called. A negative or non-finite number, a string, a table or a function is a warning and counts as `nil`.
+* **Several handlers** run in registration order; the second sees the first one's number in `hit.damage`. **Filters** (`kind`, `spell`, `type`, `weapon`, `script` take a string or a list; `attacker` / `victim` an entity, `"player"` or a list of those) are checked in C++
+  before Lua is called; an unknown key or value, or a stale entity, makes `on_damage` return `nil, reason` (for example `{ kind = "magic" }`). `attacker` / `victim` compare unique entity names at the time of the hit.
+* **Errors.** A handler that raises an error (or returns a bad value) is a warning (the first ten per handler are logged), the stock damage applies and the next handler is still called; `risen.combat.failures()` counts them.
+  `DoDamage` calls made from inside a handler (`risen.script.call("DoDamage", hit.source, other, 50)`: a handler may hurt somebody else itself) are **not offered to the handlers again**.
+* **Exactly once.** Every hit passes `DoDamage` once, so a handler is called once per victim and hit (the weak hits at the edge of a blast included: one call per victim in the blast); the `entity.damaged` event (§ gameplay events) reports what was really lost afterwards.
+* **Limits.** Only hits that reach `DoDamage` are seen (poison, falling, `Entity:set_hp`, the cheats are not); a cancelled hit makes no stumble, so the victim does not react to *that hit* the way a hit NPC does (suppressing reactions to hits that do land is a separate
+  milestone); the first handler overrides the registry entry of `DoDamage`, so do not also `risen.script.override("DoDamage", ...)` (`on_damage` refuses while a Lua override is in place). Verified live with real casts, wolf bites and club blows (`damagehooks`), not driven:
+  NPC mages, arrows, Frost and Missile hits (classified from the script name, unit tested).
+* **Trace.** `-Trace combat` logs every hit a handler saw with the damage before and after, cancelled hits and handler failures.
+* **Example.** `mods/example_stacking_fireball`: the player's Fireball does 50% more damage for every earlier hit on the same target (counter per victim in `risen.save`, reset when it dies); the rules and constants are at the top of `main.lua`.
 
 ## Conditional spawning — `risen.spawn.when`, `risen.cond` (see `mods/example_spawn_when`, `mods/spawnwhen`, [RE.md §33](RE.md))
 An NPC that does not exist until something happened — a quest was finished, the player carries enough of an item, a game variable was set, another NPC died — and that may go away again. It is a
