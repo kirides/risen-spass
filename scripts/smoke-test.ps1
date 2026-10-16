@@ -60,7 +60,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -242,6 +242,19 @@ $scenarios = [ordered]@{
                            Disable = @('testdemo', 'example_balance', 'example_template_patch', 'example_custom_npc')
                            Phases = @(
                                @{ Name = ''; Param = @('suite=testdemo:testdemo,ex_balance:example_balance,ex_template_patch:example_template_patch,ex_custom_npc:example_custom_npc', 'scenario_seconds=200'); Start = 'new'; Keep = $false; Limit = 400 }
+                           ) }
+    # safe updates and removals (M15): "save" plays the old version of the mod upd_content (NPCs, a quest line, dialogue options, items, a recipe, a spell, saved data) and keeps a pristine copy of the savegame;
+    # every other phase is a FRESH PROCESS that restores that copy and loads it with an updated version of the mod or without it: it must load, tick 600 frames, quick save and load again
+    updsafe           = @{ Est = 420; Title = 'safe updates and removals (M15: same, empty, renamed, retire, no sidecar, mod gone)'; Kind = 'result'; Mods = @('upd_check', 'upd_content'); Limit = 300
+                           Phases = @(
+                               @{ Name = 'save'; Param = @('phase=save', 'variant=v1'); Start = 'new'; Keep = $false; Limit = 300; Unsafe = $true }
+                               @{ Name = 'same'; Param = @('phase=same', 'variant=same'); Start = 'load'; Keep = $true; Limit = 200; Unsafe = $true }
+                               @{ Name = 'empty'; Param = @('phase=empty', 'variant=empty'); Start = 'load'; Keep = $true; Limit = 200; Unsafe = $true }
+                               @{ Name = 'renamed'; Param = @('phase=renamed', 'variant=renamed'); Start = 'load'; Keep = $true; Limit = 200; Unsafe = $true }
+                               @{ Name = 'retire'; Param = @('phase=retire', 'variant=retire'); Start = 'load'; Keep = $true; Limit = 200; Unsafe = $true }
+                               @{ Name = 'nosidecar'; Param = @('phase=nosidecar', 'variant=same'); Start = 'load'; Keep = $true; Limit = 200; Unsafe = $true }
+                               @{ Name = 'gone'; Param = @('phase=gone'); Start = 'load'; Keep = $true; Limit = 200; Unsafe = $true; Mods = @('upd_check') }
+                               @{ Name = 'gone_nosidecar'; Param = @('phase=gone_nosidecar'); Start = 'load'; Keep = $true; Limit = 200; Unsafe = $true; Mods = @('upd_check') }
                            ) }
     # hot reload (M15): "main" edits the files of hr_target on disk while the game runs (the sandbox is off: -Unsafe) and reloads it, failed reloads, watcher, unload/disable/enable, a save round trip;
     # "save_v1" leaves a save written by version 1.0.0, "load_v2" is a fresh process whose hr_target is version 1.1.0 (the fixture copied over it): the migration runs at load.before

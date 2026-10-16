@@ -1,0 +1,6 @@
+id          = "upd_check"
+name        = "Updates and removals: the scenario"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Scenario `updsafe` (docs/DEVELOPMENT.md): plays a savegame made with the old version of the mod upd_content into updated versions of it and into a game without it, and checks that every case loads, ticks, saves and loads again. Needs the Lua sandbox off (it copies savegame files). Only meaningful in a test run."
+main        = "main.lua"

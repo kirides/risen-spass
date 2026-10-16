@@ -1,0 +1,6 @@
+id          = "upd_content"
+name        = "Updates and removals: the content mod"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "The mod whose updates and removal the scenario `updsafe` plays: persistent NPCs with a quest line and dialogue options, a conditional NPC, new items / a recipe / a spell scroll, game variable and saved data. The test parameter `variant` makes it an older or newer version of itself. Only meaningful in a test run."
+main        = "main.lua"
