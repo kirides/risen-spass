@@ -507,7 +507,7 @@ def csv_field(s):
     return s
 
 
-def gen_strings(ctx, d, out, wanted_ids):
+def gen_strings(ctx, d, out, wanted_ids, melee=False):
     """new rows of items / focus / documents and the changed rows of the templates the mod touches -> strings/*.csv"""
     vt = {}
     for k, (label, pak, e) in d.base["compiled"].files.items():
@@ -516,7 +516,7 @@ def gen_strings(ctx, d, out, wanted_ids):
     rows = {lang: collections.OrderedDict() for lang in LANG_OF.values()}
     stats = collections.Counter()
     for k, (label, pak, e) in sorted(d.layers["compiled"].files.items()):
-        if k not in ("items.tab", "focus.tab", "documents.tab"):
+        if k not in ("items.tab", "focus.tab", "documents.tab") and not (k == "skills.tab" and melee):
             if k.endswith(".tab"):
                 ctx.bad("strings", k, "not applied: %s (skill names / hud texts belong to the melee system and are applied with it)" % k, "M21")
             continue
@@ -524,7 +524,7 @@ def gen_strings(ctx, d, out, wanted_ids):
         vc, vr = vt.get(k, ([], {}))
         for rid, cells in mr.items():
             isnew = rid not in vr
-            if not isnew and not (rid.startswith(("FO_", "ITEMDESC_")) and rid.split("_", 1)[1] in wanted_ids):
+            if not isnew and not (rid.startswith(("FO_", "ITEMDESC_")) and rid.split("_", 1)[1] in wanted_ids) and not (k == "skills.tab" and melee):
                 continue
             for col, text in cells.items():
                 lang = LANG_OF.get(col)
@@ -586,6 +586,167 @@ def gen_assets(ctx, d, out, copy):
     return {"new": sorted(new), "replaced": sorted(replaced), "identical_skipped": same, "bytes": total, "duplicates": sorted(dup)}
 
 
+
+# ---------------------------------------------------------------------------------------------------------------- dialogues and world (phase B)
+
+
+
+def resolve_name(ctx, known, item, where):
+    """case-insensitive template name; a name the mod misspelled is mapped when exactly one template fits (reported as a warning)"""
+    low = str(item).lower()
+    if low in known:
+        return known[low]
+    cands = []
+    if low.endswith("_01") and low[:-3] in known:
+        cands = [known[low[:-3]]]
+    if not cands:
+        cands = sorted({v for k, v in known.items() if k.startswith(low)})
+    if not cands:
+        tail = low.split("_")[-1]
+        cands = sorted({v for k, v in known.items() if k.split("_")[:2] == low.split("_")[:2] and k.endswith(tail) and len(tail) > 6})
+    if len(cands) == 1:
+        ctx.warn.append("%s: '%s' is not a template; assumed to mean '%s' (the mod's own typo)" % (where, item, cands[0]))
+        return cands[0]
+    return None
+
+
+def gen_dialog(ctx, d):
+    """XP rewards and trader refills the mod added to existing dialogue infos (compiled_infos.bin of the newest library volume)"""
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="extmod_infos_")
+    try:
+        res = X.infos_stage(d.base, d.layers, tmp, {})
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    if not res:
+        return {"xp": {"add": [], "change": []}, "trade": []}
+    label = sorted(res)[-1]
+    r = res[label]
+    known = {n.lower(): n for n in list(d.van) + list(d.mod)}
+    amt = re.compile(r"([+-])\('gCInfoCommandGiveXP\.Amount', (\d+)\)")
+    add, change = [], []
+    for x in sorted(r["xp_changes"], key=lambda x: x["info"]):
+        plus = [int(m.group(2)) for l in x["diff"] for m in [amt.match(l)] if m and m.group(1) == "+"]
+        minus = [int(m.group(2)) for l in x["diff"] for m in [amt.match(l)] if m and m.group(1) == "-"]
+        if len(plus) == 1 and not minus:
+            add.append({"info": x["info"], "amount": plus[0], "owner": x["owner"]})
+        elif len(plus) == 1 and len(minus) == 1:
+            change.append({"info": x["info"], "old": minus[0], "new": plus[0], "owner": x["owner"]})
+        else:
+            ctx.bad("dialogue", x["info"], "XP change not understood: %s" % x["diff"], "M20")
+    trade = []
+    for info in sorted(r["trade_refills"]):
+        seen, entries = set(), []
+        for trader, item, count in r["trade_refills"][info]:
+            real = resolve_name(ctx, known, item, "trade " + trader)
+            if real is None:
+                ctx.bad("trade", "%s %s" % (trader, item), "no template of that name in the mod or the game (trader entry skipped)", "author")
+                continue
+            if (trader, real) in seen:
+                continue
+            seen.add((trader, real))
+            entries.append({"trader": trader, "item": real, "count": int(count)})
+        trade.append({"info": info, "entries": entries})
+    return {"xp": {"add": add, "change": change}, "trade": trade, "layer": label}
+
+
+def gen_world(ctx, d, research):
+    """containers that got items, NPCs that got equipment, teacher limits: from the world-file analysis (RESEARCH_teachers_data.json, derived from the archives)"""
+    if not research or not os.path.exists(research):
+        ctx.warn.append("no world research file: containers / equipment / teacher limits skipped")
+        return {"containers": [], "equipment": [], "teachers": []}
+    j = json.load(open(research, encoding="utf8"))
+    known = {n.lower(): n for n in list(d.van) + list(d.mod)}
+    containers = []
+    for c in j.get("container_additions", []):
+        items = []
+        for a in c["added"]:
+            real = resolve_name(ctx, known, a["item"], "container " + c["name"])
+            if real is None:
+                ctx.bad("container", c["name"], "item %s unknown" % a["item"], "author")
+                continue
+            n = a["count"]
+            for r in c.get("removed", []):
+                if r["item"] == a["item"]:
+                    n -= r["count"]
+            if n > 0:
+                items.append({"item": real, "count": n})
+        if items:
+            containers.append({"id": c["entity_id"], "name": c["name"], "layer": os.path.basename(c["layer"]), "items": items})
+    equipment = []
+    for e in j.get("npc_equipment_with_mod_items", []):
+        for a in e["added"]:
+            real = known.get(a["item"].lower())
+            if real:
+                equipment.append({"id": e["entity_id"], "name": e["name"], "item": real})
+    teachers = [{"id": t["entity_id"], "name": t["name"], "skill": t["skill"], "max": t["new_max"], "old": t["old_max"]} for t in j.get("teacher_limit_changes", [])]
+    return {"containers": containers, "equipment": equipment, "teachers": teachers}
+
+
+
+# ---------------------------------------------------------------------------------------------------------------- combat table (phase C)
+
+
+def _canon(x):
+    """a parsed combat table without the bookkeeping of the reader (end offsets, encodings) so that equal content compares equal"""
+    if isinstance(x, dict):
+        return {k: _canon(v) for k, v in x.items() if k not in ("end", "enc", "acc")}
+    if isinstance(x, (list, tuple)):
+        return [_canon(v) for v in x]
+    return x
+
+
+def gen_combat(ctx, d, out, mode):
+    """a patched copy of the user's own compiled_combatspecies.bin (the melee system of the mod), written as a loose asset: the engine finds the file by
+    its bare name in the flat name cache, a mounted directory shadows library.pak (docs/RE.md section 26 / 45). Everything that differs between the mod's
+    table and the baseline's is copied species by species (styles, moves, fight AIs, species properties like JumpBack); the rest stays the baseline's."""
+    if mode == "off":
+        return None
+    import copy
+    import g3cs
+    bk = d.base["compiled"].files.get("compiled_combatspecies.bin")
+    hist = d.layers["compiled"].history.get("compiled_combatspecies.bin", [])
+    if not bk or not hist:
+        ctx.warn.append("no combat table in the baseline or the mod")
+        return None
+    pick = [h for h in hist if ("library.%s" % mode) in h[0]]
+    if not pick:
+        ctx.warn.append("the mod has no combat table volume library.%s" % mode)
+        return None
+    base = g3cs.parse_bytes(bk[1].read(bk[2]))
+    mod = g3cs.parse_bytes(pick[-1][1].read(pick[-1][2]))
+    res = copy.deepcopy(base)
+    mod_by = {sp["name"]: sp for sp in mod["species"]}
+    changed = collections.OrderedDict()
+    for sp in res["species"]:
+        m = mod_by.get(sp["name"])
+        if m is None:
+            continue
+        what = []
+        for key in ("styles", "moves", "ais"):
+            if _canon(sp[key]) != _canon(m[key]):
+                sp[key] = copy.deepcopy(m[key])
+                what.append("%s (%d)" % (key, len(m[key])))
+        mprops = {p["n"]: p for p in m["obj"]["props"]}
+        for p in sp["obj"]["props"]:
+            q = mprops.get(p["n"])
+            if q is not None and _canon(q["v"]) != _canon(p["v"]):
+                p["v"] = copy.deepcopy(q["v"])
+                what.append("property %s" % p["n"])
+        if what:
+            changed[sp["name"]] = what
+    data = g3cs.write_bytes(res)
+    check = g3cs.parse_bytes(data)
+    for sp in check["species"]:
+        m = mod_by.get(sp["name"])
+        if m is not None and any(_canon(sp[k]) != _canon(m[k]) for k in ("styles", "moves", "ais")):
+            ctx.warn.append("combat table: species %s differs from the mod's after writing" % sp["name"])
+    os.makedirs(os.path.join(out, "assets"), exist_ok=True)
+    with open(os.path.join(out, "assets", "compiled_combatspecies.bin"), "wb") as f:
+        f.write(data)
+    return {"mode": mode, "volume": pick[-1][0], "bytes": len(data), "changed": changed}
+
+
 # ---------------------------------------------------------------------------------------------------------------- main
 
 
@@ -596,6 +757,11 @@ def main():
     ap.add_argument("--out", required=True, help="output mod directory (replaced), e.g. mods/risen_extended")
     ap.add_argument("--enums", default=os.path.join(HERE, "extmod_enums.json"), help="enum names learned from the engine (tools/extmod_enums.py)")
     ap.add_argument("--no-assets", action="store_true", help="do not copy the loose resource files")
+    ap.add_argument("--combat", choices=("p01", "p02", "off"), default="p01",
+                    help="the combat table: p01 = the melee restructure of the changelog (1H / 2H / staff styles, reach, no backwards hop), p02 = what the newest volume ships "
+                         "(the classic table plus a few values), off = the game's own")
+    ap.add_argument("--research", default="B:/DevDrive/risen-ghidra/extmod/RESEARCH_teachers_data.json",
+                    help="world-file analysis (container items, equipment, teacher limits; the lrent files are not read by this tool)")
     a = ap.parse_args()
     enums_extra = json.load(open(a.enums, encoding="utf8")) if os.path.exists(a.enums) else None
     ctx = Ctx(enums_extra)
@@ -608,9 +774,16 @@ def main():
 
     items, patches, recipes_new, st_items = gen_items(ctx, d)
     new_items, recipes, st_new = gen_new(ctx, d)
+    dialog = gen_dialog(ctx, d)
+    if os.path.exists(a.research):
+        chap = {t["info"]: t.get("chapter") for t in json.load(open(a.research, encoding="utf8")).get("trader_stock_additions_by_chapter", [])}
+        for t in dialog["trade"]:
+            t["chapter"] = chap.get(t["info"])
+    world = gen_world(ctx, d, a.research)
     wanted = set(items) | set(new_items) | set(recipes_new)
-    st_str = gen_strings(ctx, d, out, wanted)
+    st_str = gen_strings(ctx, d, out, wanted, a.combat == "p01")
     assets = gen_assets(ctx, d, out, not a.no_assets)
+    combat = gen_combat(ctx, d, out, a.combat)
 
     # items that became recipes -> new recipe items the player is given (a property set cannot be added to a shipped template)
     new_recipes = collections.OrderedDict()
@@ -630,6 +803,8 @@ def main():
     write(os.path.join(data_dir, "new_items.lua"), hdr + "return " + lua(new_items) + "\n")
     write(os.path.join(data_dir, "recipes.lua"), hdr + "return " + lua({"edit": recipes, "new": new_recipes}) + "\n")
     write(os.path.join(data_dir, "patches.lua"), hdr + "return " + lua(patches) + "\n")
+    write(os.path.join(data_dir, "dialog.lua"), hdr + "return " + lua(dialog) + "\n")
+    write(os.path.join(data_dir, "world.lua"), hdr + "return " + lua(world) + "\n")
     write(os.path.join(data_dir, "assets.lua"), hdr + "return " + lua({"new": assets["new"], "replaced": assets["replaced"]}) + "\n")
     for f in ("main.lua", "check.lua", "config.lua"):
         src = os.path.join(HERE, "extmod_templates", f)
@@ -645,22 +820,20 @@ def main():
           "and is for private use only: do not commit it, do not redistribute it.\n")
 
     deferred = [
-        {"item": "melee system (1H / 2H / staff styles, reach, no backwards hop)", "needs": "M21", "note": "combat table: compiled_combatspecies.bin; the weapon use types are converted, the styles are not"},
-        {"item": "pickpocket XP and quest XP (65 + 5 dialogue infos)", "needs": "M20", "note": "compiled_infos.bin"},
-        {"item": "trader stock (106 refills), items placed in containers", "needs": "M20", "note": "compiled_infos.bin / projects/*.lrent"},
-        {"item": "teacher limits (STR/DEX 150-200) of placed NPCs", "needs": "M20", "note": "projects/*.lrent gCDialog_PS.TeachSkills"},
-        {"item": "wind strength", "needs": "M22", "note": "WeatherStates.g3ws"},
-        {"item": "skill names Onehanded/Twohanded fighting, hud texts", "needs": "M21", "note": "skills.tab, hud2.tab"},
+        {"item": "wind strength (WeatherStates.g3ws)", "needs": "M22", "note": "not converted yet"},
+        {"item": "hud2.tab texts", "needs": "M21", "note": "the mod's table has 130 fewer rows than Enhanced's; nothing of it is applied"},
+        {"item": "trader stock of chapters 2-4, chapter gates", "needs": "M20", "note": "added as RunScript commands to the chapter infos, which the engine runs at the chapter change: not played that far"},
+        {"item": "the melee table is chosen at generation time (--combat p01|p02|off)", "needs": "M21", "note": "the engine reads the file once at start"},
     ]
     manifest = collections.OrderedDict([
         ("generator", "tools/extmod_gen.py"),
         ("counts", collections.OrderedDict([
             ("items_changed", len(items)), ("new_items", len(new_items)), ("new_recipe_items_edited", len(recipes)), ("items_that_became_recipes", len(new_recipes)),
-            ("template_patches", len(patches)), ("assets_new", len(assets["new"])), ("assets_replaced", len(assets["replaced"])),
+            ("template_patches", len(patches)), ("xp_infos", len(dialog["xp"]["add"]) + len(dialog["xp"]["change"])), ("trade_entries", sum(len(t["entries"]) for t in dialog["trade"])), ("containers", len(world["containers"])), ("teacher_limits", len(world["teachers"])), ("assets_new", len(assets["new"])), ("assets_replaced", len(assets["replaced"])),
             ("assets_identical_skipped", assets["identical_skipped"]), ("asset_bytes", assets["bytes"])])),
         ("stats", dict(st_items + st_new + st_str)),
         ("items_changed", sorted(items)), ("new_items", sorted(new_items)), ("new_recipes", sorted(new_recipes)), ("patches", sorted(patches)),
-        ("assets", assets), ("unconverted", ctx.unconverted), ("warnings", ctx.warn), ("deferred", deferred),
+        ("combat_table", combat), ("assets", assets), ("unconverted", ctx.unconverted), ("warnings", ctx.warn), ("deferred", deferred),
     ])
     write(os.path.join(out, "manifest.json"), json.dumps(manifest, indent=1, ensure_ascii=False) + "\n")
     print(json.dumps(manifest["counts"], indent=1))

@@ -131,6 +131,152 @@ risen.on("session.start", function(mode)
     apply("session.start (" .. tostring(mode) .. ")", true, false)
 end)
 
+-- ---- dialogue edits (phase B): XP rewards and trader refills on shipped dialogue infos, once per process (the infos are in memory for the whole process) ----
+local DLG = require("data.dialog")
+local WORLD = require("data.world")
+
+local function set_props(inf, idx, props)
+    for k, v in pairs(props) do
+        if not inf:set_command_property(idx, k, tostring(v)) then return false, k end
+    end
+    return true
+end
+
+local function stage_dialog()
+    local c = { xp_added = 0, xp_changed = 0, trade_infos = 0, trade_entries = 0 }
+    for _, e in ipairs(DLG.xp.add) do
+        local inf = risen.dialog.get(e.info)
+        if not inf then fail(true, "xp", e.info, "no such dialogue info")
+        else
+            local idx = inf:add_command("GiveXP")
+            local ok = idx and set_props(inf, idx, { Amount = e.amount })
+            if ok then c.xp_added = c.xp_added + 1 else fail(true, "xp", e.info, "cannot add GiveXP") end
+        end
+    end
+    for _, e in ipairs(DLG.xp.change) do
+        local inf = risen.dialog.get(e.info)
+        local done = false
+        if inf then
+            for i = 1, inf:command_count() do
+                if inf:get_command_property(i, "Amount") == tostring(e.old) then
+                    done = inf:set_command_property(i, "Amount", tostring(e.new))
+                    break
+                end
+            end
+        end
+        if done then c.xp_changed = c.xp_changed + 1 else fail(true, "xp change", e.info, "command not found") end
+    end
+    for _, t in ipairs(DLG.trade) do
+        local inf = risen.dialog.get(t.info)
+        if not inf then fail(true, "trade", t.info, "no such dialogue info")
+        else
+            c.trade_infos = c.trade_infos + 1
+            for _, e in ipairs(t.entries) do
+                local idx = inf:add_script_command()
+                local ok = idx and inf:set_script(idx, "OnTradeInfo_RefillTradeItems")
+                if ok then ok = set_props(inf, idx, { Self = e.trader, Other = e.item, OtherType = "gEOtherType_TemplateEntity", Param = e.count }) end
+                if ok then c.trade_entries = c.trade_entries + 1 else fail(true, "trade", t.info .. " " .. e.trader .. " " .. e.item, "cannot add the RunScript command") end
+            end
+        end
+    end
+    M.dialog = c
+    log.info(("risen_extended: dialogue: %d XP rewards, %d XP changes, %d trade entries on %d infos"):format(c.xp_added, c.xp_changed, c.trade_entries, c.trade_infos))
+end
+
+local dialog_done = false
+risen.on("tick", function()
+    if dialog_done then return end
+    dialog_done = true
+    local ok, err = pcall(stage_dialog)
+    if not ok then fail(true, "dialogue", "stage", err) end
+end)
+
+-- the engine runs these infos at the chapter changes; the first chapter's stock is also handed out at the start of a new game (the traders sell it from the beginning)
+local function refill(trader, item, n)
+    local t = risen.entity.get(trader)
+    local p = risen.entity.player()
+    if not t or not p then return false end
+    local x, y, z = p:position()
+    local e = risen.entity.spawn(item, (x or 0) + 100, (y or 0) + 10, z or 0)
+    if not e then return false end
+    local ok = pcall(function() risen.script.call("OnTradeInfo_RefillTradeItems", t, e, n) end)
+    e:kill()
+    return ok
+end
+
+local function stage_stock()
+    local n, bad = 0, 0
+    for _, t in ipairs(DLG.trade) do
+        if t.chapter == 1 then
+            for _, e in ipairs(t.entries) do
+                if refill(e.trader, e.item, e.count) then n = n + 1 else bad = bad + 1; fail(true, "stock", e.trader .. " " .. e.item, "refill failed") end
+            end
+        end
+    end
+    M.stock = { refilled = n, failed = bad }
+    log.info(("risen_extended: chapter 1 trader stock: %d refills, %d failed"):format(n, bad))
+end
+
+-- ---- the world (phase B): items in containers, equipment of NPCs; once per savegame (game variable), on world.ready ----
+local function stage_world()
+    local c = { containers = 0, items = 0, equipped = 0 }
+    for _, box in ipairs(WORLD.containers) do
+        local e = risen.entity.by_id(box.id)
+        if not e then fail(true, "container", box.name .. " " .. box.layer, "not found")
+        else
+            for _, it in ipairs(box.items) do
+                if risen.item.give(e, it.item, it.count) >= 0 then c.items = c.items + 1 else fail(true, "container", box.name, "cannot give " .. it.item) end
+            end
+            c.containers = c.containers + 1
+        end
+    end
+    for _, q in ipairs(WORLD.equipment) do
+        local e = risen.entity.by_id(q.id)
+        if not e then fail(true, "equipment", q.name, "not found")
+        else
+            risen.item.give(e, q.item, 1)
+            if risen.item.equip(e, q.item) then c.equipped = c.equipped + 1 end
+        end
+    end
+    M.world = c
+    log.info(("risen_extended: world: %d containers (%d item stacks), %d NPC items equipped"):format(c.containers, c.items, c.equipped))
+end
+
+risen.on("world.ready", function(mode)
+    if (risen.gamevar.get("RISEN_EXTENDED_WORLD") or 0) ~= 0 then return end
+    risen.gamevar.set("RISEN_EXTENDED_WORLD", 1)
+    local ok, err = pcall(stage_world)
+    if not ok then fail(true, "world", "stage", err) end
+    if mode == "new" then
+        local ok2, err2 = pcall(stage_stock)
+        if not ok2 then fail(true, "stock", "stage", err2) end
+    end
+end)
+
+
+-- ---- teacher limits (phase B): the teaching list of the placed NPC (saved with the entity; written on every world.ready, it is idempotent) ----
+local function stage_teachers()
+    local n, bad = 0, 0
+    for _, t in ipairs(WORLD.teachers) do
+        local e = risen.entity.by_id(t.id)
+        local enum = risen.balance.skill_enum(t.skill)
+        if e and enum then
+            local ok, err = risen.npc.set_teach_limit(e, enum, t.max)
+            if ok then n = n + 1 else bad = bad + 1; fail(true, "teacher", t.name, err) end
+        else
+            bad = bad + 1
+            fail(true, "teacher", t.name, e and ("unknown skill " .. t.skill) or "not found")
+        end
+    end
+    M.teachers = { set = n, failed = bad }
+    log.info(("risen_extended: teacher limits: %d set, %d failed"):format(n, bad))
+end
+
+risen.on("world.ready", function()
+    local ok, err = pcall(stage_teachers)
+    if not ok then fail(true, "teachers", "stage", err) end
+end)
+
 -- ---- the player's start: plans of the new recipe items, and (config.lua) a kit of the new items until the traders carry them ----
 local function give_once(player, name, n)
     local var = "RISEN_EXTENDED_GIVEN_" .. name
@@ -162,6 +308,7 @@ end)
 
 M.cfg = cfg
 M.items, M.new, M.rec, M.patch = ITEMS, NEW, REC, PATCH
+M.dlg, M.wrld = DLG, WORLD
 
 -- the scenario (scripts/test-run.ps1 -WaitForResult -Param check=extmod) is part of the mod, loaded only in a test run
 if risen.test and risen.test.is_active() and risen.test.param("check") == "extmod" then

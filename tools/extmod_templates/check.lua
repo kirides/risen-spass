@@ -22,6 +22,7 @@ return function(M)
             "new items exist with their numbers", "new items are labelled", "a new weapon spawns and loads its mesh", "new items are equippable (requirements met)",
             "goldsmith recipe crafts", "smithing chain crafts", "monster actor swaps are applied", "a monster with a new actor spawns", "loose assets resolve to the mod",
             "replaced stock assets are shadowed", "second pass keeps the numbers",
+            "dialogue edits applied", "an XP reward is on its info", "a trader refill is on its info", "chapter 1 trader stock is on the traders", "the combat table is the mod's (no backwards hop)", "a fight under the new combat table", "teacher limits are raised", "world edits applied", "a chest holds its new item",
         },
         load = { "load: the templates resolve", "load: items are still in the inventory", "load: the numbers are applied again" },
     }
@@ -223,6 +224,67 @@ return function(M)
 
             T.section("second pass")
             T.eq("second pass keeps the numbers", check_numbers("again"), {})
+
+            T.section("dialogue and world")
+            local DLG, WORLD = M.dlg, M.wrld
+            local d = M.dialog or {}
+            T.eq("dialogue edits applied", { d.xp_added, d.xp_changed, d.trade_entries, d.trade_infos },
+                { #DLG.xp.add, #DLG.xp.change, (function() local n = 0 for _, t in ipairs(DLG.trade) do n = n + #t.entries end return n end)(), #DLG.trade })
+            -- read back: the last XP reward and the last trade command of the first info
+            local xp = DLG.xp.add[#DLG.xp.add]
+            local inf = risen.dialog.get(xp.info)
+            local last = inf and inf:command_count() or 0
+            T.eq("an XP reward is on its info", { inf ~= nil, last > 0 and inf:get_command_property(last, "Amount") }, { true, tostring(xp.amount) })
+            local t1 = DLG.trade[1]
+            local tinf = risen.dialog.get(t1.info)
+            local tn = tinf and tinf:command_count() or 0
+            local lastE = t1.entries[#t1.entries]
+            T.eq("a trader refill is on its info", { tn > 0 and tinf:get_command_property(tn, "Self"), tn > 0 and tinf:get_command_property(tn, "Other"), tn > 0 and tinf:get_command_property(tn, "Param") },
+                { lastE.trader, lastE.item, tostring(lastE.count) })
+            -- chapter 1 stock was handed out at the start: Karlsen sells a staff from his trade stack (a stack of type 1; risen.item.count does not count it)
+            local function has_stack(e, name)
+                for i = 0, e:stack_count() - 1 do local s = e:stack_item(i) if s and s:name() == name then return true end end
+                return false
+            end
+            local first = nil
+            for _, t in ipairs(DLG.trade) do if t.chapter == 1 then first = t end end
+            local ent = first and first.entries[#first.entries]
+            local trader = ent and risen.entity.get(ent.trader)
+            T.expect("chapter 1 trader stock is on the traders", trader ~= nil and has_stack(trader, ent.item) and (M.stock and M.stock.failed == 0),
+                ent and ("%s has %s: %s, stock %s/%s"):format(ent.trader, ent.item, tostring(trader and has_stack(trader, ent.item)), tostring(M.stock and M.stock.refilled), tostring(M.stock and M.stock.failed)) or "no chapter 1 info")
+            local wrong = {}
+            for _, t in ipairs(WORLD.teachers) do
+                local e = risen.entity.by_id(t.id)
+                local list = e and risen.npc.teach_skills(e) or {}
+                local got
+                for _, s in ipairs(list) do if s.skill == risen.balance.skill_enum(t.skill) then got = s.max end end
+                if got ~= t.max then wrong[#wrong + 1] = ("%s %s %s != %s"):format(t.name, t.skill, tostring(got), t.max) end
+            end
+            T.eq("teacher limits are raised", wrong, {})
+            local w = M.world or {}
+            T.eq("world edits applied", { w.containers, w.equipped ~= nil }, { #WORLD.containers, true })
+            local box = WORLD.containers[1]
+            local be = box and risen.entity.by_id(box.id)
+            T.expect("a chest holds its new item", be ~= nil and risen.item.count(be, box.items[1].item) >= box.items[1].count, box and (box.name .. " " .. box.items[1].item))
+
+            T.section("combat table")
+            local phys = risen.vfs.lookup_physical("compiled_combatspecies.bin") or ""
+            local ours = phys:lower():find("risen_extended", 1, true) ~= nil
+            local jump
+            for _, p in ipairs(risen.npc.combat_species("Human") or {}) do if p.name == "JumpBack" then jump = p.value end end
+            T.expect("the combat table is the mod's (no backwards hop)", (not ours) or jump == "", ("file %s, Human.JumpBack = %q"):format(phys, tostring(jump)))
+
+            T.section("a fight")
+            -- two humans of enemy guilds with 2H / axe / 1H weapons of the mod fight each other under the (new) combat table: blows land, nothing crashes
+            local hits = 0
+            risen.on("entity.damaged", function(victim, attacker, lost) if lost and lost > 0 then hits = hits + 1 end end)
+            local fx, fy, fz = p:position()
+            local a = risen.npc.spawn("Inq_Novice_Fighter_01", (fx or 0) + 1500, fy or 0, fz or 0, { name = "EXT_Fighter_A", guild = "Inq", hp_max = 3000, level = 10, items = { { "It_Axe_Ogreaxe", 1 } }, equip = true })
+            local bb = risen.npc.spawn("Don_Henchman_S_01", (fx or 0) + 1600, fy or 0, fz or 0, { name = "EXT_Fighter_B", guild = "Pir", hp_max = 3000, level = 10, items = { { "It_1H_Epee", 1 } }, equip = true })
+            T.wait_until(function() return hits >= 3 end, 40, "blows between the fighters")
+            T.expect("a fight under the new combat table", a ~= nil and bb ~= nil and hits >= 3, ("%d blows landed"):format(hits))
+            if a then a:kill() end
+            if bb then bb:kill() end
 
             -- keep a few things for the load phase
             risen.world.quick_save()

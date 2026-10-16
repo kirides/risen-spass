@@ -165,3 +165,15 @@ Engine enum names are learned from the game itself (`tools/extmod_enums.py` join
 
 **Snapshots.** Playable states are kept in `B:\DevDrive\extmod-milestones\<NN>-<name>\` (README with the changelog checklist, `play.ps1`), `LATEST.md` says which one is the newest; the repo commit is tagged `extmod-<NN>`. Start: `& 'B:\DevDrive\extmod-milestones\01-data\play.ps1'`.
 
+### Phases B and C (same run): dialogue, world, teachers, combat table
+
+| Part | Mechanism | Verified live (scenario `extmod`, 25 + 4 checks) |
+|---|---|---|
+| 67 XP rewards + 2 changed amounts on shipped dialogue infos (pickpocket XP, Doyle, Caspar, Cole, Esteban ...) | `risen.dialog.get` + `add_command("GiveXP")` / `set_command_property` on the first tick | read back (last command of an info); the pickpocket flow itself was not played |
+| 105 trader refills on the four chapter infos | `add_script_command` + `RunScript OnTradeInfo_RefillTradeItems` (`Self`, `Other`, `OtherType` template entity, `Param`) | read back; the 25 chapter-1 entries are also run at the start of a new game (script call with a spawned template entity as `other`): Costa holds `It_Bow_Cole_01` as a trade stack. Chapters 2-4 depend on the engine running those infos (not played that far) |
+| 9 teacher limits (STR / DEX to 150-200) | new natives `risen.npc.teach_skills` / `set_teach_limit` on the placed NPC (`gCDialog_PS.TeachSkills`, RE.md section 44) | all nine read back; a real teaching dialogue was not played |
+| 11 chests + 4 NPC equipment slots | `risen.entity.by_id` + `give` / `equip` on `world.ready` (once per savegame) | a chest holds its new item |
+| melee system | `assets/compiled_combatspecies.bin` (RE.md section 45), `skills.tab` names | the loose table is read (`JumpBack` empty), a fight runs |
+
+Three trader entries of the mod name templates that do not exist and are mapped when exactly one template fits (`It_Crystal_Frost_Mage` -> `...Magei`, `It_BS_RuneSword_01` -> `It_BS_RuneSword`, `It_Bow_Eaglehunter` -> `It_Bow_WEaglehunter`); each is a warning in `manifest.json`.
+

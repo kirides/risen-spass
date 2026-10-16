@@ -37,16 +37,16 @@
  {
   "id": 6,
   "item": "Pickpocket gives XP by required level (65 dialogue infos)",
-  "status": "missing",
-  "needs": "M20",
-  "note": "dialogue edits"
+  "status": "generated",
+  "needs": "",
+  "note": "67 XP rewards appended to the pickpocket infos (read back); a real pickpocket was not played"
  },
  {
   "id": 7,
   "item": "Doyle XP when found later; quest XP (Caspar, Doyle, Cole, Esteban)",
-  "status": "missing",
-  "needs": "M20",
-  "note": ""
+  "status": "generated",
+  "needs": "",
+  "note": "XP rewards of Caspar, Doyle, Cole, Esteban (changed amounts); read back, not played"
  },
  {
   "id": 8,
@@ -58,9 +58,9 @@
  {
   "id": 9,
   "item": "Teacher limits (STR/DEX up to 150/200)",
-  "status": "missing",
-  "needs": "M20",
-  "note": "placed NPC instances"
+  "status": "verified",
+  "needs": "",
+  "note": "9 placed teachers raised through risen.npc.set_teach_limit (read back); a real teaching dialogue was not played"
  },
  {
   "id": 10,
@@ -79,16 +79,16 @@
  {
   "id": 12,
   "item": "Big gems sold earlier",
-  "status": "missing",
-  "needs": "M20",
-  "note": "trader stock"
+  "status": "generated",
+  "needs": "",
+  "note": "trader entries (chapter 3) run by the chapter info; not played that far"
  },
  {
   "id": 13,
   "item": "Melee system 1H / 2H / staff (weapon types, skills)",
-  "status": "partial",
-  "needs": "M21",
-  "note": "weapon use types and numbers converted; combat style table, skill names not"
+  "status": "generated",
+  "needs": "",
+  "note": "p01 combat table (75 Human styles), weapon use types, skill names Onehanded/Twohanded fighting; a fight runs under the new table, the feel is for the play test"
  },
  {
   "id": 14,
@@ -107,16 +107,16 @@
  {
   "id": 16,
   "item": "Backwards hop removed, side dodge kept",
-  "status": "missing",
-  "needs": "M21",
-  "note": "combat table"
+  "status": "verified",
+  "needs": "",
+  "note": "Human.JumpBack empty in the loaded table (read back from the engine)"
  },
  {
   "id": 17,
   "item": "2H reach higher from a skill",
-  "status": "missing",
-  "needs": "M21",
-  "note": "combat table"
+  "status": "generated",
+  "needs": "",
+  "note": "HitRange 200/220/250 and staff 210/230 are in the loaded table"
  },
  {
   "id": 18,
@@ -156,9 +156,9 @@
  {
   "id": 23,
   "item": "Captain armor only in chapter 4",
-  "status": "missing",
+  "status": "partial",
   "needs": "M20",
-  "note": "chapter gating of the trade"
+  "note": "stocked by the chapter-4 info of the mod (Leto); the gate is the chapter info itself"
  },
  {
   "id": 24,
@@ -170,9 +170,9 @@
  {
   "id": 25,
   "item": "Berserker / rune sword purchasable",
-  "status": "partial",
-  "needs": "M20",
-  "note": "items exist; trader stock missing; It_BS_RuneSword_01 is not in the mod's archives"
+  "status": "generated",
+  "needs": "",
+  "note": "trader entries; It_BS_RuneSword_01 mapped to It_BS_RuneSword (the mod's typo)"
  },
  {
   "id": 26,
@@ -186,7 +186,7 @@
   "item": "Crystal mana cost / damage, blessed crystals",
   "status": "generated",
   "needs": "",
-  "note": "3 new crystals; their sale is trader stock (M20)"
+  "note": "3 blessed crystals are in the trader lists of the chapter infos"
  },
  {
   "id": 28,
@@ -221,14 +221,14 @@
   "item": "Recipes baked plaice / hunter's pan buyable from chapter 2",
   "status": "partial",
   "needs": "M20",
-  "note": "values converted; trader stock and gate missing"
+  "note": "values converted; the sellers' entries are in the chapter infos"
  },
  {
   "id": 33,
   "item": "Uriziel, Trollfaust, crawler armor, guard armors in the game",
   "status": "partial",
-  "needs": "M20",
-  "note": "items exist; where they lie is script/world data"
+  "needs": "",
+  "note": "items exist; sold/placed as the mod's stock lists say"
  },
  {
   "id": 34,
@@ -240,16 +240,16 @@
  {
   "id": 35,
   "item": "Trader stock (106 refills: weapons, blanks, recipes, runes, crystals ...)",
-  "status": "missing",
-  "needs": "M20",
-  "note": "the main way to get the new items; the starter kit stands in for it"
+  "status": "partial",
+  "needs": "",
+  "note": "105 refills added to the 4 chapter infos (read back); chapter 1 (25 entries) also handed out at the start of a new game and verified; chapters 2-4 depend on the engine running the infos"
  },
  {
   "id": 36,
   "item": "Items placed in the world (recipes, potions, rings, bastard sword ...)",
-  "status": "missing",
-  "needs": "M20",
-  "note": ".lrent world files"
+  "status": "generated",
+  "needs": "",
+  "note": "11 chests and 4 NPC equipment slots filled on world.ready (verified for a chest)"
  },
  {
   "id": 37,
