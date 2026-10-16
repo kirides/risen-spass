@@ -15,7 +15,8 @@ How the project is organised and how to extend it. (`CLAUDE.md` holds the same r
 | `src/game/lua_ai.cpp`, `ai_names.h`, `ai_lua.h` | the AI bridge (M11): Lua AI states and callbacks registered in the script registry's AIState / AICallback maps (thunk tables), the exit script behind `finish`, native perception interceptors for the `Assess*` scripts, `risen.ai.*`; `ai_lua.h` is the per-mod Lua part (`persist`) (RE.md §36) |
 | `src/game/lua_combat.cpp`, `combat_names.h` | the damage hooks (M14): a native interceptor on the engine script `DoDamage` (via `scripts::installNative`), the handlers of `risen.combat.on_damage`, the pure classification / result / filter logic (`combat_names.h`, unit tests `tests/combat_tests.inc`; RE.md §39) |
 | `src/game/lua_interact.cpp`, `lua_input.cpp`, `lua_hud.cpp`, `lua_config.cpp`, `call_trace.cpp` | focus/interaction info, keys and the `input.action` event, HUD log, per-mod `config.toml`, the `calls`/`hud` trace channels (RE.md §31) |
-| `src/lua` | LuaJIT state, per-mod sandbox, events, mod discovery and load order |
+| `src/lua` | LuaJIT state, per-mod sandbox instances (torn down and run again by hot reload), events, mod discovery, the load plan (`mods.toml`: enabled flags, custom order, validation), version helpers |
+| `src/game/lua_mods.cpp`, `migrate_lua.h` | `risen.mods` (list/reload/enable/order/orphans), `risen.migrate`, `risen.retire` (M15, RE.md §41); the registries tear down per owner through `Runtime::addTeardown` (`scripts::releaseOwner`, `aiReleaseOwner`, `combatReleaseOwner`) |
 | `types/risen.d.lua` | LuaLS definitions of the API — **must always match the bindings** |
 | `mods/` | example mods and the real mod `quickloot` ([QUICKLOOT.md](QUICKLOOT.md));  `*_driver`, `vfsprobe`, `templatedump`, `itemdump`, `npcdump`, `spelldump`, `recipedump`, `persistdemo`, `persistnpc` (the live test of `risen.npc.persistent`), `spawnwhen` (the live test of `risen.spawn.when`), `dialogcond` (the live test of dialogue conditions), `aistates` (the live test of `risen.ai`), `hardening` (the fuzz scenario, "Hardening" below) are development tools that drive or probe the game; `balance_example` is the showcase mod ([MODDING_GUIDE.md](MODDING_GUIDE.md)) |
 | `tests/` | unit tests that run without the game |
@@ -178,6 +179,24 @@ all of `risen.test.*` (the harness) and every `<Type>.__gc` (the garbage collect
 **Limits.** The scenario cannot tell a function that silently did the wrong thing from one that did nothing; it looks for crashes, hangs and a broken world. A slow function is capped at four seconds per function (`risen.balance.scale_npcs`, `risen.dialog.rebuild`,
 `risen.template.census`, `risen.config` are cut off: they scan the whole template library, which is legitimate). A handle to an entity that was freed without passing `eCEntity::Kill` (the world is unloaded: handled by the world generation) is the one gap known.
 Values that are right in type but absurd (an NPC with `hp_max = 1e300`) are the business of the individual validations, which the fuzz exercises with the same battery.
+
+## One-process suites and hot reload (M15)
+
+**Hot reload for development.** Set `[mods] watch = true` in `<Risen>\bin\spass\config.toml` (or call `risen.mods.watch(true)`): saving a `.lua`, `.toml` or `.csv` file of a mod reloads it in the running game (`docs/LUA_API.md` "Hot reload"); the log says what was released and what needs a restart. The live proof is the scenario
+`hotreload` (`mods/hotreload`, `mods/hr_target`, `mods/hr_dependent`; needs the sandbox off because it edits files: `smoke-test.ps1` passes `-Unsafe`): three processes, `main` (edit + reload + failures + watcher + unload/disable/enable + a save round trip), `save_v1` and `load_v2` (a fresh process whose mod is the newer version, the fixture
+`mods/hotreload/fixtures/v2` copied over it with `-CopyInto`).
+
+**A faster suite: several scenarios in one game process.** `scripts\test-run.ps1 -Disable a,b,c` writes those mods as switched off into `spass\mods.toml` (deleted at the start of every run otherwise); `mods/testsuite` (parameter `suite=name:modA+modB,name2:modC`, optional `fresh=0`, `scenario_seconds`) then, per scenario: `risen.test.reset(name)`, `risen.mods.load` of its mods (they
+are told the `session.start` / `world.ready` they missed, and `risen.test.wait_event("session.start")` answers from the lifecycle), waits for `risen.test.finish`, unloads them and starts a new game, so the next scenario meets an untouched world. `risen.test.suite_finish` writes one result whose checks are named `<scenario>: <check>` (an unfinished check or an aborted scenario is a failed check;
+`test-run.ps1 -WaitForResult` and the "no errors logged" check work as before, per scenario). `smoke-test.ps1 -Scenario suite` runs testdemo, ex_balance, ex_template_patch and ex_custom_npc in one game: 77 s instead of ~4 minutes. **Limits:** edits of templates and other process-wide state stay (a scenario that asserts shipped numbers must run before one that changes them: `balance` after
+`ex_balance` fails on a potion value), scenarios that test the start-up (first-tick timing, `mods.loaded`) or that need a fresh process (fresh-process loads, `newtemplates`) cannot join; a suite needs the scenarios' mods to be loadable late (they get the lifecycle replay, not `mods.loaded` before the game).
+
+**Updates and removals.** The scenario `updsafe` (`mods/upd_content` in several versions chosen by `-Param variant=`, `mods/upd_check` the scenario; sandbox off: it copies the savegame files) plays an old version, keeps a pristine copy of the savegame and loads it, each case in its own fresh process, with the same version, an update that declares nothing, a renamed quest line,
+an update with `risen.retire`, a lost sidecar, and without the mod (with and without its sidecar). About 7 minutes serial; the phases cannot run in parallel (they share the pristine copy).
+
+## Hardening: natives must not run metamethods
+A native that is handed a hostile table must read it with raw iteration only. `sol::table::size()` / `lua_len` runs `__len`; an error raised there is thrown through the native's C++ frame and, in the hardening run, corrupted a registry reference that the harness held (the symptom came much later and somewhere else: "attempt to call a number value" in a `wait_ticks`
+callback). If a hardening run fails like that, `-Param "only=risen%.[a-l];risen%.mods"` style subsets plus `#v` (verbose) find the call (RE.md §41).
 
 ## Parallel instances (M4c)
 

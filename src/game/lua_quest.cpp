@@ -213,6 +213,23 @@ local function fail(what, msg)
     return nil, text
 end
 
+-- A canonical text of a definition (keys sorted, functions as "fn"): two calls with the same fingerprint define the same thing. Used to tell a hot-reloaded mod that the
+-- definition changed after the engine object was made (it cannot be edited: a restart is needed, risen.mods.note_restart).
+local function fingerprint(v, depth)
+    depth = depth or 0
+    local t = type(v)
+    if t == "string" then return string.format("%q", v) end
+    if t ~= "table" then return tostring(v) end
+    if depth > 6 then return "{...}" end
+    local keys = {}
+    for k in pairs(v) do keys[#keys + 1] = k end
+    table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
+    local parts = {}
+    for _, k in ipairs(keys) do parts[#parts + 1] = tostring(k) .. "=" .. fingerprint(v[k], depth + 1) end
+    return "{" .. table.concat(parts, ",") .. "}"
+end
+local made = {}     -- name -> fingerprint of the definition that made the object in this process
+
 -- risen.quest.define(spec) -> Quest | nil, error. Idempotent: an existing quest of that name is returned as is.
 function risen.quest.define(spec)
     if type(spec) ~= "table" then return fail("quest.define", "the argument must be a table") end
@@ -222,8 +239,13 @@ function risen.quest.define(spec)
     end
     if spec.title ~= nil and type(spec.title) ~= "string" then return fail("quest.define", "'title' must be a string") end
     if spec.xp ~= nil and (type(spec.xp) ~= "number" or spec.xp < 0) then return fail("quest.define", "'xp' must be a non-negative number") end
+    local fp = fingerprint({ spec.title, spec.type, spec.xp, spec.silent })
     if risen.quest.exists(spec.name) then
+        if made[spec.name] ~= nil and made[spec.name] ~= fp and risen.mods and risen.mods.note_restart then
+            risen.mods.note_restart(("quest '%s' was defined differently before: the existing quest keeps its old title / type / reward (quests cannot be edited)"):format(spec.name))
+        end
         risen.log.debug("quest.define: '" .. spec.name .. "' already exists")
+        if risen.mods and risen.mods.note_content then risen.mods.note_content("quest", spec.name) end
         return risen.quest.get(spec.name)
     end
     local q = risen.quest.new(spec.name)
@@ -238,6 +260,8 @@ function risen.quest.define(spec)
     if spec.xp then prop("ExperiencePoints", tostring(spec.xp)) end
     if spec.silent ~= nil then prop("Silent", spec.silent and "true" or "false") end
     if not q:register() then return fail("quest.define", "the quest manager refused '" .. spec.name .. "'") end
+    made[spec.name] = fp
+    if risen.mods and risen.mods.note_content then risen.mods.note_content("quest", spec.name) end
     return q
 end
 

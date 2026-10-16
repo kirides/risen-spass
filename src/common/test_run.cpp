@@ -182,6 +182,39 @@ Verdict Run::verdict(const std::string& abortReason) const {
     return verdictLocked(abortReason);
 }
 
+void Run::appendFrom(const Run& other, const std::string& prefix, const std::string& abortReason, double t) {
+    std::vector<Check> checks;
+    std::vector<std::string> open;
+    {
+        std::lock_guard lock(other.mutex_);
+        checks = other.checks_;
+        open = other.unfinishedLocked();
+    }
+    std::lock_guard lock(mutex_);
+    for (Check c : checks) {
+        c.name = prefix + ": " + c.name;
+        checks_.push_back(std::move(c));
+    }
+    const auto add = [&](const std::string& name, const std::string& detail) {
+        Check c;
+        c.name = prefix + ": " + name;
+        c.ok = false;
+        c.detail = detail;
+        c.section = prefix;
+        c.t = t;
+        checks_.push_back(std::move(c));
+    };
+    for (const std::string& o : open) {
+        add("unfinished", o);
+    }
+    if (!abortReason.empty()) {
+        add("scenario ended early", abortReason);
+    }
+    if (checks.empty() && open.empty() && abortReason.empty()) {
+        add("no check was recorded", "the scenario recorded nothing");
+    }
+}
+
 std::string Run::toJson(const std::string& abortReason, const std::string& summary, double elapsed) const {
     std::lock_guard lock(mutex_);
     const Verdict v = verdictLocked(abortReason);

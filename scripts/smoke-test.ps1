@@ -60,7 +60,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -237,6 +237,20 @@ $scenarios = [ordered]@{
                            ) }
     # example: NPCs that ignore thefts while a game variable is set (risen.ai.perceive("theft")), animated and quick path
     ex_ignore_theft   = @{ Est = 100; Title = 'example: NPCs that ignore thefts while a variable is set'; Kind = 'result'; Mods = @('example_ignore_theft', 'quickloot'); Limit = 300 }
+    # a one-process suite (M15, mods/testsuite): four scenarios in ONE game process, each one's mods loaded with risen.mods.load into a fresh new game and unloaded again; the combined result names the checks "<scenario>: <check>"
+    suite             = @{ Est = 75; Title = 'one-process suite (M15: testdemo, ex_balance, ex_template_patch, ex_custom_npc in one game)'; Kind = 'result'; Mods = @('testsuite', 'testdemo', 'example_balance', 'example_template_patch', 'example_custom_npc'); Limit = 400
+                           Disable = @('testdemo', 'example_balance', 'example_template_patch', 'example_custom_npc')
+                           Phases = @(
+                               @{ Name = ''; Param = @('suite=testdemo:testdemo,ex_balance:example_balance,ex_template_patch:example_template_patch,ex_custom_npc:example_custom_npc', 'scenario_seconds=200'); Start = 'new'; Keep = $false; Limit = 400 }
+                           ) }
+    # hot reload (M15): "main" edits the files of hr_target on disk while the game runs (the sandbox is off: -Unsafe) and reloads it, failed reloads, watcher, unload/disable/enable, a save round trip;
+    # "save_v1" leaves a save written by version 1.0.0, "load_v2" is a fresh process whose hr_target is version 1.1.0 (the fixture copied over it): the migration runs at load.before
+    hotreload         = @{ Est = 150; Title = 'hot reload (M15: edit on disk, reload, nothing doubled, nothing left; migrate)'; Kind = 'result'; Mods = @('hotreload', 'hr_target', 'hr_dependent'); Limit = 300
+                           Phases = @(
+                               @{ Name = 'main'; Param = @('phase=main'); Start = 'new'; Keep = $false; Limit = 300; Unsafe = $true }
+                               @{ Name = 'save_v1'; Param = @('phase=save_v1'); Start = 'new'; Keep = $false; Limit = 200; Unsafe = $true }
+                               @{ Name = 'load_v2'; Param = @('phase=load_v2'); Start = 'load'; Keep = $true; Limit = 150; Unsafe = $true; CopyInto = @('hr_target', 'mods\hotreload\fixtures\v2\hr_target') }
+                           ) }
     # one process per phase: "save" crafts at the anvil (twice) and saves, "load" crafts again in a fresh process, "load_missing" runs without the mod's content, "load_again" has it again
     ex_recipe         = @{ Est = 250; Title = 'example: a new smithing recipe (save, load, missing, again)'; Kind = 'result'; Mods = @('example_recipe'); Limit = 300
                            Phases = @(
@@ -369,7 +383,7 @@ foreach ($name in $selected) {
         $phLimit = [int][math]::Min($ph.Limit, [math]::Max($TotalSeconds - ((Get-Date) - $runStart).TotalSeconds, 60))
         $label = if ($ph.Name) { "$name/$($ph.Name)" } else { $name }
         if ($ph.Name) { Write-Host "-- phase $($ph.Name), limit $phLimit s" }
-        $testArgs = @{ GameDir = $GameDir; Instance = $Instance; Mods = $s.Mods; Seconds = $phLimit; Filter = 'NOTHING'; StallSeconds = $StallSeconds }
+        $testArgs = @{ GameDir = $GameDir; Instance = $Instance; Mods = $(if ($ph.Mods) { $ph.Mods } else { $s.Mods }); Seconds = $phLimit; Filter = 'NOTHING'; StallSeconds = $StallSeconds }
         # every scenario ends itself (risen.test.finish writes the result file); the [log checks] ones additionally assert on the log below
         $testArgs.WaitForResult = $true; $testArgs.Scenario = $name
         if ($s.Kind -eq 'result') {
@@ -377,6 +391,8 @@ foreach ($name in $selected) {
             if ($ph.Start -eq 'load') { $testArgs.Start = 'load' }
             if ($ph.Keep) { $testArgs.Keep = $true }
             if ($ph.VoiceLanguage) { $testArgs.VoiceLanguage = $ph.VoiceLanguage }
+            if ($ph.Unsafe) { $testArgs.Unsafe = $true }
+            if ($s.Disable) { $testArgs.Disable = $s.Disable }
             if ($ph.CopyInto) { $testArgs.CopyInto = "$($ph.CopyInto[0])=$(Join-Path (Split-Path -Parent $here) $ph.CopyInto[1])" }
         }
         $global:SpassRun = [pscustomobject]@{ Reason = 'error'; Result = $null }

@@ -137,6 +137,7 @@ bool detourLoad(void* self, const void* name, void* stream) {
     SPASS_TRACE(trace::Channel::Save, "load '{}': begin", n);
     bumpEntityGeneration();
     aiResetRuns();  // the NPCs are rebuilt: no Lua AI state survives a load (a saved state is resumed by the engine)
+    lua::Runtime::instance().noteWorldNotReady();
     const bool wasActive = bus::active();
     bus::setActive(false);
     resetEntityEvents();  // the world is rebuilt: no gameplay events until the session starts again
@@ -175,11 +176,13 @@ void detourSessionStart(void* self, int mode) {
     spdlog::info("session: start ({})", name);
     bus::setActive(true, name);
     resetEntityEvents();
+    lua::Runtime::instance().noteSessionStart(name);
     test::mark("session.start");
     fire("session.start", std::string(name));
 }
 
 void detourSessionStop(void* self) {
+    lua::Runtime::instance().noteSessionStop();
     fire("session.stop");
     aiResetRuns();
     bus::setActive(false);

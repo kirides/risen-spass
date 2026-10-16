@@ -54,6 +54,7 @@ int detourScriptAdminPostInit(void* self) {
 // gCSession::Process(this): once per frame while a session exists. Emits the Lua "tick" event.
 void detourSessionProcess(void* self) {
     g_sessionProcess.original(self);
+    lua::Runtime::instance().processPending();  // queued mod reloads, the development file watcher
     test::onTick();  // risen.test: pending wait_for/sleep, heartbeat, first-tick mark
     onInputFrame();  // risen.input: the key states of this frame
     bus::flush();    // the gameplay events queued during this frame (inventory.*, npc.killed, ...)

@@ -1,0 +1,7 @@
+id          = "hr_dependent"
+name        = "Hot reload: a mod that requires hr_target"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Requires hr_target, so it is reloaded after it; part of the scenario `hotreload`. Only meaningful in a test run."
+requires    = ["hr_target"]
+main        = "main.lua"

@@ -41,6 +41,7 @@ struct Handler {
     sol::main_protected_function fn;
     combat::Filter filter;
     int warnings = 0;
+    std::string owner;  // the mod that registered it (hot reload removes it)
 };
 
 std::vector<Handler> g_handlers;
@@ -455,6 +456,7 @@ Two onDamage(sol::this_state ts, sol::object fnArg, sol::object filterArg) {
         }
     }
     h.id = g_nextId++;
+    h.owner = lua::Runtime::currentOwner();
     h.fn = fnArg.as<sol::main_protected_function>();
     const std::uint64_t id = h.id;
     g_handlers.push_back(std::move(h));
@@ -486,6 +488,20 @@ bool offDamage(sol::object handle) {
 
 void combatShutdown() {
     g_handlers.clear();
+}
+
+void combatReleaseOwner(const std::string& mod, std::vector<std::string>& released) {
+    if (mod.empty()) {
+        return;
+    }
+    for (auto it = g_handlers.begin(); it != g_handlers.end();) {
+        if (it->owner == mod) {
+            released.push_back("damage handler " + std::to_string(it->id));
+            it = g_handlers.erase(it);
+        } else {
+            ++it;
+        }
+    }
 }
 
 void bindCombat(sol::state_view lua, sol::table risen) {

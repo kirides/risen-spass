@@ -3900,6 +3900,32 @@ function testApi.wait_until(predicate, timeout_s, name) end
 ---@return any ...
 function testApi.wait_event(event, timeout_s, filter) end
 
+---Starts the next scenario in the same game process: forgets the checks, the plan, pending waits and the scenario that is running (so `run` can be called again) and sets the scenario name. A
+---process that ran `suite_begin` collects the outcome of every scenario; `mods/testsuite` is the driver that loads one scenario's mods after the other (docs/DEVELOPMENT.md "One-process suites").
+---@param scenario_name? string
+---@return boolean
+function testApi.reset(scenario_name) end
+
+---Begins a one-process suite: from now on `finish` / `fail` (and a scenario that ends with an error) end only the scenario that is running, its outcome is collected, and the process goes on.
+---The result file is written by `suite_finish`.
+---@param name? string Name of the suite in the result file.
+---@return boolean
+function testApi.suite_begin(name) end
+
+---Ends the suite: writes `test-result.json` with every check of every scenario named `<scenario>: <check>` (an unfinished check or a scenario that ended early is a failed check) and ends the process like `finish`.
+---@param summary? string
+---@return boolean ok False when no suite was begun.
+function testApi.suite_finish(summary) end
+
+---Whether `finish` (or `fail`) was called for the current scenario (a suite driver polls it).
+---@return boolean
+function testApi.is_finished() end
+
+---What this process has seen of the lifecycle: the mode of the running session (`session.start`) and of the world that is ready (`world.ready`), each `nil` when there is none.
+---`wait_event("session.start")` / `wait_event("world.ready")` answer at once from it, so a scenario that starts late (a mod loaded or reloaded into a running game) does not wait for something that already happened.
+---@return { session?: "new"|"load"|"other", world?: "new"|"load"|"other" }
+function testApi.lifecycle() end
+
 ---Opt-in trace channels (`config.toml` `[debug] trace = "template,balance,save,events"`, `"all"`, or at run time `risen.trace.enable`). A disabled channel
 ---costs one bit test. Lines read `[HH:MM:SS.mmm] [trace:channel] ...` in `spass.log` (and in `trace.log` with `[debug] trace_file = true`).
 ---Built-in channels: `events` (every event the layer emits, with its arguments), `template`, `balance` (every applied job), `save` (save/load phases with
@@ -3929,6 +3955,269 @@ function traceApi.enabled(channel) end
 function traceApi.channels() end
 
 ---------------------------------------------------------------------------------------------------------------------
+-- The mod manager and hot reload (M15)
+---------------------------------------------------------------------------------------------------------------------
+
+---What the mod keeps in the current savegame data (`risen.save`, one sidecar record per mod): what a mod manager shows before a mod is switched off or updated.
+---@class ModSaveData
+---@field present boolean The mod has a record in the data of the loaded / current savegame.
+---@field saved_version? string The version of the mod that wrote the record (known once the game was saved or a savegame loaded).
+---@field keys table<string, integer> Entries per key of the record (a plain value counts 1).
+---@field key_count integer
+---@field npcs integer Persistent NPC records (`risen.npc.persistent`).
+---@field spawn_rules integer `risen.spawn.when` rule states.
+---@field ai_states integer Saved Lua AI states (`risen.ai.start(.., { persist = true })`).
+---@field routines integer NPC routine records.
+
+---One mod as `risen.mods.list()` / `risen.mods.get()` describe it.
+---@class ModEntry
+---@field id string
+---@field name string
+---@field version string
+---@field author string
+---@field description string
+---@field dir string
+---@field folder string Directory name below `mods/`.
+---@field state "loaded"|"failed"|"skipped"|"disabled"|"unloaded" `failed`: it did not load (`kind` `"load_error"` or `"manifest"`, `reason` says why); `skipped`: it cannot load (`kind` `"missing_dependency"`, `"dependency_unavailable"`, `"cycle"`, `"duplicate"`); `disabled`: switched off in `mods.toml`; `unloaded`: unloaded at run time.
+---@field loaded boolean
+---@field failed boolean
+---@field kind? string
+---@field reason? string
+---@field enabled boolean False when `mods.toml` switches the mod off.
+---@field load_order? integer Position in the load order (loaded mods only).
+---@field requires string[]
+---@field load_after string[]
+---@field needed_by string[] The mods that require this one, directly or through others.
+---@field api_version integer
+---@field reloadable boolean Whether `reload` can be asked for (not for a disabled, skipped or manifest-less entry).
+---@field reload_note? string Why not, or what is limited.
+---@field load_count integer How often the mod was run in this process (1 = once, 2 = reloaded once ...).
+---@field restart_required string[] Things the mod made that only a restart of the game can change (a dialogue info that cannot be edited ...).
+---@field content { quests: string[], dialogs: string[] } Quests (`risen.quest.define`) and dialogue infos (`risen.dialog.create`) the running instance defined: the engine-owned content a reload cannot take back (look the quests up with `risen.quest.get(name)` for their status).
+---@field data? ModSaveData
+
+---What one reload / unload / load did to one mod.
+---@class ModAction
+---@field id string
+---@field action "reloaded"|"unloaded"|"loaded"|"failed"|"skipped"
+---@field error? string
+---@field version_before string
+---@field version_after string
+---@field handlers_removed integer
+---@field handlers_added integer
+---@field released string[] Registrations the teardown undid, one line each (`"script override GiveXP (original restored)"`, `"AI state ZS_X (2 NPC(s) sent back to their routine)"`, ...).
+---@field restart_required string[]
+---@field state_carried boolean The old instance's `on_unload` returned a value for the new one.
+
+---Result of `reload`, `unload`, `load`, `enable`, `disable`.
+---@class ModReport
+---@field target string
+---@field ok boolean
+---@field queued boolean The request waits for the start of the next frame (`reload` without `now`, or while a handler of an affected mod is running).
+---@field error? string Why the request was refused or the mod failed.
+---@field actions ModAction[] In the order they happened (a reload: the mod, then the mods that require it).
+---@field summary string One readable line.
+
+---@class ModOrder
+---@field current string[] The loaded mods in the order they were loaded.
+---@field planned string[] The order the next start would use (the custom order of `mods.toml` where it is possible).
+---@field automatic string[] The order without a custom one (alphabetical by id, constrained by `requires` / `load_after`).
+---@field custom string[] The custom order of `mods.toml` (empty = automatic).
+
+---@class ModsConfig
+---@field path string Path of `<Risen>/bin/spass/mods.toml`.
+---@field enabled table<string, boolean> The mods the player switched off (false) or on (true) there.
+---@field order string[]
+---@field problems string[] What was wrong with the file when it was read.
+
+---The mod manager API (docs/LUA_API.md "The mod manager API"). `reload` tears one mod instance down and runs `main.lua` again in a fresh environment: everything the mod registered
+---(event handlers, `risen.script` definitions and overrides, AI states and perception handlers, damage handlers, persistent NPC and spawn declarations, balance, dialogue conditions ...) is removed and made again by the
+---new run; mods that `require` it are reloaded after it; what the engine owns (quests, dialogue infos, created templates, entities in the world) stays and is reported in `restart_required` when it cannot follow.
+---A mod loaded into a running game is told the `mods.loaded`, `session.start` and `world.ready` it missed. The user's choices (`enable` / `disable` / `set_order`) are kept in `<Risen>/bin/spass/mods.toml`.
+---@class RisenModsApi
+local modsApi = {}
+
+---Every mod folder that was found, loaded mods first in load order, then the others by id.
+---@return ModEntry[]
+function modsApi.list() end
+
+---@param id string
+---@return ModEntry|nil mod
+---@return string|nil reason
+function modsApi.get(id) end
+
+---Reloads the mod (and the mods that require it, after it). The new `mod.toml` and Lua files are read from disk; a syntax error or a broken manifest is refused before anything is touched (the old version keeps running);
+---a runtime error in `main.lua` leaves the mod `failed` with none of its half-made registrations, and the mods that require it `skipped`. Without `now` the reload happens at the start of the next frame
+---(`queued = true`); `now = true` does it at once unless a handler of an affected mod is running (then it is queued too). A refusal returns the report (`ok = false`) and the reason as second result.
+---@param id string
+---@param opts? { now?: boolean }
+---@return ModReport|nil report
+---@return string|nil reason
+function modsApi.reload(id, opts) end
+
+---Tears the mod down and leaves it unloaded (it stays installed; `load` brings it back). Refused while loaded mods require it, unless `cascade` unloads them too.
+---@param id string
+---@param opts? { cascade?: boolean }
+---@return ModReport|nil report
+---@return string|nil reason
+function modsApi.unload(id, opts) end
+
+---Loads a mod that is not loaded now (unloaded at run time, failed earlier, skipped because a required mod was not there): its requirements must be loaded.
+---@param id string
+---@return ModReport|nil report
+---@return string|nil reason
+function modsApi.load(id) end
+
+---Switches a mod on in `mods.toml` (the player's choice, kept for the next start) and, with `now` (the default), loads it. A mod whose requirements are switched off is refused unless `cascade` switches them on too.
+---@param id string
+---@param opts? { cascade?: boolean, now?: boolean }
+---@return ModReport|nil report
+---@return string|nil reason
+function modsApi.enable(id, opts) end
+
+---Switches a mod off in `mods.toml` and, with `now` (the default), unloads it. A mod that other enabled mods require is refused unless `cascade` switches those off too.
+---@param id string
+---@param opts? { cascade?: boolean, now?: boolean }
+---@return ModReport|nil report
+---@return string|nil reason
+function modsApi.disable(id, opts) end
+
+---The load order: how it is now, how the next start will do it, the automatic one and the custom one.
+---@return ModOrder
+function modsApi.order() end
+
+---Whether the list could be the custom load order: `nil, reason` when a mod is listed before something it requires or loads after, twice, or is not a known mod.
+---@param ids string[]
+---@return true|nil ok
+---@return string|nil reason
+function modsApi.check_order(ids) end
+
+---Saves a custom load order in `mods.toml` (`nil` or `{}` = automatic again). It takes effect at the next start; the dependencies always win. Refused (`nil, reason`) like `check_order`.
+---@param ids string[]|nil
+---@return true|nil ok
+---@return string|nil reason
+function modsApi.set_order(ids) end
+
+---The player's choices from `mods.toml`.
+---@return ModsConfig
+function modsApi.config() end
+
+---The report of the latest reload / unload / load that touched the mod (also one that ran at the start of a frame after a queued request).
+---@param id string
+---@return ModReport|nil
+function modsApi.last_report(id) end
+
+---Development file watcher: while on, a changed `.lua`, `.toml` or `.csv` file of a loaded (or failed) mod reloads that mod. `config.toml` `[mods] watch = true` turns it on at start-up.
+---@param on? boolean
+---@param interval_s? number Seconds between two looks at the files (default 1).
+---@return boolean watching
+function modsApi.watch(on, interval_s) end
+
+---The calling mod reports something only a restart of the game can change (it is listed in the reload report and as `restart_required`).
+---@param text string
+---@return boolean noted
+function modsApi.note_restart(text) end
+
+---Used by `risen.quest.define` / `risen.dialog.create` to tell the layer what the calling mod defined (`kind` is `"quest"` or `"dialog"`); other kinds are ignored. Mods have no reason to call it.
+---@param kind "quest"|"dialog"
+---@param name string
+---@return boolean noted
+function modsApi.note_content(kind, name) end
+
+---What the mod has in the current savegame data (see `ModSaveData`); works for mods that are not installed any more.
+---@param id string
+---@return ModSaveData|nil data
+---@return string|nil reason
+function modsApi.data(id) end
+
+---What `risen.retire` takes out of a game (and the `retire` table of `mod.toml` has the same keys). Every list is optional.
+---@class RetireSpec
+---@field npcs? string[] Persistent NPCs (`risen.npc.persistent` / `risen.spawn.when`) by name: the entity (found by the ID in the savegame record and by name) is removed, and the record, the spawn rule state, a saved AI state and routine record. Skipped (with a log line) while this mod still declares the NPC.
+---@field quests? string[] Quests that exist in the quest manager: `risen.quest.remove` (a quest the engine does not know any more is already gone: it drops the saved status of undefined quests silently).
+---@field game_vars? string[] Game variables (`risen.gamevar.remove`).
+---@field items? string[] Item templates taken out of the player's inventory (while the template exists; a stack of a template that is gone is dormant and stays until the template returns).
+---@field save_keys? string[] Keys of the mod's own `risen.save` store.
+
+---What `risen.mods.retire` reports: a line per name of every kind, `removed` counts what was taken out (0 for a dry run).
+---@class RetireReport
+---@field npcs table[]
+---@field quests table[]
+---@field game_vars table[]
+---@field items table[]
+---@field save_keys table[]
+---@field removed integer
+
+---One thing a mod left in the world that nothing owns any more (`risen.mods.orphans`).
+---@class OrphanEntry
+---@field kind "undeclared"|"stray" `undeclared`: the savegame record names an NPC the running mod does not declare (or the mod is not running); `stray`: an NPC of one of the mod's templates that no record owns (the savegame had no sidecar, the mod made a second one).
+---@field name string The unique name of the entity (empty for a nameless one).
+---@field template? string
+---@field id string The entity's ID.
+---@field entity Entity
+---@field reason string
+
+---Applies what the running mod declared with `risen.retire` / the `retire` table of its `mod.toml` (it is done by itself once the world of every game is ready; this runs it on request).
+---`opts.dry_run` defaults to `true`: only report what exists. `nil, reason` for a mod that is not running (it cannot say what it retires: keep a stub mod with a `retire` list, or use `orphans`).
+---@param id string
+---@param opts? { dry_run?: boolean }
+---@return RetireReport|nil report
+---@return string|nil reason
+function modsApi.retire(id, opts) end
+
+---Dry run: what the mod left in the world that nothing owns any more, also for a mod that is not installed (it reads the mod's record in the savegame data). Never removes anything.
+---@param id string
+---@return OrphanEntry[]|nil list
+---@return string|nil reason
+function modsApi.orphans(id) end
+
+---Removes the entities of a list `orphans` returned (and, for `undeclared` ones, the record, spawn rule state and saved AI state). Nothing calls it for you.
+---@param id string
+---@param list OrphanEntry[]
+---@return integer|nil removed How many entities were destroyed.
+---@return string|nil reason
+function modsApi.remove_orphans(id, list) end
+
+---Removes one entry `store[id][key][subkey]` from the mod's savegame data (for example `("old_mod", "persistent_npcs", "Name")`); explicit clean-up after a removed mod.
+---@param id string
+---@param key string
+---@param subkey string
+---@return boolean removed
+function modsApi.forget_record(id, key, subkey) end
+
+---A read-only copy of everything the mod keeps in the current savegame data (`risen.save` keys, the layer's own records `persistent_npcs`, `spawn_rules`, `ai_states`, `npc_routines`), also for a mod that is not installed
+---any more; `nil` when it has none.
+---@param id string
+---@return table|nil
+function modsApi.record(id) end
+
+---The version of the mod that wrote its data into the savegame that was loaded (`nil` when the savegame did not know the mod).
+---@param id string
+---@return string|nil
+function modsApi.saved_version(id) end
+
+---Every mod id that has data in the current savegame data, installed or not.
+---@return string[]
+function modsApi.recorded() end
+
+---Drops the mod's record from the current savegame data (the engine's own savegame is not touched). Explicit only; nothing calls it for you.
+---@param id string
+---@return boolean dropped
+function modsApi.forget_data(id) end
+
+---Compares two version strings (`"1.2.0"`, `"1.10"`, `"2.0.0-beta"`) by their numbers: -1, 0 or 1. `nil` for a non-string.
+---@param a string
+---@param b string
+---@return integer|nil
+function modsApi.compare_versions(a, b) end
+
+---Whether `version` satisfies `spec`: `"1.2.0"`, `"<2.0.0"`, `"<=1.5"`, `">1.0"`, `">=1.0"`, `"!=1.3"`, `"*"` or several joined by commas (`">=1.0,<1.5"`, all must hold). `nil, reason` for a spec that is not valid.
+---@param spec string
+---@param version string
+---@return boolean|nil matches
+---@return string|nil reason
+function modsApi.version_matches(spec, version) end
+
+---------------------------------------------------------------------------------------------------------------------
 -- Logging and the risen table
 ---------------------------------------------------------------------------------------------------------------------
 
@@ -3955,6 +4244,7 @@ function logApi.error(...) end
 ---@field log RisenLogApi
 ---@field trace RisenTraceApi
 ---@field test RisenTestApi
+---@field mods RisenModsApi
 ---@field entity RisenEntityApi
 ---@field template RisenTemplateApi
 ---@field item RisenItemApi
@@ -4014,6 +4304,7 @@ local risen_ = {}
 ---@overload fun(event: "mods.loaded", handler: fun(), priority?: integer): EventHandle
 ---@overload fun(event: "tick", handler: fun(), priority?: integer): EventHandle
 ---@overload fun(event: "shutdown", handler: fun(), priority?: integer): EventHandle
+---@overload fun(event: "mods.migrate", handler: fun(from_version: string, to_version: string), priority?: integer): EventHandle
 ---@overload fun(event: "session.start", handler: fun(mode: "new"|"load"|"other"), priority?: integer): EventHandle
 ---@overload fun(event: "session.stop", handler: fun(), priority?: integer): EventHandle
 ---@overload fun(event: "world.changed", handler: fun(name: string), priority?: integer): EventHandle
@@ -4049,6 +4340,35 @@ function risen_.on(event, handler, priority) end
 ---@param handle EventHandle
 function risen_.off(handle) end
 
+---Registers a cleanup for hot reload: `fn(reason)` runs when this instance of the mod is torn down (`reason` is `"reload"`, `"unload"`, `"disable"` or `"failed"`), before the layer removes everything the instance registered.
+---The first non-nil result of the instances' `on_unload` functions (newest first) is handed to the next run as `mod.reload.state`. Not called when the game ends.
+---@param fn fun(reason: string): any
+function risen_.on_unload(fn) end
+
+---Registers a migration for the mod's saved data (`risen.save`): `fn(ctx)` runs, before the mod's own `load.before` handlers, when a savegame written by a version of the mod that matches `from_version` is loaded,
+---and when the mod is reloaded into a running game from such a version. `from_version` is a version (`"1.0.0"`), a comparison (`"<2.0.0"`, `">=1.0,<1.5"`, `"!=1.3"`) or `"*"`; every registered migration that matches
+---runs, in registration order, each on the result of the one before; an error in one is logged and the next still runs. The version a savegame was written by is kept in its sidecar (`risen.mods.saved_version`).
+---@param from_version string
+---@param fn fun(ctx: MigrationContext)
+---@return true|nil ok
+---@return string|nil reason
+function risen_.migrate(from_version, fn) end
+
+---Declares content that older versions of this mod made and this one does not any more, so a savegame of an old version is cleaned up (the game does not break without it: statuses of undefined quests are dropped by the
+---engine, NPCs the mod still declares are pruned by M7 when others are declared; this takes out what nothing else does). Applied once the world of a new game / load / reload is ready; see `RetireSpec`. The `retire` table of
+---`mod.toml` is the same declaration. Returns `nil, reason` for a malformed table.
+---@param spec RetireSpec
+---@return true|nil ok
+---@return string|nil reason
+function risen_.retire(spec) end
+
+---@class MigrationContext
+---@field from string The version that wrote the data.
+---@field to string The version that runs now.
+---@field mod string The mod id.
+---@field save RisenSaveApi The mod's `risen.save`.
+---@field log RisenLogApi
+
 ---The options of the calling mod: `defaults` is a table of default values that also fixes each option's type; the file `<mod dir>/config.toml` overrides them (an integer fits a number
 ---default, a nested table merges). A wrong type, an unknown key or a parse error is ignored and listed in the second result (and in `spass.log`); a missing file is no problem.
 ---`defaults` must not contain `nil` options (use `""`). The defaults table itself is not modified.
@@ -4066,6 +4386,12 @@ function risen_.emit(event, ...) end
 ---@type RisenApi
 risen = risen_
 
+---Present in `mod.reload` when the mod runs again inside the same process.
+---@class ModReloadInfo
+---@field count integer How often the mod ran before in this process.
+---@field from_version string The version of the instance that was torn down.
+---@field state? any What the previous instance's `on_unload` returned.
+
 ---Information about the running mod.
 ---@class ModInfo
 ---@field id string
@@ -4073,6 +4399,8 @@ risen = risen_
 ---@field version string
 ---@field author string
 ---@field dir string Directory of the mod (forward slashes).
+---@field reload? ModReloadInfo Present when this run of `main.lua` is a reload (or a load after an unload) inside the same game process.
+---@field retire? table<string, string[]> The `retire` table of `mod.toml`.
 ---@type ModInfo
 mod = {}
 

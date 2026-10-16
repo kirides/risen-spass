@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include <sol/sol.hpp>
 
@@ -32,12 +33,22 @@ void aiResetRuns();      // forgets the running Lua states (a savegame is loaded
 void aiFlushDeferred();  // runs the state changes that were asked for inside a `finish` callback (end of frame)
 void aiEntityKilled(void* entity);  // eCEntity::Kill hook: an entity that is removed from the world leaves no exit script behind
 void aiShutdown();       // releases every Lua reference (before the Lua state closes)
+// Hot reload (Runtime::addTeardown): retires the AI states / callbacks and removes the perception handlers the mod registered; NPCs in its states go back to their routine.
+void aiReleaseOwner(const std::string& mod, std::vector<std::string>& released);
 // Per mod, after bindSave(): risen.ai.start learns `persist` (kept in the mod's risen.save and started again after a load), risen.ai.stop / forget / persisted. (ai_lua.h)
 void installAiModApi(sol::state_view lua, sol::table api, const std::string& modId);
 
 // risen.combat.* (lua_combat.cpp, M14): damage handlers on the script DoDamage. Register after the script bridge.
 void bindCombat(sol::state_view lua, sol::table risen);
 void combatShutdown();   // releases every Lua reference (before the Lua state closes)
+void combatReleaseOwner(const std::string& mod, std::vector<std::string>& released);  // hot reload: removes the damage handlers the mod registered
+
+// risen.mods.* (lua_mods.cpp, M15): the mod list, reload / unload / load, enable / disable, order, orphans and risen.retire's native part. Register last.
+void bindMods(sol::state_view lua, sol::table risen);
+// Per mod, after bindSave(): risen.migrate(from_version, fn) (migrate_lua.h).
+void installMigrateModApi(sol::state_view lua, sol::table api, const lua::ModInfo& mod);
+// Per mod: risen.retire{ npcs, quests, game_vars, items, save_keys } and the `retire` table of mod.toml (migrate_lua.h).
+void installRetireModApi(sol::state_view lua, sol::table api, const lua::ModInfo& mod);
 
 // risen.hud.* (lua_hud.cpp): the HUD game log and item log.
 void bindHud(sol::state_view lua, sol::table risen);

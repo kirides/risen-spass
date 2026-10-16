@@ -64,6 +64,8 @@ param(
     [string]$Scenario = '',
     [string[]]$Param = @(),
     [string]$Trace = '',
+    # mods that are deployed but switched off in <bin>\spass\mods.toml (a one-process suite loads them one after the other: risen.mods.load); the file is deleted otherwise
+    [string[]]$Disable = @(),
     # [debug] trace_scripts: substrings (comma separated) of the engine script names the `calls` trace channel reports, e.g. 'Interact,Loot,Assess'
     [string]$TraceScripts = '',
     [switch]$TraceFile,
@@ -228,6 +230,9 @@ try {
         }
     }
     Set-Content (Join-Path $bin 'spass\config.toml') $cfg
+    $modsToml = Join-Path $bin 'spass\mods.toml'   # the player's choices (risen.mods.enable / disable / set_order): never let an earlier run leak into this one
+    Remove-Item $modsToml -Force -ErrorAction SilentlyContinue
+    if ($Disable.Count -gt 0) { Set-Content $modsToml (@('[enabled]') + @($Disable | ForEach-Object { "$_ = false" })) }
     Remove-Item $resultFile -ErrorAction SilentlyContinue
     if (-not $Keep) {
         Remove-Item $log -ErrorAction SilentlyContinue

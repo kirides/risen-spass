@@ -1,0 +1,6 @@
+id          = "hr_target"
+name        = "Hot reload: the mod that gets reloaded"
+version     = "1.1.0"
+author      = "risen-spass"
+description = "Version 1.1.0 of the hot-reload test mod: no override, no damage handler, a changed AI state, a new NPC, HR_Old is no longer declared, a migration."
+main        = "main.lua"

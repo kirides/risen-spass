@@ -1,0 +1,6 @@
+id          = "testsuite"
+name        = "Test suite: several scenarios in one game process (M15)"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Runs the scenario mods named by the test parameter `suite` one after the other in the same game process: loads a scenario's mods with risen.mods.load, waits for its risen.test.finish, unloads them, and writes one combined result. See docs/DEVELOPMENT.md \"One-process suites\". Only meaningful in a test run."
+main        = "main.lua"

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include <sol/sol.hpp>
 
@@ -30,6 +31,14 @@ void commitLoad();
 
 // Empties the store (a new game starts without mod data).
 void clear();
+
+// The live store, for the mod manager (risen.mods): the table of one mod (nil when it has none), the version of the mod that last wrote its data (the savegame's
+// `@mods` record, filled in when the game is saved), and dropping a mod's data. Take the Lua lock first. Keys that start with '@' are the layer's own.
+sol::object modRecord(sol::state_view lua, const std::string& id);
+std::string recordedVersion(sol::state_view lua, const std::string& id);
+bool dropMod(sol::state_view lua, const std::string& id);
+// Ids of every mod that has data (or a version record) in the live store, sorted.
+std::vector<std::string> recordedMods(sol::state_view lua);
 
 }  // namespace savestore
 }  // namespace spass::game

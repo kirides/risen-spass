@@ -222,6 +222,8 @@ struct StateDef {
     std::map<std::string, sol::main_protected_function> on;  // engine script name -> handler
     std::string task;                                          // AI callback made the task callback at begin ("" = leave the NPC's)
     double interval = 0.25;
+    std::string owner;                                         // the mod that defined it (hot reload retires it)
+    bool retired = false;                                      // the defining mod was torn down: the entry stays registered but does nothing and sends NPCs back to their routine
 };
 
 struct CallbackDef {
@@ -230,6 +232,7 @@ struct CallbackDef {
     void** fnSlot = nullptr;
     sol::main_protected_function fn;
     bool failed = false;
+    std::string owner;
 };
 
 std::array<StateDef, kMaxStates> g_states;
@@ -497,6 +500,12 @@ bool runStateImpl(std::size_t idx, void* /*stack*/, void* unit) {
     if (self == nullptr) {
         return true;
     }
+    if (def.retired) {
+        // the mod that defined the state was torn down (reload / unload) while the NPC was in it, or a savegame put him in it: back to the routine
+        SPASS_TRACE(trace::Channel::Ai, "retired state '{}' on {}: back to the routine", def.name, entityNameOf(self));
+        leaveState(self, "");
+        return true;
+    }
     const double t = stateTimeOf(unit);
     auto it = g_runs.find(self);
     if (it != g_runs.end() && (it->second.def != idx || t + 0.0005 < it->second.lastTime)) {
@@ -734,6 +743,7 @@ struct GlobalHandler {
     std::vector<LuaEntity> npcs;
     bool all = false;
     bool failed = false;
+    std::string owner;
 };
 std::vector<GlobalHandler> g_global;
 std::uint64_t g_nextGlobalId = 1;
@@ -917,6 +927,7 @@ std::string installCallback(const std::string& name, sol::main_protected_functio
     d.fnSlot = slot;
     d.fn = std::move(fn);
     d.failed = false;
+    d.owner = lua::Runtime::currentOwner();
     *slot = reinterpret_cast<void*>(kCallbackThunks[idx]);
     SPASS_TRACE(trace::Channel::Ai, "callback '{}' defined (slot {})", name, idx);
     return {};
@@ -1069,6 +1080,7 @@ Two defineState(sol::this_state ts, sol::object nameArg, sol::object defArg) {
     }
     nd.used = true;
     nd.fnSlot = slot;
+    nd.owner = lua::Runtime::currentOwner();
     g_states[idx] = std::move(nd);
     *slot = reinterpret_cast<void*>(kStateThunks[idx]);
     spdlog::info("lua: ai state '{}' {} (slot {})", name, redefine ? "redefined" : "defined", idx);
@@ -1176,6 +1188,9 @@ Two startAi(sol::this_state ts, sol::object npcArg, sol::object nameArg, sol::ob
     }
     if (findState(name) == kMaxStates && !entryExists(Kind::State, name)) {
         return failResult(L, "unknown AI state '" + name + "' (risen.ai.list('state') shows the registered ones)");
+    }
+    if (const std::size_t si = findState(name); si != kMaxStates && g_states[si].retired) {
+        return failResult(L, "the AI state '" + name + "' was retired (its mod was unloaded or reloaded and has not defined it again)");
     }
     bool interrupt = true, resumed = false;
     if (!isNil(optsArg)) {
@@ -1395,6 +1410,7 @@ Two perceiveAi(sol::this_state ts, sol::object kindArg, sol::object fnArg, sol::
     }
     gh.id = g_nextGlobalId++;
     gh.script = script;
+    gh.owner = lua::Runtime::currentOwner();
     gh.fn = fnArg.as<sol::main_protected_function>();
     const std::uint64_t id = gh.id;
     g_global.push_back(std::move(gh));
@@ -1502,6 +1518,54 @@ void aiResetRuns() {
     g_pending.clear();
     g_deferred.clear();
     g_waiting.clear();
+}
+
+void aiReleaseOwner(const std::string& mod, std::vector<std::string>& released) {
+    if (mod.empty()) {
+        return;
+    }
+    // handlers of risen.ai.perceive
+    for (auto it = g_global.begin(); it != g_global.end();) {
+        if (it->owner == mod) {
+            released.push_back("perception handler for " + it->script);
+            it = g_global.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    // states: NPCs that run one go back to their routine; the registry entry stays (a savegame may still name it) but does nothing
+    for (std::size_t i = 0; i < kMaxStates; ++i) {
+        StateDef& d = g_states[i];
+        if (!d.used || d.owner != mod) {
+            continue;
+        }
+        std::vector<void*> victims;
+        for (auto& [self, run] : g_runs) {
+            if (run.def == i) {
+                victims.push_back(self);
+            }
+        }
+        d.retired = true;
+        d.begin = d.loop = d.finish = sol::main_protected_function{};
+        d.on.clear();
+        for (void* self : victims) {
+            const auto it = g_runs.find(self);
+            if (it == g_runs.end()) {
+                continue;
+            }
+            requestEnd(it->second, "stopped", "");
+            it->second.leaving = true;
+            leaveState(self, "");
+        }
+        released.push_back("AI state " + d.name + (victims.empty() ? "" : " (" + std::to_string(victims.size()) + " NPC(s) sent back to their routine)"));
+    }
+    for (CallbackDef& c : g_callbacks) {
+        if (c.used && c.owner == mod) {
+            c.fn = sol::main_protected_function{};
+            released.push_back("AI callback " + c.name);
+            c.owner.clear();
+        }
+    }
 }
 
 void aiFlushDeferred() {

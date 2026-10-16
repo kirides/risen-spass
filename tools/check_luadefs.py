@@ -70,6 +70,11 @@ for path in sorted(list((root / 'src').rglob('*.cpp')) + [root / 'src/game/npc_b
 # runtime.cpp: per-mod api (risen.on/off/emit) and risen.log.*
 bound['risen.on'] = bound['risen.off'] = bound['risen.emit'] = 'src/lua/runtime.cpp'
 bound['risen.config'] = 'src/game/lua_config.cpp'   # per-mod: api.set_function("config", ...)
+bound['risen.on_unload'] = 'src/lua/runtime.cpp'    # per-mod (M15)
+bound['risen.migrate'] = 'src/game/migrate_lua.h'   # per-mod (M15): `function api.migrate(` in the chunk of migrate_lua.h
+bound['risen.retire'] = 'src/game/migrate_lua.h'    # per-mod (M15): `function api.retire(`
+for fn in re.findall(r'^function M\.(\w+)\(', (root / 'src/game/migrate_lua.h').read_text(encoding='utf-8'), flags=re.M):
+    bound[f'mods.{fn}'] = 'src/game/migrate_lua.h'     # the global chunk of risen.mods.retire / orphans / remove_orphans
 for lvl in ('trace', 'debug', 'info', 'warn', 'error'):
     bound[f'log.{lvl}'] = 'src/lua/runtime.cpp'
 # per-mod risen.save (lua_save.cpp registers on the mod's api table)

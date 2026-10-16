@@ -13,6 +13,7 @@ requires    = ["base_mod"]     # hard dependency (mod is skipped if missing)
 api_version = 1                # Lua API generation the mod was written for; a mod asking for a newer one is skipped with an error (risen.api_version)
 data_overlay = false           # experimental: mount the mod directory into the virtual file system at startup (docs/RE.md §17)
 assets       = "assets"        # directory of loose meshes/textures/... mounted at startup (false = none; see "New meshes, textures and icons")
+# [retire]                      # content older versions made and this one does not (the same lists as risen.retire: npcs, quests, game_vars, items, save_keys; see "Updating and removing content")
 ```
 
 The Lua layer starts right after the game's script DLLs are loaded (`gCScriptAdmin::PostInitialize`), before any
@@ -23,7 +24,7 @@ Every mod gets its own sandboxed environment: base functions, `string`, `table`,
 `require("a.b")` loads `<mod dir>/a/b.lua` inside the same sandbox. `print` writes to the log.
 `config.toml` `[lua] unsafe = true` lifts the restrictions for development.
 
-Globals: `mod` (`id, name, version, author, dir`), `risen`.
+Globals: `mod` (`id, name, version, author, dir`, and `reload` / `retire` when they apply), `risen`.
 
 **Argument types are checked.** Every function of the API checks the type of its arguments before it does anything: a wrong one (`risen.item.count({}, "It_Apple")`, `entity:set_frozen(1)`, a numeric string
 where a number is wanted, a fractional number where an integer is wanted) raises an ordinary Lua error that `pcall` catches, and an optional parameter given a wrong type counts as absent. Where an input is merely
@@ -1034,7 +1035,94 @@ risen.save.set("visited", { "Harbor", "Mine" })               -- booleans, numbe
 ```
 `set` raises an error for functions, userdata, cyclic tables and non-finite numbers. The data of the loaded savegame is
 already visible in `load.before` (so content can depend on it); `save.before` is the place for a last update. The store is
-namespaced by mod id. Sidecar files of deleted savegames are not removed.
+namespaced by mod id. Sidecar files of deleted savegames are not removed. The sidecar also records which version of each mod wrote the data (`@mods`; `risen.mods.saved_version`), the trigger of `risen.migrate`.
+
+## Hot reload and the mod manager API — `risen.mods` (M15, see `mods/hr_target`, `mods/hotreload`, [RE.md §41](RE.md))
+A mod can be torn down and run again **without restarting the game**: `risen.mods.reload("my_mod")` removes everything the running instance registered and runs `main.lua` again in a fresh environment
+(same sandbox rules, new `mod.reload` info). Every registration a mod makes is tracked per mod:
+
+| what the mod registered | on reload |
+|---|---|
+| event handlers (`risen.on`), `risen.emit` listeners | removed, made again by the new run |
+| `risen.script.override` | the game's own script is put back; `risen.script.define` stays registered (infos may name it) but answers 0 until it is defined again |
+| `risen.ai.state` / `callback` / `perceive` | handlers removed, states retired: NPCs that run one go back to their routine (no `finish` call), the entry can be defined again |
+| `risen.combat.on_damage` | removed |
+| `risen.npc.persistent`, `risen.spawn.when`, `risen.balance.install`, `risen.dialog` conditions, `risen.config`, strings | made again by the new run (they live in the mod's handlers); NPCs already in the world are found again by their ID, an NPC the new version no longer declares is pruned (M7), balance is applied again with the live entities |
+| `risen.save` data | kept (the store belongs to the savegame, not to the instance) |
+| dialogue infos, quests, created templates / recipes / spells, entities, loose assets | **engine-owned, kept as they are**; a changed definition cannot be applied and is reported in `restart_required` (`dialog.create` / `quest.define` compare the definition with the earlier one) |
+
+```lua
+local rep, why = risen.mods.reload("my_mod", { now = true })   -- default: at the start of the next frame (queued = true)
+-- rep = { target, ok, queued, error?, summary, actions = { { id, action = "reloaded", version_before, version_after, handlers_removed, handlers_added,
+--         released = { "script override GiveXP (original restored)", "AI state ZS_X (1 NPC(s) sent back to their routine)", ... }, restart_required = {}, state_carried } } }
+```
+* **Order and dependencies:** the mods that `requires` the reloaded one are torn down first (newest first) and run again after it, each one told what it missed. A mod that `load_after`s it is not touched.
+* **Refusals leave everything as it was:** an unknown mod, a `mod.toml` that does not parse or changed its `id`, a `requires` that is not loaded, a syntax error in `main.lua`. A runtime error in `main.lua` leaves the mod `failed` (state, `reason`) with none of its half-made registrations; its dependents are `skipped`; fix the file and reload (the failed mod can be reloaded) and `risen.mods.load(dependent)`.
+* **State:** `risen.on_unload(function(reason) return { counter = n } end)` runs while the old instance is torn down; its first result arrives as `mod.reload.state` (`mod.reload = { count, from_version, state }`, `nil` on the first run). Mod data in `risen.save` is untouched.
+* **Late mods are told what they missed:** a mod that runs while a game is on gets `mods.loaded`, then `session.start(mode)` and `world.ready(mode)` of the running game (to that mod only). `risen.test.wait_event("session.start")` answers at once from the lifecycle too.
+* **When:** `reload` returns `queued = true` and runs at the start of the next frame (before `tick`), because the code that asks may be a handler of the very mod; `{ now = true }` runs at once unless a handler of an affected mod is on the stack. Outside a game (main menu) it always runs at once.
+* **From outside the game:** write a mod id (or `all`) into `<Risen>\bin\spass\reload.txt` (`echo my_mod> reload.txt`): the layer looks once a second, reloads the mods named and deletes the file (works without the watcher; the reload happens at the start of the next frame).
+* **Watcher:** `config.toml [mods] watch = true` (or `risen.mods.watch(true, 0.5)`): a changed `.lua`, `.toml` or `.csv` file of a loaded or failed mod reloads it (checked every `watch_interval` seconds, default 1). A reload also re-reads `mod.toml` (version, `requires`, `retire`), `strings/*.csv` and `config.toml` (`risen.config`).
+* **What a restart is still needed for:** `data_overlay` mounts, `assets` directories that appeared after start, anything in `restart_required`, the C++ layer; and everything the engine owns (see the table). A reload is for the Lua code, its handlers and its declarations.
+
+```lua
+for _, m in ipairs(risen.mods.list()) do   -- loaded mods first, in load order
+  print(m.id, m.version, m.state, m.reason, table.concat(m.needed_by, ","), m.reloadable, m.data.npcs)
+end
+risen.mods.get(id)  risen.mods.unload(id, { cascade = true })  risen.mods.load(id)  risen.mods.last_report(id)
+risen.mods.disable(id, { cascade = true })  risen.mods.enable(id, { cascade = true })   -- kept in <Risen>\bin\spass\mods.toml; "now" (default) also unloads / loads
+risen.mods.order()  risen.mods.check_order(ids)  risen.mods.set_order(ids)  risen.mods.config()        -- custom load order: nobody before what it requires / loads after
+```
+`ModEntry` (`list` / `get`): `id name version author description dir folder state loaded failed kind reason enabled load_order requires load_after needed_by api_version reloadable reload_note load_count restart_required data`;
+`state` is `loaded | failed | skipped | disabled | unloaded` (`kind`: `load_error`, `manifest`, `missing_dependency`, `dependency_unavailable`, `cycle`, `duplicate`, `disabled`). `data` says what the mod left in the current savegame data
+(`present`, `saved_version`, `npcs`, `spawn_rules`, `ai_states`, `routines`, `keys`): a manager shows it before a mod is switched off or updated. The player's choices live in `<Risen>\bin\spass\mods.toml` (absent = the automatic order, everything on):
+```toml
+order = ["base", "extras"]   # optional custom load order; requires / load_after always win (a conflict is a warning in the log, and set_order refuses it)
+[enabled]
+some_mod = false             # not loaded; a mod that requires it is skipped with the reason
+```
+`mods.disable` of a mod others require is refused unless `cascade = true` switches those off too; `mods.enable` of a mod whose requirements are off likewise. The automatic order is alphabetical by id with `requires` / `load_after` first (unchanged when the file is absent).
+`risen.mods.watch`, `note_restart`, `compare_versions`, `version_matches`, `saved_version`, `recorded`, `forget_data`, `data` are documented in `types/risen.d.lua`.
+
+Migrating saved data when a mod is updated: `risen.migrate("<1.1.0", function(ctx) ctx.save.set("kills", ctx.save.get("old_kills", 0)) end)` runs at `load.before` (before the mod's own handlers) when the savegame was written by a matching version (the sidecar keeps
+`@mods = { id = { version } }`), and at a reload from such a version (event `mods.migrate(from, to)`).
+
+### Updating and removing content — `risen.migrate`, `risen.retire`, `risen.mods.orphans` (M15, see `mods/upd_content`, `mods/upd_check`, [RE.md §41](RE.md))
+What the game does when a mod is **updated or removed** while a savegame of the old version exists (verified, scenario `updsafe`): it loads, runs, saves and loads again without a crash, a hang or a message box in every case below. What is left behind:
+
+| the update / the removal | what happens to the savegame |
+|---|---|
+| a quest is no longer defined (removed, renamed) | its saved status is dropped silently (the quest is `nil`/undefined; a renamed one starts `Open`); gone for good at the next save |
+| dialogue options are no longer created | they are not offered, their "given" flags are lost with them |
+| a persistent NPC of a template that no longer exists | not restored; his record stays in the sidecar |
+| a persistent NPC of a shipped template | stays in the world **nameless**; the record stays unless the mod declares other NPCs (then M7 prunes it) |
+| items / a recipe plan / a spell scroll of a template that is gone | dormant stacks in the inventory, back with the template |
+| game variables, `risen.spawn.when` rule states, `risen.save` keys | stay until someone removes them |
+| a mod without its sidecar file (savegame copied) | its NPCs are made a second time next to the saved nameless ones |
+
+*Nothing is removed automatically* except what M7 already prunes; the tools below are explicit.
+```lua
+-- version 2.0 of a mod that dropped the old errand: say what it took out; the layer does it once the world is ready (new game, load, reload)
+risen.retire{
+  npcs = { "Old_Giver", "Old_Guard" },     -- entity (found by the ID in the record and by name), record, spawn rule state, saved AI state and routine record; skipped while this mod still declares the NPC
+  quests = { "Q_Old_Errand" },             -- risen.quest.remove (clean even while running)
+  game_vars = { "OldErrandDone" },         -- risen.gamevar.remove
+  items = { "Spass_Old_Token" },           -- taken out of the player's inventory while the template exists
+  save_keys = { "old_counter" },           -- keys of this mod's risen.save
+}
+-- the same lists work in mod.toml:    [retire]   npcs = ["Old_Giver"]   quests = ["Q_Old_Errand"]     (a stub mod with an empty main.lua is a way to clean up after a removed mod)
+risen.migrate("<2.0.0", function(ctx)      -- data written by an older version is rewritten when the savegame is loaded (before your load.before handlers) or the mod is reloaded
+  ctx.save.set("kills", ctx.save.get("wolf_kills", 0))      -- ctx.from, ctx.to, ctx.save, ctx.log
+end)
+```
+Manager side (for [M16](NEXT_STEPS.md) / tools): `risen.mods.retire(id [, { dry_run = false }])` runs (default: only reports) what a *running* mod declared; `risen.mods.orphans(id)` is a read-only list of what the mod left in the world that nothing owns — `undeclared` (the savegame record names an NPC the
+running mod does not declare, or the mod is not installed, and his entity still exists) and `stray` (an NPC of a template this process created for the mod that no record owns: the savegame had no sidecar); `risen.mods.remove_orphans(id, list)` removes the entities of a list `orphans` returned (and the records of undeclared ones), `risen.mods.forget_data(id)` drops a removed mod's record,
+`risen.mods.record(id)` reads it. Shipped-template NPCs are only found through a record (a census of `Peasant_1_02` would hit thousands of unrelated NPCs).
+
+### One-process test suites (`risen.test.reset / suite_begin / suite_finish`, `mods/testsuite`)
+`scripts/test-run.ps1 -Disable a,b` writes those mods as switched off into `mods.toml`; the driver mod `mods/testsuite` (parameter `suite=name:modA+modB,name2:modC`) waits for a running game, then per scenario: `risen.test.reset(name)`, `risen.mods.load` of the scenario's mods (they are told the
+`session.start` / `world.ready` they missed), waits for `risen.test.finish`, unloads them, starts a **new game** (so each scenario meets an untouched world) and goes on; `suite_finish` writes one result with the checks named `<scenario>: <check>`.
+Templates and other process-wide edits of earlier scenarios stay (see DEVELOPMENT.md "One-process suites"). `smoke-test.ps1 -Scenario suite` runs four scenarios in one game in ~75 s instead of ~4 minutes.
 
 ## risen.vfs / risen.debug — development aids
 ```lua

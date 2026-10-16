@@ -112,7 +112,12 @@ void onGameReady() {
     std::call_once(g_readyFlag, [] {
         spdlog::info("game ready: starting Lua runtime");
         game::test::startWatchdog();
-        lua::Runtime::instance().start(paths::modsDir(), g_config.unsafeLua);
+        auto& rt = lua::Runtime::instance();
+        rt.start(paths::modsDir(), g_config.unsafeLua, paths::dataDir() / "mods.toml");
+        if (g_config.modsWatch) {
+            rt.setWatch(true, g_config.modsWatchInterval);
+            spdlog::info("mods: watching the mod files for changes (config.toml [mods] watch)");
+        }
     });
 }
 

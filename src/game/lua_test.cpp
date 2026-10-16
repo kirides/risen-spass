@@ -37,6 +37,13 @@ bool g_firstTick = false;
 
 double since() { return std::chrono::duration<double>(Clock::now() - g_start).count(); }
 
+// One-process suites (risen.test.suite_begin): every scenario of the suite ends with finish() without ending the process; the outcomes are collected in g_suiteRun
+// and written as one result when suite_finish() is called.
+bool g_suite = false;
+bool g_suiteDone = false;
+testrun::Run g_suiteRun;
+int g_errorBase = 0;  // error lines logged before the current scenario began
+
 std::atomic<bool> g_allowErrors{false};  // risen.test.allow_errors(true): error-level log lines are not counted (the hardening scenario provokes them on purpose)
 // Counts everything the layer logged at error level (Lua handler errors, engine failures) except the test's own FAIL lines:
 // finish() turns the count into one more check, the equivalent of the old "no [error] in the log" regex.
@@ -48,6 +55,10 @@ public:
     int snapshot(std::vector<std::string>& first) {
         std::lock_guard lock(mutex_);
         first = messages;
+        return count;
+    }
+    int total() {
+        std::lock_guard lock(mutex_);
         return count;
     }
 
@@ -138,29 +149,42 @@ void writeResult(const std::string& json) {
     }
 }
 
-void finishRun(const std::string& summary, const std::string& abortReason) {
+void finishRun(const std::string& summary, const std::string& abortReason, bool fatal = false) {
     if (g_finished.exchange(true)) {
         return;
     }
-    if (g_errors) {
+    const bool suiteFinal = g_suite && g_suiteDone;   // the whole suite is over: the outcomes of its scenarios are in g_suiteRun already
+    if (g_errors && !suiteFinal) {
         std::vector<std::string> first;
-        const int n = g_errors->snapshot(first);
-        std::string detail = n == 0 ? "" : std::to_string(n) + " error line(s), first: ";
+        const int n = g_errors->snapshot(first) - g_errorBase;
+        std::string detail = n <= 0 ? "" : std::to_string(n) + " error line(s), first: ";
         for (std::size_t i = 0; i < first.size() && i < 3; ++i) {
             detail += (i ? " | " : "") + first[i];
         }
-        g_run.expect("no errors logged", n == 0, detail, since());
-        if (n != 0) {
+        g_run.expect("no errors logged", n <= 0, detail, since());
+        if (n > 0) {
             spdlog::error("[test] FAIL no errors logged: {}", detail);
         }
     }
     const double elapsed = since();
-    const testrun::Verdict v = g_run.verdict(abortReason);
-    spdlog::info("[test] finished '{}' after {:.1f}s: {} ({} checks, {} failed{}{})", g_run.scenario(), elapsed, v.pass ? "PASS" : "FAIL",
-                 g_run.total(), g_run.failed(), v.reason.empty() ? "" : "; ", v.reason);
-    SPASS_TRACE(trace::Channel::Test, "finish: section '{}' unfinished={}", g_run.currentSection(), g_run.unfinished().size());
+    if (g_suite && !g_suiteDone) {
+        // a scenario of the suite is over; the process goes on with the next one (a fatal end, the deadline, finishes the suite too)
+        const testrun::Verdict sv = g_run.verdict(abortReason);
+        spdlog::info("[test] suite scenario '{}' finished after {:.1f}s: {} ({} checks, {} failed{}{})", g_run.scenario(), elapsed, sv.pass ? "PASS" : "FAIL", g_run.total(),
+                     g_run.failed(), sv.reason.empty() ? "" : "; ", sv.reason);
+        g_suiteRun.appendFrom(g_run, g_run.scenario(), abortReason, elapsed);
+        if (!fatal) {
+            return;
+        }
+        g_suiteDone = true;
+    }
+    testrun::Run& run = g_suite ? g_suiteRun : g_run;
+    const testrun::Verdict v = run.verdict(g_suite ? std::string() : abortReason);
+    spdlog::info("[test] finished '{}' after {:.1f}s: {} ({} checks, {} failed{}{})", run.scenario(), elapsed, v.pass ? "PASS" : "FAIL",
+                 run.total(), run.failed(), v.reason.empty() ? "" : "; ", v.reason);
+    SPASS_TRACE(trace::Channel::Test, "finish: section '{}' unfinished={}", run.currentSection(), run.unfinished().size());
     if (g_settings.active) {
-        writeResult(g_run.toJson(abortReason, summary, elapsed));
+        writeResult(run.toJson(g_suite ? (fatal ? abortReason : std::string()) : abortReason, summary, elapsed));
     }
     if (g_settings.active && g_settings.exitOnFinish) {
         const UINT code = v.pass ? 0 : 1;
@@ -253,6 +277,14 @@ local function in_scenario(what)
     return runner
 end
 
+-- risen.test.reset([scenario_name]): starts a new scenario in the same process (checks, plan, waits and the running scenario are forgotten); see risen.test.suite_begin
+local native_reset = T.reset
+function risen.test.reset(scenario_name)
+    local ok = native_reset(scenario_name)
+    runner = nil
+    return ok
+end
+
 -- risen.test.run(fn [, scenario_name]): runs fn from the next frame on as a coroutine that may call risen.test.sleep(ticks),
 -- risen.test.wait_until(pred, timeout_s) and risen.test.wait_event(name, timeout_s). An error aborts with a FAIL; when fn returns,
 -- risen.test.finish() is called.
@@ -305,6 +337,10 @@ api.test = t
 -- risen.test.wait_event(event, timeout_s [, filter]) -> the event's arguments: inside risen.test.run, waits until the event fired
 -- (and filter(...) returned true, when given). Times out like wait_until.
 function t.wait_event(event, timeout_s, filter)
+    -- a lifecycle event that already happened in this process counts (a scenario started late: a one-process suite, a reloaded mod)
+    local life = shared.lifecycle()
+    local mode = (event == "session.start" and life.session) or (event == "world.ready" and life.world) or nil
+    if mode and (not filter or filter(mode)) then return mode end
     local got = nil
     local handle = api.on(event, function(...)
         if got == nil and (not filter or filter(...)) then got = { n = select("#", ...), ... } end
@@ -387,6 +423,46 @@ void bindTest(sol::state_view lua, sol::table risen) {
         return g_allowErrors.load();
     });
     t.set_function("is_active", [] { return g_settings.active; });
+    // risen.test.reset([scenario]): see the Lua part (it also forgets the running scenario)
+    t.set_function("reset", [](sol::optional<std::string> name) {
+        g_waits.clear();
+        updatePending();
+        g_run.reset();
+        if (name && !name->empty()) {
+            g_run.setScenario(name->substr(0, 80));
+        }
+        g_finished = false;
+        g_errorBase = g_errors ? g_errors->total() : 0;
+        return true;
+    });
+    // risen.test.suite_begin([name]): from now on finish() / fail() end only the current scenario; the result of the process is written by suite_finish
+    t.set_function("suite_begin", [](sol::optional<std::string> name) {
+        g_suite = true;
+        g_suiteDone = false;
+        g_suiteRun.reset();
+        g_suiteRun.setScenario(name && !name->empty() ? name->substr(0, 80) : (g_settings.scenario.empty() ? std::string("suite") : g_settings.scenario));
+        g_errorBase = g_errors ? g_errors->total() : 0;
+        return true;
+    });
+    t.set_function("suite_finish", [](sol::this_state ts, sol::object summary) {
+        if (!g_suite) {
+            return false;
+        }
+        g_suiteDone = true;
+        g_finished = false;
+        finishRun(str(sol::state_view(ts), summary), "");
+        return true;
+    });
+    t.set_function("is_finished", [] { return g_finished.load(); });
+    // risen.test.lifecycle() -> { session = mode | nil, world = mode | nil }: what this process has seen of session.start / world.ready
+    t.set_function("lifecycle", [](sol::this_state ts) {
+        sol::state_view L(ts);
+        sol::table out = L.create_table();
+        auto& rt = lua::Runtime::instance();
+        if (const auto m = rt.sessionMode()) out["session"] = *m;
+        if (const auto m = rt.worldMode()) out["world"] = *m;
+        return out;
+    });
     t.set_function("elapsed", [] { return since(); });
     t.set_function("finish", [](sol::this_state ts, sol::object summary) {
         finishRun(str(sol::state_view(ts), summary), "");
@@ -524,7 +600,7 @@ void startWatchdog() {
                 spdlog::error("[test] deadline of {:.0f}s exceeded (section '{}', {} unfinished)", g_settings.deadlineSeconds, where,
                               g_run.unfinished().size());
                 finishRun("", "timeout: deadline of " + std::to_string(static_cast<int>(g_settings.deadlineSeconds)) + "s exceeded" +
-                                  (where.empty() ? "" : " in section '" + where + "'"));
+                                  (where.empty() ? "" : " in section '" + where + "'"), /*fatal=*/true);
                 return;
             }
         }
@@ -544,6 +620,9 @@ void resetForTests() {
     updatePending();
     g_finished = false;
     g_run.reset();
+    g_suite = g_suiteDone = false;
+    g_suiteRun.reset();
+    g_errorBase = 0;
 }
 
 }  // namespace spass::game::test

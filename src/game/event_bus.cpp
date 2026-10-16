@@ -191,6 +191,7 @@ void flush() {
     if (g_waitReady && g_active.load() && playerExists()) {
         g_waitReady = false;
         g_settleEnd = g_frame + kSettleFrames;
+        lua::Runtime::instance().noteWorldReady(g_mode);  // a mod (re)loaded later is told about it
         post("world.ready", {g_mode});
     }
     auto& rt = lua::Runtime::instance();

@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <vector>
 
 #include <sol/sol.hpp>
 
@@ -38,5 +39,9 @@ void bindScripts(sol::state_view lua, sol::table risen);
 
 // Puts the original function pointers back (used on shutdown/reload).
 void restoreAll();
+
+// Hot reload: undoes what the mod registered with risen.script.override (the game's script is put back) and silences what it defined with
+// risen.script.define (the registry entry stays, because infos may still name it, and returns 0 until it is defined again). Appends a line per script to `released`.
+void releaseOwner(const std::string& mod, std::vector<std::string>& released);
 
 }  // namespace spass::game::scripts

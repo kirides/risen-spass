@@ -168,13 +168,20 @@ void registerBindings() {
     rt.addBinding(scripts::bindScripts);
     rt.addBinding(bindAi);  // after the script bridge: risen.ai (M11)
     rt.addBinding(bindCombat);  // after the script bridge: risen.combat.on_damage (M14)
+    rt.addBinding(bindMods);    // risen.mods (M15)
     bindSave();
+    rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installMigrateModApi(lua, api, mod); installRetireModApi(lua, api, mod); });  // after bindSave: risen.migrate, risen.retire (M15); the persistent NPCs are bound later but only asked at run time
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installAiModApi(lua, api, mod.id); });  // after bindSave: risen.ai.start(persist = true) keeps its records in the mod's risen.save (M11)
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installRoutineModApi(lua, api, mod.id); });  // after bindSave, before the persistent NPCs (their `routine` option calls risen.npc.set_routine)
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installPersistentNpcModApi(lua, api, mod.id); });  // after bindSave: risen.npc.persistent keeps its records in the mod's risen.save
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installSpawnWhenModApi(lua, api, mod.id); });  // after the persistent NPCs: risen.spawn.when / risen.cond (M8)
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installDialogCondModApi(lua, api, mod.id); });  // after risen.cond and the voice wrapper: dialogue conditions (M9)
     bindModStrings();
+
+    // hot reload (M15): what a torn-down mod instance registered in the native registries is undone
+    rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { scripts::releaseOwner(mod, released); });
+    rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { aiReleaseOwner(mod, released); });
+    rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { combatReleaseOwner(mod, released); });
 }
 
 }  // namespace spass::game

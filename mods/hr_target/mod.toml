@@ -1,0 +1,6 @@
+id          = "hr_target"
+name        = "Hot reload: the mod that gets reloaded"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Registers every kind of thing a mod can register (handlers, scripts, an override, AI state and perception handler, a damage handler, balance, persistent NPCs, risen.save data); the scenario `hotreload` edits its files, reloads it and checks that nothing is doubled and nothing of the old version is left. Only meaningful in a test run."
+main        = "main.lua"

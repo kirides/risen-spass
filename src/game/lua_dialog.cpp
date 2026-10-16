@@ -574,13 +574,39 @@ local function fail(what, msg)
     return nil, text
 end
 
+-- A canonical text of a definition (keys sorted, functions as "fn"): two calls with the same fingerprint define the same thing. Used to tell a hot-reloaded mod that the
+-- definition changed after the engine object was made (it cannot be edited: a restart is needed, risen.mods.note_restart).
+local function fingerprint(v, depth)
+    depth = depth or 0
+    local t = type(v)
+    if t == "string" then return string.format("%q", v) end
+    if t ~= "table" then return tostring(v) end
+    if depth > 6 then return "{...}" end
+    local keys = {}
+    for k in pairs(v) do keys[#keys + 1] = k end
+    table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
+    local parts = {}
+    for _, k in ipairs(keys) do parts[#parts + 1] = tostring(k) .. "=" .. fingerprint(v[k], depth + 1) end
+    return "{" .. table.concat(parts, ",") .. "}"
+end
+local made = {}     -- name -> fingerprint of the definition that made the object in this process
+
 -- risen.dialog.create(spec) -> Info | nil, error. Idempotent: an info that already exists is returned as is,
 -- so the call can sit in a "create if missing" block that runs on every session start and load.
 function risen.dialog.create(spec)
     local err = check_dialog(spec)
     if err then return fail("dialog.create", err) end
     local existing = risen.dialog.get(spec.name)
-    if existing then return existing end
+    local fp = fingerprint(spec)
+    if existing then
+        if made[spec.name] ~= nil and made[spec.name] ~= fp and risen.mods and risen.mods.note_restart then
+            risen.mods.note_restart(("dialogue info '%s' was defined differently before: the existing info keeps its old lines (infos cannot be edited)"):format(spec.name))
+        end
+        if risen.mods and risen.mods.note_content then risen.mods.note_content("dialog", spec.name) end
+        return existing
+    end
+    made[spec.name] = fp
+    if risen.mods and risen.mods.note_content then risen.mods.note_content("dialog", spec.name) end
 
     local info = risen.dialog.new_info(spec.name, spec.owner)
     if not info then return fail("dialog.create", "the engine could not create the info '" .. spec.name .. "' (game not ready?)") end

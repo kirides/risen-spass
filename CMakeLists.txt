@@ -81,6 +81,7 @@ add_library(spass_core STATIC
     src/game/lua_input.cpp
     src/game/lua_interact.cpp
     src/game/lua_items.cpp
+    src/game/lua_mods.cpp
     src/game/lua_npc.cpp
     src/game/lua_npc_balance.cpp
     src/game/lua_persistent_npc.cpp

@@ -315,6 +315,25 @@ local reacted = risen.ai.broadcast("AssessTheft", chest)   -- a mod that moves i
 * **Hook the script, not the way of stealing:** the same hook sees the animated take, the sweep at a chest and `risen.ai.broadcast`. There is no sound-based perception in the game.
 * Examples and tests: `example_ignore_theft` (`ex_ignore_theft`), `quickloot_driver` (`quickloot_react`). Details: [LUA_API.md](LUA_API.md) "Theft", [QUICKLOOT.md](QUICKLOOT.md), [RE.md](RE.md) §40.
 
+### 4.20 Develop with hot reload (no restart)
+Turn the file watcher on (`config.toml`: `[mods]` `watch = true`) and play: every save of a `.lua`, `.toml` or `.csv` file of a mod reloads that mod (and the mods that `requires` it) inside the running game. Handlers, scripts, AI states, damage handlers, persistent NPC and spawn declarations, balance, dialogue conditions are made again; the log lists what was released.
+```lua
+-- main.lua: keep what a reload should not lose
+local state = mod.reload and mod.reload.state or { count = 0 }       -- what the previous instance returned from on_unload (nil on the first run)
+risen.on_unload(function(reason) return state end)                      -- reason: "reload" | "unload" | "disable" | "failed"
+```
+Rules of thumb: write `main.lua` so that running it twice does the right thing (declarations are idempotent: `risen.npc.persistent`, `risen.dialog.create`, `risen.quest.define`, `risen.balance.install`); keep data in `risen.save`, not in globals; a reload that cannot take effect (a changed dialogue line, quest title, created template or recipe, a changed `data_overlay`) says so in
+`restart_required` — start the game again for those. A syntax error does not stop the game: the reload is refused and the old version keeps running; fix the file and save again. By hand: `risen.mods.reload("my_mod", { now = true })`, `risen.mods.list()`.
+
+### 4.21 Update or remove a mod without breaking savegames
+The engine copes with a missing mod: a savegame made with your old version loads, runs, saves and loads again when you rename or delete quests, NPCs, dialogue options, items, recipes or spells, or when the whole mod is gone (verified for every case, [RE.md §41](RE.md)). What is left behind is listed in [LUA_API.md](LUA_API.md) "Updating and removing content". Checklist for a new version:
+1. **Keep names stable.** Quest names, NPC names, template names and info names are the keys of the savegame. A rename drops the saved status (a renamed quest starts `Open`).
+2. **Rewrite saved data** that changed shape: `risen.migrate("<2.0.0", function(ctx) ... end)` — runs once per load of an older savegame (and on a reload from the old version).
+3. **Say what you removed:** `risen.retire{ npcs = {...}, quests = {...}, game_vars = {...}, items = {...}, save_keys = {...} }` (or a `[retire]` table in `mod.toml`). NPCs of a shipped template would otherwise stay nameless in the world forever; records and spawn rule states would stay in the sidecar.
+4. **Bump a persistent NPC's `version`** to replace the old entity with the new declaration (M7); an NPC the mod no longer declares is pruned as long as the mod declares at least one other.
+5. **Removing the whole mod:** nothing breaks; to clean up first, ship a last version that only has the `retire` list, or use a mod manager's `risen.mods.orphans(id)` (dry run) and `remove_orphans`, `forget_data` afterwards. Items of a removed mod stay dormant in the inventory and come back when the mod does.
+6. **Test it** like `mods/upd_check`: play the old version, keep the savegame, load it with the new version and without the mod.
+
 ## 5. Configuration
 
 * **Your mod's options:** `config.toml` next to `main.lua`; `local cfg = risen.config{ enabled = true, key = "SecondaryAction", repeat_ms = 80 }` returns the merged table (types are taken from your defaults, problems are logged as `config: [my_mod] ...` and the default is used).

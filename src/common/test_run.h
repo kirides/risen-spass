@@ -57,6 +57,10 @@ public:
     // pass = at least one check, none failed, nothing unfinished, not aborted.
     Verdict verdict(const std::string& abortReason) const;
 
+    // One-process suites (risen.test.suite_begin): adds the outcome of another run as checks named "<prefix>: <name>"; its unfinished checks and its abort
+    // reason become failed checks, and a run without any check fails ("no check was recorded").
+    void appendFrom(const Run& other, const std::string& prefix, const std::string& abortReason, double t);
+
     // The result file: {"scenario", "status": "pass"|"fail", "reason", "summary", "elapsed_s", "section", "marks", "counts",
     // "unfinished", "checks": [...]}.
     std::string toJson(const std::string& abortReason, const std::string& summary, double elapsed) const;

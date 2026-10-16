@@ -177,6 +177,23 @@ std::string serialize() {
     }
     sol::state_view lua = rt.lua();
     sol::table store = storeTable(lua, kStoreKey);
+    {
+        // "@mods": which version of each mod wrote the data. Entries of mods that are not loaded now stay as they were.
+        sol::table versions = lua.create_table();
+        if (sol::object old = store["@mods"]; old.is<sol::table>()) {
+            for (const auto& kv : old.as<sol::table>()) {
+                versions[kv.first] = kv.second;
+            }
+        }
+        for (const spass::lua::ModView& v : rt.modViews()) {
+            if (v.state == spass::lua::ModState::Loaded) {
+                sol::table entry = lua.create_table();
+                entry["version"] = v.info.version;
+                versions[v.info.id] = entry;
+            }
+        }
+        store["@mods"] = versions;
+    }
     std::vector<std::string> ids;
     for (const auto& kv : store) {
         if (kv.first.get_type() == sol::type::string) {
@@ -292,6 +309,60 @@ void clear() {
         sol::state_view lua = rt.lua();
         lua.registry()[kStoreKey] = lua.create_table();
     }
+}
+
+sol::object modRecord(sol::state_view lua, const std::string& id) {
+    sol::table store = storeTable(lua, kStoreKey);
+    sol::object o = store[id];
+    return o.is<sol::table>() && !id.empty() && id[0] != '@' ? o : sol::object{};
+}
+
+std::string recordedVersion(sol::state_view lua, const std::string& id) {
+    sol::table store = storeTable(lua, kStoreKey);
+    sol::object versions = store["@mods"];
+    if (!versions.is<sol::table>()) {
+        return {};
+    }
+    sol::object entry = versions.as<sol::table>()[id];
+    if (!entry.is<sol::table>()) {
+        return {};
+    }
+    sol::object v = entry.as<sol::table>()["version"];
+    return v.get_type() == sol::type::string ? v.as<std::string>() : std::string{};
+}
+
+bool dropMod(sol::state_view lua, const std::string& id) {
+    if (id.empty() || id[0] == '@') {
+        return false;
+    }
+    sol::table store = storeTable(lua, kStoreKey);
+    const bool had = store[id].get_type() != sol::type::lua_nil;
+    store[id] = sol::lua_nil;
+    if (sol::object versions = store["@mods"]; versions.is<sol::table>()) {
+        versions.as<sol::table>()[id] = sol::lua_nil;
+    }
+    return had;
+}
+
+std::vector<std::string> recordedMods(sol::state_view lua) {
+    sol::table store = storeTable(lua, kStoreKey);
+    std::set<std::string> ids;
+    for (const auto& kv : store) {
+        if (kv.first.get_type() == sol::type::string) {
+            const std::string k = kv.first.as<std::string>();
+            if (!k.empty() && k[0] != '@') {
+                ids.insert(k);
+            }
+        }
+    }
+    if (sol::object versions = store["@mods"]; versions.is<sol::table>()) {
+        for (const auto& kv : versions.as<sol::table>()) {
+            if (kv.first.get_type() == sol::type::string) {
+                ids.insert(kv.first.as<std::string>());
+            }
+        }
+    }
+    return {ids.begin(), ids.end()};
 }
 
 }  // namespace savestore

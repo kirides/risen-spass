@@ -36,6 +36,7 @@ struct Slot {
     ScriptFn original = nullptr;     // what was registered before (nullptr for new scripts)
     sol::main_protected_function lua;
     NativeScript native;             // set instead of `lua` by installNative (the AI bridge, M11)
+    std::string owner;               // the mod that registered the Lua function (hot reload releases it), "" for native hooks
 };
 
 std::array<Slot, kMaxSlots> g_slots;
@@ -139,7 +140,7 @@ std::size_t findSlotByFn(void** fnSlot) {
 }
 
 // Shared by define() and override() (a Lua function) and installNative() (native code). Returns an error message, or empty on success.
-std::string install(const std::string& name, sol::main_protected_function fn, NativeScript native, bool isOverride) {
+std::string install(const std::string& name, sol::main_protected_function fn, NativeScript native, bool isOverride, const std::string& owner = {}) {
     if (!g_layoutOk) {
         return "script bridge disabled (registry layout self-test failed, see log)";
     }
@@ -155,6 +156,7 @@ std::string install(const std::string& name, sol::main_protected_function fn, Na
     if (const std::size_t existing = findSlotByFn(fnSlot); existing != kMaxSlots) {
         g_slots[existing].lua = std::move(fn);
         g_slots[existing].native = std::move(native);
+        g_slots[existing].owner = owner;  // the last mod to register wins the slot (and the teardown)
         return {};
     }
 
@@ -180,6 +182,7 @@ std::string install(const std::string& name, sol::main_protected_function fn, Na
     slot.original = current;
     slot.lua = std::move(fn);
     slot.native = std::move(native);
+    slot.owner = owner;
     *fnSlot = reinterpret_cast<void*>(kThunks[idx]);
     spdlog::info("lua: script '{}' {} (slot {})", name, isOverride ? "overridden" : "defined", idx);
     SPASS_TRACE(trace::Channel::Script, "{} '{}' (slot {}, original {})", isOverride ? "override" : "define", name, idx, current != nullptr ? "kept" : "none");
@@ -253,6 +256,29 @@ bool selfTest() {
     return g_layoutOk;
 }
 
+void releaseOwner(const std::string& mod, std::vector<std::string>& released) {
+    if (mod.empty()) {
+        return;
+    }
+    for (std::size_t i = 0; i < kMaxSlots; ++i) {
+        Slot& s = g_slots[i];
+        if (!s.used || s.native || s.owner != mod) {
+            continue;
+        }
+        if (s.original != nullptr && s.fnSlot != nullptr) {
+            // an override: the game's own script is put back and the slot is free again
+            *s.fnSlot = reinterpret_cast<void*>(s.original);
+            released.push_back("script override " + s.name + " (original restored)");
+            s = Slot{};
+        } else {
+            // a script the mod defined: the registry entry cannot be removed, and dialogue infos may still name it; it stays and does nothing (result 0)
+            s.lua = sol::main_protected_function{};
+            s.owner.clear();
+            released.push_back("script " + s.name + " (inert until defined again)");
+        }
+    }
+}
+
 void restoreAll() {
     for (Slot& s : g_slots) {
         if (s.used && s.fnSlot != nullptr) {
@@ -292,14 +318,14 @@ void bindScripts(sol::state_view lua, sol::table risen) {
     sol::table script = lua.create_table();
     // risen.script.define("MyScript", function(ctx) ... return 0 end)  -- new script name
     script.set_function("define", [](const std::string& name, sol::main_protected_function fn) {
-        const std::string err = install(name, std::move(fn), NativeScript{}, /*isOverride=*/false);
+        const std::string err = install(name, std::move(fn), NativeScript{}, /*isOverride=*/false, lua::Runtime::currentOwner());
         if (!err.empty()) {
             throw sol::error("risen.script.define: " + err);
         }
     });
     // risen.script.override("AssessActive", function(ctx) return ctx:call_original() end)
     script.set_function("override", [](const std::string& name, sol::main_protected_function fn) {
-        const std::string err = install(name, std::move(fn), NativeScript{}, /*isOverride=*/true);
+        const std::string err = install(name, std::move(fn), NativeScript{}, /*isOverride=*/true, lua::Runtime::currentOwner());
         if (!err.empty()) {
             throw sol::error("risen.script.override: " + err);
         }

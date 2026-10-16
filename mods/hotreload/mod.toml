@@ -1,0 +1,6 @@
+id          = "hotreload"
+name        = "Hot reload: live test mod (M15)"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Scenario `hotreload` (docs/DEVELOPMENT.md): edits the files of hr_target on disk, reloads it with risen.mods.reload, checks that nothing is doubled and nothing of the old version is left, then unload/disable/enable, the file watcher and a savegame round trip. Needs the Lua sandbox off (it writes files). Only meaningful in a test run."
+main        = "main.lua"
