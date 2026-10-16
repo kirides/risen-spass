@@ -144,3 +144,24 @@ python -I tools/g3pak.py list <archive> --long        # also: cat, extract
 python -I tools/g3tple.py dump <archive> <path in archive>  |  python -I tools/g3tab.py dump <archive> items.tab
 ```
 `python -I tools/test_g3.py` is a data-free self-test of the three readers (synthetic archive, table and template). Run Python with `-I` on untrusted data and keep the scripts outside the mod folder (as done here). The diff took 20 s on the full mod.
+
+## 8. Phase A result: the generated mod and the milestone snapshots
+
+`tools/extmod_gen.py` (Python, not the C++ `risen-pack2mod` of M18: the user wanted a playable state within hours; the generator is the oracle that a later C++ converter must reproduce) turns the archives into the private mod `mods/risen_extended/` (git-ignored, see [DEVELOPMENT.md](DEVELOPMENT.md) "Risen Extended: generated mod and milestone snapshots"). Everything in it is a diff against the user's Enhanced data; nothing is typed in by hand.
+
+| Part | Generated | Mechanism | Verified live (scenario `extmod`, 20 checks, two game processes) |
+|---|---|---|---|
+| changed shipped items | 198 (value, damage, mana cost, requirements, effects, use type, category, sort value, icon, mesh, material, gold coin interaction) | `risen.balance` `items` entry by entry (a bad entry costs only itself) | every number read back from the engine; second pass (`session.start`, live entities) keeps them |
+| projectile-like templates | 4 (`It_Projectile_Frost_S0..2`, ...) | `risen.template.patch` (they have no `gCItem_PS`) | numbers read back |
+| new items | 131 (64 weapons, armor, helmets, rings, amulets, books, crystals, smithing stages) | `risen.template.create` from the closest shipped item (`base` chosen by use type, hold type, category, property sets, scripts), then the remaining properties one by one | all exist with their value / damage, are labelled (`FO_` / `ITEMDESC_` from the mod's tables), six weapons spawn and load their loose mesh (resource state 3), equip after the requirements are met |
+| recipe items | 43 edited (11 smithing chains: plan -> hot -> shaped -> dull -> weapon, scribe plans for the XP / INT books) + 5 new (pearls, gold, ore, obsidian: a shipped item cannot gain a `gCRecipe_PS` at run time, so the player learns a recipe item at the start) | `recipes` / `new_recipes` sections | a goldsmith recipe (8 pearls -> necklace) and a complete smithing chain (forge -> anvil -> cooling) craft through the engine's own checks |
+| monster actors | 26 | `risen.template.patch` `eCAnimation_PS.ResourceFilePath` (first tick + `session.start` with live entities) | applied, `LizardWarrior_Keeper` spawns with the new actor, its resource is known |
+| texts | 332 English (fallback for every language) + German / French / Italian / Spanish where the mod has real text | `strings/*.csv` | labels resolve |
+| assets | 332 files (187 new names, 145 that replace shipped resources), 108 MB | `assets/`, mounted at startup | **P1:** the engine's name cache resolves all 332 names to the mod directory, including the 145 stock names (a loose file shadows the packed one); what they look like on screen is not verifiable (black screenshots) |
+| save + load | | the items are created from their names | a fresh process quick-loads: the new items are still in the inventory, the numbers are applied again |
+
+Deferred (in `manifest.json`): dialogue and world data (M20), combat table and skill names (M21), wind (M22). Not convertible: `It_2H_Dark_Wind_Hot` and `It_Staff_Obsidian_Dull` reference templates that are in neither archive (the mod's own error: those two stages do not chain), the weapon trail velocities of `It_Axe_Slaughteraxe` (the base has no such property).
+Engine enum names are learned from the game itself (`tools/extmod_enums.py` joins the `mods/itemdump` log with the numbers in the archives -> `tools/extmod_enums.json`; the `gEItemHoldType` values, the `gERecipeCategory` names and the skill numbers 26 = Mining, 27 = Lockpick come from there).
+
+**Snapshots.** Playable states are kept in `B:\DevDrive\extmod-milestones\<NN>-<name>\` (README with the changelog checklist, `play.ps1`), `LATEST.md` says which one is the newest; the repo commit is tagged `extmod-<NN>`. Start: `& 'B:\DevDrive\extmod-milestones\01-data\play.ps1'`.
+
