@@ -1,0 +1,6 @@
+id          = "geometry"
+name        = "Geometry test: vectors, line of sight, field of view, random streams"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Live test of risen.math, risen.world.line_of_sight/can_see/is_seen_by and risen.random (scenario geometry; the readable example is example_unseen_spawn)."
+main        = "main.lua"

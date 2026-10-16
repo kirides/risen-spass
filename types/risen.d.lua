@@ -110,6 +110,16 @@ function Entity:attach(child) end
 ---@return number|nil dz
 function Entity:direction() end
 
+---The world bounding box (the one the engine's own sight test aims by): `minx, miny, minz, maxx, maxy, maxz`; `nil` for an entity without a box (a freepoint) or a stale handle. The player's is ~225 high,
+---a peasant's ~205, with y up from the feet.
+---@return number|nil minx
+---@return number|nil miny
+---@return number|nil minz
+---@return number|nil maxx
+---@return number|nil maxy
+---@return number|nil maxz
+function Entity:bounds() end
+
 -- Item properties (entities made from item templates) ------------------------------------------------------------------
 
 ---Whether the entity has item data (is an item).
@@ -2772,6 +2782,526 @@ function worldApi.time() end
 ---@return boolean ok
 function worldApi.set_time(hour, minute) end
 
+-- ---- Geometry, line of sight, randomness (M13): risen.math, risen.world.raycast / line_of_sight / can_see / is_seen_by / camera, risen.random --------------------------------------------------
+
+---A point in the world: an entity (read at its position, its feet), `{ x, y, z }` or `{ x = , y = , z = }`. Positions are engine units (about a centimetre; a human is ~180-220 tall); **+y is up**, the ground is the x/z plane.
+---@alias PointLike Entity|number[]|{ x: number, y: number, z: number }
+
+---A vector made by `risen.math`: the numbers are there twice, as `x`, `y`, `z` and as `[1]`, `[2]`, `[3]`, so it can be passed to every function that takes a position (`risen.world.add_point(kind, v.x, v.y, v.z)`, `near = v`, ...).
+---@class Vec3
+---@field [1] number
+---@field [2] number
+---@field [3] number
+---@field x number
+---@field y number
+---@field z number
+
+---A way something looks: a yaw in degrees (`0` looks along +z, `90` along +x: to the right of yaw 0), an entity (the way it faces, `Entity:direction()`) or a direction vector (it need not be unit length).
+---@alias Facing number|Entity|PointLike
+
+---Native: the engine's ray test (`eCPhysicsScene::TraceRayNearestHit`, the call behind the AI's `CanSee` and `eCGeometryEntity::IsFreeLOS`): does anything solid lie between two points? It tests the **level geometry and objects** (terrain, rocks,
+---trees, buildings, props); characters do not block (as in the engine's own sight test) unless `bodies` is true. Rays in the game's units, no entity is added to `ignore` for you (see `risen.world.raycast`, which does). `nil, reason` for a wrong argument
+---(six finite numbers, |value| <= 1e7), a stale entity in `ignore`, no world.
+---@param x1 number From.
+---@param y1 number
+---@param z1 number
+---@param x2 number To.
+---@param y2 number
+---@param z2 number
+---@param ignore? Entity|Entity[] Entities that never block (at most 64): put the start and end entities here, a ray that starts inside a character's body would hit it.
+---@param bodies? boolean `true`: characters and other dynamic bodies block too.
+---@return boolean|nil blocked
+---@return number|string distance From the start to the hit (the whole length when nothing is in the way); the reason when the first result is `nil`.
+---@return number|nil hit_x The hit point (the end point when nothing is in the way).
+---@return number|nil hit_y
+---@return number|nil hit_z
+---@return Entity|nil entity What was hit (terrain is `Levelmesh_Landscape_...`, a rock `Obj_Nat_Stone_...`); `nil` when nothing was hit.
+function worldApi.trace(x1, y1, z1, x2, y2, z2, ignore, bodies) end
+
+---Options of `risen.world.raycast`, `line_of_sight`, `can_see` and `is_seen_by`.
+---@class RayOptions
+---@field from_height? number Entity start: this far above its position (default: eye level, see below). Plain points are used as given.
+---@field to_height? number Entity end: this far above its position (default: where the engine aims).
+---@field eye_height? number Alias of `from_height` (`can_see`: the viewer's eye).
+---@field target_height? number Alias of `to_height`.
+---@field ignore? Entity|Entity[] Extra entities that never block.
+---@field ignore_endpoints? boolean `false`: the start and end entities are not ignored (default true; the engine's own test ignores them too).
+---@field bodies? boolean `true`: characters and other dynamic bodies block too (default: only terrain and objects, like the engine's sight test).
+
+---Options of `risen.world.can_see` and `risen.world.is_seen_by` (all of `RayOptions` and):
+---@class SightOptions: RayOptions
+---@field fov? number The whole horizontal opening in degrees, `(0, 360]`. Default 180: the engine's NPC perception (`Entity::HasInFOV`) accepts everything within 90 degrees to either side. With `camera`: the camera's opening.
+---@field vfov? number The whole vertical opening (default `fov`; with `camera` the camera's).
+---@field range? number Farther than this (3D) is not seen.
+---@field camera? boolean Look from the render camera along its view direction instead of from the viewer's eyes along the way he faces: for the player, "what is on the screen". The `viewer` entity is only ignored by the ray.
+---@field include_dead? boolean `is_seen_by`: dead viewers see too (default: they are skipped).
+
+---What a ray found.
+---@class RayHit
+---@field blocked boolean
+---@field distance number From the start to the hit; the whole length when clear.
+---@field length number Distance between the two end points.
+---@field x number The hit point (the end point when clear).
+---@field y number
+---@field z number
+---@field entity Entity|nil What was hit.
+---@field from Vec3 The start point used (an entity's eye position).
+---@field to Vec3 The end point used.
+
+---A ray between two points or entities with the engine's physics test (see `trace`). An entity end is aimed at where the engine's own sight test aims: the centre of its bounding box, raised to three quarters of the height for anything below 350 units
+---(an eye level: about 165 for the player); change it with `from_height` / `to_height`. Both entities are ignored. `nil, reason` for a bad argument or option, a stale entity, no world.
+---@param from PointLike
+---@param to PointLike
+---@param opts? RayOptions
+---@return RayHit|nil hit
+---@return string|nil reason
+function worldApi.raycast(from, to, opts) end
+
+---Is the way between two points or entities free (terrain, rocks, buildings do not block it)? `true`, or `false` and the `RayHit` that says what is in the way. Walls, hills and the ground block, open air does not; a character in the way does not (`bodies = true`).
+---Verified against the engine: for two entities it agrees with `risen.world.engine_free_los`.
+---@param from PointLike
+---@param to PointLike
+---@param opts? RayOptions
+---@return boolean|nil free
+---@return RayHit|string|nil hit_or_reason
+function worldApi.line_of_sight(from, to, opts) end
+
+---Can `viewer` see `target`? Inside the field of view (`fov`, default 180 = the engine's NPC perception: verified to give the same answer as the AI's `CanSee` script for targets in six directions), within `range`, and nothing solid between
+---the eye and the target (`line_of_sight`). `true`, or `false` and why (`"fov"`, `"range"`, `"blocked"`, the last with the `RayHit`). The viewer is an entity (looking the way it faces) or a table `{ x, y, z, yaw [, pitch] }` (an observer that is not
+---in the world, `eye_height` is added to y). The target is an entity or a point. `nil, reason` for bad arguments.
+---@param viewer Entity|{ [1]: number, [2]: number, [3]: number, x?: number, y?: number, z?: number, yaw: number, pitch?: number }
+---@param target PointLike
+---@param opts? SightOptions
+---@return boolean|nil seen
+---@return "fov"|"range"|"blocked"|string|nil why
+---@return RayHit|nil hit
+function worldApi.can_see(viewer, target, opts) end
+
+---Is `point` seen by any of the viewers? The first viewer who `can_see` it is returned: `true, viewer`; `false` when none does. `viewers`: an entity, a list of entities (at most 200) or `nil` for the player. Dead viewers are skipped (`include_dead`),
+---stale ones too. With `camera = true` and the player as viewer it asks what is on the player's screen.
+---@param point PointLike
+---@param viewers? Entity|Entity[]
+---@param opts? SightOptions
+---@return boolean|nil seen
+---@return Entity|nil viewer
+function worldApi.is_seen_by(point, viewers, opts) end
+
+---The engine's own entity-to-entity sight test (`eCGeometryEntity::IsFreeLOS`, what the AI's `CanSee` ends with): bounding-box centres, both entities ignored, characters do not block. `strict = false` is the engine's variant with fewer filter bits.
+---@param a Entity
+---@param b Entity
+---@param strict? boolean
+---@return boolean|nil free
+---@return string|nil reason
+function worldApi.engine_free_los(a, b, strict) end
+
+---The render camera: what the player sees in third person.
+---@class CameraInfo
+---@field x number Position.
+---@field y number
+---@field z number
+---@field dx number The unit vector it looks along (+y up, yaw 0 = +z).
+---@field dy number
+---@field dz number
+---@field fov number The engine's field-of-view angle in degrees (60 in the normal game camera; the engine stores radians). Which axis it is (vertical, most likely) was not proven.
+---@field aspect number Height / width of the screen (0.5625 for 16:9).
+
+---The render camera (position, view direction, opening). Behind the player in the normal third-person view, flying in during the first seconds of a new game. `nil, reason` without a world.
+---(The engine's `GetZAxis` of the camera is not the view direction - it is a row of the view matrix; the direction here is read from the matrix's third column, verified: it looks at the player within 10 degrees in the follow camera.)
+---@return CameraInfo|nil camera
+---@return string|nil reason
+function worldApi.camera() end
+
+---Vector maths on points (`PointLike`). Angles are **degrees**, +y is up, a yaw of 0 looks along +z and 90 along +x (to the right of yaw 0), a pitch above the horizon is positive: the engine's convention (`Entity:direction()` of an NPC at a guard
+---point with yaw 90 is `1, 0, 0`). Every function returns `nil, reason` for a bad argument (NaN, infinity, a stale entity, a table that is not a point); none raises an error.
+---@class RisenMathApi
+local mathApi = {}
+---@type number
+mathApi.pi = 0
+
+---`x, y, z` of a point-like value (an entity: its position); `nil, reason` for anything else.
+---@param v PointLike
+---@return number|nil x
+---@return number|string|nil y
+---@return number|nil z
+function mathApi.xyz(v) end
+---A new `Vec3`.
+---@param x number
+---@param y number
+---@param z number
+---@return Vec3|nil
+---@return string|nil reason
+function mathApi.vec(x, y, z) end
+---Any point-like value as a new `Vec3` (an entity: its position).
+---@param v PointLike
+---@return Vec3|nil
+---@return string|nil reason
+function mathApi.point(v) end
+---@param a PointLike
+---@param b PointLike
+---@return Vec3|nil
+---@return string|nil reason
+function mathApi.add(a, b) end
+---`a - b`.
+---@param a PointLike
+---@param b PointLike
+---@return Vec3|nil
+---@return string|nil reason
+function mathApi.sub(a, b) end
+---@param a PointLike
+---@param k number
+---@return Vec3|nil
+---@return string|nil reason
+function mathApi.scale(a, k) end
+---@param a PointLike
+---@param b PointLike
+---@return number|nil
+---@return string|nil reason
+function mathApi.dot(a, b) end
+---@param a PointLike
+---@param b PointLike
+---@return Vec3|nil
+---@return string|nil reason
+function mathApi.cross(a, b) end
+---@param a PointLike
+---@return number|nil
+---@return string|nil reason
+function mathApi.length(a) end
+---The unit vector; `nil, reason` for a zero vector.
+---@param a PointLike
+---@return Vec3|nil
+---@return string|nil reason
+function mathApi.normalize(a) end
+---Limits `x` to `lo..hi` (swapped bounds are fine).
+---@param x number
+---@param lo number
+---@param hi number
+---@return number|nil
+---@return string|nil reason
+function mathApi.clamp(x, lo, hi) end
+---@param x number
+---@return integer|nil sign -1, 0 or 1
+---@return string|nil reason
+function mathApi.sign(x) end
+---@param x number
+---@param digits? integer Decimal places (default 0).
+---@return number|nil
+---@return string|nil reason
+function mathApi.round(x, digits) end
+---Radians to degrees.
+---@param r number
+---@return number|nil
+---@return string|nil reason
+function mathApi.deg(r) end
+---Degrees to radians.
+---@param d number
+---@return number|nil
+---@return string|nil reason
+function mathApi.rad(d) end
+---Linear interpolation of two numbers or two points (`t` = 0: `a`, 1: `b`; not clamped).
+---@param a number|PointLike
+---@param b number|PointLike
+---@param t number
+---@return number|Vec3|nil
+---@return string|nil reason
+function mathApi.lerp(a, b, t) end
+---3D distance.
+---@param a PointLike
+---@param b PointLike
+---@return number|nil
+---@return string|nil reason
+function mathApi.distance(a, b) end
+---Squared 3D distance (no square root: for comparing).
+---@param a PointLike
+---@param b PointLike
+---@return number|nil
+---@return string|nil reason
+function mathApi.distance_sq(a, b) end
+---Distance on the ground (x/z), the height difference ignored.
+---@param a PointLike
+---@param b PointLike
+---@return number|nil
+---@return string|nil reason
+function mathApi.distance2d(a, b) end
+---The unit vector from `a` to `b`; `nil, reason` when they are the same point.
+---@param a PointLike
+---@param b PointLike
+---@return Vec3|nil
+---@return string|nil reason
+function mathApi.direction(a, b) end
+---Yaw of a direction (a `Facing`: a vector, or an entity: the way it looks), degrees `[0, 360)`; 0 for a vertical vector.
+---@param facing Facing
+---@return number|nil yaw
+---@return string|nil reason
+function mathApi.yaw_of(facing) end
+---Pitch of a direction (an entity: the way it looks), degrees `-90` (down) to `90` (up).
+---@param facing Facing
+---@return number|nil pitch
+---@return string|nil reason
+function mathApi.pitch_of(facing) end
+---The yaw of the direction from `a` to `b` on the ground, `[0, 360)`.
+---@param a PointLike
+---@param b PointLike
+---@return number|nil
+---@return string|nil reason
+function mathApi.yaw_to(a, b) end
+---The pitch of the direction from `a` to `b`, degrees (up is positive).
+---@param a PointLike
+---@param b PointLike
+---@return number|nil
+---@return string|nil reason
+function mathApi.pitch_to(a, b) end
+---The unit vector of a yaw (and a pitch): `from_yaw(0)` = `0,0,1`, `from_yaw(90)` = `1,0,0`.
+---@param yaw number
+---@param pitch? number
+---@return Vec3|nil
+---@return string|nil reason
+function mathApi.from_yaw(yaw, pitch) end
+---The way an entity looks as a unit `Vec3` (`Entity:direction()`).
+---@param entity Entity
+---@return Vec3|nil
+---@return string|nil reason
+function mathApi.facing(entity) end
+---An angle in `(-180, 180]`.
+---@param degrees number
+---@return number|nil
+---@return string|nil reason
+function mathApi.wrap_angle(degrees) end
+---An angle in `[0, 360)`.
+---@param degrees number
+---@return number|nil
+---@return string|nil reason
+function mathApi.wrap_yaw(degrees) end
+---The turn from angle `a` to angle `b` the short way, `(-180, 180]`: positive is to the right (clockwise seen from above).
+---@param a number
+---@param b number
+---@return number|nil
+---@return string|nil reason
+function mathApi.angle_diff(a, b) end
+---The angle between two direction vectors, `0..180`.
+---@param u PointLike
+---@param v PointLike
+---@return number|nil
+---@return string|nil reason
+function mathApi.angle_between(u, v) end
+---Turns a vector around the vertical axis to the right by `degrees` (`(0,0,1)` by 90 is `(1,0,0)`).
+---@param v PointLike
+---@param degrees number
+---@return Vec3|nil
+---@return string|nil reason
+function mathApi.rotate_yaw(v, degrees) end
+---The point `forward` ahead, `right` to the right and `up` above `origin`, in the frame of a facing (negative `forward`: behind). `offset(player, player, -300)` is 300 units behind the player's back.
+---@param origin PointLike
+---@param facing Facing
+---@param forward? number
+---@param right? number
+---@param up? number
+---@return Vec3|nil
+---@return string|nil reason
+function mathApi.offset(origin, facing, forward, right, up) end
+---The point `distance` away from `origin` in the direction of `yaw`, `dy` higher.
+---@param origin PointLike
+---@param yaw number
+---@param distance number
+---@param dy? number
+---@return Vec3|nil
+---@return string|nil reason
+function mathApi.polar(origin, yaw, distance, dy) end
+---Is the point inside the circle on the ground (x/z)?
+---@param point PointLike
+---@param center PointLike
+---@param radius number
+---@return boolean|nil
+---@return string|nil reason
+function mathApi.in_circle(point, center, radius) end
+---Is the point inside the sphere?
+---@param point PointLike
+---@param center PointLike
+---@param radius number
+---@return boolean|nil
+---@return string|nil reason
+function mathApi.in_sphere(point, center, radius) end
+---The signed horizontal angle from the way `facing` looks to the point, seen from `origin`: positive to the right, negative to the left, +-180 straight behind.
+---@param point PointLike
+---@param origin PointLike
+---@param facing Facing
+---@return number|nil
+---@return string|nil reason
+function mathApi.relative_angle(point, origin, facing) end
+---Is `point` inside the field of view `fov` (degrees, the whole opening: 180 is everything in front) of an observer at `origin` looking along `facing`? The horizontal angle may be at most `fov / 2` to either side and, when `facing` is
+---an entity or a vector (not a plain yaw), the vertical angle at most `vfov / 2` (default `fov / 2`). `range` limits the 3D distance. `true`, or `false` and why (`"range"` or `"fov"`). The test the engine's NPCs use is `fov = 180`.
+---@param point PointLike
+---@param origin PointLike
+---@param facing Facing
+---@param fov number
+---@param range? number
+---@param vfov? number
+---@return boolean|nil
+---@return "range"|"fov"|string|nil why
+function mathApi.in_cone(point, origin, facing, fov, range, vfov) end
+---Does the point lie behind the observer: more than `90 + margin` degrees (default margin 0) away from the way `facing` looks?
+---@param point PointLike
+---@param origin PointLike
+---@param facing Facing
+---@param margin? number
+---@return boolean|nil
+---@return string|nil reason
+function mathApi.is_behind(point, origin, facing, margin) end
+
+---A random number stream (`risen.random.new`): a 128-bit generator (sfc32) whose whole state is four integers, so it can be saved, restored and compared. The sequence of a seed is the same in every run on every machine. Every method returns
+---`nil, reason` for a bad argument.
+---@class RandomStream
+local RandomStream = {}
+---A number in `[0, 1)`; `float(hi)`: `[0, hi)`; `float(lo, hi)`: `[lo, hi)`.
+---@param lo? number
+---@param hi? number
+---@return number|nil
+---@return string|nil reason
+function RandomStream:float(lo, hi) end
+---An integer: `int(n)` is `1..n`, `int(lo, hi)` is `lo..hi`, both included.
+---@param lo number
+---@param hi? number
+---@return integer|nil
+---@return string|nil reason
+function RandomStream:int(lo, hi) end
+---`true` with the probability `p` (0..1).
+---@param p number
+---@return boolean|nil
+---@return string|nil reason
+function RandomStream:chance(p) end
+---A random element of a list and its index; `nil, reason` for an empty list.
+---@generic T
+---@param list T[]
+---@return T|nil element
+---@return integer|string|nil index
+function RandomStream:choice(list) end
+---Shuffles the list in place (Fisher-Yates) and returns it.
+---@generic T
+---@param list T[]
+---@return T[]|nil list
+---@return string|nil reason
+function RandomStream:shuffle(list) end
+---A shuffled copy of the list.
+---@generic T
+---@param list T[]
+---@return T[]|nil
+---@return string|nil reason
+function RandomStream:shuffled(list) end
+---`k` different elements of the list in random order (fewer when the list is shorter).
+---@generic T
+---@param list T[]
+---@param k integer
+---@return T[]|nil
+---@return string|nil reason
+function RandomStream:sample(list, k) end
+---An element chosen with probabilities proportional to its weight: `weights` is a list of numbers `>= 0` (same length) or a function `(item, index) -> number`. Returns the element and its index.
+---@generic T
+---@param items T[]
+---@param weights number[]|fun(item: T, index: integer): number
+---@return T|nil item
+---@return integer|string|nil index
+function RandomStream:weighted(items, weights) end
+---A point on the ground around `center`, spread evenly over the ring between the radii. `opts.yaw` + `opts.arc` (degrees) restrict it to a sector (the directions `yaw - arc/2 .. yaw + arc/2`; `yaw + 180` is behind a facing), `opts.dy` is added to the height.
+---@param center PointLike
+---@param rmin number
+---@param rmax number
+---@param opts? { yaw?: number, arc?: number, dy?: number }
+---@return Vec3|nil
+---@return string|nil reason
+function RandomStream:point_in_ring(center, rmin, rmax, opts) end
+---The generator's state: four integers (plain data: keep it in `risen.save`).
+---@return integer[]|nil
+---@return string|nil reason
+function RandomStream:state() end
+---Restores a state taken with `state()`.
+---@param state integer[]
+---@return boolean|nil
+---@return string|nil reason
+function RandomStream:set_state(state) end
+---Starts the sequence of a seed (a number or a string); no argument: a new unpredictable seed.
+---@param seed? number|string
+---@return boolean|nil
+---@return string|nil reason
+function RandomStream:seed(seed) end
+---Ties the stream to the savegame: its state is written to the mod's `risen.save` (key `random:<key>`) before every save and read back when a savegame is loaded (and now, if the store has one), so a loaded game draws the numbers
+---the saved game would have drawn.
+---@param key string At most 64 characters.
+---@return boolean|nil
+---@return string|nil reason
+function RandomStream:persist(key) end
+
+---Randomness, per mod. `risen.random.int(...)` etc. use the mod's own stream (nobody else's calls disturb it; seeded from the clock, the mod id and addresses, so every run differs); `risen.random.new(seed)` makes more streams.
+---**Not `math.random`:** LuaJIT's `math.random` is ONE generator shared by all mods, it starts from the same state in every run (an unseeded mod gets the same numbers each time) and any mod's `math.randomseed` resets it for everyone.
+---@class RisenRandomApi
+local randomApi = {}
+---A new stream. `seed`: a number or string (the same seed gives the same sequence), a state table (`RandomStream:state()`), or `nil` for an unpredictable seed.
+---@param seed? number|string|integer[]
+---@return RandomStream|nil
+---@return string|nil reason
+function randomApi.new(seed) end
+---@param lo? number
+---@param hi? number
+---@return number|nil
+---@return string|nil reason
+function randomApi.float(lo, hi) end
+---@param lo number
+---@param hi? number
+---@return integer|nil
+---@return string|nil reason
+function randomApi.int(lo, hi) end
+---@param p number
+---@return boolean|nil
+---@return string|nil reason
+function randomApi.chance(p) end
+---@generic T
+---@param list T[]
+---@return T|nil element
+---@return integer|string|nil index
+function randomApi.choice(list) end
+---@generic T
+---@param list T[]
+---@return T[]|nil
+---@return string|nil reason
+function randomApi.shuffle(list) end
+---@generic T
+---@param list T[]
+---@return T[]|nil
+---@return string|nil reason
+function randomApi.shuffled(list) end
+---@generic T
+---@param list T[]
+---@param k integer
+---@return T[]|nil
+---@return string|nil reason
+function randomApi.sample(list, k) end
+---@generic T
+---@param items T[]
+---@param weights number[]|fun(item: T, index: integer): number
+---@return T|nil item
+---@return integer|string|nil index
+function randomApi.weighted(items, weights) end
+---@param center PointLike
+---@param rmin number
+---@param rmax number
+---@param opts? { yaw?: number, arc?: number, dy?: number }
+---@return Vec3|nil
+---@return string|nil reason
+function randomApi.point_in_ring(center, rmin, rmax, opts) end
+---@return integer[]|nil
+---@return string|nil reason
+function randomApi.state() end
+---@param state integer[]
+---@return boolean|nil
+---@return string|nil reason
+function randomApi.set_state(state) end
+---@param seed? number|string
+---@return boolean|nil
+---@return string|nil reason
+function randomApi.seed(seed) end
+---@param key string
+---@return boolean|nil
+---@return string|nil reason
+function randomApi.persist(key) end
+
 ---Localization overlay: the game's own string tables are read-only, so mod texts are served on top. Ids are matched
 ---case-insensitively.
 ---@class RisenLocApi
@@ -3349,6 +3879,8 @@ function logApi.error(...) end
 ---@field ai RisenAiApi
 ---@field gamevar RisenGamevarApi
 ---@field world RisenWorldApi
+---@field math RisenMathApi
+---@field random RisenRandomApi
 ---@field loc RisenLocApi
 ---@field save RisenSaveApi
 ---@field vfs RisenVfsApi

@@ -111,6 +111,20 @@ routine_src = (root / 'src/game/routine_lua.h').read_text(encoding='utf-8')
 for ns_var, ns in (('world', 'world'), ('npc', 'npc')):
     for fn in re.findall(rf'^function {ns_var}\.(\w+)\(', routine_src, flags=re.M):
         bound[f'{ns}.{fn}'] = 'src/game/routine_lua.h'
+# geometry (M13, geometry_lua.h): `function M.<name>(` is risen.math, `function world.<name>(` risen.world, `function R.<name>(` / the method names copied by the loop at the end of the
+# random chunk are risen.random, `function Stream:<name>(` the methods of a random stream (the class RandomStream)
+geo_src = (root / 'src/game/geometry_lua.h').read_text(encoding='utf-8')
+for fn in re.findall(r'^function M\.(\w+)\(', geo_src, flags=re.M) + re.findall(r'^M\.(\w+)\s*=\s*(?:function|xyz)', geo_src, flags=re.M):
+    bound[f'math.{fn}'] = 'src/game/geometry_lua.h'
+for fn in re.findall(r'^function world\.(\w+)\(', geo_src, flags=re.M):
+    bound[f'world.{fn}'] = 'src/game/geometry_lua.h'
+for fn in re.findall(r'^function R\.(\w+)\(', geo_src, flags=re.M):
+    bound[f'random.{fn}'] = 'src/game/geometry_lua.h'
+random_names = re.search(r'for _, name in ipairs \{([^}]*)\} do\s*\n\s*local method = Stream', geo_src)
+for fn in re.findall(r'"(\w+)"', random_names.group(1)) if random_names else []:
+    bound[f'random.{fn}'] = 'src/game/geometry_lua.h'
+for fn in re.findall(r'^function Stream:(\w+)\(', geo_src, flags=re.M):
+    members[f'RandomStream.{fn}'] = 'src/game/geometry_lua.h'
 # the AI bridge (M11): the per-mod risen.ai.start / stop / forget / persisted (the chunk in ai_lua.h defines `function ai.<name>(` on the mod's ai table)
 for fn in re.findall(r'^function ai\.(\w+)\(', (root / 'src/game/ai_lua.h').read_text(encoding='utf-8'), flags=re.M):
     bound[f'ai.{fn}'] = 'src/game/ai_lua.h'
@@ -137,7 +151,7 @@ for var, fn in re.findall(r'^function (\w+)\.(\w+)\(', defs, flags=re.M):
     if var in var_ns:
         described[f'{var_ns[var]}.{fn}'] = True
 described_members = {}
-for typ, fn in re.findall(r'^function (Entity|Template|Quest|Info|ScriptContext|AiContext):(\w+)\(', defs, flags=re.M):
+for typ, fn in re.findall(r'^function (Entity|Template|Quest|Info|ScriptContext|AiContext|RandomStream):(\w+)\(', defs, flags=re.M):
     described_members[f'{typ}.{fn}'] = True
 for typ in ('ScriptContext', 'AiContext'):
     block = re.search(rf'---@class {typ}\n((?:---.*\n)*)', defs).group(1)

@@ -1,0 +1,6 @@
+id          = "example_unseen_spawn"
+name        = "Example: enemies that appear where the player cannot see them"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Every so often a wolf is spawned at a waypoint or freepoint near the player that he cannot see (line of sight and the camera's view) and that lies behind him: risen.math, risen.world.is_seen_by, risen.random."
+main        = "main.lua"

@@ -247,6 +247,31 @@ the right thing when a *dialogue condition* or another mod must see the value (`
 `risen.template.get(name)` gives a template; `:get_property(set, name)` / `:set_property` / `:list_properties(set)` work by name on any property set (`gCItem_PS`, `gCNPC_PS`, ...); `risen.template.patch(name, { gCItem_PS = { GoldValue = 5 } }, { instances = true })` is the declarative form (apply on the first `tick` and on every `session.start`).
 `Entity:get_property/set_property` are the same for a live entity. Never probe enum values blindly (a quest-state condition without a quest opens a blocking message box): use names. Example: `example_template_patch`; [PROPERTIES.md](PROPERTIES.md).
 
+### 4.17 Vectors, line of sight, "where can the player not see me", randomness
+
+```lua
+local M, W, R = risen.math, risen.world, risen.random
+local player = risen.entity.player()
+-- spawn an enemy at a freepoint around the player that he cannot see and that lies behind him (mods/example_unseen_spawn)
+local points = W.points({ near = player, radius = 2200 })                         -- the game's own waypoints / freepoints, nearest first
+local cam = W.camera()                                                            -- the render camera: what the player sees
+local facing = cam and { cam.dx, cam.dy, cam.dz } or player
+local hidden = {}
+for _, p in ipairs(points) do
+    local far_enough = M.distance2d(p, player) > 700
+    if far_enough and not W.is_seen_by({ p.x, p.y + 100, p.z }, player, { camera = true }) and M.is_behind(p, player, facing, 20) then hidden[#hidden + 1] = p end
+end
+local p = R.choice(hidden)                                                        -- nil when nothing qualifies
+if p then risen.npc.spawn("Wolf", p.x, p.y + 5, p.z) end
+```
+* **Conventions:** +y is up, a yaw of 0 looks along +z and 90 along +x, angles are degrees. Points are entities, `{ x, y, z }` or `{ x = , y = , z = }`; `risen.math` returns `nil, reason` for bad input instead of raising. `M.offset(player, player, -300)` is a point behind the player, `M.polar(origin, yaw, distance)` a point in a direction,
+  `M.relative_angle`, `M.in_cone`, `M.is_behind` answer "in front / to the side / behind".
+* **Line of sight** is the engine's own ray test: terrain, rocks, trees and buildings block, open air does not, **characters never block** (the AI's sight test ignores them; `{ bodies = true }` changes that). `W.line_of_sight(a, b)` gives `true`, or `false` and what is in the way (`hit.entity:name()` is `Levelmesh_Landscape_...` for the ground, `Obj_Nat_Stone_...` for a rock).
+  `W.can_see(viewer, target, { fov = 180, range, eye_height })` adds the viewer's field of view (180 is the engine's NPC perception: it agrees with the AI's `CanSee`), `W.is_seen_by(point, viewers)` asks it for a list of viewers (default: the player). For the player use `{ camera = true }`: his screen, not the way his body faces.
+  A point on the ground is judged by a spot above it (+100 for a man, +50 for a wolf): the ray is one line, a head above a wall is not noticed.
+* **Randomness:** `risen.random` is your mod's own stream (`int`, `float`, `chance`, `choice`, `shuffle`, `sample`, `weighted`, `point_in_ring`); `R.seed(42)` makes it repeatable for a test, `R.persist("name")` saves its state with the savegame. **Do not use `math.random` for anything that matters:** all mods share one generator that starts the same way every run.
+* Examples and tests: `example_unseen_spawn`, `geometry`. Details: [LUA_API.md](LUA_API.md) "Geometry, line of sight and randomness", [RE.md](RE.md) §38.
+
 ## 5. Configuration
 
 * **Your mod's options:** `config.toml` next to `main.lua`; `local cfg = risen.config{ enabled = true, key = "SecondaryAction", repeat_ms = 80 }` returns the merged table (types are taken from your defaults, problems are logged as `config: [my_mod] ...` and the default is used).
@@ -321,6 +346,10 @@ Collected from the milestones; each is verified or marked as inferred in [RE.md]
 * AI: no Lua AI functions, no override of a stock state / function / callback; `finish` is not called when an NPC is removed or the world torn down; a hook on an `Assess*` script is lost if another mod `risen.script.override`s the same script afterwards; only peasants were driven (monsters and party members were not).
 * Conditional spawning: NPCs only; `cond.item` for non-player holders, `cond.alive`, late declarations and event/polling `fn` conditions are unit-tested only.
 
+**Geometry and randomness**
+* Line of sight is the engine's own ray test between two points: terrain, rocks, trees and buildings block, characters never do (unless `bodies = true`), one ray per question (a head above a wall is not noticed). The camera's field-of-view axis is inferred, not proven. `camera = true` is only meaningful for the player. During the first seconds of a new game the camera flies in.
+* `math.random` is one generator for all mods and starts from the same state in every run: use `risen.random` (own stream per mod, seedable, `persist`).
+
 **Events**
 * `item.used` for food is `item.consumed` (inferred for a real meal), no "container opened" event, `entity.spawned` only for `Entity::Spawn` (not for what a savegame brings back), `Entity:set_hp(0)` is not a death, humans knocked out are `entity.defeated`, not `entity.died`.
 * The interactive buy/sell screen and interactive loot/pick-up are the same engine operations as the Lua functions (checked in the decompilation) but cannot be driven from a script, so they are not run live.
@@ -332,7 +361,7 @@ Collected from the milestones; each is verified or marked as inferred in [RE.md]
 | You want | Read |
 |---|---|
 | every function, option, event | [LUA_API.md](LUA_API.md), [../types/risen.d.lua](../types/risen.d.lua) (the same, for the editor) |
-| a working pattern | [EXAMPLES.md](EXAMPLES.md) (sixteen small examples, the showcase `balance_example`, the real mod Quick Loot) |
+| a working pattern | [EXAMPLES.md](EXAMPLES.md) (seventeen small examples, the showcase `balance_example`, the real mod Quick Loot) |
 | names of items, NPCs, monsters | [TEMPLATES.md](TEMPLATES.md) |
 | where the numbers live | [ITEM_PROPERTIES.md](ITEM_PROPERTIES.md), [NPC_PROPERTIES.md](NPC_PROPERTIES.md), [SPELL_PROPERTIES.md](SPELL_PROPERTIES.md), [RECIPE_PROPERTIES.md](RECIPE_PROPERTIES.md), [PROPERTIES.md](PROPERTIES.md) |
 | how the engine behaves (verified findings, RVAs) | [RE.md](RE.md) |

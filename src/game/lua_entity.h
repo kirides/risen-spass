@@ -131,6 +131,14 @@ void installRoutineHelpers(sol::state_view lua, sol::table risen);
 void installRoutineModApi(sol::state_view lua, sol::table api, const std::string& modId);
 void addRoutineMethods(sol::usertype<LuaEntity>& ut);
 
+// Geometry (lua_geometry.cpp, M13): the natives risen.world.trace / engine_free_los / camera (after bindRoutine: they live in risen.world), the Lua part risen.math,
+// risen.world.raycast / line_of_sight / can_see / is_seen_by (geometry_lua.h; installGeometryHelpers runs only the Lua chunks: the unit tests mock the natives),
+// Entity:bounds, and the per-mod risen.random streams.
+void bindGeometry(sol::state_view lua, sol::table risen);
+void installGeometryHelpers(sol::state_view lua, sol::table risen);
+void installRandomModApi(sol::state_view lua, sol::table api, const std::string& modId);
+void addGeometryMethods(sol::usertype<LuaEntity>& ut);
+
 // Wraps a raw pointer into a Lua value: Entity userdata, or nil for null.
 sol::object makeEntityObject(sol::state_view lua, void* entity);
 

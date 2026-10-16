@@ -434,7 +434,18 @@
     X(unit_set_task_callback, L"Game.dll", "?AISetTaskCallback@gCScriptProcessingUnit@@QEAAXVbCString@@@Z", void (*)(void* unit, void* byValueName), false) \
     X(unit_set_local_callback, L"Game.dll", "?AISetLocalCallback@gCScriptProcessingUnit@@QEAAXVbCString@@@Z", void (*)(void* unit, void* byValueName), false) \
     X(unit_get_state_time, L"Game.dll", "?AIGetStateTime@gCScriptProcessingUnit@@QEAAMXZ", float (*)(void* unit), false) \
-    X(unit_get_task_time, L"Game.dll", "?AIGetTaskTime@gCScriptProcessingUnit@@QEAAMXZ", float (*)(void* unit), false)
+    X(unit_get_task_time, L"Game.dll", "?AIGetTaskTime@gCScriptProcessingUnit@@QEAAMXZ", float (*)(void* unit), false) \
+    /* ---- geometry (M13, docs/RE.md section 38): the physics scene's ray test (what the AI's CanSee uses), the camera ---- */ \
+    X(phys_instance, L"Engine.dll", "?GetInstance@eCPhysicsScene@@SAAEAV1@XZ", void* (*)(), false) \
+    X(phys_trace_nearest, L"Engine.dll", "?TraceRayNearestHit@eCPhysicsScene@@QEAA_NAEBVbCVector@@0PEBVeCGeometryEntity@@K1W4eEPropertySetType@@W4eEShapeGroup@@@Z", bool (*)(void* scene, const float* origin, const float* dir, const void* ignoreA, unsigned long flags, const void* ignoreB, int propSet, int group), false) \
+    X(phys_set_ignore, L"Engine.dll", "?SetQueryIgnoreEntities@eCPhysicsScene@@QEAAXAEAV?$bTPtrArray@PEAVeCGeometryEntity@@@@@Z", void (*)(void* scene, void* array), false) \
+    X(geo_is_free_los, L"Engine.dll", "?IsFreeLOS@eCGeometryEntity@@QEBA_NPEAV1@_N@Z", bool (*)(const void* self, void* other, bool flag), false) \
+    X(app_instance, L"Engine.dll", "?GetInstance@eCApplication@@SAAEAV1@XZ", void* (*)(), false) \
+    X(app_current_camera, L"Engine.dll", "?GetCurrentCamera@eCApplication@@QEAAAEAVeCCameraBase@@XZ", void* (*)(void* app), false) \
+    X(cam_get_position, L"Engine.dll", "?GetPosition@eCCameraBase@@QEBAAEBVbCVector@@XZ", const float* (*)(const void* cam), false) \
+    X(cam_get_view, L"Engine.dll", "?GetViewMatrix@eCCameraBase@@QEBAAEBVbCMatrix@@XZ", const float* (*)(const void* cam), false) \
+    X(cam_get_fov, L"Engine.dll", "?GetFieldOfView@eCCameraBase@@QEBAAEBMXZ", const float* (*)(const void* cam), false) \
+    X(cam_get_aspect, L"Engine.dll", "?GetAspectRatio@eCCameraBase@@QEBAAEBMXZ", const float* (*)(const void* cam), false)
 
 namespace spass::game {
 

@@ -496,6 +496,7 @@ TEST(balance_install_reports_each_application_to_on_applied) {
 #include "test_risen_test.inc"
 #include "quickloot_tests.inc"
 #include "hardening_tests.inc"
+#include "geometry_tests.inc"
 
 }  // namespace
 

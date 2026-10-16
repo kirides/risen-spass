@@ -74,6 +74,7 @@ add_library(spass_core STATIC
     src/game/lua_dialog.cpp
     src/game/lua_engine_info.cpp
     src/game/lua_entity.cpp
+    src/game/lua_geometry.cpp
     src/game/lua_config.cpp
     src/game/lua_hud.cpp
     src/game/lua_input.cpp

@@ -148,6 +148,11 @@ void registerBindings() {
         bindRoutine(lua, risen);
         installRoutineHelpers(lua, risen);
     });
+    rt.addBinding([](sol::state_view lua, sol::table risen) {  // after bindRoutine: risen.math, risen.world.raycast / line_of_sight / can_see / is_seen_by (M13)
+        bindGeometry(lua, risen);
+        installGeometryHelpers(lua, risen);
+    });
+    rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installRandomModApi(lua, api, mod.id); });  // per-mod seedable streams (M13); risen.random.persist uses the mod's risen.save and event handlers when it is called
     rt.addBinding(bindTemplateCreate);  // after bindNpcBalance: risen.template.create and the new_items/new_npcs/templates sections
     rt.addBinding(bindSpell);           // after bindTemplateCreate: risen.spell and the spells/new_spells sections
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo&) { installSpellModApi(lua, api); });  // after installBalanceModApi: per-mod shot overrides
