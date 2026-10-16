@@ -1,0 +1,6 @@
+id          = "routines"
+name        = "NPC routines: live test mod"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Gives NPCs routines (guard post, patrol, work/relax/sleep points) with risen.npc.set_routine and a persistent NPC with the `routine` option; the scenario `routines` (docs/DEVELOPMENT.md) drives it. Only meaningful in a test run."
+main        = "main.lua"

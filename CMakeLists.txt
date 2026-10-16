@@ -82,6 +82,7 @@ add_library(spass_core STATIC
     src/game/lua_npc_balance.cpp
     src/game/lua_persistent_npc.cpp
     src/game/lua_recipe.cpp
+    src/game/lua_routine.cpp
     src/game/lua_spell.cpp
     src/game/lua_quest.cpp
     src/game/lua_save.cpp

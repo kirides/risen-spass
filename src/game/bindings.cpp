@@ -144,6 +144,10 @@ void registerBindings() {
     rt.addBinding(bindVfs);  // after bindItems: adds risen.template.list
     rt.addBinding(bindNpcHelpers);
     rt.addBinding(bindNpcBalance);  // after bindNpcHelpers/bindBalance: adds to risen.npc
+    rt.addBinding([](sol::state_view lua, sol::table risen) {  // after bindWorld/bindNpcHelpers: risen.npc.set_routine, risen.world.points/time (M10)
+        bindRoutine(lua, risen);
+        installRoutineHelpers(lua, risen);
+    });
     rt.addBinding(bindTemplateCreate);  // after bindNpcBalance: risen.template.create and the new_items/new_npcs/templates sections
     rt.addBinding(bindSpell);           // after bindTemplateCreate: risen.spell and the spells/new_spells sections
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo&) { installSpellModApi(lua, api); });  // after installBalanceModApi: per-mod shot overrides
@@ -158,6 +162,7 @@ void registerBindings() {
     rt.addBinding(bindQuestObjects);
     rt.addBinding(scripts::bindScripts);
     bindSave();
+    rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installRoutineModApi(lua, api, mod.id); });  // after bindSave, before the persistent NPCs (their `routine` option calls risen.npc.set_routine)
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installPersistentNpcModApi(lua, api, mod.id); });  // after bindSave: risen.npc.persistent keeps its records in the mod's risen.save
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installSpawnWhenModApi(lua, api, mod.id); });  // after the persistent NPCs: risen.spawn.when / risen.cond (M8)
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installDialogCondModApi(lua, api, mod.id); });  // after risen.cond and the voice wrapper: dialogue conditions (M9)

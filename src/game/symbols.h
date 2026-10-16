@@ -406,7 +406,23 @@
     X(admin_run_function, L"Game.dll", "?RunScriptFunction@gCScriptAdmin@@IEAA_NAEBVbCString@@AEAV?$bTObjStack@UgScriptRunTimeSingleState@@@@PEAVgCScriptProcessingUnit@@@Z", bool (*)(void* admin, const void* name, void* stack, void* unit), false) \
     X(unit_set_state, L"Game.dll", "?SetCurrentAIState@gCScriptProcessingUnit@@IEAA?AW4bEResult@@AEAVbCString@@@Z", int (*)(void* unit, void* name), false) \
     X(ent_get_npcs, L"Script.dll", "?GetNPCs@Entity@@SA?AV?$bTObjArray@VEntity@@@@XZ", void* (*)(void* ret), false) \
-    X(action_send_event, L"Game.dll", "?SendActionEvent@gCActionAdmin@@IEAAXAEBUgSAction@@@Z", void (*)(void* admin, const void* action), false)
+    X(action_send_event, L"Game.dll", "?SendActionEvent@gCActionAdmin@@IEAAXAEBUgSAction@@@Z", void (*)(void* admin, const void* action), false) \
+    /* ---- routines (M10, docs/RE.md section 35): gCNavigation_PS holds the named routines; each has a working / relaxing / sleeping point ---- */ \
+    X(nav_get_work, L"Game.dll", "?GetCurrentWorkingPoint@gCNavigation_PS@@QEBAPEAVeCEntity@@XZ", void* (*)(const void* nav), false) \
+    X(nav_get_relax, L"Game.dll", "?GetCurrentRelaxingPoint@gCNavigation_PS@@QEBAPEAVeCEntity@@XZ", void* (*)(const void* nav), false) \
+    X(nav_get_sleep, L"Game.dll", "?GetCurrentSleepingPoint@gCNavigation_PS@@QEBAPEAVeCEntity@@XZ", void* (*)(const void* nav), false) \
+    X(nav_set_work, L"Game.dll", "?SetCurrentWorkingPoint@gCNavigation_PS@@QEAA_NPEAVeCEntity@@@Z", bool (*)(void* nav, void* point), false) \
+    X(nav_set_relax, L"Game.dll", "?SetCurrentRelaxingPoint@gCNavigation_PS@@QEAA_NPEAVeCEntity@@@Z", bool (*)(void* nav, void* point), false) \
+    X(nav_set_sleep, L"Game.dll", "?SetCurrentSleepingPoint@gCNavigation_PS@@QEAA_NPEAVeCEntity@@@Z", bool (*)(void* nav, void* point), false) \
+    X(nav_select_routine, L"Game.dll", "?SetRoutine@gCNavigation_PS@@QEAA_NAEBVbCString@@@Z", bool (*)(void* nav, const void* name), false) \
+    X(nav_get_routine_name, L"Game.dll", "?GetRoutine@gCNavigation_PS@@QEBAAEBVbCString@@XZ", const void* (*)(const void* nav), false) \
+    X(rt_continue_routine, L"Script.dll", "?ContinueRoutine@PSRoutine@@QEAAXXZ", void (*)(void* self), false) \
+    X(npc_get_guard_point, L"Script.dll", "?GetGuardPoint@PSNpc@@QEBA?AVEntity@@XZ", void* (*)(const void* self, void* ret), false) \
+    X(npc_set_guard_point, L"Script.dll", "?SetGuardPoint@PSNpc@@QEBA_NAEBVEntity@@@Z", bool (*)(const void* self, const void* point), false) \
+    X(world_get_time, L"Script.dll", "?GetWorldTime@Entity@@SAMXZ", float (*)(), false) \
+    X(world_set_time, L"Script.dll", "?SetWorldTime@Entity@@SAXM@Z", void (*)(float), false) \
+    X(ent_get_at, L"Script.dll", "?GetAtVector@Entity@@QEBA?AVbCVector@@XZ", void* (*)(const void* self, float* ret3), false) \
+    X(ent_nearest_nav_point, L"Script.dll", "?GetNearestNavigationPoint@Entity@@QEAA?AVbCVector@@V2@M@Z", void* (*)(void* self, float* ret3, const float* position, float radius), false)
 
 namespace spass::game {
 

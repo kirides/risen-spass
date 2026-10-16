@@ -506,6 +506,16 @@ void* templateEntityPtr(const std::string& templateName, std::string& error) {
     return r.tpl;
 }
 
+bool walkSceneEntities(const std::function<void(void* entity, const void* creator)>& visit) {
+    return walkEntities([&](char* node, const void* creator, int) { visit(node, creator); });
+}
+
+const void* templateCreatorPtr(const std::string& templateName) {
+    return resolveTemplate(templateName).tpl;
+}
+
+std::string templateNameOfCreator(const void* creator) { return templateNameOf(creator); }
+
 // entity:template() -> Template | nil, reason; entity:focus_name() / entity:description() -> the texts the engine shows
 void addTemplateMethods(sol::usertype<LuaEntity>& ut) {
     auto textMethod = [](const char* cls, void* (*Symbols::*fn)(const void*, void*)) {

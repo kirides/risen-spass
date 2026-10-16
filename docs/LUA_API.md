@@ -608,6 +608,7 @@ local hob = risen.npc.persistent({
     define = function(handle) ... end,                 -- quests and dialogues: called on load.before and on every session.start
     respawn = false,                                   -- default: a dead NPC stays dead; true: replaced at the next session start/load; function(state) -> bool
     version = 1,                                       -- raise it to replace the NPC in existing savegames after you changed the declaration
+    routine = { at = { dx = 300, dy = 0, dz = 0, kind = "guard", yaw = 90 } },   -- a post, a day/night routine or a patrol ("NPC routines" below); applied once, checked on every load
     on_ready = function(entity, reason, handle) end,   -- reason: "spawned" | "restored" | "respawned" | "replaced" | "adopted"
     on_death = function(entity, killer, handle) end,
 })
@@ -631,7 +632,44 @@ risen.npc.persistent_get("MyMod_Hob")   risen.npc.persistent_list()
   finds the NPC at once, and has to be made again on every `session.start` of a savegame that needs it (see `mods/example_kill_quest`, `example_quest_rewards`): the record is pruned otherwise.
 * **Events.** `entity.spawned` fires when the layer creates the NPC (spawned, respawned, replaced), **not** for a restored one: use `on_ready` for "the NPC is in the world". `entity.died` fires as usual.
 * **Limits.** The record lives in the savegame's sidecar file: a savegame copied without its `.lua` sidecar (or from before the mod existed) is not recognised and the NPC is made again (an old unnamed
-  copy of an earlier mod version stays). Hit points regenerate as for every NPC. A mod name collision is refused (`nil, reason`). No timers, no facing, no routines (M10).
+  copy of an earlier mod version stays). Hit points regenerate as for every NPC. A mod name collision is refused (`nil, reason`). No timers. A daily routine, post or patrol is the `routine` option (next section).
+
+## NPC routines — `risen.npc.set_routine`, `routine` of persistent NPCs, `risen.world.points` (see `mods/example_routines`, `mods/routines`, [RE.md §35](RE.md))
+The engine has a daily-routine system: an NPC owns a *routine* with a **working**, a **relaxing** and a **sleeping** point; by the clock a human works from 6:00 to 20:00, relaxes from 20:00 and sleeps before 6:00 (a missing relax/sleep point
+uses the working point); the NPC walks to the point of the moment and does what the point says. A point is a *freepoint* (`FP_Guard`: stand guard, `FP_LookAt`, `FP_Spectator`, `FP_Sleep_Ground`, ...) or the freepoint of a *patrol anchor*. The layer feeds that system:
+```lua
+-- a persistent NPC with a routine (positions {dx, dy, dz} are relative to his home): applied once, checked on every load, nothing is made twice
+risen.npc.persistent({
+    name = "MyMod_Gatekeeper", template = "Peasant_1_01", offset = { 250, 20, 350 }, peaceful = true,
+    routine = {
+        work  = { dx = 350, dy = 0, dz = -100, kind = "guard", yaw = 90 },   -- by day: stands guard, hands on hips, facing +x
+        relax = { dx = 500, dy = 0, dz = 150, kind = "lookat" },             -- in the evening: thinks
+        sleep = { dx = -100, dy = 0, dz = 250, kind = "sleep" },             -- at night: sleeps on the ground
+    },
+})
+-- any NPC at run time
+local info = risen.npc.set_routine(npc, { at = { x, y, z, kind = "guard", yaw = 180 } })     -- one post for the whole day; nil, reason when it cannot be done
+risen.npc.set_routine(npc, { patrol = { { x1, y1, z1 }, { x2, y2, z2 }, { x3, y3, z3 }, name = "Camp" } })     -- walks 1, 2, 3, 1, ...
+risen.npc.set_routine(other, { patrol = "Camp" })                                          -- joins the same group
+risen.npc.get_routine(npc)        -- { routine = "Start", work = Entity, relax = ..., sleep = ..., guard = ..., created = 1, patrol = "Camp" }
+risen.npc.clear_routine(npc)      -- empties the points and removes the ones this mod made
+risen.npc.apply_routine(npc)      -- "look at your routine now": after the clock changed, or to send a patroller on / a displaced guard back
+risen.world.set_time(21, 0); risen.world.time() --> 21, 0
+```
+* **Spec** (`RoutineSpec`): `at` (one point for all three times), or `work` / `relax` / `sleep`; `patrol`; `guard` (the engine's guard point; stored and read back only); `routine` (name of another routine of the NPC); `apply = false` (do not send him at once); `kind` (default kind of position points); `snap = false`.
+  A **point** is an entity (a world freepoint, or one from `add_point`), the unique name of one, or a position `{ x, y, z [, kind = , yaw = ] }` / `{ dx = , dy = , dz = [, kind, yaw] }` (relative to `opts.origin`, by default the NPC's position; the home for a persistent NPC) that makes a **new freepoint**.
+  Kinds: `risen.world.point_kinds` (`guard`, `lookat`, `spectator`, `sleep`, `dance`, `field`, `pace`, `boss`, `roam`, `practice_sword`, `stand`, `sit`, `smalltalk`, ...) or any `FP_*` template. Seen in the game: `guard` stands hands on hips and faces the `yaw`, `lookat` thinks, `spectator` crosses his arms, `sleep` lies down (`AniState SleepGround`), `dance` dances, `field` rakes, `pace`/`boss` run `ZS_Boss`;
+  `stand`, `sit`, `smalltalk` make the NPC hang around where he is (`ZS_HangAround`) instead of walking to the point.
+* **Everything is checked before anything is made** (`nil, reason`: unknown key or kind, `at` together with `work`, a patrol of one waypoint, a dead or non-NPC entity, an unknown routine, a position with no walkable ground within `snap_radius` 300). Positions are moved onto the walkable ground (the engine's navigation mesh; an NPC never reaches a point outside it: the call says so instead).
+* **Idempotent.** The same plain-data spec again while its points exist does nothing (`info.reused`); another spec replaces the old routine: the old points are removed 40 frames after the NPC went on (a point killed in the frame its user continues his routine crashed the game).
+* **Persistence.** The points are saved with the game (made save-relevant), the engine saves the NPC's references to them: after a load nothing is repeated. What a savegame does not keep is a patrol anchor's name and number: the mod's `risen.save` record (key `npc_routines`) gives them back 30 frames after `world.ready`.
+  `risen.npc.persistent{ routine = ... }` (and `risen.spawn.when`) applies the routine when the NPC is made, checks it on every restore (equal declaration + intact points: nothing happens; changed declaration or lost point: replaced) and removes its points with the NPC.
+* **Patrol.** `patrol = { waypoint, ... }` makes a group: one anchor (type patrol, numbered 0..n-1, all with the entity name `<mod id>_Patrol_<name>`) with a freepoint (`kind`, default guard) per waypoint; the NPC works at waypoint 1. The engine sends him on to the next number when his stay at a waypoint is over (a guard stays **about one to two minutes**), from the last to the first;
+  `apply_routine` sends him on at once. Keep waypoints off the places where people stand: **a freepoint somebody stands on (the player included) is not free** and is skipped. `risen.world.add_patrol(name, waypoints, opts)` / `remove_patrol(name)` make and remove a group without an NPC.
+* **World.** `risen.world.points{ near, radius, kind, template, name, name_prefix, limit }` lists the game's own freepoints (169 guard points, 117 stand points, ...), patrol anchors (`index`, `max_users`) and helpers with position, `use`, `task`; `add_point(kind, x, y, z, { yaw, snap, snap_radius })` / `remove_point`; `nav_point(x, y, z [, radius])` the walkable point nearest to a position; `Entity:children()`, `Entity:attach(child)`, `Entity:direction()`.
+* **Time.** `risen.world.time()` -> hour, minute; `set_time(hour, minute)`. NPCs notice a changed clock at the end of their task or when you call `apply_routine` (ignored for a moment while the NPC is still walking: wait a second after he arrived).
+* **Events.** The points are spawned entities: `entity.spawned` / `entity.destroyed` fire for them (template `FP_*` / `Anchor_Patrol`). The points of an NPC that is removed without `clear_routine` (or a persistent NPC's `remove()`, which does it) stay in the world and in the mod's record.
+* **Limits.** A guard displaced a little may walk back by himself, one displaced far (>~400 units) stays until his task ends or `apply_routine`. Humans' hours are driven; monster hours (sleep before 5:00 / from 23:00), `guard` (stored only), roam/local anchors, benches and beds, custom routine names and the look of the poses were not. Natives: `routine_points`, `set_routine_points`, `select_routine`, `world.scan`, `world.spawn_point`.
 
 ## Conditional spawning — `risen.spawn.when`, `risen.cond` (see `mods/example_spawn_when`, `mods/spawnwhen`, [RE.md §33](RE.md))
 An NPC that does not exist until something happened — a quest was finished, the player carries enough of an item, a game variable was set, another NPC died — and that may go away again. It is a

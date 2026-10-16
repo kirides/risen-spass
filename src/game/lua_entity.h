@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <string>
 
 #include <sol/sol.hpp>
@@ -51,6 +52,13 @@ void* templatePropertySet(const std::string& templateName, const std::string& se
 // The eCTemplateEntity of the template `templateName` (content loaded), usable as the `this` holder of the PS* wrappers (Script.dll);
 // nullptr and a reason in `error` otherwise. (lua_template.cpp)
 void* templateEntityPtr(const std::string& templateName, std::string& error);
+
+// One pass over every entity of the scene's dynamic contexts (the world's own entities included): `visit(entity, creator)` gets the eCEntity* and the
+// template entity it was made from (nullptr for none). False when the scene is not available (no world). `templateCreatorPtr(name)` is the value
+// `creator` has for entities of that template (nullptr when the template is unknown), `templateNameOfCreator` the reverse. (lua_template.cpp)
+bool walkSceneEntities(const std::function<void(void* entity, const void* creator)>& visit);
+const void* templateCreatorPtr(const std::string& templateName);
+std::string templateNameOfCreator(const void* creator);
 
 // Registers risen.item.skill_array/set_skill_array/can_use (native access to the RequiredSkills / ModifySkills arrays of items)
 // and Entity:skill_total. Must run after bindItems(). (lua_balance.cpp)
@@ -105,6 +113,16 @@ void installNpcBalanceHelpers(sol::state_view lua, sol::table risen);
 
 // Registers risen.npc.spawn (Lua helper built on the primitives). Must run after bindItems().
 void bindNpcHelpers(sol::state_view lua, sol::table risen);
+
+// NPC routines (lua_routine.cpp, M10): the natives risen.npc.routine_points/set_routine_points/select_routine/apply_routine and risen.world.scan/time/set_time
+// (after bindWorld and bindNpcHelpers), and the Lua part risen.npc.set_routine/get_routine/clear_routine, risen.world.points/add_point/remove_point
+// (installRoutineHelpers runs only the Lua chunk: the unit tests mock the natives). addRoutineMethods adds Entity:children/attach.
+void bindRoutine(sol::state_view lua, sol::table risen);
+void installRoutineHelpers(sol::state_view lua, sol::table risen);
+// Per mod, before installPersistentNpcModApi: risen.npc.set_routine/get_routine/clear_routine, risen.world.add_patrol/remove_patrol and the restore of the patrol anchors after a load
+// (records in the mod's risen.save, so register it after bindSave()). (lua_routine.cpp)
+void installRoutineModApi(sol::state_view lua, sol::table api, const std::string& modId);
+void addRoutineMethods(sol::usertype<LuaEntity>& ut);
 
 // Wraps a raw pointer into a Lua value: Entity userdata, or nil for null.
 sol::object makeEntityObject(sol::state_view lua, void* entity);

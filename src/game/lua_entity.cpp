@@ -191,6 +191,7 @@ void bindEntity(sol::state_view lua, sol::table risen) {
     addNpcMethods(entityType);
     addItemMethods(entityType);
     addTemplateMethods(entityType);
+    addRoutineMethods(entityType);
     addBalanceMethods(entityType);
 
     sol::table entity = lua.create_table();

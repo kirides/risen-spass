@@ -485,6 +485,7 @@ TEST(balance_install_reports_each_application_to_on_applied) {
 #include "spell_tests.inc"
 #include "recipe_tests.inc"
 #include "persistent_npc_tests.inc"
+#include "routine_tests.inc"
 #include "spawn_when_tests.inc"
 #include "dialog_cond_tests.inc"
 #include "test_risen_test.inc"

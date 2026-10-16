@@ -1,0 +1,6 @@
+id          = "example_routines"
+name        = "Example: NPC routines (guard, day and night, patrol)"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "A gatekeeper who stands guard by day, looks at the fire in the evening and sleeps at night, and a patrol that walks around three waypoints: risen.npc.persistent with a routine."
+main        = "main.lua"

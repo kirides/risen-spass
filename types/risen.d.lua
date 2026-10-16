@@ -94,6 +94,21 @@ function Entity:enable_rendering(on) end
 ---@return boolean ok
 function Entity:teleport(target) end
 
+---The direct children of this entity in the entity tree (an anchor's freepoints, ...).
+---@return Entity[]
+function Entity:children() end
+
+---Makes `child` a child of this entity (`eCNode::AttachChild`): a freepoint attached below an anchor becomes one of its interact points.
+---@param child Entity
+---@return boolean ok
+function Entity:attach(child) end
+
+---The unit vector the entity looks along (`Entity::GetAtVector`): `0,0,1` for yaw 0, `1,0,0` for yaw 90. An NPC standing at a guard point faces the point's yaw.
+---@return number|nil dx
+---@return number|nil dy
+---@return number|nil dz
+function Entity:direction() end
+
 -- Item properties (entities made from item templates) ------------------------------------------------------------------
 
 ---Whether the entity has item data (is an item).
@@ -911,6 +926,7 @@ local npcApi = {}
 ---@field on_ready? fun(entity: Entity, reason: "spawned"|"restored"|"respawned"|"replaced"|"adopted", handle: PersistentNpc) Called whenever the NPC is in the world after a session start or load. `spawned`: made now for the first time, `restored`: found again in the loaded savegame, `respawned`: a new body for a dead or vanished one, `replaced`: made again because `template`/`version` changed, `adopted`: an entity that already had the name was taken over. Not called for a dead NPC that stays dead.
 ---@field on_death? fun(entity: Entity, killer: Entity|nil, handle: PersistentNpc) Called once when the NPC dies (after `entity.died`).
 ---@field enabled? fun(): boolean While it answers `false` the NPC is neither created, restored nor replaced (what `risen.spawn.when` uses to keep an NPC away until its condition holds).
+---@field routine? RoutineSpec A daily routine / post / patrol for the NPC (`risen.npc.set_routine`), applied when the NPC is made and checked on every restore (equal declaration and intact points: nothing happens; a changed declaration or a lost point: replaced). Positions `{ dx, dy, dz }` are relative to the NPC's home. The points go with the NPC when it is removed or replaced.
 
 ---A declared persistent NPC.
 ---@class PersistentNpc
@@ -965,6 +981,124 @@ function npcApi.persistent_get(name) end
 ---The persistent NPCs declared by the calling mod, in declaration order.
 ---@return PersistentNpc[]
 function npcApi.persistent_list() end
+
+-- ---- NPC routines (M10): risen.npc.set_routine, risen.world.points / add_point / add_patrol ---------------------------------------------------------------------------------------
+
+---A position that makes a new freepoint for a routine: `{ x, y, z }` (absolute) or `{ dx = , dy = , dz = }` (relative to the `origin` of the call: by default the NPC's position, for a persistent
+---NPC's `routine` its home). The point is moved onto the walkable ground nearest to it (300 units at most, else the call fails with a reason; `snap = false` in the spec keeps it as it is).
+---@class RoutinePosition
+---@field [1]? number x
+---@field [2]? number y
+---@field [3]? number z
+---@field dx? number
+---@field dy? number
+---@field dz? number
+---@field kind? string What the NPC does there: a key of `risen.world.point_kinds` (`"guard"` default: stands guard, hands on hips; `"lookat"`: thinks; `"sleep"`: sleeps on the ground; `"spectator"`: arms crossed; `"dance"`, ...) or the name of a freepoint template `FP_*`.
+---@field yaw? number Degrees, 0 = looking along +z, 90 = along +x: the way the NPC faces there (read back with `Entity:direction()`).
+
+---A point of a routine: an entity (a freepoint or anchor of the world, or one you made with `risen.world.add_point`), the unique name of one, or a position that makes a new freepoint.
+---@alias RoutinePoint Entity|string|RoutinePosition
+
+---Waypoints of a patrol (`{ x, y, z }` or `{ dx, dy, dz }`, in the order they are walked) with the options of the group next to them.
+---@class RoutinePatrol
+---@field [integer] RoutinePosition
+---@field name? string Name of the patrol group (letters, digits, `_`, `-`); other NPCs of this mod join it with `patrol = "name"`. Default: one group per NPC.
+---@field kind? string Default point kind of the waypoints (`"guard"`).
+---@field max_users? integer How many NPCs may stand at one waypoint (default 1).
+---@field yaw? number Default facing of the waypoints.
+
+---The routine of an NPC: three times of day with a point each, or a patrol. Humans work from 6:00 to 20:00, relax from 20:00 and sleep before 6:00 (the engine's script gives monsters other hours, sleeping before 5:00 and from 23:00: read, not driven); a time of day without
+---a point uses the working point. Unknown keys are refused.
+---@class RoutineSpec
+---@field at? RoutinePoint One point for work, relax and sleep: a post the NPC never leaves. Not together with `work`, `relax`, `sleep` or `patrol`.
+---@field work? RoutinePoint By day.
+---@field relax? RoutinePoint In the evening.
+---@field sleep? RoutinePoint At night.
+---@field patrol? RoutinePatrol|string Waypoints the NPC walks one after the other and round again (the engine keeps him a while at each: a guard about a minute or two; `risen.npc.apply_routine` sends him on). A string joins a patrol group of this mod made before (`risen.world.add_patrol` or another NPC's `patrol`). The first waypoint is the NPC's working point (`relax`/`sleep` may differ).
+---@field guard? RoutinePoint The engine's guard point of the NPC (`gCNPC_PS.GuardPoint`; read back by `get_routine`; what the engine's fight AI does with it was not driven).
+---@field routine? string Choose another of the NPC's routines by name first (every shipped NPC has one, `"Start"`).
+---@field apply? boolean `false`: only set the points, the NPC looks at them at the end of his current task. Default `true`: he goes at once.
+---@field kind? string Default `kind` of the position points.
+---@field snap? boolean `false`: use positions as they are (default: move them onto the walkable ground).
+
+---What `risen.npc.set_routine` did.
+---@class RoutineInfo
+---@field work Entity|nil
+---@field relax Entity|nil
+---@field sleep Entity|nil
+---@field guard Entity|nil
+---@field created Entity[] The freepoints made for this call (not those of a patrol group).
+---@field patrol string|nil Name of the patrol group.
+---@field reused boolean `true`: an equal routine was set before and its points still exist, nothing was changed.
+
+---The routine data of an NPC as the engine holds it.
+---@class RoutinePoints
+---@field routine string Name of the NPC's current routine (`"Start"`).
+---@field index integer
+---@field count integer Number of routines the NPC has.
+---@field work Entity|nil
+---@field relax Entity|nil
+---@field sleep Entity|nil
+---@field guard Entity|nil
+
+---`RoutinePoints` plus what this mod made.
+---@class NpcRoutine: RoutinePoints
+---@field created integer How many freepoints this mod made for the NPC's routine.
+---@field patrol string|nil The patrol group the routine uses.
+
+---Gives an NPC a daily routine (or a post, or a patrol): the engine's own routine system sends him to the point of the current time of day and lets him do what the point's kind says. Positions make freepoints (saved with
+---the game, and so is the NPC's reference to them), an earlier routine of this mod for the NPC is replaced (its points are removed a moment after he went on). **Idempotent**: calling it again with an equal spec
+---(plain data) while its points exist changes nothing (`reused`). Everything is checked before anything is made; `nil, reason` for a bad spec, a dead or non-NPC entity, an unknown kind/routine or a position
+---without walkable ground. Not for the player. After a load nothing has to be repeated (the patrol anchors are named again from the mod's `risen.save` record); `risen.npc.persistent{ routine = ... }` does it for you.
+---**Limits**: a point someone stands on (the player included) is not free, so keep waypoints off the places where people stand; a guard displaced a little may walk back by himself, one displaced far comes back at the end of his task or after
+---`risen.npc.apply_routine`; times of day change only when the NPC looks at his routine again (end of task, or `apply_routine`).
+---@param npc Entity
+---@param spec RoutineSpec
+---@param opts? { origin?: number[] } `origin = {x, y, z}` for relative positions (default: the NPC's position).
+---@return RoutineInfo|nil info
+---@return string|nil reason
+function npcApi.set_routine(npc, spec, opts) end
+
+---The routine data of the NPC (what the engine holds, plus `created` and `patrol` of this mod). `nil, reason` for an entity that is not an NPC.
+---@param npc Entity
+---@return NpcRoutine|nil routine
+---@return string|nil reason
+function npcApi.get_routine(npc) end
+
+---Empties the NPC's working, relaxing, sleeping and guard points. `opts.remove` (default true) removes the points this mod made for him (a patrol group only when no other NPC of the mod uses it) a moment later,
+---`opts.apply` (default true) lets him look at his routine at once.
+---@param npc Entity
+---@param opts? { remove?: boolean, apply?: boolean }
+---@return boolean|nil ok
+---@return string|nil reason
+function npcApi.clear_routine(npc, opts) end
+
+---Native: the points of the NPC's current routine as the engine holds them. `nil, reason` for an entity without a routine.
+---@param npc Entity
+---@return RoutinePoints|nil points
+---@return string|nil reason
+function npcApi.routine_points(npc) end
+
+---Native: sets the working / relaxing / sleeping / guard point of the NPC's current routine (an Entity, or `false` to empty it, `nil` keeps it). No checks of the points, no `apply_routine`.
+---@param npc Entity
+---@param points { work?: Entity|false, relax?: Entity|false, sleep?: Entity|false, guard?: Entity|false }
+---@return boolean|nil ok
+---@return string|nil reason
+function npcApi.set_routine_points(npc, points) end
+
+---Native: makes the named routine of the NPC his current one (the engine's `SetRoutine`).
+---@param npc Entity
+---@param name string
+---@return boolean|nil ok
+---@return string|nil reason
+function npcApi.select_routine(npc, name) end
+
+---Makes the NPC look at his routine now: the engine picks the point of the current time of day and sends him there (a patroller: to the next waypoint). The same thing the dialogue commands `SetRoutine` and
+---`SetWorkingPoint` end with. Ignored for a moment while the NPC is still walking to or arriving at a point (wait a second after he arrived).
+---@param npc Entity
+---@return boolean|nil ok
+---@return string|nil reason
+function npcApi.apply_routine(npc) end
 
 -- ---- Conditional spawning (M8): risen.cond, risen.spawn ------------------------------------------------------------------------------------------------------------------------------
 
@@ -2342,6 +2476,124 @@ function worldApi.quick_save() end
 function worldApi.auto_save(name) end
 ---@return boolean
 function worldApi.is_save_allowed() end
+
+-- ---- NPC routines (M10): the world's freepoints and anchors, the clock ----------------------------------------------------------------------------------------------------
+
+---A freepoint, anchor or AI helper of the world (`risen.world.points`).
+---@class WorldPoint
+---@field entity Entity
+---@field name string Entity name (not unique: all anchors of a patrol share one).
+---@field template string `"FP_Guard"`, `"Anchor_Patrol"`, `"Hlp_Guard"`, ...
+---@field x number
+---@field y number
+---@field z number
+---@field distance? number From `near`, when it was given.
+---@field kind "freepoint"|"anchor"|"helper"
+---@field use? string Freepoints: what it is for (`"Guard"`, `"Stand"`, `"SleepGround"`, `"LookAt"`, `"Spectator"`, ...).
+---@field task? string Freepoints: the AI state the point gives its user, if any (`"ZS_HangAround"`).
+---@field anchor? string Anchors: `"Patrol"`, `"Roam"`, `"Local"` or `"Event"`.
+---@field index? integer Anchors: the number in its group (`PatrolIndex`).
+---@field max_users? integer Anchors: how many NPCs at once (0 = as many as it has interact points).
+
+---Options of `risen.world.points`.
+---@class WorldPointsOptions
+---@field near? Entity|number[] Center (an entity or `{x, y, z}`); the result is sorted by distance.
+---@field radius? number Only points within this distance of `near`.
+---@field kind? string Only freepoints of this kind (`"guard"` ... see `point_kinds`, or an `FP_*` name).
+---@field template? string|string[] Only instances of these templates (`"Anchor_Patrol"`, ...).
+---@field name? string Only entities with exactly this name.
+---@field name_prefix? string Only entities whose name starts with this.
+---@field limit? integer At most this many (default 500).
+
+---A patrol group made by `risen.world.add_patrol` / a `patrol` routine: one anchor (type patrol, numbered 0..n-1 in the order of the waypoints) with one freepoint (its interact point) per waypoint.
+---@class PatrolGroup
+---@field name string
+---@field anchors Entity[]
+---@field points Entity[]
+
+---The freepoint kinds `risen.world.add_point` and routines know: key = kind, value = the template of the game (`guard` = `FP_Guard`, `sleep` = `FP_Sleep_Ground`, `lookat` = `FP_LookAt`, ...). Behaviour seen in the game: guard (stands
+---hands on hips, faces the yaw), lookat (thinks), spectator (arms crossed), sleep (lies on the ground), dance, pace/boss (`ZS_Boss`), roam, field (rakes). `stand`, `sit` and `smalltalk` give the NPC the task `ZS_HangAround`: he hangs around where he is instead of walking to the point.
+---@type table<string, string>
+worldApi.point_kinds = {}
+
+---The template of a point kind (`"guard"` -> `"FP_Guard"`; an `FP_*` name is returned as it is).
+---@param kind string
+---@return string|nil template
+---@return string|nil reason
+function worldApi.point_template(kind) end
+
+---The freepoints, anchors and AI helpers of the world (the game's own ones too: ~170 guard points, ~57 patrol anchors, ...), optionally near a position, of one kind or template, by name. One pass over the scene.
+---@param opts? WorldPointsOptions
+---@return WorldPoint[]|nil points
+---@return string|nil reason
+function worldApi.points(opts) end
+
+---Makes a freepoint of the given kind in the world; NPCs whose routine points to it go there and do what the kind says. The position is moved to the nearest walkable point within `snap_radius` (default 300) unless `snap = false`
+---(a point outside the navigation mesh is never reached by walking; `nil, reason` when there is none). The point is saved with the game. Do not remove a point an NPC is using in the same frame: use `risen.npc.clear_routine`.
+---@param kind string A key of `point_kinds` or an `FP_*` template name.
+---@param x number
+---@param y number
+---@param z number
+---@param opts? { yaw?: number, snap?: boolean, snap_radius?: number, name?: string }
+---@return Entity|nil point
+---@return string|nil reason
+function worldApi.add_point(kind, x, y, z, opts) end
+
+---Takes a point out of the world (`Entity:kill()`). Not while an NPC uses it: `risen.npc.clear_routine` removes the points it made for an NPC safely.
+---@param point Entity
+---@return boolean ok
+function worldApi.remove_point(point) end
+
+---Makes a patrol group of this mod without an NPC: anchors numbered 0..n-1 with the same entity name (`<mod id>_Patrol_<name>`) and a freepoint each; NPCs join it with `risen.npc.set_routine(npc, { patrol = name })`. The engine sends an
+---NPC on to the next number when he is done at a waypoint, and from the last to number 0. Same name again: the same group. The anchors' name and numbers are not part of a savegame: the mod's `risen.save` record (key `npc_routines`)
+---gives them back 30 frames after `world.ready`. `nil, reason` for bad arguments or a waypoint without walkable ground.
+---@param name string Letters, digits, `_`, `-`.
+---@param waypoints RoutinePosition[] At least two; `{ dx, dy, dz }` need `opts.origin`.
+---@param opts? { kind?: string, max_users?: integer, yaw?: number, origin?: number[], snap?: boolean }
+---@return PatrolGroup|nil group
+---@return string|nil reason
+function worldApi.add_patrol(name, waypoints, opts) end
+
+---Removes a patrol group of this mod (its anchors and freepoints). NPCs that used it fall back to their other points.
+---@param name string
+---@return boolean removed
+function worldApi.remove_patrol(name) end
+
+---Native: the instances of the given templates in the world (see `points`). Arguments of a wrong type give an empty list.
+---@param templates string[]
+---@param opts? WorldPointsOptions
+---@return WorldPoint[]
+function worldApi.scan(templates, opts) end
+
+---Native: spawns a freepoint / anchor template at a position, marks it save-relevant (spawned freepoints are otherwise not written into savegames) and returns it. No snapping.
+---@param template string
+---@param x number
+---@param y number
+---@param z number
+---@param yaw? number Degrees.
+---@return Entity|nil entity
+---@return string|nil reason
+function worldApi.spawn_point(template, x, y, z, yaw) end
+
+---Native: the walkable point nearest to a position (the engine's own query; `radius` default 400). `{ x, y, z }`, or `nil, reason` when there is none.
+---@param x number
+---@param y number
+---@param z number
+---@param radius? number
+---@return number[]|nil position
+---@return string|nil reason
+function worldApi.nav_point(x, y, z, radius) end
+
+---The in-game clock: hour 0..23 and minute 0..59. Humans use their work / relax / sleep point by it (see `RoutineSpec`).
+---@return integer|nil hour
+---@return integer|string|nil minute
+function worldApi.time() end
+
+---Sets the clock. NPCs notice at the end of their current task, or when you call `risen.npc.apply_routine` for them. `false` for a time out of range.
+---@param hour integer 0..23
+---@param minute? integer 0..59 (default 0)
+---@return boolean ok
+function worldApi.set_time(hour, minute) end
 
 ---Localization overlay: the game's own string tables are read-only, so mod texts are served on top. Ids are matched
 ---case-insensitively.

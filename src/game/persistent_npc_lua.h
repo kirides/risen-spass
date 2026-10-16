@@ -33,7 +33,7 @@ local reported = {}                  -- warnings already logged for this session
 
 local SPAWN_KEYS = { "hp", "hp_max", "level", "mana", "guild", "group", "peaceful", "state", "items", "equip" }
 local KNOWN = { name = true, template = true, position = true, offset = true, version = true, respawn = true, label = true, define = true,
-                on_ready = true, on_death = true, enabled = true }
+                on_ready = true, on_death = true, enabled = true, routine = true }
 for _, k in ipairs(SPAWN_KEYS) do KNOWN[k] = true end
 
 local function tr(...) local t = api.trace if t and t.enabled("spawn") then t("spawn", ...) end end
@@ -91,9 +91,10 @@ local function spawn_position(d, old)
     return px + o[1], py + o[2], pz + o[3]
 end
 
--- Removes an entity and frees its name at once (a killed entity may stay registered until the end of the frame).
+-- Removes an entity and frees its name at once (a killed entity may stay registered until the end of the frame). The points of its routine go with it.
 local function retire(e, name)
     local ok = pcall(function() e:set_name(name .. "~retired") end)
+    if api.npc.clear_routine then pcall(api.npc.clear_routine, e, { apply = false }) end
     e:kill()
 end
 
@@ -105,6 +106,22 @@ end
 local function xyz(e)
     local x, y, z = e:position()
     if x then return { x, y, z } end
+end
+
+-- The `routine` option (risen.npc.set_routine): applied to a new NPC and checked on every restore. It is idempotent: while the points the engine saved are intact (and the
+-- declaration is the same) nothing is changed; a changed declaration or a lost point replaces them. Positions with dx / dy / dz are relative to the NPC's home.
+local function ensure_routine(d, e, rec)
+    if not api.npc.set_routine then return end
+    if not d.routine then
+        -- an earlier version of the declaration had a routine: take its points away
+        local info = api.npc.get_routine and api.npc.get_routine(e)
+        if info and (info.created or 0) > 0 and api.npc.clear_routine then pcall(api.npc.clear_routine, e) end
+        return
+    end
+    if e:is_dead() then return end
+    local ok, res, why = pcall(api.npc.set_routine, e, d.routine, { origin = rec and rec.home or nil })
+    if not ok then once("routine:" .. d.name, "error", "'%s': routine: %s", d.name, tostring(res)) return end
+    if not res then once("routine:" .. d.name, "warn", "'%s': routine: %s", d.name, tostring(why)) end
 end
 
 -- Creates the NPC (a new one, or the replacement of a dead / vanished / outdated one). `old` is the previous record (its home and death count are kept).
@@ -133,6 +150,7 @@ local function do_spawn(d, old, reason)
     recs[d.name] = rec
     tr("persistent '%s' %s at (%.0f, %.0f, %.0f) id %s", d.name, reason, x, y, z, tostring(rec.id))
     say("info", "'%s' %s (%s)", d.name, reason, d.template)
+    ensure_routine(d, e, rec)
     call(d, "on_ready", e, reason, d.handle)
     return e
 end
@@ -199,6 +217,7 @@ local function reconcile(d)
         end
         if e then
             tr("persistent '%s' restored id %s", d.name, tostring(rec.id))
+            ensure_routine(d, e, rec)
             call(d, "on_ready", e, "restored", d.handle)
             return
         end
@@ -211,6 +230,7 @@ local function reconcile(d)
     if existing then
         recs[d.name] = { id = existing:id(), template = d.template, version = d.version, home = xyz(existing) or { 0, 0, 0 }, deaths = 0 }
         say("info", "'%s' adopted", d.name)
+        ensure_routine(d, existing, recs[d.name])
         call(d, "on_ready", existing, "adopted", d.handle)
         return
     end
@@ -387,6 +407,7 @@ function npc.persistent(spec)
     if spec.offset ~= nil and not is_xyz(spec.offset) then return fail(("'%s': offset must be {dx, dy, dz}"):format(name)) end
     if spec.version ~= nil and (type(spec.version) ~= "number" or spec.version ~= math.floor(spec.version)) then return fail(("'%s': version must be an integer"):format(name)) end
     if spec.respawn ~= nil and type(spec.respawn) ~= "boolean" and type(spec.respawn) ~= "function" then return fail(("'%s': respawn must be true, false or a function"):format(name)) end
+    if spec.routine ~= nil and type(spec.routine) ~= "table" then return fail(("'%s': routine must be a table (see risen.npc.set_routine)"):format(name)) end
     for _, f in ipairs { "define", "on_ready", "on_death", "enabled" } do
         if spec[f] ~= nil and type(spec[f]) ~= "function" then return fail(("'%s': %s must be a function"):format(name, f)) end
     end
