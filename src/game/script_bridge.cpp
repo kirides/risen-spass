@@ -35,6 +35,7 @@ struct Slot {
     void** fnSlot = nullptr;         // &eSScriptBase->function
     ScriptFn original = nullptr;     // what was registered before (nullptr for new scripts)
     sol::main_protected_function lua;
+    NativeScript native;             // set instead of `lua` by installNative (the AI bridge, M11)
 };
 
 std::array<Slot, kMaxSlots> g_slots;
@@ -68,6 +69,16 @@ std::int64_t toResult(const sol::object& o) {
 
 std::int64_t dispatch(std::size_t idx, void* unit, void* a, void* b, std::int64_t arg) noexcept {
     Slot& s = g_slots[idx];
+    if (s.native) {
+        try {
+            return s.native(unit, a, b, arg, s.original);
+        } catch (const std::exception& e) {
+            spdlog::error("scripts: native script '{}' threw: {}", s.name, e.what());
+        } catch (...) {
+            spdlog::error("scripts: native script '{}' threw an unknown exception", s.name);
+        }
+        return runOriginal(s, unit, a, b, arg);
+    }
     try {
         auto& rt = lua::Runtime::instance();
         auto lock = rt.lock();
@@ -127,8 +138,8 @@ std::size_t findSlotByFn(void** fnSlot) {
     return kMaxSlots;
 }
 
-// Shared by define() and override(). Returns an error message, or empty on success.
-std::string install(const std::string& name, sol::main_protected_function fn, bool isOverride) {
+// Shared by define() and override() (a Lua function) and installNative() (native code). Returns an error message, or empty on success.
+std::string install(const std::string& name, sol::main_protected_function fn, NativeScript native, bool isOverride) {
     if (!g_layoutOk) {
         return "script bridge disabled (registry layout self-test failed, see log)";
     }
@@ -143,6 +154,7 @@ std::string install(const std::string& name, sol::main_protected_function fn, bo
     // Hot swap: this entry already points to one of our thunks.
     if (const std::size_t existing = findSlotByFn(fnSlot); existing != kMaxSlots) {
         g_slots[existing].lua = std::move(fn);
+        g_slots[existing].native = std::move(native);
         return {};
     }
 
@@ -167,6 +179,7 @@ std::string install(const std::string& name, sol::main_protected_function fn, bo
     slot.fnSlot = fnSlot;
     slot.original = current;
     slot.lua = std::move(fn);
+    slot.native = std::move(native);
     *fnSlot = reinterpret_cast<void*>(kThunks[idx]);
     spdlog::info("lua: script '{}' {} (slot {})", name, isOverride ? "overridden" : "defined", idx);
     SPASS_TRACE(trace::Channel::Script, "{} '{}' (slot {}, original {})", isOverride ? "override" : "define", name, idx, current != nullptr ? "kept" : "none");
@@ -174,6 +187,10 @@ std::string install(const std::string& name, sol::main_protected_function fn, bo
 }
 
 }  // namespace
+
+std::string installNative(const std::string& name, NativeScript fn, bool isOverride) {
+    return install(name, sol::main_protected_function{}, std::move(fn), isOverride);
+}
 
 void setAdmin(void* admin) { g_admin = admin; }
 
@@ -258,14 +275,14 @@ void bindScripts(sol::state_view lua, sol::table risen) {
     sol::table script = lua.create_table();
     // risen.script.define("MyScript", function(ctx) ... return 0 end)  -- new script name
     script.set_function("define", [](const std::string& name, sol::main_protected_function fn) {
-        const std::string err = install(name, std::move(fn), /*isOverride=*/false);
+        const std::string err = install(name, std::move(fn), NativeScript{}, /*isOverride=*/false);
         if (!err.empty()) {
             throw sol::error("risen.script.define: " + err);
         }
     });
     // risen.script.override("AssessActive", function(ctx) return ctx:call_original() end)
     script.set_function("override", [](const std::string& name, sol::main_protected_function fn) {
-        const std::string err = install(name, std::move(fn), /*isOverride=*/true);
+        const std::string err = install(name, std::move(fn), NativeScript{}, /*isOverride=*/true);
         if (!err.empty()) {
             throw sol::error("risen.script.override: " + err);
         }

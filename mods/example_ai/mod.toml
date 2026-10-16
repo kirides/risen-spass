@@ -1,0 +1,6 @@
+id          = "example_ai"
+name        = "Example: AI states (a companion, a sentry, a coward)"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Custom NPC behaviour written in Lua: a companion who follows the player, a sentry who warns him when he comes close, and a coward who runs away when he is hit (risen.ai.state / start / perceive)."
+main        = "main.lua"

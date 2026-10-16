@@ -26,6 +26,15 @@ void bindInteractExtras(sol::state_view lua, sol::table risen);
 void installFocusHook();
 void focusEntityKilled(void* entity);  // eCEntity::Kill hook: unpins a pinned focus entity  // pins for risen.interact.set_focus(entity, true)
 
+// risen.ai.* (lua_ai.cpp, M11): Lua AI states, AI callbacks, perception handlers and the AI registry. Register after the script bridge (it needs the script registry).
+void bindAi(sol::state_view lua, sol::table risen);
+void aiResetRuns();      // forgets the running Lua states (a savegame is loaded, the session starts / stops: the NPCs are rebuilt)
+void aiFlushDeferred();  // runs the state changes that were asked for inside a `finish` callback (end of frame)
+void aiEntityKilled(void* entity);  // eCEntity::Kill hook: an entity that is removed from the world leaves no exit script behind
+void aiShutdown();       // releases every Lua reference (before the Lua state closes)
+// Per mod, after bindSave(): risen.ai.start learns `persist` (kept in the mod's risen.save and started again after a load), risen.ai.stop / forget / persisted. (ai_lua.h)
+void installAiModApi(sol::state_view lua, sol::table api, const std::string& modId);
+
 // risen.hud.* (lua_hud.cpp): the HUD game log and item log.
 void bindHud(sol::state_view lua, sol::table risen);
 

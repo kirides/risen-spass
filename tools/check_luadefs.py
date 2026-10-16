@@ -21,7 +21,7 @@ defs = (root / 'types' / 'risen.d.lua').read_text(encoding='utf-8')
 bound = {}      # "ns.fn" -> source
 members = {}    # "Type.member" -> source
 
-USERTYPES = {'LuaEntity': 'Entity', 'LuaTemplate': 'Template', 'LuaQuest': 'Quest', 'LuaInfo': 'Info', 'ScriptContext': 'ScriptContext'}
+USERTYPES = {'LuaEntity': 'Entity', 'LuaTemplate': 'Template', 'LuaQuest': 'Quest', 'LuaInfo': 'Info', 'ScriptContext': 'ScriptContext', 'AiContext': 'AiContext'}
 
 for path in sorted(list((root / 'src').rglob('*.cpp')) + [root / 'src/game/npc_balance_lua.h', root / 'src/game/template_create_lua.h', root / 'src/game/spell_lua.h', root / 'src/game/recipe_lua.h']):   # the .h files hold the Lua chunks of NPC balancing, template creation and spells
     text = path.read_text(encoding='utf-8', errors='replace')
@@ -111,6 +111,9 @@ routine_src = (root / 'src/game/routine_lua.h').read_text(encoding='utf-8')
 for ns_var, ns in (('world', 'world'), ('npc', 'npc')):
     for fn in re.findall(rf'^function {ns_var}\.(\w+)\(', routine_src, flags=re.M):
         bound[f'{ns}.{fn}'] = 'src/game/routine_lua.h'
+# the AI bridge (M11): the per-mod risen.ai.start / stop / forget / persisted (the chunk in ai_lua.h defines `function ai.<name>(` on the mod's ai table)
+for fn in re.findall(r'^function ai\.(\w+)\(', (root / 'src/game/ai_lua.h').read_text(encoding='utf-8'), flags=re.M):
+    bound[f'ai.{fn}'] = 'src/game/ai_lua.h'
 # per-mod risen.dialog.create (wrapped) / compile / describe (the chunk in dialog_cond_lua.h defines `function own.<name>(` on the mod's dialog table)
 for fn in re.findall(r'^function own\.(\w+)\(', (root / 'src/game/dialog_cond_lua.h').read_text(encoding='utf-8'), flags=re.M):
     bound[f'dialog.{fn}'] = 'src/game/dialog_cond_lua.h'
@@ -134,10 +137,10 @@ for var, fn in re.findall(r'^function (\w+)\.(\w+)\(', defs, flags=re.M):
     if var in var_ns:
         described[f'{var_ns[var]}.{fn}'] = True
 described_members = {}
-for typ, fn in re.findall(r'^function (Entity|Template|Quest|Info|ScriptContext):(\w+)\(', defs, flags=re.M):
+for typ, fn in re.findall(r'^function (Entity|Template|Quest|Info|ScriptContext|AiContext):(\w+)\(', defs, flags=re.M):
     described_members[f'{typ}.{fn}'] = True
-for typ in ('ScriptContext',):
-    block = re.search(r'---@class ScriptContext\n((?:---.*\n)*)', defs).group(1)
+for typ in ('ScriptContext', 'AiContext'):
+    block = re.search(rf'---@class {typ}\n((?:---.*\n)*)', defs).group(1)
     for f in re.findall(r'---@field (\w+)', block):
         described_members[f'{typ}.{f}'] = True
 block = re.search(r'---@class Entity\n((?:---.*\n)*)', defs).group(1)

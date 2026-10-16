@@ -27,7 +27,7 @@ Globals: `mod` (`id, name, version, author, dir`), `risen`.
 
 **Editor support:** [`types/risen.d.lua`](../types/risen.d.lua) describes every function below for LuaLS (completion, hover docs, type
 checks); see [`types/README.md`](../types/README.md).
-**Examples:** thirteen small, live-verified example mods (patching, balancing, materials/textures, custom NPC, fetch/kill quests, completion triggers, quest tracker, voiced dialogue, spells, recipes, NPCs that appear and disappear) are indexed in [`EXAMPLES.md`](EXAMPLES.md).
+**Examples:** sixteen small, live-verified example mods (patching, balancing, materials/textures, custom NPC, fetch/kill quests, completion triggers, quest tracker, voiced dialogue, spells, recipes, NPCs that appear and disappear, dialogue conditions, routines, AI states) are indexed in [`EXAMPLES.md`](EXAMPLES.md).
 
 ## Events
 
@@ -56,6 +56,7 @@ checks); see [`types/README.md`](../types/README.md).
 | `entity.spawned` | `entity, template` | `Entity::Spawn` created an entity: `risen.entity.spawn`, `risen.npc.spawn` and the game's scripts |
 | `entity.destroyed` | `name, kind, template` | an entity was removed from the world (`eCEntity::Kill`: picked-up items, `Entity:kill()`, despawns); `kind` `"npc"`, `"player"`, `"item"`, `"other"`; the entity itself is gone, so only its name |
 | `gamevar.changed` | `name, value, previous` | a game variable was set, changed or removed (the dialogue commands `SetGameEvent` / `ClearGameEvent`, the game's scripts, `risen.gamevar.set/remove`): `value` is `nil` for a removed one, `previous` `nil` for a new one; `SetGameEvent` creates the variable with the value 0; nothing while a savegame loads |
+| `ai.finished` | `entity, state, reason, loops, run` | a Lua AI state ended (`reason` `"done"`, `"stopped"`, `"error"` or `"replaced"`; `run` is the run's id, see `risen.ai.generation`); not for an NPC that was removed or when the world is torn down; see "AI states and perception" |
 | `input.action` | `ev` = `{ key, action, phase, value, duration }` | every action event the engine delivers (key press, hold each frame, release, analog look/move): **a handler that returns a value other than `nil`/`false` consumes it**, the engine never sees it (`phase` `"pressed"`, `"held"`, `"released"`, `"analog"`); see "Input" below |
 
 ```lua
@@ -142,7 +143,7 @@ risen.trace.disable("save");  risen.trace.enabled("template");  risen.trace.chan
 ```
 Built-in channels: `events` (every event the layer emits, with arguments, also when nobody listens; `tick` excluded), `template` (get/patch/propagation counts),
 `balance` (every applied job), `save` (save/load phases with durations), `spawn`, `script` (define/override/call and every engine call into a Lua script),
-`lua` (handler errors with traceback), `test`, `voice` (every sample title the engine asks for and what was answered, voice registrations, barks). A disabled channel costs one bit test; use `risen.trace.enabled(ch)` to guard expensive message building.
+`lua` (handler errors with traceback), `test`, `voice` (every sample title the engine asks for and what was answered, voice registrations, barks), `ai` (Lua AI states: definitions, starts, begin / finish, every perception handler call). A disabled channel costs one bit test; use `risen.trace.enabled(ch)` to guard expensive message building.
 
 ## risen.script — the game's scripts are native functions looked up by name
 ```lua
@@ -573,7 +574,7 @@ local bob = risen.npc.spawn("Peasant_1_01", x, y, z, {
     level = 10, hp_max = 400,      -- hp defaults to hp_max
     mana = 100, guild = "Cit", group = "SPASS",   -- guild: number or name; `peaceful = true` = citizen (nobody attacks them)
     items = { {"It_1H_Machete", 1} }, equip = true,
-    state = "ZS_HangAround",       -- initial AI state (the AI may switch states immediately)
+    state = "ZS_HangAround",       -- initial AI state (started in the NPC's first engine frame with risen.ai.start; a Lua state works too; the AI may switch states immediately)
 })
 risen.loc.set("FO_SPASS_Bob", "Bob the Lua Peasant")   -- text shown when the player focuses him
 ```
@@ -587,7 +588,7 @@ Entity methods (every call returns `nil`/`false` instead of crashing on a bad ha
 | `hp()`, `hp_max()`, `level()`, `mana()`, `mana_max()` | |
 | `set_hp_max(n)`, `set_hp(n)`, `set_level(n)`, `set_mana(n)`, `set_mana_max(n)` | absolute (the engine setters are additive; the wrapper computes the difference). Set `hp_max` before `hp` |
 | `add_hp(d)`, `add_hp_max(d)`, `add_level(d)`, `add_mana(d)`, `add_mana_max(d)` | relative |
-| `state()`, `set_state("ZS_…")` | AI state scripts: `ZS_Ambient`, `ZS_AmbientObserve`, `ZS_AmbientSleep`, `ZS_HangAround`, `ZS_Housewife`, `ZS_Observe`, `ZS_Watch`, `ZS_Study`, `ZS_Smith`, `ZS_Trader`, `ZS_Talk`, `ZS_FollowPlayer`, `ZS_GuidePlayer`, `ZS_WaitForPlayer`, `ZS_Attack`, `ZS_Dead`, `ZS_Monster`, … |
+| `state()`, `set_state("ZS_…")` | AI state scripts: `ZS_Ambient`, `ZS_AmbientObserve`, `ZS_AmbientSleep`, `ZS_HangAround`, `ZS_Housewife`, `ZS_Observe`, `ZS_Watch`, `ZS_Study`, `ZS_Smith`, `ZS_Trader`, `ZS_Talk`, `ZS_FollowPlayer`, `ZS_GuidePlayer`, `ZS_WaitForPlayer`, `ZS_Attack`, `ZS_Dead`, `ZS_Monster`, … (the list: `risen.ai.list("state")`). On an NPC that was just spawned the state is lost (the engine initialises him in his first frame); `risen.ai.start` waits for that frame, see "AI states and perception" |
 | `full_stop()` | cancel the current AI action |
 | `goto_pos(x,y,z[,mode])`, `goto_entity(e[,mode])`, `stop_goto()`, `turn_to(e)` | `mode` is the engine's walk mode enum (0 default) |
 | `equip_all()`, `stack_count()`, `stack_item(i)` | equips every equippable inventory stack; number of stacks; the item of stack `i` (a template entity, see "Editing templates") |
@@ -670,6 +671,71 @@ risen.world.set_time(21, 0); risen.world.time() --> 21, 0
 * **Time.** `risen.world.time()` -> hour, minute; `set_time(hour, minute)`. NPCs notice a changed clock at the end of their task or when you call `apply_routine` (ignored for a moment while the NPC is still walking: wait a second after he arrived).
 * **Events.** The points are spawned entities: `entity.spawned` / `entity.destroyed` fire for them (template `FP_*` / `Anchor_Patrol`). The points of an NPC that is removed without `clear_routine` (or a persistent NPC's `remove()`, which does it) stay in the world and in the mod's record.
 * **Limits.** A guard displaced a little may walk back by himself, one displaced far (>~400 units) stays until his task ends or `apply_routine`. Humans' hours are driven; monster hours (sleep before 5:00 / from 23:00), `guard` (stored only), roam/local anchors, benches and beds, custom routine names and the look of the poses were not. Natives: `routine_points`, `set_routine_points`, `select_routine`, `world.scan`, `world.spawn_point`.
+
+## AI states and perception — `risen.ai` (see `mods/example_ai`, `mods/aistates`, [RE.md §36](RE.md))
+The NPCs' behaviour is a stack of **AI states** (`ZS_HangAround`, `ZS_Watch`, `ZS_Attack_CombatMove`, ... `risen.ai.list("state")` names the 246 the game has): script functions the engine runs for an NPC every frame in which he is not in the middle of an action, plus a **task callback** (`OnRoutine`, ...) about once a second, which sweeps what the NPC perceives and runs the game's `Assess*` scripts (`AssessActive`, `AssessDamage`, ...). The layer registers Lua functions in the same registry, so a state written in Lua is run by the engine like its own, and the `Assess*` scripts can be hooked.
+```lua
+risen.ai.state("ZS_MyGuard", {                      -- defines the state (a name the game does not use); returns true | nil, reason
+    interval = 0.5,                                 -- loop() every 0.5 s of state time (default 0.25, 0 = every frame)
+    task = "OnRoutine",                             -- the task callback made current at begin: keeps the stock perception sweep going (a name of risen.ai.list("callback") or a function)
+    begin = function(ctx)  ctx.data.home = { ctx.self:position() } end,       -- once per start
+    loop  = function(ctx)                                                      -- every interval
+        local p = risen.entity.player()
+        if ctx.self:distance_to(p) < 400 then ctx.self:turn_to(p) end
+        if ctx.time > 60 then return "done" end                                -- false / "done": finished, back to the routine; another string: finished, that state follows
+    end,
+    finish = function(ctx) ... ctx.reason ... end,                             -- "done" | "stopped" | "error" | "replaced"
+    on = {                                                                      -- perception handlers, active while an NPC is in this state
+        notice = function(ctx) if ctx.other:is_player() then ... end end,     -- AssessActive(self, other): about once a second for everything around, the player included
+    },
+})
+risen.ai.start(npc, "ZS_MyGuard", { post = "gate" })     -- true | nil, reason; ctx.args.post in the callbacks
+risen.ai.stop(npc [, "ZS_HangAround"])                   -- finish with reason "stopped"; back to the routine (or to the named state)
+risen.ai.current(npc)                                    -- { state, time, loops, resumed, args, data } | nil
+```
+* **Context** (`AiContext`, a new one per call): `self`, `other`, `args` (what `start` was given), `data` (a scratch table of the run), `time` (seconds since the state began), `dt` (since the previous `loop`), `count` (`loop` calls before this one), `resumed`, `name`, `kind` (`"begin" | "loop" | "finish" | "callback" | "perceive"`), `reason` (`finish`), `arg`; `ctx:finish([next_state])` (end after this callback), `ctx:call_original()` (perception handlers).
+* **Cadence.** `begin` runs in the first frame the engine runs the state; `loop` right after it and then every `interval` seconds of state time (measured: 0.50 s with 80 fps, 14 calls in 7 s). The engine does not run a state while the NPC has an *instruction* going (`_AI_Goto`, an animation); `npc:goto_pos / goto_entity` use the navigation set instead and **do not block** the loop (the NPC walked 250 units while `loop` went on every 0.5 s), so a loop can steer: start the walk, poll the distance, stop. `risen.ai.start` stops the NPC's current action first (`{ interrupt = false }` lets it finish).
+* **Ending.** `begin` / `loop` returning `false` or `"done"` (`risen.ai.DONE`), or `ctx:finish()`, ends the state: the NPC continues his routine (`ContinueRoutine`; an NPC without one gets `ZS_HangAround`). A string other than `"done"` names the state that follows (`return "ZS_AIT_TaskDemo"`). `risen.ai.stop` does the same from outside. If the **engine** replaces the state (a hit, a fight, a dialogue, another `start`, `Entity:set_state`), `finish` runs with reason `"replaced"`. `finish` is **not** called when the NPC is removed from the world or the world is torn down (load, quit). Do not change AI states in `finish` with `Entity:set_state` (the engine is replacing the state right then); `risen.ai.start / stop` called there are deferred to the end of the frame for you.
+* **Errors never reach the engine.** A Lua error in `begin` / `loop` is a warning in the log and ends the state (reason `"error"`; `finish` still runs and may raise again: one more warning); in a perception handler it switches that handler off after one warning (the game's own reaction goes on); in a callback it switches the callback off. `risen.ai.failures()` returns how many there were and the last message.
+* **Refusals** (`nil, reason`): a bad name (letters, digits, underscore, up to 100 characters), a name the game already uses, an unknown key / perception / task callback, a handler that is not a function, an empty definition, the player, a dead or non-NPC entity, an unknown state, bad options, arguments that cannot be saved with `persist`. Every native takes any value and checks it (no error is raised through the engine's frames).
+* **Fresh NPCs.** An NPC made by `risen.npc.spawn` / `risen.entity.spawn` has no AI yet: the engine initialises him in his first frame and starts `ZS_HangAround`, which would overwrite a state set before. `risen.ai.start` waits for that frame (about two frames; dropped with a warning after 600) and returns `true` at once. `Entity:set_state` does **not** wait (use `risen.ai.start`); the `state` option of `risen.npc.spawn` / `risen.npc.persistent` goes through `risen.ai.start` (a persistent NPC's state is not part of a savegame: start it with `persist = true` in `on_ready`).
+* **Savegames.** The engine rebuilds every NPC's script stack on a load: **a Lua state does not survive a load**, the NPC is back at his routine (and no stock state is resumed either). `risen.ai.start(npc, state, args, { persist = true })` remembers `{ state, args }` per NPC in the mod's `risen.save` (the arguments must be plain data) and starts the state again 30 frames after `world.ready`, with `ctx.resumed = true` and the saved `args`. The record is dropped when the state ends by itself (`"done"`, `"error"`) or is stopped (`risen.ai.stop`, `risen.ai.forget(npc)`), and replaced by any other `risen.ai.start` for that NPC; an engine replacement (`"replaced"`: combat, a dialogue) keeps it. A record whose NPC is not in the savegame, or whose state is not defined (the mod lost it), is dropped (warning for the latter). `risen.ai.persisted()` lists the records. A mod removed from a game that was saved with its states: the NPCs simply continue their routine (verified).
+* **Events.** `ai.finished(entity, state, reason, loops, run)` fires (end of the frame) whenever a Lua state ended; `risen.ai.generation()` is the id the next run gets.
+
+### Perception
+`on = { key = fn }` in a state (while the NPC is in it) or `risen.ai.perceive(key, fn, filter)` (not tied to a state) hook the game's `Assess*` scripts. `key` is one of `risen.ai.perceptions` or the name of any `Assess*` / `Perceive*` script:
+
+| key | script | when (observed) |
+|---|---|---|
+| `notice` | `AssessActive(self, other)` | every sweep (about once a second) for **every entity the NPC perceives** (the player from 1300 units, dead bodies, himself): cheap enough in a state, use a filter with `perceive` |
+| `player` | `AssessPlayer` | about once a second when the NPC perceives the player (sub-checks: room, looting, weapon, sneaking) |
+| `enemy`, `attacker`, `threat`, `nuisance`, `fighter`, `avoider` | `AssessEnemy`, ... | called by `AssessActive` for the same pair (`AssessNuisance` answers 1 for the player on the beach) |
+| `damage` | `AssessDamage(self, attacker)` | **about 0.4 s after a hit**, from `ResumeTaskAfterStumble`; the hit itself has already replaced the state by `ZS_Stumble` (a state-scoped handler never sees it: use `risen.ai.perceive`) |
+| `other_damage` | `AssessOtherDamage(self, victim)` | bystanders of a hit |
+| `talk`, `theft`, `dead`, `defeat`, `murder`, `near_body`, `weapon`, `sneaking`, `looting`, `stand_up`, `down` | `AssessTalk`, ... | the game's own callers (M5d `AssessTheft`, `AssessPlayerLooting`) |
+
+A handler gets `ctx` (`self`, `other`, `arg`, `name` = the script, `kind` = `"perceive"`); **returning nil lets the game's own reaction run** (and the next handler), any number or boolean is the script's result and the stock script does **not** run (`return true` = "I reacted"); `ctx:call_original()` runs the stock script from inside a handler (`return ctx:call_original() + 100`). `risen.script.call("AssessNuisance", npc, player)` goes through the hooks like the engine's own call (that is how the tests prove the result mapping).
+```lua
+-- not tied to a state: whoever is hit, the coward runs
+risen.ai.perceive("damage", function(ctx)
+    if ctx.self:name() ~= "MyMod_Coward" then return nil end
+    risen.ai.start(ctx.self, "ZS_MyFlee", { from = ctx.other })       -- deferred to the end of the frame: the game sets a state of its own right after AssessDamage returns
+    return true
+end, { npc = coward })              -- required: { npc = entity | { entities } } or { all = true }
+risen.ai.unperceive(handle)
+```
+* A state set inside a perception handler is **deferred to the end of the frame** (the code that called the handler goes on: `ResumeTaskAfterStumble` ends in `ResumeTask`, which sets the state from the NPC's AI mode, `ZS_Avoid` for a peasant, and would overwrite it).
+* The hooks replace the registry slot of the `Assess*` script with native code; do not `risen.script.override` the same script in a mod that uses them (the later override replaces the hook).
+* Perception only runs while the NPC has a task callback that sweeps. A Lua state with `task = "OnRoutine"` keeps the stock sweep; without `task` the NPC keeps the callback he had (a state started on a `ZS_HangAround` NPC: `OnRoutine`; read in the decompilation, every test state sets `task`); a `task` function replaces the sweep by yours (about once a second, `ctx.self`).
+
+### Callbacks and the registry
+```lua
+risen.ai.callback("MyMod_Tick", function(ctx) ... end)       -- an AI callback (bool cb(unit)): true | nil, reason; usable as `task = "MyMod_Tick"`; limit 128
+risen.ai.list("state" | "function" | "callback" | "script")   -- sorted names, what Lua defined included
+risen.ai.exists(kind, name)   risen.ai.info(kind, name)       -- { module = "Script_Game.dll", rva = 0x..., lua = false } (diagnostics: where to look in a decompiler)
+risen.ai.defined()                                            -- { states = {...}, callbacks = {...} }
+```
+AI *functions* (`_AI_Goto_Ext`, `PreInteract_*`) are listed but cannot be defined or replaced: only a state calls one, and a Lua state does the same in `loop` with `goto_pos`, `turn_to` and the like. Limits: 128 Lua states, 128 callbacks. The trace channel `ai` (`-Trace ai`) logs definitions, starts, begin / finish, and every perception handler call.
 
 ## Conditional spawning — `risen.spawn.when`, `risen.cond` (see `mods/example_spawn_when`, `mods/spawnwhen`, [RE.md §33](RE.md))
 An NPC that does not exist until something happened — a quest was finished, the player carries enough of an item, a game variable was set, another NPC died — and that may go away again. It is a

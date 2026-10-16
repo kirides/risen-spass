@@ -1,0 +1,6 @@
+id          = "aistates"
+name        = "Lua AI states: live test mod"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Defines Lua AI states, callbacks and perception handlers (risen.ai) and drives them on real NPCs; the scenario `aistates` (docs/DEVELOPMENT.md) uses it. Only meaningful in a test run."
+main        = "main.lua"

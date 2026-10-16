@@ -422,7 +422,19 @@
     X(world_get_time, L"Script.dll", "?GetWorldTime@Entity@@SAMXZ", float (*)(), false) \
     X(world_set_time, L"Script.dll", "?SetWorldTime@Entity@@SAXM@Z", void (*)(float), false) \
     X(ent_get_at, L"Script.dll", "?GetAtVector@Entity@@QEBA?AVbCVector@@XZ", void* (*)(const void* self, float* ret3), false) \
-    X(ent_nearest_nav_point, L"Script.dll", "?GetNearestNavigationPoint@Entity@@QEAA?AVbCVector@@V2@M@Z", void* (*)(void* self, float* ret3, const float* position, float radius), false)
+    X(ent_nearest_nav_point, L"Script.dll", "?GetNearestNavigationPoint@Entity@@QEAA?AVbCVector@@V2@M@Z", void* (*)(void* self, float* ret3, const float* position, float radius), false) \
+    /* ---- AI scripting (M11, docs/RE.md section 36): the AI state / function / callback namespaces of the script registry, the processing unit of an NPC ---- */ \
+    X(script_map_register_state, L"Engine.dll", "?RegisterScriptAIState@eCScriptFunctionMap@@QEAAPEAUeSScriptBase@@AEBVbCString@@@Z", void* (*)(void* self, const void* name), false) \
+    X(script_map_register_function, L"Engine.dll", "?RegisterScriptAIFunction@eCScriptFunctionMap@@QEAAPEAUeSScriptBase@@AEBVbCString@@@Z", void* (*)(void* self, const void* name), false) \
+    X(script_map_register_callback, L"Engine.dll", "?RegisterScriptAICallback@eCScriptFunctionMap@@QEAAPEAUeSScriptBase@@AEBVbCString@@@Z", void* (*)(void* self, const void* name), false) \
+    X(script_map_get_state, L"Engine.dll", "?GetScriptAIState@eCScriptFunctionMap@@QEBAPEBUeSScriptBase@@AEBVbCString@@@Z", void* (*)(const void* self, const void* name), false) \
+    X(script_map_get_function, L"Engine.dll", "?GetScriptAIFunction@eCScriptFunctionMap@@QEBAPEBUeSScriptBase@@AEBVbCString@@@Z", void* (*)(const void* self, const void* name), false) \
+    X(script_map_get_callback, L"Engine.dll", "?GetScriptAICallback@eCScriptFunctionMap@@QEBAPEBUeSScriptBase@@AEBVbCString@@@Z", void* (*)(const void* self, const void* name), false) \
+    X(unit_set_exit_script, L"Game.dll", "?AISetExitScript@gCScriptProcessingUnit@@QEAAXVbCString@@@Z", void (*)(void* unit, void* byValueName), false) \
+    X(unit_set_task_callback, L"Game.dll", "?AISetTaskCallback@gCScriptProcessingUnit@@QEAAXVbCString@@@Z", void (*)(void* unit, void* byValueName), false) \
+    X(unit_set_local_callback, L"Game.dll", "?AISetLocalCallback@gCScriptProcessingUnit@@QEAAXVbCString@@@Z", void (*)(void* unit, void* byValueName), false) \
+    X(unit_get_state_time, L"Game.dll", "?AIGetStateTime@gCScriptProcessingUnit@@QEAAMXZ", float (*)(void* unit), false) \
+    X(unit_get_task_time, L"Game.dll", "?AIGetTaskTime@gCScriptProcessingUnit@@QEAAMXZ", float (*)(void* unit), false)
 
 namespace spass::game {
 

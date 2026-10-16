@@ -26,11 +26,12 @@ namespace spass::trace {
 //   voice     custom voice lines: every sample title the engine asks for, which variant answered, sound output started/stopped
 //   calls     every script call of the engine (proxy scripts, AI functions, AI state changes) whose name contains one of the
 //             comma separated substrings of `[debug] trace_scripts` (nothing is logged without that list); used to compare engine paths
+//   ai        the AI bridge (lua_ai.cpp): Lua AI states begin / finish, starts, perception handlers, callbacks
 //   hud       every line the engine prints to the HUD game log / item log (text, type, item, amount)
 // A mod may use any other name (risen.trace("mymod", ...)).
-enum class Channel : unsigned { Events, Template, Balance, Save, Spawn, Script, Lua, Test, Voice, Calls, Hud, Count };
+enum class Channel : unsigned { Events, Template, Balance, Save, Spawn, Script, Lua, Test, Voice, Calls, Hud, Ai, Count };
 
-constexpr const char* kChannelNames[] = {"events", "template", "balance", "save", "spawn", "script", "lua", "test", "voice", "calls", "hud"};
+constexpr const char* kChannelNames[] = {"events", "template", "balance", "save", "spawn", "script", "lua", "test", "voice", "calls", "hud", "ai"};
 static_assert(sizeof(kChannelNames) / sizeof(kChannelNames[0]) == static_cast<std::size_t>(Channel::Count));
 
 // Result of parsing "template,save, mymod" (separators: comma, semicolon, whitespace). "all" and "*" select everything.

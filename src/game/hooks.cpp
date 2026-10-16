@@ -57,6 +57,7 @@ void detourSessionProcess(void* self) {
     test::onTick();  // risen.test: pending wait_for/sleep, heartbeat, first-tick mark
     onInputFrame();  // risen.input: the key states of this frame
     bus::flush();    // the gameplay events queued during this frame (inventory.*, npc.killed, ...)
+    aiFlushDeferred();  // state changes asked for inside a Lua AI state's `finish`
     auto& rt = lua::Runtime::instance();
     if (rt.running() && rt.hasHandlers("tick")) {
         rt.emit("tick");

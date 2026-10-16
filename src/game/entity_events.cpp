@@ -185,6 +185,7 @@ bool detourDoDamage(void* self, void* victim) {
 void detourEntityKill(void* self) {
     if (self != nullptr) {
         focusEntityKilled(self);
+        aiEntityKilled(self);
         const bool wantDestroyed = bus::active() && bus::wanted("entity.destroyed");
         if (wantDestroyed || !g_died.empty()) {
             const std::string name = entityNameOf(self);

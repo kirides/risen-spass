@@ -7,6 +7,7 @@
 
 #include "common/trace.h"
 #include "game/abi.h"
+#include "game/bindings.h"
 #include "game/event_bus.h"
 #include "game/lua_entity.h"
 #include "game/lua_save.h"
@@ -135,6 +136,7 @@ bool detourLoad(void* self, const void* name, void* stream) {
     const auto t0 = std::chrono::steady_clock::now();
     SPASS_TRACE(trace::Channel::Save, "load '{}': begin", n);
     bumpEntityGeneration();
+    aiResetRuns();  // the NPCs are rebuilt: no Lua AI state survives a load (a saved state is resumed by the engine)
     const bool wasActive = bus::active();
     bus::setActive(false);
     resetEntityEvents();  // the world is rebuilt: no gameplay events until the session starts again
@@ -163,6 +165,7 @@ bool detourLoad(void* self, const void* name, void* stream) {
 
 void detourSessionStart(void* self, int mode) {
     bumpEntityGeneration();
+    aiResetRuns();
     if (mode == 0) {
         savestore::clear();  // a new game starts without mod data
     }
@@ -178,6 +181,7 @@ void detourSessionStart(void* self, int mode) {
 
 void detourSessionStop(void* self) {
     fire("session.stop");
+    aiResetRuns();
     bus::setActive(false);
     resetEntityEvents();
     g_sessionStop.original(self);

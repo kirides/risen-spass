@@ -186,7 +186,7 @@ void addNpcMethods(sol::usertype<LuaEntity>& ut) {
 }
 
 // risen.npc.spawn(template, x, y, z [, opts]) -> Entity | nil
-//   opts: name, hp, hp_max, level, mana, guild (number or name), group, peaceful, state, items = { {"It_1H_Sword", 1}, ... }, equip
+//   opts: name, hp, hp_max, level, mana, guild (number or name), group, peaceful, state (an AI state, started in the NPC's first engine frame), items = { {"It_1H_Sword", 1}, ... }, equip
 // written in Lua on top of the primitives above so mods can read and copy it.
 void bindNpcHelpers(sol::state_view lua, sol::table risen) {
     sol::table npc = lua.create_table();
@@ -223,7 +223,11 @@ function risen.npc.spawn(template, x, y, z, opts)
     if opts.group then e:set_group(opts.group) end
     for _, it in ipairs(opts.items or {}) do risen.item.give(e, it[1], it[2] or 1) end
     if opts.equip then e:equip_all() end
-    if opts.state then e:set_state(opts.state) end
+    if opts.state then
+        -- a state set before the NPC's first engine frame is lost (RE.md section 36): risen.ai.start waits for that frame (and takes the game's states as well as Lua's)
+        local started = risen.ai and risen.ai.start(e, opts.state)
+        if not started then e:set_state(opts.state) end
+    end
     return e
 end
 )LUA";

@@ -205,7 +205,8 @@ function Entity:state() end
 ---Switches the AI state. The running AI may replace it within seconds. States are registered `ZS_*` scripts:
 ---`ZS_Ambient`, `ZS_AmbientObserve`, `ZS_AmbientSleep`, `ZS_HangAround`, `ZS_Housewife`, `ZS_Observe`, `ZS_Watch`,
 ---`ZS_Study`, `ZS_Smith`, `ZS_Trader`, `ZS_Talk`, `ZS_FollowPlayer`, `ZS_GuidePlayer`, `ZS_WaitForPlayer`, `ZS_Attack`,
----`ZS_Dead`, `ZS_Monster`, ...
+---`ZS_Dead`, `ZS_Monster`, ... (`risen.ai.list("state")` names all of them, and Lua can define its own with `risen.ai.state`). On an NPC that was just spawned the state is lost
+---(the engine initialises him in his first frame): `risen.ai.start` waits for that frame.
 ---@param state string
 ---@return boolean ok
 function Entity:set_state(state) end
@@ -907,7 +908,7 @@ function balanceApi.modes() end
 ---@field group? string
 ---@field items? {[1]: string, [2]?: integer}[] `{ {"It_1H_Machete", 1}, ... }`
 ---@field equip? boolean Equip the items.
----@field state? string Initial AI state (the AI may switch immediately).
+---@field state? string Initial AI state, started in the NPC's first engine frame through `risen.ai.start` (a Lua state from `risen.ai.state` works; the AI may switch immediately; a Lua state is not kept by a savegame).
 
 ---@class RisenNpcApi
 local npcApi = {}
@@ -2436,6 +2437,180 @@ function scriptApi.exists(name) end
 function scriptApi.call(name, self, other, arg) end
 
 ---------------------------------------------------------------------------------------------------------------------
+-- AI states, callbacks and perception (docs/LUA_API.md "AI states and perception", docs/RE.md section 36)
+---------------------------------------------------------------------------------------------------------------------
+
+---What a Lua AI state, AI callback or perception handler receives (a new one for every call).
+---@class AiContext
+---@field self Entity The NPC the callback runs for.
+---@field other Entity|nil In a perception handler: the other party (`AssessActive`: the entity that was noticed; `AssessDamage`: the attacker). Otherwise the engine's "other" entity of the NPC.
+---@field args any What `risen.ai.start` was given (nil when the state was not started with arguments, e.g. a resumed one). Readable in `finish` too.
+---@field data table A scratch table that lives as long as the run: put the state's own variables here.
+---@field time number Seconds since the state began (the engine's state time); 0 in `begin`.
+---@field dt number Seconds since the previous `loop` call (`loop`), 0 otherwise.
+---@field count integer How many times `loop` ran before this call (0 in the first `loop`); in `finish` the total number of `loop` calls.
+---@field resumed boolean True when the state began without a matching `risen.ai.start` (the engine or `Entity:set_state` started it) or was restarted by `persist` after a load.
+---@field name string The state's name (`begin`, `loop`, `finish`), the callback's name (callbacks) or the engine script (perception handlers: `"AssessDamage"`).
+---@field kind "begin"|"loop"|"finish"|"callback"|"perceive" Which kind of callback this is.
+---@field reason string In `finish`: why the state ended, `"done"` (Lua ended it), `"stopped"` (`risen.ai.stop`), `"error"` (a Lua callback failed) or `"replaced"` (the engine or another start changed the state). Empty elsewhere.
+---@field arg integer In a perception handler: the integer argument of the engine script.
+local AiContext = {}
+
+---Ends the Lua state after the running callback returns: the NPC goes back to his routine, or to `next_state` (an AI state name). False when the run no longer exists.
+---@param next_state? string
+---@return boolean
+function AiContext:finish(next_state) end
+
+---In a perception handler: runs the game's own script (its reaction) and returns its result.
+---@return integer
+function AiContext:call_original() end
+
+---`begin` / `loop` result: nil or true = go on; false or `"done"` = the state is finished (back to the routine); any other string = finished and that AI state follows.
+---@alias AiLoopResult nil|boolean|string
+
+---A perception: a key of `risen.ai.perceptions` (`"notice"` = `AssessActive`, about once a second for every entity around, the player included; `"player"`, `"attacker"`, `"enemy"`, `"threat"`,
+---`"nuisance"`, `"fighter"`, `"avoider"`, `"damage"` = `AssessDamage` (the NPC was hit; `other` is the attacker), `"other_damage"`, `"talk"`, `"theft"`, `"dead"`, `"defeat"`, `"murder"`,
+---`"near_body"`, `"weapon"`, `"sneaking"`, `"looting"`, `"stand_up"`, `"down"`) or the name of any `Assess*` / `Perceive*` script of the game.
+---@alias AiPerception string
+
+---A perception handler: return nil to let the game's own reaction run, any number or boolean to be the script's result instead (the stock reaction does not run).
+---@alias AiPerceptionHandler fun(ctx: AiContext): (number|boolean|nil)
+
+---The definition of a Lua AI state (`risen.ai.state`).
+---@class AiStateDef
+---@field begin? fun(ctx: AiContext): AiLoopResult Once per start, in the first frame the engine runs the state (a walk or an animation in progress delays it unless `risen.ai.start` interrupts it).
+---@field loop? fun(ctx: AiContext): AiLoopResult Every `interval` seconds of state time while the NPC is in the state and has no engine action running (a walk started with `goto_pos` does not block it).
+---@field finish? fun(ctx: AiContext) Once, when the state ended for whatever reason (`ctx.reason`). Not called when the world is torn down (load, quit). Do not change AI states with `Entity:set_state` in here; `risen.ai.start` / `stop` are deferred to the end of the frame.
+---@field on? table<AiPerception, AiPerceptionHandler> Perception handlers that are active while an NPC is in this state.
+---@field task? string|fun(ctx: AiContext): boolean|nil The task callback made current at `begin`: the name of an AI callback (`"OnRoutine"`, the stock sweep that drives the perceptions; `risen.ai.list("callback")`) or a function (made into the callback `<state>_Task`). It runs about once a second. Not set: the NPC keeps the callback he has.
+---@field interval? number Seconds between `loop` calls, 0 = every frame, default 0.25, at most 60.
+
+---Options of `risen.ai.start`.
+---@class AiStartOptions
+---@field interrupt? boolean Stop the NPC's current action first (default true), so the state begins at once.
+---@field resumed? boolean Let `ctx.resumed` be true (what `persist` uses after a load).
+---@field persist? boolean Remember the state in the mod's `risen.save` and start it again after every load (default false); `args` must then be plain data (booleans, numbers, strings, acyclic tables of those).
+
+---A running Lua state (`risen.ai.current`).
+---@class AiRun
+---@field state string
+---@field time number Seconds since it began.
+---@field loops integer
+---@field resumed boolean
+---@field ending boolean The end was asked for; the NPC leaves with the next frame.
+---@field args any
+---@field data table The run's scratch table (the same one `ctx.data` is).
+
+---What the registry knows about a script (`risen.ai.info`).
+---@class AiRegistryInfo
+---@field kind string
+---@field name string
+---@field module string The DLL the function lives in: `"Script_Game.dll"` for the game's, `"sentry.dll"` for Lua's.
+---@field rva number Offset of the function in that DLL.
+---@field lua boolean True for what Lua defined.
+
+---Custom NPC behaviour: AI states written in Lua, AI callbacks and perception handlers. A state is registered with the engine's script registry under a name; an NPC is put into it
+---with `risen.ai.start` (or any engine code that sets a state by name); the engine runs the state's thunk every frame and Lua gets `begin`, `loop` and `finish`.
+---@class RisenAiApi
+---@field DONE string `"done"`: return it from `begin` / `loop` to end the state.
+---@field perceptions table<string, string> Perception key -> the engine script behind it.
+local aiApi = {}
+
+---Defines (or redefines) a Lua AI state. Refused, with a reason, for a bad name or definition, a name the game already uses, an unknown perception, a task callback that does not exist.
+---At least one of `begin`, `loop`, `finish`, `on` is needed. Limit: 128 Lua states.
+---@param name string Letters, digits and underscores, up to 100 characters; the game's own are called `ZS_*`.
+---@param def AiStateDef
+---@return boolean|nil ok
+---@return string|nil reason
+function aiApi.state(name, def) end
+
+---Defines an AI callback (`bool cb(unit)` in the engine's callback namespace). Used as a state's task callback (`task = "Name"`). A Lua error switches the callback off after one warning. Limit: 128.
+---@param name string
+---@param fn fun(ctx: AiContext): boolean|nil
+---@return boolean|nil ok
+---@return string|nil reason
+function aiApi.callback(name, fn) end
+
+---Puts an NPC into an AI state: a Lua one (its `begin` runs with `ctx.args = args`) or any state of the game. An NPC that was just spawned is started in his first engine frame (he has no AI before);
+---called from a `finish` callback or a perception handler the start is deferred to the end of the frame (the engine code that is running may set a state of its own afterwards).
+---Refused for the player, a dead NPC, an entity that is not an NPC, an unknown state. Starting a state that is running restarts it (`finish` with reason `"replaced"`).
+---A Lua state is **not** part of a savegame: after a load the NPC is back at his routine, unless the state was started with `persist = true`.
+---@param npc Entity
+---@param state string
+---@param args? any Anything; stays readable as `ctx.args` for the whole run.
+---@param opts? AiStartOptions
+---@return boolean|nil ok
+---@return string|nil reason
+function aiApi.start(npc, state, args, opts) end
+
+---Ends the NPC's Lua state (`finish` with reason `"stopped"`): he goes back to his routine, or to `next_state`. Forgets what `persist` remembered for him.
+---@param npc Entity
+---@param next_state? string
+---@return boolean|nil ok
+---@return string|nil reason `"the NPC is not running a Lua AI state"` when he is not.
+function aiApi.stop(npc, next_state) end
+
+---Drops what `risen.ai.start(..., { persist = true })` remembered for the NPC; the running state is not touched.
+---@param npc Entity
+---@return boolean dropped
+function aiApi.forget(npc) end
+
+---What this mod has remembered with `persist = true`.
+---@return { id: string, state: string, args: any }[]
+function aiApi.persisted() end
+
+---The Lua state the NPC is in, or nil.
+---@param npc Entity
+---@return AiRun|nil
+function aiApi.current(npc) end
+
+---Registers a perception handler for NPCs that are not (necessarily) in a Lua state: `fn` is called whenever the game runs the `Assess*` script behind `kind` for one of the NPCs of `filter`.
+---The filter is required (`{ npc = entity | { entities } }` or `{ all = true }`): `"notice"` runs about once a second for every entity every NPC perceives. Return nil to let the game's own reaction run.
+---Calling `risen.ai.start` from a handler is deferred to the end of the frame. A handler that raises an error is switched off after one warning.
+---@param kind AiPerception
+---@param fn AiPerceptionHandler
+---@param filter { npc?: Entity|Entity[], all?: boolean }
+---@return integer|nil handle
+---@return string|nil reason
+function aiApi.perceive(kind, fn, filter) end
+
+---Removes a handler made with `risen.ai.perceive`.
+---@param handle integer
+---@return boolean removed
+function aiApi.unperceive(handle) end
+
+---The names registered in one of the script registry's namespaces, sorted: `"state"` (`ZS_*`, `PS_*`, ... the engine's AI states), `"function"` (`_AI_*` and the `PreInteract_*` / `Interact_*` AI functions),
+---`"callback"` (`OnRoutine`, ...) or `"script"` (the plain scripts). Includes what Lua defined.
+---@param kind "state"|"function"|"callback"|"script"
+---@return string[]|nil names
+---@return string|nil reason
+function aiApi.list(kind) end
+
+---@param kind "state"|"function"|"callback"|"script"
+---@param name string
+---@return boolean
+function aiApi.exists(kind, name) end
+
+---Module and offset of a registered function (diagnostics: where to look in a decompiler).
+---@param kind "state"|"function"|"callback"|"script"
+---@param name string
+---@return AiRegistryInfo|nil
+function aiApi.info(kind, name) end
+
+---What Lua defined.
+---@return { states: string[], callbacks: string[] }
+function aiApi.defined() end
+
+---How many Lua callbacks of the bridge raised an error so far (each one was logged as a warning and handled: the state ended, the handler or callback was switched off), and the last message.
+---@return integer count
+---@return string last
+function aiApi.failures() end
+
+---The id the next run of a Lua state will get; the `run` of an `ai.finished` event is smaller than the value read after the run began.
+---@return integer
+function aiApi.generation() end
+
+---------------------------------------------------------------------------------------------------------------------
 -- Game variables, world, localization
 ---------------------------------------------------------------------------------------------------------------------
 
@@ -3164,6 +3339,7 @@ function logApi.error(...) end
 ---@field quest RisenQuestApi
 ---@field dialog RisenDialogApi
 ---@field script RisenScriptApi
+---@field ai RisenAiApi
 ---@field gamevar RisenGamevarApi
 ---@field world RisenWorldApi
 ---@field loc RisenLocApi
@@ -3195,7 +3371,7 @@ local risen_ = {}
 ---`inventory.changed(owner, template, delta, total, cause, other)`, `item.picked_up(owner, template, amount)`,
 ---`item.equipped/unequipped(owner, template, slot)`, `item.consumed(owner, template, count)`, `entity.died(entity, killer, cause)`,
 ---`entity.defeated(entity, attacker)`, `npc.killed(entity, killer)`, `npc.defeated(entity, attacker)`, `entity.damaged(entity, attacker, damage, raw)`,
----`entity.spawned(entity, template)`, `entity.destroyed(name, kind, template)`, `gamevar.changed(name, value, previous)` (a game variable was set, changed or removed: `value` is `nil` for a removed one, `previous` `nil` for a new one; the dialogue command `SetGameEvent` creates one with the value 0), `crafting(crafter, recipe, result, count, ingredients)` (once per craft, after the `inventory.*`
+---`entity.spawned(entity, template)`, `entity.destroyed(name, kind, template)`, `ai.finished(entity, state, reason, loops, run)` (a Lua AI state ended, `reason` as in `AiContext.reason`; `run` is the run's id, see `risen.ai.generation`), `gamevar.changed(name, value, previous)` (a game variable was set, changed or removed: `value` is `nil` for a removed one, `previous` `nil` for a new one; the dialogue command `SetGameEvent` creates one with the value 0), `crafting(crafter, recipe, result, count, ingredients)` (once per craft, after the `inventory.*`
 ---events of it; `ingredients` is `{ { item = "It_IronOre", count = 2 }, ... }` for the whole `count`).
 ---@param event string
 ---@param handler function
@@ -3232,6 +3408,7 @@ local risen_ = {}
 ---@overload fun(event: "info.started", handler: fun(info_name: string, owner: string), priority?: integer): EventHandle
 ---@overload fun(event: "info.finished", handler: fun(info_name: string, owner: string), priority?: integer): EventHandle
 ---@overload fun(event: "item.picked_up", handler: fun(owner: Entity|nil, template: string, amount: integer), priority?: integer): EventHandle
+---@overload fun(event: "ai.finished", handler: fun(entity: Entity|nil, state: string, reason: "done"|"stopped"|"error"|"replaced", loops: integer, run: integer), priority?: integer): EventHandle
 function risen_.on(event, handler, priority) end
 
 ---Removes a handler.

@@ -24,6 +24,8 @@
       ex_dialog_when - example: a smuggler whose secret needs iron ore AND trust AND a guild (mods/example_dialog_when)
       routines     - NPC routines (M10, mods/routines): guard post, displaced guard, work/relax/sleep by the clock, a patrol ring, idempotence, a persistent NPC with a `routine`; save + in-process load, then fresh-process loads (same declaration, changed declaration)
       ex_routines  - example: a gatekeeper with a day, an evening and a night post and a patrol (mods/example_routines)
+      aistates     - Lua AI states, callbacks and perception handlers (M11, mods/aistates): begin / loop / finish on real NPCs, walking, errors, a bitten NPC that flees; save + in-process load, then fresh-process loads (the states defined, the mod removed)
+      ex_ai        - example: a follower and a sentry who warns the player, a guard who flees when hit (mods/example_ai)
 
 .DESCRIPTION
     Needs a built sentry.dll and the test copy (see CLAUDE.md). The [risen.test] scenarios end as soon as they are done
@@ -50,7 +52,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -182,6 +184,15 @@ $scenarios = [ordered]@{
                                @{ Name = 'load_changed'; Param = @('phase=load_changed'); Start = 'load'; Keep = $true; Limit = 150 }
                            ) }
     ex_routines       = @{ Est = 100; Title = 'example: a gatekeeper (day, evening, night) and a patrol'; Kind = 'result'; Mods = @('example_routines'); Limit = 300 }
+    # Lua AI states (M11): "save" (new game: registry, refusals, a Lua state on real NPCs, errors in every callback kind, task callbacks, a damage handler that sends a bitten NPC running, the follower; quick save,
+    # quick load in the same process), "load" (a fresh process resumes the saved state), "load_missing" (a fresh process whose mod defines no states: the engine drops the unknown state)
+    aistates          = @{ Est = 270; Title = 'Lua AI states and perception (M11: begin/loop/finish, walking, errors, damage; save, fresh-process load, removed mod)'; Kind = 'result'; Mods = @('aistates'); Limit = 400
+                           Phases = @(
+                               @{ Name = 'save'; Param = @('phase=save'); Start = 'new'; Keep = $false; Limit = 400 }
+                               @{ Name = 'load'; Param = @('phase=load'); Start = 'load'; Keep = $true; Limit = 150 }
+                               @{ Name = 'load_missing'; Param = @('phase=load_missing'); Start = 'load'; Keep = $true; Limit = 150 }
+                           ) }
+    ex_ai             = @{ Est = 110; Title = 'example: a companion, a sentry and a coward (Lua AI states)'; Kind = 'result'; Mods = @('example_ai'); Limit = 300 }
     # quick loot (M5d): the standalone mod `quickloot` against the engine's own interaction; phase `config` repeats the key path with another config.toml (items = false, key = PrimaryAction) copied into the mod
     quickloot         = @{ Est = 120; Title = 'quick loot (M5d: default config, then config.toml options)'; Kind = 'result'; Mods = @('quickloot', 'quickloot_driver'); Limit = 300
                            Phases = @(

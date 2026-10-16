@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <dbghelp.h>
 
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <filesystem>
@@ -23,6 +24,9 @@
 #include "common/template_id.h"
 #include "common/test_run.h"
 #include "common/trace.h"
+#include "game/ai_lua.h"
+#include "game/ai_names.h"
+#include "game/bindings.h"
 #include "game/loc_files.h"
 #include "game/lua_config.h"
 #include "game/lua_test.h"
@@ -488,6 +492,7 @@ TEST(balance_install_reports_each_application_to_on_applied) {
 #include "routine_tests.inc"
 #include "spawn_when_tests.inc"
 #include "dialog_cond_tests.inc"
+#include "ai_tests.inc"
 #include "test_risen_test.inc"
 #include "quickloot_tests.inc"
 

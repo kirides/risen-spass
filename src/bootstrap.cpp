@@ -100,6 +100,7 @@ void onProcessAttach(HMODULE self) {
 void onProcessDetach() {
     if (g_active) {
         game::test::shutdown();
+        game::aiShutdown();
         lua::Runtime::instance().stop();
         hooks::shutdown();
     }

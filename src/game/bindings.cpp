@@ -161,7 +161,9 @@ void registerBindings() {
     rt.addModBinding(bindVoiceModApi);  // after bindAssetModApi and bindDialog: wraps risen.dialog.create per mod
     rt.addBinding(bindQuestObjects);
     rt.addBinding(scripts::bindScripts);
+    rt.addBinding(bindAi);  // after the script bridge: risen.ai (M11)
     bindSave();
+    rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installAiModApi(lua, api, mod.id); });  // after bindSave: risen.ai.start(persist = true) keeps its records in the mod's risen.save (M11)
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installRoutineModApi(lua, api, mod.id); });  // after bindSave, before the persistent NPCs (their `routine` option calls risen.npc.set_routine)
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installPersistentNpcModApi(lua, api, mod.id); });  // after bindSave: risen.npc.persistent keeps its records in the mod's risen.save
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installSpawnWhenModApi(lua, api, mod.id); });  // after the persistent NPCs: risen.spawn.when / risen.cond (M8)
