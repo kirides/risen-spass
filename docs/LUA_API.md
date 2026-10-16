@@ -172,7 +172,7 @@ Limit: 1024 Lua scripts.
 Entity methods: `name()`, `display_name()`, `set_name(s)`, `id()` (the GUID the savegame stores: unlike the name it survives a load), `save_relevant()`, `set_save_relevant(b)` (whether the engine writes the entity
 into savegames; true for every spawned one), `position()` → `x, y, z`, `distance_to(e)`,
 `is_npc()`, `is_player()`, `is_dead()`, `is_item()`, `is_character()`, `kill()`, `set_frozen(b)`,
-`enable_rendering(b)`, `teleport(name_or_entity)`, `valid()`, `address`. A handle remembers the entity's unique
+`enable_rendering(b)`, `teleport(name_or_entity)`, `valid()`, `address`, `area_names()` / `set_area_names(list)` (the names of an area entity: security zones, see "Theft" under `risen.ai`). A handle remembers the entity's unique
 name: after a savegame load, a session start/stop or a world change it looks the entity up **by name again** instead of
 using the old pointer, so handles kept across loads either point at the right entity or fail with `nil`/`false`
 (`entity:valid()` tells which; it looks the **name** up, so for items and other spawns named after their template (`It_Apple`) it may find another entity of that name: do not use it for those). Failures never crash the game. Entities without a unique name cannot be re-resolved
@@ -760,7 +760,8 @@ risen.ai.current(npc)                                    -- { state, time, loops
 | `enemy`, `attacker`, `threat`, `nuisance`, `fighter`, `avoider` | `AssessEnemy`, ... | called by `AssessActive` for the same pair (`AssessNuisance` answers 1 for the player on the beach) |
 | `damage` | `AssessDamage(self, attacker)` | **about 0.4 s after a hit**, from `ResumeTaskAfterStumble`; the hit itself has already replaced the state by `ZS_Stumble` (a state-scoped handler never sees it: use `risen.ai.perceive`) |
 | `other_damage` | `AssessOtherDamage(self, victim)` | bystanders of a hit |
-| `talk`, `theft`, `dead`, `defeat`, `murder`, `near_body`, `weapon`, `sneaking`, `looting`, `stand_up`, `down` | `AssessTalk`, ... | the game's own callers (M5d `AssessTheft`, `AssessPlayerLooting`) |
+| `theft` | `AssessTheft(self, item_or_chest)` | the player takes an item or opens a chest / cupboard (the game's perception broadcast asks every NPC, see "Theft" below); **answers 1 = he takes note, 0 = no reaction** |
+| `talk`, `dead`, `defeat`, `murder`, `near_body`, `weapon`, `sneaking`, `looting`, `stand_up`, `down` | `AssessTalk`, ... | the game's own callers (`AssessPlayerLooting` is the once-a-second check while the player stands at a chest) |
 
 A handler gets `ctx` (`self`, `other`, `arg`, `name` = the script, `kind` = `"perceive"`); **returning nil lets the game's own reaction run** (and the next handler), any number or boolean is the script's result and the stock script does **not** run (`return true` = "I reacted"); `ctx:call_original()` runs the stock script from inside a handler (`return ctx:call_original() + 100`). `risen.script.call("AssessNuisance", npc, player)` goes through the hooks like the engine's own call (that is how the tests prove the result mapping).
 ```lua
@@ -775,6 +776,26 @@ risen.ai.unperceive(handle)
 * A state set inside a perception handler is **deferred to the end of the frame** (the code that called the handler goes on: `ResumeTaskAfterStumble` ends in `ResumeTask`, which sets the state from the NPC's AI mode, `ZS_Avoid` for a peasant, and would overwrite it).
 * The hooks replace the registry slot of the `Assess*` script with native code; do not `risen.script.override` the same script in a mod that uses them (the later override replaces the hook).
 * Perception only runs while the NPC has a task callback that sweeps. A Lua state with `task = "OnRoutine"` keeps the stock sweep; without `task` the NPC keeps the callback he had (a state started on a `ZS_HangAround` NPC: `OnRoutine`; read in the decompilation, every test state sets `task`); a `task` function replaces the sweep by yours (about once a second, `ctx.self`).
+
+### Theft: the engine's assessment and how to silence it
+Taking an item or opening a chest or cupboard inside a **watched area** (a house, a camp: an area with a security level, `SL_Public` ... `SL_Casern`) is theft to the game; on the open beach, with bodies and with sarcophagi it is not. The game asks
+with one engine function, the **perception broadcast** (`Script_Game.dll`), called by the animated take before the item is inserted and before a chest is unlocked: it runs the script `AssessTheft(npc, item_or_chest)` for **every NPC of the world**,
+the script answers 1 for an NPC who takes note (a human, not in your party, the item not dropped by you, the place watched; it has recorded his comment) and 0 for no reaction; then the game also checks `PerceiveTheft` (within 700 units and
+`CanSee`) and applies what was recorded (the NPC comments, watches, threatens: `LastPlayerComment`, AI mode `Observe`). [RE.md §40](RE.md).
+```lua
+local reacted, why = risen.ai.broadcast("AssessTheft", item_or_chest)  -- do what the game does for a theft; true when any NPC reacted; nil, reason for a bad script / entity
+-- no reaction while a game variable is set (mods/example_ignore_theft): the script answers 0, the game's own check does not run
+risen.ai.perceive("theft", function(ctx)
+    if (risen.gamevar.get("MyMod_ThievesFriend") or 0) ~= 0 then return 0 end
+    return nil                                                     -- the game's own reaction
+end, { all = true })                                               -- or { npc = shopkeeper }
+```
+* `risen.ai.broadcast(script, entity)` asks the very question the animated path asks; `risen.script.call("AssessTheft", npc, item)` only records the reaction in the game's shared result record and answers 1 / 0: nothing happens to the NPC. Only `"AssessTheft"`
+  is verified (the other callers of the function pass other scripts and result records). It is bound by offset with a prologue check: with another build of `Script_Game.dll` it is unavailable (`nil, reason`; quick loot falls back to its `veto` mode).
+* A handler returning 0 for `theft` works for every way the game asks: the animated take, the sweep that runs while the player stands at a chest (`AssessPlayerLooting`, five `AssessTheft` calls for one animated chest), `risen.ai.broadcast` and the standalone quick loot.
+* **Watched areas:** `Entity:area_names()` / `Entity:set_area_names({ "SL_Public" })` read and write the names of an area entity (made from the template `AreaZone_Default`, a box of +-500 units around it): `risen.entity.spawn("AreaZone_Default", x, y, z)` turns that place into a watched one.
+  `SL_Public`, `SL_Watched`, `SL_Forbidden`, `SL_Inquisition`, `SL_Graveyard`, `SL_Vulcan`, `SL_Casern` are the names the scripts know (only `SL_Public` was tried). Whether a spawned area survives a savegame was not tested.
+* There is no noise-based perception in the game: nobody reacts to the sound of a chest.
 
 ### Callbacks and the registry
 ```lua

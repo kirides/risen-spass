@@ -7,7 +7,12 @@
 --   sarcophagi
 -- Declined (nothing happens, the use key still runs the engine's interaction): anything else (traps, quest sarcophagi, mining, doors, living characters,
 -- monster trophies), locks that need a lockpick or whose unlocking runs a script, empty containers, targets too far, a weapon drawn or any other player
--- state than walking around, witnesses within `witness_veto` units.
+-- state than walking around.
+--
+-- Witnesses (`witness_mode`): taking an item or opening a chest/cupboard is theft to the game's NPCs. The animated path calls the engine's perception
+-- broadcast of AssessTheft (every NPC is asked; the scripts test the security zone, the distance and the line of sight; the NPC comments, watches, threatens...).
+-- Quick loot calls the very same broadcast before it takes ("assess", the default); "veto" declines instead when a human who sees the player is within
+-- `witness_veto` units; "ignore" does nothing (thieving is undetectable). Corpses and sarcophagi are no theft in the game either.
 local policy = require("policy")
 
 local DEFAULTS = {
@@ -16,13 +21,24 @@ local DEFAULTS = {
     modifier = "none",
     items = true, corpses = true, chests = true, keys = true, print = true,
     hold_repeat = true, repeat_ms = 80,
-    witness_veto = 1000, max_distance = 450,
+    witness_mode = "assess", witness_veto = 1000, max_distance = 450,
 }
 local cfg, problems = risen.config(DEFAULTS)
 for _, p in ipairs(problems) do risen.log.warn("quickloot: " .. p) end
 if not cfg.enabled then
     risen.log.info("quickloot: disabled by config.toml")
     return
+end
+
+local witness_mode, why_mode = policy.witness_mode(cfg.witness_mode)
+if not witness_mode then
+    risen.log.warn("quickloot: " .. why_mode .. ", using assess")
+    witness_mode = "assess"
+end
+local have_broadcast = type(risen.ai) == "table" and type(risen.ai.broadcast) == "function"
+if witness_mode == "assess" and not have_broadcast then
+    risen.log.warn("quickloot: this mod layer has no risen.ai.broadcast (the engine's theft assessment): witness_mode falls back to veto")
+    witness_mode = "veto"
 end
 
 local function trace(fmt, ...)
@@ -64,16 +80,30 @@ local function player_ready(player)
     return true
 end
 
+-- witness_mode = "veto": a living human within witness_veto units who looks at the player (risen.world.can_see: field of view, range, nothing solid in between)
 local function witnesses(player)
     if cfg.witness_veto <= 0 then return nil end
     for _, npc in ipairs(risen.entity.npcs(player, cfg.witness_veto)) do
         if npc ~= player then
             local species = npc:get_property("gCNPC_PS", "Species")
             local aimode = npc:get_property("gCScriptRoutine_PS", "AIMode")
-            if policy.is_witness(species, npc:is_dead(), aimode == "gEAIMode_Down" or aimode == "gEAIMode_Dead") then return npc end
+            local down = aimode == "gEAIMode_Down" or aimode == "gEAIMode_Dead"
+            local sees = nil
+            if risen.world.can_see then sees = risen.world.can_see(npc, player, { range = cfg.witness_veto }) end
+            if policy.vetoes(species, npc:is_dead(), down, npc:distance_to(player), cfg.witness_veto, sees) then return npc end
         end
     end
     return nil
+end
+
+-- witness_mode = "assess": the engine's own reaction, before the first thing is taken (as in the animated path: the item is still lying there, the chest still shut).
+-- Returns true, or false and the reason when the engine could not be asked (nothing is taken then).
+local function assess_theft(res, target)
+    if witness_mode ~= "assess" then return true end
+    local reacted, why = risen.ai.broadcast("AssessTheft", target)
+    if reacted == nil then return false, "the theft assessment failed: " .. tostring(why) end
+    res.assessed, res.reacted = true, reacted
+    return true
 end
 
 -- ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -105,7 +135,7 @@ local function take_corpse(player, body)
 end
 
 local LOCK_PROPS = { "Status", "Key", "Difficulty", "OnLockStatusChanged" }
-local function take_container(player, box)
+local function take_container(player, box, before_take)
     local lock = nil
     if box:get_property("gCLock_PS", "Status") ~= nil then
         lock = {}
@@ -115,6 +145,10 @@ local function take_container(player, box)
     if plan == "needs lockpick" then return false, why end
     if plan == "key" and not cfg.keys then return false, "keys = false" end
     if lootable_stacks(box) == 0 then return false, "nothing to take" end
+    if before_take then
+        local ok, why2 = before_take()
+        if not ok then return false, why2 end
+    end
     if plan == "key" then
         -- what the `Unlock` script does for a player with the key (the key stays in the inventory)
         if not box:set_property("gCLock_PS", "Status", "gELockStatus_Unlocked") or box:get_property("gCLock_PS", "Status") ~= "gELockStatus_Unlocked" then
@@ -172,17 +206,23 @@ local function attempt(target, source)
     if (kind == "item" and not cfg.items) or (kind == "corpse" and not cfg.corpses) or (kind == "container" and not cfg.chests) then
         return decline("switched off in config.toml", kind)
     end
-    if kind ~= "corpse" then   -- taking from a corpse is no crime (AssessPlayerLooting); items and containers are
+    local theft = policy.assessed_as_theft(chosen)   -- the interactions in which the animated path asks the NPCs (items, chests, cupboards)
+    if theft and witness_mode == "veto" then
         local w = witnesses(player)
         if w then return decline("seen by " .. w:name(), kind) end
     end
 
     local done, detail
-    if kind == "item" then done, detail = take_item(player, target)
+    if kind == "item" then
+        local ok3, why3 = assess_theft(res, target)
+        if not ok3 then return decline(why3, kind) end
+        done, detail = take_item(player, target)
     elseif kind == "corpse" then done, detail = take_corpse(player, target)
-    else done, detail = take_container(player, target) end
+    else
+        done, detail = take_container(player, target, theft and function() return assess_theft(res, target) end or nil)
+    end
     res.handled, res.reason = done, detail
-    trace("%s %s (%s): %s", done and "took" or "declined", target:name(), kind, tostring(detail))
+    trace("%s %s (%s): %s%s", done and "took" or "declined", target:name(), kind, tostring(detail), res.assessed and (res.reacted and " [an NPC reacted]" or " [assessed, nobody reacted]") or "")
     return res
 end
 
@@ -241,5 +281,5 @@ risen.on("tick", function()
     end
 end)
 
-risen.log.info(("quickloot: ready (key %s%s, items=%s corpses=%s chests=%s keys=%s)"):format(
-    key_name, modifier == true and "" or (" + " .. modifier), tostring(cfg.items), tostring(cfg.corpses), tostring(cfg.chests), tostring(cfg.keys)))
+risen.log.info(("quickloot: ready (key %s%s, items=%s corpses=%s chests=%s keys=%s, witnesses: %s)"):format(
+    key_name, modifier == true and "" or (" + " .. modifier), tostring(cfg.items), tostring(cfg.corpses), tostring(cfg.chests), tostring(cfg.keys), witness_mode))

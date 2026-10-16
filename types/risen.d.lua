@@ -273,6 +273,16 @@ function Entity:list_properties(set) end
 ---@return boolean ok `false` if the entity lacks the set or the property.
 function Entity:set_property(set, name, value) end
 
+---The names of an area entity (an entity made from the template `AreaZone_Default`: a box of +-500 units around it, `eCArea_StringProperty_PS`), which tell the game's scripts what the place is:
+---`"SL_Public"`, `"SL_Watched"`, `"SL_Forbidden"`, `"SL_Inquisition"`, `"SL_Graveyard"`, `"SL_Vulcan"`, `"SL_Casern"` (security levels: taking an item or opening a chest inside one is theft to `AssessTheft`).
+---@return string[]|nil names `nil` if the entity is no area.
+function Entity:area_names() end
+
+---Replaces the names of an area entity (see `area_names`; at most 32 names of at most 60 characters). The area is a box of +-500 units around the entity and takes effect at once.
+---@param names string[]
+---@return boolean ok `false` if the entity is no area or the list is invalid.
+function Entity:set_area_names(names) end
+
 ---Number of inventory stacks.
 ---@return integer|nil
 function Entity:stack_count() end
@@ -2485,6 +2495,8 @@ function AiContext:call_original() end
 ---@alias AiPerception string
 
 ---A perception handler: return nil to let the game's own reaction run, any number or boolean to be the script's result instead (the stock reaction does not run).
+---For `"theft"` (`AssessTheft(npc, item_or_chest)`): the script answers 1 when the NPC takes note of the theft (it has recorded his comment and reaction) and **0 for no reaction**, so a handler that returns 0
+---makes that NPC ignore the theft; it works for every way the game asks (the animated take, `AssessPlayerLooting`'s sweeps at a chest, `risen.ai.broadcast`, quick loot). See `mods/example_ignore_theft`.
 ---@alias AiPerceptionHandler fun(ctx: AiContext): (number|boolean|nil)
 
 ---The definition of a Lua AI state (`risen.ai.state`).
@@ -2589,6 +2601,16 @@ function aiApi.perceive(kind, fn, filter) end
 ---@param handle integer
 ---@return boolean removed
 function aiApi.unperceive(handle) end
+
+---Runs the game's own perception broadcast of an `Assess*` script for `entity`, exactly as the game does when the player takes an item or opens a chest: `script` (`"AssessTheft"`) is asked for **every NPC of
+---the world** (`self` = the NPC, `other` = `entity`), the reactions the script recorded are collected and applied (the NPC comments, watches, threatens: `LastPlayerComment`, an AI mode such as `ZS_Observe`).
+---Whether an NPC really reacts is decided by the scripts (a security area at the entity, `PerceiveTheft`: within 700 units and `CanSee`); handlers made with `perceive` see every call and can answer 0.
+---Only `"AssessTheft"` was verified; the animated take calls it before the item is inserted and before a chest is unlocked, which is where quick loot calls it too. `nil, reason` for a bad script or entity.
+---@param script string
+---@param entity Entity
+---@return boolean|nil reacted Whether any NPC reacted.
+---@return string|nil reason
+function aiApi.broadcast(script, entity) end
 
 ---The names registered in one of the script registry's namespaces, sorted: `"state"` (`ZS_*`, `PS_*`, ... the engine's AI states), `"function"` (`_AI_*` and the `PreInteract_*` / `Interact_*` AI functions),
 ---`"callback"` (`OnRoutine`, ...) or `"script"` (the plain scripts). Includes what Lua defined.

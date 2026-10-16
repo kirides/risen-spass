@@ -445,7 +445,9 @@
     X(cam_get_position, L"Engine.dll", "?GetPosition@eCCameraBase@@QEBAAEBVbCVector@@XZ", const float* (*)(const void* cam), false) \
     X(cam_get_view, L"Engine.dll", "?GetViewMatrix@eCCameraBase@@QEBAAEBVbCMatrix@@XZ", const float* (*)(const void* cam), false) \
     X(cam_get_fov, L"Engine.dll", "?GetFieldOfView@eCCameraBase@@QEBAAEBMXZ", const float* (*)(const void* cam), false) \
-    X(cam_get_aspect, L"Engine.dll", "?GetAspectRatio@eCCameraBase@@QEBAAEBMXZ", const float* (*)(const void* cam), false)
+    X(cam_get_aspect, L"Engine.dll", "?GetAspectRatio@eCCameraBase@@QEBAAEBMXZ", const float* (*)(const void* cam), false) \
+    /* ---- area string properties (M5e, docs/RE.md section 40): the security zones ("SL_Public", ...) the theft assessment reads ---- */ \
+    X(area_access_names, L"Engine.dll", "?AccessPropertyNameList@eCArea_StringProperty_PS@@QEAAAEAV?$bTObjArray@VbCString@@@@XZ", void* (*)(void* self), false)
 
 namespace spass::game {
 

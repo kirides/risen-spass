@@ -15,7 +15,7 @@ local PLAN_DEFAULT = {
     "ground item: handled as item", "ground item: one stack more", "ground item: events (picked_up, added pickup, destroyed) exactly once", "ground item: no interaction state", "ground item: same events as the engine path",
     "engine path baseline: ZS_Interact states ran",
     "dead human: handled as corpse", "dead human: the club moved, fists and joint stayed", "dead human: same items as the engine's loot window", "dead human: inventory events, one pair per stack",
-    "knocked-out human looted", "living human declined", "witness: a living human nearby vetoes the pick-up", "monster corpse declined (trophy)", "door-like object declined", "empty chest declined",
+    "knocked-out human looted", "living human declined", "witness: a living human nearby does not stop the pick-up (assess mode, no watched area)", "monster corpse declined (trophy)", "door-like object declined", "empty chest declined",
     "plain chest looted", "plain chest: items moved and chest empty", "plain chest: same items as the engine path", "chest is not left in an interaction",
     "locked chest without key declined", "locked chest stays locked", "locked chest with key looted", "key chest unlocked and key kept", "quest-script lock declined while locked", "quest-script lock script not run", "chest with unlocked quest-script lock looted",
     "cupboard looted", "sarcophagus looted", "trap sarcophagus declined", "trap sarcophagus: nothing spawned by the quick path", "trap sarcophagus: engine path spawns the skeleton exactly once",
@@ -26,8 +26,26 @@ local PLAN_DEFAULT = {
 local PLAN_CONFIG = {
     "config: items=false declines the apple", "config: the declined press reaches the engine", "config: key PrimaryAction loots the corpse", "config: corpse looted without interaction",
     "config: SecondaryAction is no longer the key",
+    "veto: a witness who sees the player stops the chest looting", "veto: nothing was taken, nobody was asked", "veto: a witness behind the player does not stop it",
 }
-T.plan(phase == "config" and PLAN_CONFIG or PLAN_DEFAULT)
+-- M5e: the NPC reaction (docs/QUICKLOOT.md "Witnesses"): the engine's own theft assessment on the quick path against the animated path, inside a watched area (SL_Public)
+local PLAN_REACT = {
+    "zone: the area names were written and read back", "outside a watched area: quick take handled, nobody reacts",
+    "engine rule: AssessTheft answers 1 inside the area and 0 outside", "witness faces the player",
+    "animated item: the witness reacted", "animated item: AssessTheft asked before the pick-up, once per human",
+    "quick item: handled, assessed, an NPC reacted", "quick item: the witness reacted like in the animated path", "quick item: the same AssessTheft calls and order as the animated path",
+    "animated chest: the witness reacted", "quick chest: handled and the witness reacted like in the animated path", "quick chest: the same AssessTheft calls as the animated path",
+    "quick chest: asked before anything was taken",
+    "cupboard: quick take, the witness reacted", "sarcophagus: neither path asks the NPCs",
+    "corpse: quick loot is no theft", "corpse: animated loot is no theft either",
+    "witness behind the player: taken, nobody reacts", "witness out of range: taken, nobody reacts", "nobody around: taken, asked, nobody reacts",
+    "dropped item: no theft", "declined chest alarms nobody",
+}
+local PLAN_IGNORE = {
+    "ignore: item taken in sight of a witness in a watched area", "ignore: nobody was asked and nobody reacted", "ignore: chest taken, nobody asked",
+}
+local PLANS = { config = PLAN_CONFIG, react = PLAN_REACT, ignore = PLAN_IGNORE }
+T.plan(PLANS[phase] or PLAN_DEFAULT)
 
 -- ------------------------------------------------------------------------------------------------------------------------------------------
 local rec = {}          -- recorded events (strings, in order)
@@ -213,10 +231,10 @@ local function default_phase()
     local seen_apple = spawn_at("It_Apple", 150)
     pc = counts(p, P0)
     r = try(seen_apple)
-    check("witness: a living human nearby vetoes the pick-up", not r.handled and (r.reason or ""):find("seen by") and risen.item.count(p, "It_Apple") == pc.It_Apple, tostring(r.reason))
-    live:kill()
     T.sleep(5)
-    r = try(seen_apple)
+    check("witness: a living human nearby does not stop the pick-up (assess mode, no watched area)",
+        r.handled and r.assessed == true and r.reacted == false and risen.item.count(p, "It_Apple") == pc.It_Apple + 1, tostring(r.reason) .. " assessed=" .. tostring(r.assessed) .. " reacted=" .. tostring(r.reacted))
+    live:kill()
     T.sleep(5)
     local wolf = spawn_at("Wolf", 250)
     T.sleep(3)
@@ -406,7 +424,286 @@ local function config_phase()
     risen.interact.set_focus(nil, false)
 end
 
+-- ==========================================================================================================================================
+-- M5e: NPC reactions. The engine's own theft assessment (the perception broadcast of AssessTheft) on the quick path against the animated path.
+-- A theft is only a theft inside a watched area: AreaZone_Default with the area name SL_Public around the player makes the beach a "house".
+-- The witness is a Peasant 300 units south of the player; NPCs spawn looking along +z, so he looks at the player ("front"); north of him ("back") he looks away.
+-- ==========================================================================================================================================
+local function observe_theft()
+    risen.ai.perceive("theft", function(ctx)
+        local r = ctx:call_original()
+        local name = nm(ctx.self)
+        if name:find("^Peasant") then add(("AssessTheft(%s,%s)=%d"):format(name, nm(ctx.other), r)) end
+        return r
+    end, { all = true })
+end
+local function snap(n)
+    local state = (n:state() or ""):gsub("_Loop$", "")
+    return { mode = n:get_property("gCScriptRoutine_PS", "AIMode"), comment = n:get_property("gCNPC_PS", "LastPlayerComment"), reason = n:get_property("gCNPC_PS", "Reason"), state = state }
+end
+local function reacted(s) return s.comment == "gEComment_Theft" and s.reason == "gEReason_Theft" end
+local function put(tpl, dx, dz)
+    local x, y, z = p:position()
+    local e = risen.entity.spawn(tpl, x + dx, y + 20, z + dz)
+    T.sleep(3)
+    return assert(e, "spawn failed: " .. tpl)
+end
+local function witness(where)
+    local w = put("Peasant_1_01", 0, where == "front" and -300 or where == "back" and 300 or -900)
+    T.sleep(30)
+    return w
+end
+local function rchest(tpl, locked, ang, items)
+    local c = spawn_at(tpl, 200, ang)
+    if locked ~= nil and c:get_property("gCLock_PS", "Status") then
+        c:set_property("gCLock_PS", "Status", locked and "gELockStatus_Locked" or "gELockStatus_Unlocked")
+    end
+    for _, it in ipairs(items or { { "It_Apple", 2 }, { "It_Gold", 15 } }) do risen.item.give(c, it[1], it[2]) end
+    T.sleep(3)
+    return c
+end
+local function corpse_of_peasant()
+    local n = put("Peasant_1_01", 170, 0)
+    n:equip_all()
+    T.sleep(3)
+    risen.script.call("Kill", p, n)
+    T.sleep(10)
+    return n
+end
+local function theft_calls(mark) return ev_since(mark, "^AssessTheft%(") end
+local function first_index(mark, pattern)
+    for i = mark + 1, #rec do if rec[i]:find(pattern) then return i end end
+    return nil
+end
+-- was `before` recorded before `after` (both patterns, since `mark`)?
+local function came_before(mark, before, after)
+    local a, b = first_index(mark, before), first_index(mark, after)
+    return a ~= nil and b ~= nil and a < b
+end
+local function unique(list)
+    local seen, out = {}, {}
+    for _, v in ipairs(list) do if not seen[v] then seen[v] = true; out[#out + 1] = v end end
+    table.sort(out)
+    return out
+end
+local function describe(s) return ("%s/%s/%s/%s"):format(tostring(s.state), tostring(s.mode), tostring(s.comment), tostring(s.reason)) end
+
+local function watched_area()
+    local x, y, z = p:position() --[[@as number]]
+    local zone = assert(risen.entity.spawn("AreaZone_Default", x, y, z), "AreaZone_Default did not spawn")
+    T.sleep(5)
+    local okset = zone:set_area_names({ "SL_Public" })
+    local names = zone:area_names()
+    return zone, okset and names and #names == 1 and names[1] == "SL_Public", names and table.concat(names, ",") or "nil"
+end
+
+local function react_phase()
+    observe_theft()
+
+    T.section("outside a watched area")
+    local w = witness("front")
+    local a = put("It_Apple", 0, 100)
+    local mark = #rec
+    local r = try(a)
+    T.sleep(40)
+    check("outside a watched area: quick take handled, nobody reacts", r.handled and r.assessed == true and r.reacted == false and not reacted(snap(w)),
+        tostring(r.reason) .. " " .. describe(snap(w)) .. " reacted=" .. tostring(r.reacted))
+    w:kill(); T.sleep(10)
+
+    T.section("the watched area")
+    local zone, zone_ok, zone_names = watched_area()
+    check("zone: the area names were written and read back", zone_ok, zone_names)
+    w = witness("front")
+    a = put("It_Apple", 0, 100)
+    local far_apple = put("It_Apple", 0, 900)
+    local inside, outside = risen.script.call("AssessTheft", w, a), risen.script.call("AssessTheft", w, far_apple)
+    check("engine rule: AssessTheft answers 1 inside the area and 0 outside", inside == 1 and outside == 0, ("inside %s, outside %s"):format(tostring(inside), tostring(outside)))
+    local sees_w, why_w = risen.world.can_see(w, p)
+    check("witness faces the player", sees_w == true, tostring(why_w))
+    w:kill(); T.sleep(10)
+
+    T.section("items")
+    w = witness("front")
+    a = put("It_Apple", 0, 100)
+    mark = #rec
+    engine_interaction(a, false)
+    T.sleep(40)
+    local anim_item, anim_item_calls = snap(w), theft_calls(mark)
+    check("animated item: the witness reacted", reacted(anim_item), describe(anim_item))
+    check("animated item: AssessTheft asked before the pick-up, once per human", #anim_item_calls == 1 and came_before(mark, "^AssessTheft%(", "^item%.picked_up"), table.concat(anim_item_calls, " | "))
+    w:kill(); T.sleep(10)
+
+    w = witness("front")
+    a = put("It_Apple", 0, 100)
+    local apples = risen.item.count(p, "It_Apple")
+    mark = #rec
+    r = try(a)
+    T.sleep(60)
+    local quick_item, quick_item_calls = snap(w), theft_calls(mark)
+    check("quick item: handled, assessed, an NPC reacted", r.handled and r.assessed == true and r.reacted == true and risen.item.count(p, "It_Apple") == apples + 1,
+        tostring(r.reason) .. " assessed=" .. tostring(r.assessed) .. " reacted=" .. tostring(r.reacted))
+    T.eq("quick item: the witness reacted like in the animated path", describe(quick_item), describe(anim_item))
+    check("quick item: the same AssessTheft calls and order as the animated path", #quick_item_calls == 1 and quick_item_calls[1] == anim_item_calls[1] and came_before(mark, "^AssessTheft%(", "^item%.picked_up"),
+        table.concat(quick_item_calls, " | ") .. " vs " .. table.concat(anim_item_calls, " | "))
+    w:kill(); T.sleep(10)
+
+    T.section("chests")
+    local c1 = rchest("Object_Interact_Animated_Chest_Poor", false, 57.3)
+    w = witness("front")
+    mark = #rec
+    engine_interaction(c1, true)
+    T.sleep(40)
+    local anim_chest, anim_chest_calls = snap(w), theft_calls(mark)
+    check("animated chest: the witness reacted", reacted(anim_chest), describe(anim_chest) .. "; calls: " .. table.concat(anim_chest_calls, " | "))
+    w:kill(); T.sleep(10)
+
+    local c2 = rchest("Object_Interact_Animated_Chest_Poor", false, 120)
+    w = witness("front")
+    apples = risen.item.count(p, "It_Apple")
+    mark = #rec
+    r = try(c2)
+    T.sleep(60)
+    local quick_chest, quick_chest_calls = snap(w), theft_calls(mark)
+    check("quick chest: handled and the witness reacted like in the animated path", r.handled and r.assessed == true and r.reacted == true and risen.item.count(p, "It_Apple") == apples + 2 and describe(quick_chest) == describe(anim_chest),
+        tostring(r.reason) .. " quick " .. describe(quick_chest) .. " animated " .. describe(anim_chest))
+    -- the animated path asks again while the player stands at the chest (AssessPlayerLooting's sweeps call the very same script): the set of calls is the comparison
+    T.eq("quick chest: the same AssessTheft calls as the animated path", unique(quick_chest_calls), unique(anim_chest_calls))
+    check("quick chest: asked before anything was taken", came_before(mark, "^AssessTheft%(", "^inventory%.added%(PC_Hero"), table.concat(quick_chest_calls, " | "))
+    w:kill(); T.sleep(10)
+
+    local cup = rchest("Object_Interact_Animated_Cupboard", nil, 200)
+    w = witness("front")
+    apples = risen.item.count(p, "It_Apple")
+    mark = #rec
+    r = try(cup)
+    T.sleep(60)
+    check("cupboard: quick take, the witness reacted", r.handled and r.assessed == true and risen.item.count(p, "It_Apple") == apples + 2 and reacted(snap(w)) and #theft_calls(mark) == 1, tostring(r.reason) .. " " .. describe(snap(w)))
+    w:kill(); T.sleep(10)
+
+    local sar1 = rchest("Object_Interact_Sarcophagus", nil, 57.3)
+    w = witness("front")
+    mark = #rec
+    r = try(sar1)
+    T.sleep(40)
+    local quick_sar_calls, quick_sar = theft_calls(mark), snap(w)
+    w:kill(); T.sleep(10)
+    local sar2 = rchest("Object_Interact_Sarcophagus", nil, 57.3)
+    w = witness("front")
+    mark = #rec
+    engine_interaction(sar2, true)
+    T.sleep(40)
+    local anim_sar_calls, anim_sar = theft_calls(mark), snap(w)
+    check("sarcophagus: neither path asks the NPCs", r.handled and r.assessed == nil and #quick_sar_calls == 0 and not reacted(quick_sar) and #anim_sar_calls == 0 and not reacted(anim_sar),
+        ("quick calls %d (%s), animated calls %d (%s)"):format(#quick_sar_calls, describe(quick_sar), #anim_sar_calls, describe(anim_sar)))
+    w:kill(); T.sleep(10)
+
+    T.section("corpses")
+    local b1 = corpse_of_peasant()
+    local b2 = corpse_of_peasant()
+    w = witness("front")
+    mark = #rec
+    local club = risen.item.count(p, "It_1H_Club")
+    r = try(b1)
+    T.sleep(40)
+    check("corpse: quick loot is no theft", r.handled and r.kind == "corpse" and r.assessed == nil and risen.item.count(p, "It_1H_Club") == club + 1 and #theft_calls(mark) == 0 and not reacted(snap(w)),
+        tostring(r.reason) .. " " .. describe(snap(w)) .. " calls " .. #theft_calls(mark))
+    mark = #rec
+    engine_interaction(b2, true)
+    T.sleep(40)
+    check("corpse: animated loot is no theft either", risen.item.count(p, "It_1H_Club") == club + 2 and #theft_calls(mark) == 0 and not reacted(snap(w)), describe(snap(w)) .. " calls " .. #theft_calls(mark))
+    w:kill(); T.sleep(10)
+
+    T.section("out of sight, out of range, nobody")
+    w = witness("back")
+    a = put("It_Apple", 0, 100)
+    apples = risen.item.count(p, "It_Apple")
+    local sees = risen.world.can_see(w, p)
+    mark = #rec
+    r = try(a)
+    T.sleep(60)
+    check("witness behind the player: taken, nobody reacts", sees == false and r.handled and r.assessed == true and risen.item.count(p, "It_Apple") == apples + 1 and not reacted(snap(w)),
+        ("can_see %s; %s; %s"):format(tostring(sees), tostring(r.reason), describe(snap(w))))
+    w:kill(); T.sleep(10)
+
+    w = witness("far")
+    a = put("It_Apple", 0, 100)
+    apples = risen.item.count(p, "It_Apple")
+    local far_d = w:distance_to(p)
+    r = try(a)
+    T.sleep(60)
+    check("witness out of range: taken, nobody reacts", far_d > 800 and r.handled and r.assessed == true and risen.item.count(p, "It_Apple") == apples + 1 and not reacted(snap(w)),
+        ("distance %.0f; %s; %s"):format(far_d, tostring(r.reason), describe(snap(w))))
+    w:kill(); T.sleep(10)
+
+    a = put("It_Apple", 0, 100)
+    apples = risen.item.count(p, "It_Apple")
+    mark = #rec
+    r = try(a)
+    T.sleep(20)
+    check("nobody around: taken, asked, nobody reacts", r.handled and r.assessed == true and r.reacted == false and risen.item.count(p, "It_Apple") == apples + 1, tostring(r.reason) .. " reacted=" .. tostring(r.reacted))
+
+    T.section("what is not theft")
+    w = witness("front")
+    risen.item.give(p, "It_Apple", 1)
+    T.sleep(5)
+    local dropped = risen.item.drop(p, "It_Apple", 1)
+    T.sleep(10)
+    apples = risen.item.count(p, "It_Apple")
+    mark = #rec
+    r = dropped and try(dropped) or {}
+    T.sleep(60)
+    check("dropped item: no theft", dropped ~= nil and r.handled and risen.item.count(p, "It_Apple") == apples + 1 and not reacted(snap(w)), tostring(r.reason) .. " " .. describe(snap(w)))
+    local locked = rchest("Object_Interact_Animated_Chest_Poor", true, 120)
+    mark = #rec
+    r = try(locked)
+    T.sleep(40)
+    check("declined chest alarms nobody", not r.handled and #theft_calls(mark) == 0 and not reacted(snap(w)), tostring(r.reason) .. " " .. describe(snap(w)))
+    w:kill()
+end
+
+-- witness_mode = "ignore" (fixtures/ignore/config.toml): the same watched area, nobody is asked
+local function ignore_phase()
+    observe_theft()
+    watched_area()
+    local w = witness("front")
+    local a = put("It_Apple", 0, 100)
+    local apples = risen.item.count(p, "It_Apple")
+    local mark = #rec
+    local r = try(a)
+    T.sleep(60)
+    check("ignore: item taken in sight of a witness in a watched area", r.handled and r.assessed == nil and risen.item.count(p, "It_Apple") == apples + 1, tostring(r.reason))
+    check("ignore: nobody was asked and nobody reacted", #theft_calls(mark) == 0 and not reacted(snap(w)), describe(snap(w)) .. " calls " .. #theft_calls(mark))
+    local c = rchest("Object_Interact_Animated_Chest_Poor", false, 120)
+    mark = #rec
+    r = try(c)
+    T.sleep(40)
+    check("ignore: chest taken, nobody asked", r.handled and r.assessed == nil and #theft_calls(mark) == 0 and not reacted(snap(w)), tostring(r.reason) .. " " .. describe(snap(w)))
+end
+
+-- witness_mode = "veto" (fixtures/config/config.toml, together with the key options): a witness who looks at the player stops the chest looting
+local function veto_section()
+    observe_theft()
+    T.section("veto")
+    local w = witness("front")
+    local c = rchest("Object_Interact_Animated_Chest_Poor", false, 120)
+    local apples = risen.item.count(p, "It_Apple")
+    local mark = #rec
+    local r = try(c)
+    T.sleep(10)
+    check("veto: a witness who sees the player stops the chest looting", not r.handled and (r.reason or ""):find("seen by") ~= nil and risen.world.can_see(w, p) == true, tostring(r.reason))
+    check("veto: nothing was taken, nobody was asked", risen.item.count(p, "It_Apple") == apples and #theft_calls(mark) == 0 and r.assessed == nil, "apples " .. apples .. " -> " .. risen.item.count(p, "It_Apple"))
+    w:kill(); T.sleep(10)
+    w = witness("back")
+    r = try(c)
+    T.sleep(20)
+    check("veto: a witness behind the player does not stop it", r.handled and risen.world.can_see(w, p) == false and risen.item.count(p, "It_Apple") == apples + 2, tostring(r.reason))
+    w:kill()
+end
+
 T.run(function()
     new_game_ready()
-    if phase == "config" then config_phase() else default_phase() end
-end, "quickloot")
+    if phase == "config" then config_phase(); veto_section()
+    elseif phase == "react" then react_phase()
+    elseif phase == "ignore" then ignore_phase()
+    else default_phase() end
+end, phase == "react" and "quickloot_react" or phase == "ignore" and "quickloot_react" or "quickloot")

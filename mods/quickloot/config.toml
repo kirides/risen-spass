@@ -15,5 +15,11 @@ print       = true          # HUD line for picked-up ground items (looted stacks
 
 hold_repeat = true          # hold the key to take everything in reach, one target per repeat_ms
 repeat_ms   = 80
-witness_veto = 1000         # no quick pick-up / chest looting while a living human is within this many units (theft would be seen); 0 = never veto
+
+# What the NPCs do when you take an item or open a chest/cupboard (theft to the game, but only inside a watched area such as a house; corpses and sarcophagi are no theft):
+#   "assess" = the game's own reaction: the same check the animated take runs, so people who see it (their range, field of view and the area decide) comment, watch, threaten
+#   "veto"   = decline while a living human who can see you is within witness_veto units (nothing is taken, the use key still walks over and lets people react)
+#   "ignore" = nobody reacts (thieving is undetectable)
+witness_mode = "assess"
+witness_veto = 1000         # "veto" mode only: the radius in game units around the player; 0 = never veto
 max_distance = 450          # the target must be this close (units)

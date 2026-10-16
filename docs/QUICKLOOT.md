@@ -16,9 +16,14 @@ Look at an item, a body or a chest (the usual focus label appears) and press the
 right mouse button keeps its normal meaning, when:
 
 * a **weapon is drawn** (or a bow, crossbow, spell...: any player state other than walking around, `PS_Normal*`), the inventory, a dialogue or the loot window is open, or an interaction is running (this rule is fixed, not an option);
-* the target is not one of the plain things below, or too far (`max_distance`), or empty;
-* a living human is within `witness_veto` units (taking items or opening a chest in front of people is theft in the game; the quick way would skip the theft check, so it stays out: use the normal
-  use key, which walks over, kneels and lets the people react).
+* the target is not one of the plain things below, or too far (`max_distance`), or empty.
+
+**Witnesses.** Taking an item or opening a chest or cupboard inside a watched place (a house, a camp: an area with a security level) is theft to the game's NPCs; on the open beach it is not, and neither are
+bodies and sarcophagi. The animated take asks the NPCs with the game's own function (`AssessTheft` for every NPC of the world; the NPC must be within 700 units, see you, be human and not in your party, and
+the place must be watched; then he comments, watches, threatens, [RE.md §40](RE.md)). Quick loot calls **the same function at the same moment** (before the first thing is taken, as the animated take does),
+so a witness reacts exactly as to the animated take (`witness_mode = "assess"`, the default). The alternatives are `"veto"` (nothing is taken while a human who can see you is within `witness_veto` units; the use
+key still walks over and lets people react) and `"ignore"` (nobody reacts: thieving is undetectable). Another mod can make NPCs ignore thefts with `risen.ai.perceive("theft", fn, { all = true })`
+answering 0 (`mods/example_ignore_theft`): quick loot honours it like the animated take does.
 
 The normal use key keeps doing the game's full interaction (walk, animation, loot window) for everything, also for what quick loot declines.
 
@@ -33,7 +38,8 @@ The normal use key keeps doing the game's full interaction (walk, animation, loo
 | `keys` | `true` | a locked chest is opened with the key from the inventory (never lockpicked) |
 | `print` | `true` | a HUD item line for picked-up ground items (looted stacks are printed by the game's own loot function) |
 | `hold_repeat`, `repeat_ms` | `true`, `80` | hold the key to repeat every `repeat_ms` (at least 20) |
-| `witness_veto` | `1000` | radius in game units for the witness rule above (the game's own theft check sees items within 1000); `0` = never veto (thieving becomes undetectable) |
+| `witness_mode` | `"assess"` | what happens to the people who could see a theft: `"assess"` = the game's own reaction (see Witnesses), `"veto"` = decline while a living human who can see you (field of view and a clear line, `risen.world.can_see`) is within `witness_veto` units, `"ignore"` = nobody reacts. An unknown word is ignored (`assess`); a mod layer without `risen.ai.broadcast` falls back to `"veto"` |
+| `witness_veto` | `1000` | `"veto"` mode only: the radius in game units; `0` = never veto |
 | `max_distance` | `450` | the target must be this close |
 
 A value of the wrong type, an unknown key or a broken file is ignored (defaults used) and written to `spass.log` as `config: [quickloot] ...`.
@@ -45,9 +51,9 @@ shortcuts the ones it knows by script name, [RE.md §31](RE.md) for the evidence
 
 | Target | Taken when | How | What the animated path does besides |
 |---|---|---|---|
-| ground item | interaction `Interact_Player_TakeItem` (no pre/post script), can script (if any) accepts | `risen.item.pick_up` = `PSInventory::InsertStack`: the same events as the animated one (`entity.destroyed`, `item.picked_up`, `inventory.added` cause `"pickup"`) | take animation, the tutorial hint `takeitem`, the pick-up sparkle, the theft assessment (hence the witness rule) |
+| ground item | interaction `Interact_Player_TakeItem` (no pre/post script), can script (if any) accepts | `risen.item.pick_up` = `PSInventory::InsertStack`: the same events as the animated one (`entity.destroyed`, `item.picked_up`, `inventory.added` cause `"pickup"`) | take animation, the tutorial hint `takeitem`, the pick-up sparkle (the theft assessment is done by quick loot too) |
 | dead or knocked-out human | `CanInteract_Player_Loot` / `PreInteract_Player_Loot` / `Interact_Player_Loot`, and at least one stack passes the loot filter | the game's script `AutoLoot` (what it uses itself for corpses in water): exactly the stacks the loot window would list (`InvFilter_Loot`), **no** body parts, fists or hidden stacks (`risen.item.loot` takes those), HUD lines by the engine | kneeling and the window; looting bodies is no crime in the game (`AssessPlayerLooting`), so no witness rule |
-| chest, cupboard, sarcophagus | plain `Chest`/`Cupboard`/`Sarcophagus` interaction without post script, something passes the loot filter | `AutoLoot` on the container; a locked chest with its key in the inventory is unlocked first the way the game's `Unlock` script does it (`gCLock_PS.Status := Unlocked`, the key stays) | walking, kneeling, the lid animation, the window, `Unlock`'s effect; the NPC theft assessment (hence the witness rule) |
+| chest, cupboard, sarcophagus | plain `Chest`/`Cupboard`/`Sarcophagus` interaction without post script, something passes the loot filter | `AutoLoot` on the container; a locked chest with its key in the inventory is unlocked first the way the game's `Unlock` script does it (`gCLock_PS.Status := Unlocked`, the key stays) | walking, kneeling, the lid animation, the window, `Unlock`'s effect (the NPC theft assessment is done by quick loot too; sarcophagi have none in the animated path either) |
 
 **Declined (nothing happens) and why:**
 
@@ -76,17 +82,29 @@ Items taken by quick loot show up exactly like the animated ones to other mods: 
 * dead and knocked-out human looted, the club moves, fists/joint stay, same items as the loot window; living human, monster corpse, bed declined;
 * plain chest looted, same inventory events as the window path; locked without key declined and stays locked; with key looted, unlocked, key kept; quest-script lock declined while locked and its script never ran; cupboard, sarcophagus looted; empty chest declined;
 * trap sarcophagus declined, nothing spawned; the animated path of the same sarcophagus spawns the skeleton exactly once (so the effect happens once, by the engine);
-* weapon drawn (real `PS_Melee_Loop` via the simulated middle button) declined, put away works; too far declined; a living human within the radius vetoes;
+* weapon drawn (real `PS_Melee_Loop` via the simulated middle button) declined, put away works; too far declined; a living human nearby does not stop an item pick-up outside a watched area (assess mode);
 * the real key path: simulated `SecondaryAction` presses at the engine's input admin with the focus pinned: the press takes the item and is consumed (a later handler never sees it), the hold takes the next target, a press with no target is not consumed;
 * quick save, take one more, quick load: counts equal;
-* second process, `config.toml` with `key = "PrimaryAction"` and `items = false`: the apple is declined and its press reaches the engine, the corpse is looted by the same key and the press is consumed, `SecondaryAction` is no longer the key.
+* second process, `config.toml` with `key = "PrimaryAction"`, `items = false` and `witness_mode = "veto"`: the apple is declined and its press reaches the engine, the corpse is looted by the same key and the press is consumed, `SecondaryAction` is no longer the key; a human who looks at the player stops the chest looting (nothing taken, nobody asked), one who looks away does not.
+
+The NPC reactions have their own scenario, `quickloot_react` (`scripts\smoke-test.ps1 -Scenario quickloot_react`, ~2.5 minutes, two game processes), which makes the beach a watched area (an `AreaZone_Default` with the area name `SL_Public`,
+`Entity:set_area_names`) and puts a Peasant 300 units in front of the player:
+
+* an item and a chest taken by the animated path and by quick loot give the **same end state** for the witness (`ZS_Observe`, AI mode `Observe`, comment `Theft`, reason `Theft`), the same `AssessTheft(Peasant, target)` calls (recorded before the take), a cupboard reacts too;
+* sarcophagi (both paths), dead bodies (both paths) and a declined (locked) chest ask nobody and cause no reaction; outside a watched area, with the witness behind the player or 900 units away, with nobody around, and for an item the player dropped himself, the NPCs are asked and nobody reacts;
+* second process with `witness_mode = "ignore"`: nobody is asked, nobody reacts.
+
+`mods/example_ignore_theft` (`ex_ignore_theft`) proves the suppression: with a game variable set a `risen.ai.perceive("theft")` handler answers 0 and neither the animated take nor quick loot makes the witness react; without it he does.
 
 **Not driven:** a physical mouse click (the layer cannot move the OS mouse into the game; the engine's own action path is driven instead), what the HUD lines look like (screenshots of the game are black), whether the
-game's use key works in the test copy (`GUI2::IsBrowsing` is true there), items in slots, the theft reaction of a human actually seeing a pick-up (the mod declines instead).
+game's use key works in the test copy (`GUI2::IsBrowsing` is true there), items in slots, what a witness says and does beyond the state he is put in (black screenshots, no audio check).
 
 ## Known limits
 
 * `AutoLoot` always prints its own HUD lines: `print = false` only silences the lines for ground items.
 * Looted stacks of corpses/chests report cause `"script"` instead of `"loot"` (the window's cause).
 * The tutorial hints `takeitem` / `loot` are not dismissed by a quick take.
-* The witness rule counts every living human of species `Human` in range, whether or not it could see you (no line-of-sight test).
+* The reaction is the game's: it only exists inside watched areas (the open beach is none; real houses and camps were not walked into, the area of the tests is made up) and only `SL_Public` was tried as the area's name. An area with an owner group (the NPC would record a *crime*, not just a comment) was only read in the decompilation, not driven.
+* The animated chest asks the NPCs several times while you stand at it (the game's looting check runs once a second); quick loot asks once. A witness's reaction is the same.
+* There is no noise-based perception in the game: opening a chest or taking an item makes no sound that an NPC reacts to ([RE.md §40](RE.md)).
+* `veto` mode counts living humans of species `Human` within the radius who can see the player (`risen.world.can_see`: 180 degree field of view, a clear line); it does not know the area, so it also vetoes on the open beach.

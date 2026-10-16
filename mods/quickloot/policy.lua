@@ -76,4 +76,32 @@ function M.is_witness(species, dead, down)
     return species == "gESpecies_Human" and not dead and not down
 end
 
+-- Does the animated path run the NPC theft assessment for this interaction? The engine calls its perception broadcast of AssessTheft in Interact_Player_TakeItem
+-- (before the item is inserted) and in PreInteract_Player_Chest / PreInteract_Player_Cupboard (after kneeling, before Unlock); the corpse loot, the sarcophagi and
+-- everything else never do (RE.md section 40). Quick loot assesses exactly the same interactions.
+local ASSESSED = { Interact_Player_TakeItem = true, Interact_Player_Chest = true, Interact_Player_Cupboard = true }
+function M.assessed_as_theft(it)
+    return it ~= nil and ASSESSED[it.interact] == true
+end
+
+-- What happens to the NPCs that could witness a theft: "assess" (the engine's own reaction, the default), "veto" (decline when somebody who can see the player is near;
+-- the old behaviour) or "ignore" (nobody reacts: thieving is undetectable). `value` is the config text; returns the mode, or nil and why for anything else.
+M.WITNESS_MODES = { "assess", "veto", "ignore" }
+function M.witness_mode(value)
+    if type(value) == "string" then
+        local v = value:lower()
+        for _, m in ipairs(M.WITNESS_MODES) do
+            if v == m then return m end
+        end
+    end
+    return nil, ("witness_mode '%s' is not one of assess, veto, ignore"):format(tostring(value))
+end
+
+-- Veto mode: does `npc` count as a witness? Needs a living, standing human within `radius` who is looking at the player (`sees`: nil = unknown, then he counts).
+function M.vetoes(species, dead, down, distance, radius, sees)
+    if radius <= 0 or not M.is_witness(species, dead, down) then return false end
+    if distance ~= nil and distance > radius then return false end
+    return sees ~= false
+end
+
 return M

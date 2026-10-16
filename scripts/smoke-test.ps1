@@ -31,6 +31,8 @@
       ex_unseen_spawn - example: an enemy appears at a waypoint/freepoint the player cannot see and that lies behind him (mods/example_unseen_spawn)
       damagehooks  - damage hooks (M14, mods/damagehooks): risen.combat.on_damage against real fireball casts (three dummies, area falloff), wolf bites and club blows; scaling, cancel, chains, filters, errors, unregister, a nested DoDamage; save, then a fresh-process load
       ex_combat    - example: a Fireball that hits harder every time it hits the same target, counters in risen.save, reset on death (mods/example_stacking_fireball); save, then a fresh-process load where the count continues
+      quickloot_react - quick loot and the NPCs (M5e, mods/quickloot): the engine's theft assessment on the quick path against the animated path in a watched area (items, chests, cupboards, sarcophagi, corpses, out of sight / range, dropped items); witness_mode ignore in a second run
+      ex_ignore_theft - example: NPCs that ignore thefts while a game variable is set (risen.ai.perceive("theft") answers 0), animated and quick path (mods/example_ignore_theft)
       hardening    - every public function and method called with ~1.6 million wrong-typed / hostile argument combinations (mods/hardening): the game must survive and keep ticking
 
 .DESCRIPTION
@@ -58,7 +60,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -227,6 +229,14 @@ $scenarios = [ordered]@{
                                @{ Name = 'default'; Param = @('phase=default'); Start = 'new'; Keep = $false; Limit = 300 }
                                @{ Name = 'config'; Param = @('phase=config'); Start = 'new'; Keep = $false; Limit = 200; CopyInto = @('quickloot', 'mods\quickloot_driver\fixtures\config') }
                            ) }
+    # quick loot and the NPCs (M5e): phase `react` (default config: assess), phase `ignore` (config.toml with witness_mode = "ignore" copied into the mod)
+    quickloot_react   = @{ Est = 130; Title = 'quick loot reactions (M5e: the engine theft assessment on the quick path, ignore mode)'; Kind = 'result'; Mods = @('quickloot', 'quickloot_driver'); Limit = 300
+                           Phases = @(
+                               @{ Name = 'react'; Param = @('phase=react'); Start = 'new'; Keep = $false; Limit = 400 }
+                               @{ Name = 'ignore'; Param = @('phase=ignore'); Start = 'new'; Keep = $false; Limit = 200; CopyInto = @('quickloot', 'mods\quickloot_driver\fixtures\ignore') }
+                           ) }
+    # example: NPCs that ignore thefts while a game variable is set (risen.ai.perceive("theft")), animated and quick path
+    ex_ignore_theft   = @{ Est = 100; Title = 'example: NPCs that ignore thefts while a variable is set'; Kind = 'result'; Mods = @('example_ignore_theft', 'quickloot'); Limit = 300 }
     # one process per phase: "save" crafts at the anvil (twice) and saves, "load" crafts again in a fresh process, "load_missing" runs without the mod's content, "load_again" has it again
     ex_recipe         = @{ Est = 250; Title = 'example: a new smithing recipe (save, load, missing, again)'; Kind = 'result'; Mods = @('example_recipe'); Limit = 300
                            Phases = @(

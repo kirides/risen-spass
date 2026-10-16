@@ -1,0 +1,6 @@
+id          = "example_ignore_theft"
+name        = "Example: NPCs that ignore thefts while a variable is set"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "While the game variable EX_ThievesFriend is set (a quest reward, a guild membership, ...) no NPC reacts to the player taking items or opening chests: risen.ai.perceive(\"theft\") answers 0, for the animated and the quick-loot path."
+main        = "main.lua"

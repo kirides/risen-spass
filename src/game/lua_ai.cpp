@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <map>
 #include <set>
@@ -1416,6 +1417,75 @@ bool unperceiveAi(sol::object handle) {
     return false;
 }
 
+// ---- the engine's perception broadcast (M5e, docs/RE.md section 40) ---------------------------------------------------------------------------
+// Script_Game.dll has one helper, not exported (RVA 0xed3e0), that every "an NPC may react to this" event of the game ends in: Interact_Player_TakeItem
+// and PreInteract_Player_Chest / _Cupboard call it with (the item or container, the proxy of AssessTheft), Kill / Defeat / ResumeTaskAfterStumble with
+// other scripts. It runs the given script for every NPC of the world (self = the NPC, other = the entity), collects the reactions the script recorded (a
+// crime, a comment, a new AI mode), orders them and applies them (LastPlayerCrime, LastPlayerComment, the AI mode: the NPC comments, threatens, attacks...).
+// The distance (PerceiveTheft: 700 units) and the line of sight (CanSee) are tested by the scripts themselves, so a caller only has to name the entity.
+// `bool f(?, Entity byValue, eCScriptProxyScript byValue)`: the first register is not an argument (the callee only uses its home slot as a scratch Entity, the
+// callers pass whatever is in it), the other two are pointers to copies that the callee destroys.
+using BroadcastFn = bool (*)(void* unused, void* byValueEntity, void* byValueProxy);
+constexpr std::uintptr_t kBroadcastRva = 0xed3e0;
+constexpr unsigned char kBroadcastPrologue[] = {0x4c, 0x89, 0x44, 0x24, 0x18, 0x48, 0x89, 0x54, 0x24, 0x10, 0x48, 0x89, 0x4c, 0x24, 0x08, 0x55, 0x53, 0x56, 0x57, 0x41, 0x54, 0x41,
+                                                0x55, 0x41, 0x56, 0x41, 0x57, 0x48, 0x8d, 0xac, 0x24, 0xc8, 0xfe, 0xff, 0xff, 0x48, 0x81, 0xec, 0x38, 0x02, 0x00, 0x00};
+BroadcastFn g_broadcast = nullptr;
+
+// Looks the helper up by its offset and checks the first bytes of the function, so another build of Script_Game.dll is refused instead of called.
+void resolveBroadcast(HMODULE scriptGame) {
+    g_broadcast = nullptr;
+    if (scriptGame == nullptr) {
+        return;
+    }
+    const auto* code = reinterpret_cast<const unsigned char*>(scriptGame) + kBroadcastRva;
+    bool same = false;
+    guarded([&] { same = std::memcmp(code, kBroadcastPrologue, sizeof(kBroadcastPrologue)) == 0; });
+    if (same) {
+        g_broadcast = reinterpret_cast<BroadcastFn>(const_cast<unsigned char*>(code));
+    } else {
+        spdlog::warn("ai: the perception broadcast of Script_Game.dll (RVA {:#x}) is not the known function: risen.ai.broadcast is unavailable", kBroadcastRva);
+    }
+}
+
+// risen.ai.broadcast(script, entity) -> bool | nil, reason: runs the engine's perception broadcast of `script` (an Assess* script such as "AssessTheft") for
+// `entity`, exactly as the game does when the player takes an item or opens a chest: every NPC of the world is asked, the reactions are applied. Returns
+// whether any NPC reacted.
+Two broadcastAi(sol::this_state ts, sol::object scriptArg, sol::object targetArg) {
+    sol::state_view L(ts);
+    if (g_broadcast == nullptr || sym().script_proxy_ctor_name == nullptr) {
+        return failResult(L, "the perception broadcast is unavailable (see risen.engine.missing() and the log)");
+    }
+    std::string script;
+    if (!stringArg(scriptArg, script) || script.empty() || script.size() > 100) {
+        return failResult(L, "the first argument must be the name of a script (a string, e.g. \"AssessTheft\")");
+    }
+    LuaEntity target;
+    if (!entityArg(targetArg, target)) {
+        return failResult(L, "the second argument must be an entity");
+    }
+    if (!scripts::scriptExists(script)) {
+        return failResult(L, "no script named '" + script + "'");
+    }
+    void* e = ptr(target);
+    if (e == nullptr) {
+        return failResult(L, "the entity is gone");
+    }
+    // by-value arguments: the callee destroys its copies, so nothing is destroyed here
+    EntityHolder holder{e};
+    alignas(16) unsigned char proxy[64] = {};
+    bool reacted = false;
+    const bool ok = guarded([&] {
+        const BString name(script);
+        sym().script_proxy_ctor_name(proxy, name.get());
+        reacted = g_broadcast(nullptr, &holder, proxy);
+    });
+    SPASS_TRACE(trace::Channel::Ai, "broadcast {} for {}: {}", script, target.name, ok ? (reacted ? "an NPC reacted" : "nobody reacted") : "the engine raised an exception");
+    if (!ok) {
+        return failResult(L, "the engine raised an exception");
+    }
+    return okResult(L, sol::make_object(L, reacted));
+}
+
 }  // namespace
 
 void aiEntityKilled(void* entity) {
@@ -1564,6 +1634,7 @@ void bindAi(sol::state_view lua, sol::table risen) {
     ai.set_function("generation", []() { return static_cast<double>(g_nextRunId); });
     ai.set_function("perceive", perceiveAi);
     ai.set_function("unperceive", unperceiveAi);
+    ai.set_function("broadcast", broadcastAi);
     ai.set_function("list", listRegistry);
     ai.set_function("info", infoRegistry);
     ai.set_function("exists", [](sol::object kindArg, sol::object nameArg) {
@@ -1611,6 +1682,7 @@ void bindAi(sol::state_view lua, sol::table risen) {
         return;
     }
     const HMODULE sg = GetModuleHandleW(L"Script_Game.dll");
+    resolveBroadcast(sg);
     const void* expected = sg != nullptr ? reinterpret_cast<const void*>(GetProcAddress(sg, "?ZS_HangAround@@YA_NAEAV?$bTObjStack@UgScriptRunTimeSingleState@@@@PEAVgCScriptProcessingUnit@@@Z")) : nullptr;
     std::vector<Entry> states;
     bool layoutOk = false;

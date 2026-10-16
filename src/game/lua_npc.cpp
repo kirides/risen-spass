@@ -1,3 +1,7 @@
+#include <cstring>
+#include <string>
+#include <vector>
+
 #include <spdlog/spdlog.h>
 
 #include "game/abi.h"
@@ -158,6 +162,82 @@ void addNpcMethods(sol::usertype<LuaEntity>& ut) {
             return false;
         }
         return propertySet(ps, name, value);
+    };
+
+    // ---- area names (M5e): an entity made from the template AreaZone_Default is an area (a box of +-500 units around it) whose `PropertyNameList` names what the
+    // area means to the scripts: SL_Public, SL_Watched, SL_Forbidden, SL_Inquisition, SL_Graveyard, SL_Vulcan, SL_Casern (security levels; taking an item inside one is
+    // theft to the AssessTheft script). The list is a bTObjArray<bCString> {data*, count, capacity} that the generic property mechanism cannot write.
+    ut["area_names"] = [&s](sol::this_state ts, const LuaEntity& e) -> sol::object {
+        sol::state_view L(ts);
+        void* ps = nullptr;
+        if (s.ent_get_property_set == nullptr || s.area_access_names == nullptr || !guarded([&] {
+                const BString cls("eCArea_StringProperty_PS");
+                ps = s.ent_get_property_set(ptr(e), cls.get());
+            }) || ps == nullptr) {
+            return sol::make_object(L, sol::lua_nil);
+        }
+        sol::table out = L.create_table();
+        guarded([&] {
+            const char* array = static_cast<const char*>(s.area_access_names(ps));
+            const char* data = *reinterpret_cast<const char* const*>(array);
+            const int n = *reinterpret_cast<const int*>(array + 8);
+            for (int i = 0; i < n && i < 64 && data != nullptr; ++i) {
+                out[i + 1] = std::string(s.bstring_get_text(data + static_cast<std::size_t>(i) * 8));
+            }
+        });
+        return sol::make_object(L, out);
+    };
+    ut["set_area_names"] = [&s](const LuaEntity& e, sol::object list) -> bool {
+        if (!list.valid() || list.get_type() != sol::type::table) {
+            return false;
+        }
+        std::vector<std::string> names;
+        for (const auto& kv : list.as<sol::table>()) {
+            if (kv.second.get_type() != sol::type::string || names.size() >= 32) {
+                return false;
+            }
+            const std::string name = kv.second.as<std::string>();
+            if (name.empty() || name.size() > 60) {
+                return false;
+            }
+            names.push_back(name);
+        }
+        void* ps = nullptr;
+        if (s.ent_get_property_set == nullptr || s.area_access_names == nullptr || s.mem_realloc == nullptr || s.mem_free == nullptr || !guarded([&] {
+                const BString cls("eCArea_StringProperty_PS");
+                ps = s.ent_get_property_set(ptr(e), cls.get());
+            }) || ps == nullptr) {
+            return false;
+        }
+        bool ok = false;
+        guarded([&] {
+            char* array = static_cast<char*>(s.area_access_names(ps));
+            auto*& data = *reinterpret_cast<char**>(array);
+            auto& count = *reinterpret_cast<int*>(array + 8);
+            auto& capacity = *reinterpret_cast<int*>(array + 12);
+            char* fresh = nullptr;
+            if (!names.empty()) {
+                fresh = static_cast<char*>(s.mem_realloc(s.mem_instance(), nullptr, static_cast<unsigned long>(names.size()) * 8, nullptr, nullptr, nullptr, -1));
+                if (fresh == nullptr) {
+                    return;
+                }
+                std::memset(fresh, 0, names.size() * 8);
+                for (std::size_t i = 0; i < names.size(); ++i) {
+                    s.bstring_ctor_cstr(fresh + i * 8, names[i].c_str());
+                }
+            }
+            for (int i = 0; i < count && data != nullptr; ++i) {  // the old elements and block go back to the engine
+                s.bstring_dtor(data + static_cast<std::size_t>(i) * 8);
+            }
+            if (data != nullptr) {
+                s.mem_free(s.mem_instance(), data);
+            }
+            data = fresh;
+            count = static_cast<int>(names.size());
+            capacity = count;  // the engine treats the whole capacity as constructed elements
+            ok = true;
+        });
+        return ok;
     };
 
     // ---- gear --------------------------------------------------------------------------------------------

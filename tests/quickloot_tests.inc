@@ -87,6 +87,24 @@ TEST(quickloot_policy_decides_from_the_interaction_scripts) {
         result.lock_script = (policy.lock_plan({ Status = "gELockStatus_Locked", Key = "It_Key", OnLockStatusChanged = "OnQuestSuccess_X" }, has))
         result.witness = tostring(policy.is_witness("gESpecies_Human", false, false)) .. tostring(policy.is_witness("gESpecies_Human", true, false))
             .. tostring(policy.is_witness("gESpecies_Human", false, true)) .. tostring(policy.is_witness("gESpecies_Wolf", false, false))
+        -- which interactions the engine runs its theft assessment for (RE.md section 40): items, chests, cupboards; not corpses, sarcophagi, traps
+        local function theft(i) return tostring(policy.assessed_as_theft(i)) end
+        result.theft = theft(it("", "", "Interact_Player_TakeItem")) .. "," .. theft(it("CanInteract_Player_Chest", "PreInteract_Player_Chest", "Interact_Player_Chest")) .. ","
+            .. theft(it("CanInteract_Player_Cupboard", "PreInteract_Player_Cupboard", "Interact_Player_Cupboard"))
+        result.no_theft = theft(it("CanInteract_Player_Loot", "PreInteract_Player_Loot", "Interact_Player_Loot")) .. "," .. theft(it("CanInteract_Player_Sarcophagus", "PreInteract_Player_Sarcophagus", "Interact_Player_Sarcophagus")) .. ","
+            .. theft(it("", "", "Interact_Player_Sarcophagus_Trap")) .. "," .. tostring(policy.assessed_as_theft(nil))
+        -- witness_mode: the three words in any case, anything else is refused with a reason
+        result.mode_assess = policy.witness_mode("assess")
+        result.mode_veto = policy.witness_mode("VETO")
+        result.mode_ignore = policy.witness_mode("Ignore")
+        local bad, why = policy.witness_mode("sometimes")
+        result.mode_bad = tostring(bad) .. ":" .. tostring(why)
+        result.mode_number = tostring((policy.witness_mode(3)))
+        -- the veto: a living, standing human in range who is not known to look away
+        local function veto(species, dead, down, dist, radius, sees) return tostring(policy.vetoes(species, dead, down, dist, radius, sees)) end
+        result.veto = veto("gESpecies_Human", false, false, 500, 1000, true) .. "," .. veto("gESpecies_Human", false, false, 500, 1000, nil) .. "," .. veto("gESpecies_Human", false, false, 500, 1000, false) .. ","
+            .. veto("gESpecies_Human", false, false, 1500, 1000, true) .. "," .. veto("gESpecies_Human", true, false, 500, 1000, true) .. "," .. veto("gESpecies_Wolf", false, false, 500, 1000, true) .. ","
+            .. veto("gESpecies_Human", false, false, 500, 0, true)
     )LUA");
     sol::table res = lua["result"];
     const auto get = [&](const char* k) { return res.get<std::string>(k); };
@@ -96,6 +114,10 @@ TEST(quickloot_policy_decides_from_the_interaction_scripts) {
     CHECK(get("lock_none") == "none" && get("lock_open") == "open" && get("lock_key") == "key");
     CHECK(get("lock_nokey") == "needs lockpick" && get("lock_notemplate") == "needs lockpick" && get("lock_script") == "needs lockpick");
     CHECK(get("witness") == "truefalsefalsefalse");
+    CHECK(get("theft") == "true,true,true" && get("no_theft") == "false,false,false,false");
+    CHECK(get("mode_assess") == "assess" && get("mode_veto") == "veto" && get("mode_ignore") == "ignore" && get("mode_number") == "nil");
+    CHECK(get("mode_bad") == "nil:witness_mode 'sometimes' is not one of assess, veto, ignore");
+    CHECK(get("veto") == "true,true,false,false,false,false,false");
 }
 
 TEST(trace_channels_calls_and_hud_exist) {

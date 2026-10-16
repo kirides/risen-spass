@@ -240,7 +240,7 @@ the right thing when a *dialogue condition* or another mod must see the value (`
 ### 4.15 Input, interaction, HUD (building blocks)
 
 `risen.interact` (what the player looks at, `info(entity)`, `begin(user, mob)` starts the engine's real interaction), `risen.input` (named actions, `pressed`, `simulate`), the `input.action` event (**return a value to consume the key press**), `risen.hud.log / item_log / state`, `risen.config{ defaults }` (reads the mod's `config.toml`, wrong values fall back to the defaults with a log line).
-`mods/quickloot` is the complete example ([QUICKLOOT.md](QUICKLOOT.md)): the right mouse button takes what you look at, only with no weapon drawn, configurable, with the engine's own side effects (inventory events, theft checks stay with the normal use key). API: LUA_API "Interaction, input and HUD building blocks".
+`mods/quickloot` is the complete example ([QUICKLOOT.md](QUICKLOOT.md)): the right mouse button takes what you look at, only with no weapon drawn, configurable, with the engine's own side effects (inventory events, and the NPCs react to a theft exactly as to the animated take: `witness_mode`, see 4.19). API: LUA_API "Interaction, input and HUD building blocks".
 
 ### 4.16 Edit any property of anything
 
@@ -296,6 +296,24 @@ risen.combat.on_damage(function(hit) return hit.damage * 0.5 end, { victim = "pl
 * **Counters belong in `risen.save`** (restored by a load, empty in a new game, keyed by the victim's unique name); decide when they reset (death, a new game, never) and write it into the header of your mod, as the example does.
 * **Reactions:** a cancelled hit makes no stumble, but the NPC may still notice the fight; making NPCs ignore hits that land is not part of this hook. `-Trace combat` shows every hit with the damage before and after.
 * Examples and tests: `example_stacking_fireball` (`ex_combat`), `damagehooks` (real casts, wolf bites, club blows). Details: [LUA_API.md](LUA_API.md) "Damage hooks", [RE.md](RE.md) §39.
+
+### 4.19 NPCs and thefts: let them notice, or look the other way
+
+```lua
+-- mods/example_ignore_theft: while a game variable is set nobody reacts to the player taking an item or opening a chest
+risen.ai.perceive("theft", function(ctx)               -- the game's AssessTheft(npc, item_or_chest), asked for every NPC of the world
+    if (risen.gamevar.get("EX_ThievesFriend") or 0) ~= 0 then return 0 end   -- 0 = "this NPC does not react", 1 = "he takes note"
+    return nil                                         -- nil: the game's own check (security area, a human, within 700 units, sees the player)
+end, { all = true })                                   -- or { npc = shopkeeper }
+
+local reacted = risen.ai.broadcast("AssessTheft", chest)   -- a mod that moves items itself does what the game does: ask everybody (true = somebody reacted)
+```
+* **A theft is only a theft inside a watched area** (a house, a camp: an area with a security level). On the open beach, with bodies and with sarcophagi nobody reacts, in the game and in your mod. To try it, make a place watched:
+  `local z = risen.entity.spawn("AreaZone_Default", x, y, z); z:set_area_names({ "SL_Public" })` (a box of +-500 units).
+* **What a reaction is:** the witness goes to `ZS_Observe` (AI mode `Observe`), `LastPlayerComment` becomes `gEComment_Theft`; the owner of the place (same group as the area) records a crime. Whether he notices is the game's own test: within 700 units, can see the player.
+* **Quick loot** (`mods/quickloot`) calls `risen.ai.broadcast` before it takes, so the witnesses react as to the animated take; the option `witness_mode` is `"assess"` (default), `"veto"` (decline while somebody sees you) or `"ignore"`. Your `theft` handler applies to it as well.
+* **Hook the script, not the way of stealing:** the same hook sees the animated take, the sweep at a chest and `risen.ai.broadcast`. There is no sound-based perception in the game.
+* Examples and tests: `example_ignore_theft` (`ex_ignore_theft`), `quickloot_driver` (`quickloot_react`). Details: [LUA_API.md](LUA_API.md) "Theft", [QUICKLOOT.md](QUICKLOOT.md), [RE.md](RE.md) §40.
 
 ## 5. Configuration
 
