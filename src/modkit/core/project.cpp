@@ -363,6 +363,67 @@ json to_json(const Project& p) {
     }
     j["item_groups"] = groups;
 
+    json spells = json::array();
+    for (auto& x : p.spells) {
+        json o = json::object();
+        o["uid"] = x.uid;
+        o["mode"] = mode_name(x.mode);
+        o["name"] = x.name;
+        put_str(o, "base", x.base);
+        if (!x.forms.empty()) o["forms"] = x.forms;
+        put_text(o, "label", x.label);
+        put_text(o, "description", x.description);
+        put(o, "icon", x.icon);
+        put(o, "value", x.value);
+        put(o, "mana_cost", x.mana_cost);
+        put(o, "scroll_mana_cost", x.scroll_mana_cost);
+        put(o, "orb_mana_cost", x.orb_mana_cost);
+        put(o, "mana_mult", x.mana_mult);
+        put(o, "requires", x.requirements);
+        put(o, "consume", x.consume);
+        if (!x.damage.is_null()) o["damage"] = x.damage;
+        put(o, "damage_mult", x.damage_mult);
+        put(o, "speed", x.speed);
+        put(o, "speed_mult", x.speed_mult);
+        put(o, "radius", x.radius);
+        put(o, "radius_mult", x.radius_mult);
+        put(o, "damage_type", x.damage_type);
+        put(o, "effect", x.effect);
+        put_props(o, x.properties);
+        if (x.extra.is_object() && !x.extra.empty()) o["extra"] = x.extra;
+        put_str(o, "notes", x.notes);
+        spells.push_back(o);
+    }
+    if (!spells.empty()) j["spells"] = spells;  // absent in projects without them: the committed golden exports stay as they are
+
+    json ngroups = json::array();
+    for (auto& g : p.npc_groups) {
+        json o = json::object();
+        o["uid"] = g.uid;
+        put_str(o, "group", g.group);
+        put_str(o, "match", g.match);
+        put_str(o, "exclude", g.exclude);
+        if (!g.names.empty()) o["names"] = g.names;
+        put(o, "hp_mult", g.hp_mult);
+        put(o, "mana_mult", g.mana_mult);
+        put(o, "level_mult", g.level_mult);
+        put(o, "xp_mult", g.xp_mult);
+        put(o, "damage_mult", g.damage_mult);
+        put(o, "level_add", g.level_add);
+        put(o, "skills_mult", g.skills_mult);
+        put(o, "skills_add", g.skills_add);
+        put(o, "guild", g.guild);
+        put(o, "species", g.species);
+        put(o, "attitude", g.attitude);
+        put(o, "bravery", g.bravery);
+        put(o, "damage_calc", g.damage_calc);
+        put(o, "ai_group", g.ai_group);
+        if (g.extra.is_object() && !g.extra.empty()) o["extra"] = g.extra;
+        put_str(o, "notes", g.notes);
+        ngroups.push_back(o);
+    }
+    if (!ngroups.empty()) j["npc_groups"] = ngroups;
+
     json recipes = json::array();
     for (auto& x : p.recipes) {
         json o = json::object();
@@ -593,6 +654,62 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
         r.get(e, "names", g.names);
         r.get(e, "value_mult", g.value_mult);
         r.get(e, "damage_mult", g.damage_mult);
+        return g;
+    });
+    read_list(j, "spells", p.spells, warnings, [](const Reader& r, const json& e) {
+        SpellDef x;
+        r.get_uid(e, x.uid);
+        x.mode = Mode::Edit;  // spells default to an edit of a shipped spell
+        if (e.contains("mode")) r.get_mode(e, x.mode);
+        r.get(e, "name", x.name);
+        r.get(e, "base", x.base);
+        r.get(e, "forms", x.forms);
+        r.get(e, "label", x.label);
+        r.get(e, "description", x.description);
+        r.get(e, "icon", x.icon);
+        r.get(e, "value", x.value);
+        r.get(e, "mana_cost", x.mana_cost);
+        r.get(e, "scroll_mana_cost", x.scroll_mana_cost);
+        r.get(e, "orb_mana_cost", x.orb_mana_cost);
+        r.get(e, "mana_mult", x.mana_mult);
+        r.get(e, "requires", x.requirements);
+        r.get(e, "consume", x.consume);
+        r.get(e, "damage", x.damage);
+        r.get(e, "damage_mult", x.damage_mult);
+        r.get(e, "speed", x.speed);
+        r.get(e, "speed_mult", x.speed_mult);
+        r.get(e, "radius", x.radius);
+        r.get(e, "radius_mult", x.radius_mult);
+        r.get(e, "damage_type", x.damage_type);
+        r.get(e, "effect", x.effect);
+        get_props(r, e, x.properties);
+        r.get(e, "extra", x.extra);
+        r.get(e, "notes", x.notes);
+        return x;
+    });
+    read_list(j, "npc_groups", p.npc_groups, warnings, [](const Reader& r, const json& e) {
+        NpcGroup g;
+        r.get_uid(e, g.uid);
+        r.get(e, "group", g.group);
+        r.get(e, "match", g.match);
+        r.get(e, "exclude", g.exclude);
+        r.get(e, "names", g.names);
+        r.get(e, "hp_mult", g.hp_mult);
+        r.get(e, "mana_mult", g.mana_mult);
+        r.get(e, "level_mult", g.level_mult);
+        r.get(e, "xp_mult", g.xp_mult);
+        r.get(e, "damage_mult", g.damage_mult);
+        r.get(e, "level_add", g.level_add);
+        r.get(e, "skills_mult", g.skills_mult);
+        r.get(e, "skills_add", g.skills_add);
+        r.get(e, "guild", g.guild);
+        r.get(e, "species", g.species);
+        r.get(e, "attitude", g.attitude);
+        r.get(e, "bravery", g.bravery);
+        r.get(e, "damage_calc", g.damage_calc);
+        r.get(e, "ai_group", g.ai_group);
+        r.get(e, "extra", g.extra);
+        r.get(e, "notes", g.notes);
         return g;
     });
     read_list(j, "recipes", p.recipes, warnings, [](const Reader& r, const json& e) {

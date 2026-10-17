@@ -55,6 +55,43 @@ struct ItemGroup {
     std::optional<double> value_mult, damage_mult;
 };
 
+// A spell: the `spells` section (an edit of a shipped spell) or `new_spells` (a new one made of the pieces of a shipped one), docs/SPELL_PROPERTIES.md.
+// Unset numbers mean "leave as shipped".
+struct SpellDef {
+    std::string uid;
+    Mode mode = Mode::Edit;  // Edit: spells[name]; New: new_spells[name]
+    std::string name;        // Edit: a shipped spell ("Fireball", "Light"); New: the new template name (crystal / rune <name>, scroll <name>_Scroll, orb <name>_Orb)
+    std::string base;        // New: the shipped spell it is made from
+    std::vector<std::string> forms;  // New: crystal / rune / scroll / orb (empty = the main form only)
+    Text label, description;         // New: name and description of the main form
+    std::optional<std::string> icon;  // New
+    std::optional<int> value;         // New: gold value of the main form
+    std::optional<int> mana_cost, scroll_mana_cost, orb_mana_cost;
+    std::optional<double> mana_mult;
+    std::optional<IntMap> requirements;  // skill levels to equip: { Fireball = 2 } / { Circle = 3 }
+    std::optional<bool> consume;         // used up by a cast
+    json damage;                         // projectile spells: null = unchanged, a number, or a list (one per projectile level)
+    std::optional<double> damage_mult, speed, speed_mult, radius, radius_mult;
+    std::optional<std::string> damage_type, effect;
+    PropEdits properties;                // any other property of the crystal / rune
+    json extra = json::object();         // settings without a field here (per-form tables, projectile_properties): kept as they are
+    std::string notes;
+};
+
+// An entry of the `npc_groups` section: relative changes for every NPC template a selector matches.
+struct NpcGroup {
+    std::string uid;
+    std::string group, match, exclude;  // template group path, Lua pattern on the name, Lua pattern to leave out
+    std::vector<std::string> names;
+    std::optional<double> hp_mult, mana_mult, level_mult, xp_mult, damage_mult;
+    std::optional<int> level_add;
+    std::optional<std::map<std::string, double>> skills_mult;
+    std::optional<IntMap> skills_add;
+    std::optional<std::string> guild, species, attitude, bravery, damage_calc, ai_group;
+    json extra = json::object();  // settings without a field here: kept as they are
+    std::string notes;
+};
+
 struct Ingredient {
     std::string item;
     int count = 1;
@@ -211,6 +248,8 @@ struct Project {
     ModInfo mod;
     std::vector<ItemDef> items;
     std::vector<ItemGroup> item_groups;
+    std::vector<SpellDef> spells;
+    std::vector<NpcGroup> npc_groups;
     std::vector<RecipeDef> recipes;
     std::vector<NpcTemplateDef> npc_templates;
     std::vector<PlacedNpc> npcs;

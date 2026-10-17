@@ -61,6 +61,11 @@ ProjectNameIndex::ProjectNameIndex(const Project& p) {
     for (auto& t : p.npc_templates) add(t.name, "NPCs", t.uid, t.name);
     for (auto& n : p.npcs) add(n.name, "NPCs", n.uid, n.name);
     for (auto& b : p.behaviors) add(b.name, "Behaviours", b.uid, b.name);
+    for (auto& s : p.spells) {  // the layer names them "spells.Fireball" / "new_spells.Name"
+        add(s.mode == Mode::Edit ? "spells." + s.name : s.name, "Spells", s.uid, s.name);
+        if (s.mode == Mode::New) add("new_spells." + s.name, "Spells", s.uid, s.name);
+    }
+    for (size_t i = 0; i < p.npc_groups.size(); ++i) add("npc_groups[" + std::to_string(i + 1) + "]", "NPC groups", p.npc_groups[i].uid, "group " + std::to_string(i + 1));
     for (auto& d : p.dialogs) {
         for (auto& n : d.graph.nodes)
             if (n.type == "option") add(info_name(p, n), "Dialogues", d.uid, d.name);

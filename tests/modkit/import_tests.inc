@@ -83,20 +83,20 @@ TEST(import_round_trip) {
 }
 
 TEST(import_keeps_unknown_sections) {
-    const fs::path dir = temp_dir("import_extra") / "spells_mod";
-    write_text(dir / "mod.toml", "id = \"spells_mod\"\nname = \"Spells\"\nversion = \"2.0.0\"\n");
-    write_text(dir / "data" / "balance.lua", "return { spells = { Fireball = { mana_cost = 12 } }, items = { It_Apple = { value = 2 } } }\n");
+    const fs::path dir = temp_dir("import_extra") / "extra_mod";
+    write_text(dir / "mod.toml", "id = \"extra_mod\"\nname = \"Spells\"\nversion = \"2.0.0\"\n");
+    write_text(dir / "data" / "balance.lua", "return { future_section = { Fireball = { mana_cost = 12 } }, items = { It_Apple = { value = 2 } } }\n");
     const ImportResult r = import_mod(u8str(dir));
     CHECK(r.ok);
     CHECK_EQ(r.project.mod.version, std::string("2.0.0"));
     CHECK_EQ(r.project.items.size(), size_t(1));
-    CHECK(r.project.extra_balance.contains("spells"));
+    CHECK(r.project.extra_balance.contains("future_section"));
     const json b = balance_spec(r.project);
-    CHECK_EQ(b["spells"]["Fireball"]["mana_cost"].get<int>(), 12);
+    CHECK_EQ(b["future_section"]["Fireball"]["mana_cost"].get<int>(), 12);
     CHECK(!r.warnings.empty());
     // the extra sections survive the project file
     const Project q = project_from_json(json::parse(dump_project(r.project)));
-    CHECK(q.extra_balance.contains("spells"));
+    CHECK(q.extra_balance.contains("future_section"));
     // not a mod
     CHECK(!import_mod(u8str(temp_dir("import_none"))).ok);
 }

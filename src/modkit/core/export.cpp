@@ -268,6 +268,83 @@ json balance_spec(const Project& p) {
         for (const NpcTemplateDef* n : nnews) npcs[n->name] = npc_entry(*n, true);
         spec["new_npcs"] = npcs;
     }
+    // spells (the Spells panel): `spells` edits shipped ones, `new_spells` makes new ones of their pieces
+    auto spell_entry = [&](const SpellDef& s, bool fresh) {
+        json e = json::object();
+        if (fresh) {
+            e["base"] = s.base;
+            if (!s.forms.empty()) e["forms"] = s.forms;
+            if (json t = text_value(s.label, p.mod.languages); !t.is_null()) e["name"] = t;
+            if (json t = text_value(s.description, p.mod.languages); !t.is_null()) e["description"] = t;
+            if (s.icon) e["icon"] = resolve_icon(p, *s.icon);
+            put(e, "value", s.value);
+        }
+        put(e, "mana_cost", s.mana_cost);
+        put(e, "mana_mult", s.mana_mult);
+        put(e, "scroll_mana_cost", s.scroll_mana_cost);
+        put(e, "orb_mana_cost", s.orb_mana_cost);
+        if (s.requirements) e["requires"] = int_map(*s.requirements);
+        put(e, "consume", s.consume);
+        if (!s.damage.is_null()) e["damage"] = s.damage;
+        put(e, "damage_mult", s.damage_mult);
+        put(e, "damage_type", s.damage_type);
+        put(e, "speed", s.speed);
+        put(e, "speed_mult", s.speed_mult);
+        put(e, "radius", s.radius);
+        put(e, "radius_mult", s.radius_mult);
+        put(e, "effect", s.effect);
+        if (json pj = props_json(s.properties); !pj.empty()) e["properties"] = pj;
+        if (s.extra.is_object())
+            for (auto& [k, v] : s.extra.items())
+                if (!e.contains(k)) e[k] = v;
+        return e;
+    };
+    {
+        std::vector<const SpellDef*> sedits, snews;
+        for (auto& s : p.spells) (s.mode == Mode::Edit ? sedits : snews).push_back(&s);
+        auto sby_name = [](const SpellDef* a, const SpellDef* b) { return a->name < b->name; };
+        std::sort(sedits.begin(), sedits.end(), sby_name);
+        std::sort(snews.begin(), snews.end(), sby_name);
+        if (!sedits.empty()) {
+            json spells = json::object();
+            for (const SpellDef* s : sedits) spells[s->name] = spell_entry(*s, false);
+            spec["spells"] = spells;
+        }
+        if (!snews.empty()) {
+            json spells = json::object();
+            for (const SpellDef* s : snews) spells[s->name] = spell_entry(*s, true);
+            spec["new_spells"] = spells;
+        }
+    }
+    if (!p.npc_groups.empty()) {
+        json groups = json::array();
+        for (auto& g : p.npc_groups) {
+            json e = json::object();
+            if (!g.group.empty()) e["group"] = g.group;
+            if (!g.match.empty()) e["match"] = g.match;
+            if (!g.exclude.empty()) e["exclude"] = g.exclude;
+            if (!g.names.empty()) e["names"] = g.names;
+            put(e, "hp_mult", g.hp_mult);
+            put(e, "mana_mult", g.mana_mult);
+            put(e, "level_mult", g.level_mult);
+            put(e, "level_add", g.level_add);
+            put(e, "xp_mult", g.xp_mult);
+            put(e, "damage_mult", g.damage_mult);
+            if (g.skills_mult) e["skills_mult"] = *g.skills_mult;
+            if (g.skills_add) e["skills_add"] = int_map(*g.skills_add);
+            put(e, "guild", g.guild);
+            put(e, "species", g.species);
+            put(e, "attitude", g.attitude);
+            put(e, "bravery", g.bravery);
+            put(e, "damage_calc", g.damage_calc);
+            put(e, "ai_group", g.ai_group);
+            if (g.extra.is_object())
+                for (auto& [k, v] : g.extra.items())
+                    if (!e.contains(k)) e[k] = v;
+            groups.push_back(e);
+        }
+        spec["npc_groups"] = groups;
+    }
     // sections without a panel (kept from an imported mod), after the editor's own
     for (auto& [k, v] : p.extra_balance.items())
         if (!spec.contains(k)) spec[k] = v;

@@ -54,6 +54,7 @@ add_library(modkit_core STATIC
     core/lua_writer.cpp
     core/mesh.cpp
     core/settings.cpp
+    core/spells.cpp
     core/tpl_inventory.cpp
     core/validate.cpp
     core/world.cpp
@@ -104,8 +105,10 @@ add_executable(risen-modkit
     app/panels/recipes_panel.cpp
     app/panels/log_panel.cpp
     app/panels/npcs_panel.cpp
+    app/panels/npc_groups_panel.cpp
     app/panels/project_panel.cpp
     app/panels/settings_panel.cpp
+    app/panels/spells_panel.cpp
     app/panels/world_panel.cpp
     app/render/gl_util.cpp
     app/render/mesh_preview.cpp

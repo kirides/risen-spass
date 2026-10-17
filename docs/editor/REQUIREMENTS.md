@@ -59,6 +59,8 @@ IDs are referenced by the stages (section 9). **M** = must for the stage that im
 | APP-5 M | Command line: `risen-modkit [project] [--data DIR]`; for automation `--export DIR` (no window), `--screenshot FILE --frames N --panel NAME` (render N frames, save the window as PNG, exit; the test loop's way to look at the UI). |
 | APP-7 S | **Play** (F5, the green button, menu Game): export into `<game folder>\bin\spass\mods\<id>` and start Risen windowed (main menu / new game / last quick save), or, when the game runs with the layer's file watcher on, let it hot-reload the mod. |
 | APP-8 S | **Game errors**: the editor tails `spass.log`, keeps the warnings/errors that carry `[<mod id>]` or name a project object (item, recipe, template, NPC, quest and its `MK_<quest>_<action>` scripts, a dialogue option's info name, behaviours) and lists them in the Problems panel; a click jumps to the object. They never block the export. |
+| SPELL-1 S | Spells panel: changes of the shipped spells and new spells (`spells`, `new_spells`). |
+| NPC-6 S | NPC groups panel: selector (group path, Lua pattern, names) with the list of what it matches, relative changes (`npc_groups`). |
 | APP-6 S | Native file dialogs (nativefiledialog-extended); fallback: ImGui path input when the platform has no dialog service. |
 
 ### 3.2 Game data (stage E1)
@@ -322,7 +324,9 @@ Each stage ends with a usable feature (or the base the next stage needs), is ver
 
 | **E16** Shipped loot | a template's starting inventory decoded (`core/tpl_inventory.*`, RE.md section 52); the NPC panel shows what the template carries and what it wears, "Start from the shipped loot" | NPC-3 | **done** (359 of 361 NPC and monster templates readable, all equal to the engine's `template_inventory`; unit tests `inventory_*`; screenshot checked) |
 
-Planned next (the roadmap of 2026-10-17, one stage each, in this order): **E17** Spells and NPC-groups panels; **E18** branches inside a quest; **E19** actors (`._xmac`) in the World view and glTF/OBJ to `._xmsh` (AST-4); **E20** command palette (Ctrl+P) and wizards (fetch quest, trader NPC, new weapon + recipe).
+| **E17** Spells and NPC groups | the Spells panel (`spells`, `new_spells`) and the NPC groups panel (`npc_groups`): model, project JSON, export, import from the data files (no raw data any more), validation, `core/spells.*`, example `examples/modkit/spells.rmk.json` | SPELL-1, NPC-6 | **done** (unit tests `spells_*`, `npc_groups_*`, `lua_patterns_*`; live: the exported example was installed by the layer, "applied 8 of 8 entries", and a wrong setting was refused with the layer's own message) |
+
+Planned next (the roadmap of 2026-10-17, one stage each, in this order): **E18** branches inside a quest; **E19** actors (`._xmac`) in the World view and glTF/OBJ to `._xmsh` (AST-4); **E20** command palette (Ctrl+P) and wizards (fetch quest, trader NPC, new weapon + recipe).
 
 Order rationale: E0-E2 give a usable tool with a real mod at the end of E2; E3-E6 add the other content kinds on the same export pipeline; the world (E7-E8) is independent
 of the content editors and needs format work; placement (E10) needs both; E11/E12 need engine-side work and verification.

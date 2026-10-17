@@ -12,6 +12,7 @@
 #include "core/dialog.h"
 #include "core/behavior.h"
 #include "core/quest.h"
+#include "core/spells.h"
 
 namespace mk {
 
@@ -147,6 +148,123 @@ bool item_known(const Ctx& c, const std::string& name) {
     if (!c.g) return true;
     const TemplateInfo* t = c.g->tpl(name);
     return t && (t->kind == TplKind::Item || t->kind == TplKind::Recipe);
+}
+
+void check_spells(Ctx& c) {
+    const char* A = "Spells";
+    std::map<std::string, int> seen;
+    const std::set<std::string> projectile_keys_unused;
+    for (auto& s : c.p.spells) {
+        const std::string subj = s.name.empty() ? "(unnamed spell)" : s.name;
+        if (++seen[(s.mode == Mode::New ? "n:" : "e:") + p2m::lower(s.name)] == 2) c.add(Severity::Error, A, s.uid, subj, "the project has this spell twice");
+        const ShippedSpell* shipped = nullptr;
+        if (s.mode == Mode::Edit) {
+            shipped = shipped_spell(s.name);
+            if (s.name.empty()) c.add(Severity::Error, A, s.uid, subj, "choose the shipped spell to change");
+            else if (!shipped) c.add(Severity::Error, A, s.uid, subj, "'" + s.name + "' is no shipped spell (see the list in the Spells panel)");
+        } else {
+            if (const std::string why = template_name_problem(s.name); !why.empty()) c.add(Severity::Error, A, s.uid, subj, why);
+            shipped = shipped_spell(s.base);
+            if (s.base.empty()) c.add(Severity::Error, A, s.uid, subj, "a new spell needs a shipped spell as its base");
+            else if (!shipped) c.add(Severity::Error, A, s.uid, subj, "the base '" + s.base + "' is no shipped spell");
+            if (shipped) {
+                std::set<std::string> forms;
+                for (auto& f : s.forms) {
+                    if (std::find(shipped->forms.begin(), shipped->forms.end(), f) == shipped->forms.end())
+                        c.add(Severity::Error, A, s.uid, subj, "the form '" + f + "' does not exist for " + s.base + " (" + (shipped->projectile ? "crystal, scroll" : "rune, scroll, orb") + ")");
+                    if (!forms.insert(f).second) c.add(Severity::Error, A, s.uid, subj, "the form '" + f + "' is listed twice");
+                }
+                for (auto& f : s.forms.empty() ? std::vector<std::string>{shipped->forms.front()} : s.forms) {
+                    const std::string t = new_spell_template(s.name, f);
+                    if (c.g && c.g->tpl(t)) c.add(Severity::Error, A, s.uid, subj, "a game template named " + t + " exists: choose another name");
+                }
+            }
+            if (s.label.empty()) c.add(Severity::Warning, A, s.uid, subj, "no label: the item shows the base spell's name");
+            if (s.value && *s.value < 0) c.add(Severity::Error, A, s.uid, subj, "the value must not be negative");
+        }
+        for (auto* v : {&s.mana_cost, &s.scroll_mana_cost, &s.orb_mana_cost})
+            if (*v && **v < 0) c.add(Severity::Error, A, s.uid, subj, "a mana cost must not be negative");
+        if (s.mana_mult && *s.mana_mult < 0) c.add(Severity::Error, A, s.uid, subj, "the mana factor must not be negative");
+        if (s.mana_cost && s.mana_mult) c.add(Severity::Error, A, s.uid, subj, "a mana cost and a mana factor exclude each other");
+        if (s.requirements) check_skills(c, A, s.uid, subj, *s.requirements, "requires");
+        const bool proj_setting = !s.damage.is_null() || s.damage_mult || s.speed || s.speed_mult || s.radius || s.radius_mult || s.damage_type || s.effect;
+        const bool cost_setting = s.scroll_mana_cost || s.orb_mana_cost;
+        if (shipped && !shipped->projectile && proj_setting) c.add(Severity::Error, A, s.uid, subj, "damage, speed, radius, effect and damage type only apply to Fireball, Frost and Missile");
+        if (shipped && shipped->projectile && cost_setting) c.add(Severity::Error, A, s.uid, subj, "scroll and orb costs only apply to rune spells (a projectile spell has a crystal)");
+        if (shipped && shipped->projectile) {
+            if (s.damage_mult && s.damage_mult < 0) c.add(Severity::Error, A, s.uid, subj, "the damage factor must not be negative");
+            if (s.speed_mult && *s.speed_mult < 0) c.add(Severity::Error, A, s.uid, subj, "the speed factor must not be negative");
+            if (s.radius_mult && *s.radius_mult < 0) c.add(Severity::Error, A, s.uid, subj, "the radius factor must not be negative");
+            if (s.damage_mult && !s.damage.is_null()) c.add(Severity::Warning, A, s.uid, subj, "a damage value and a damage factor are both set: check the layer's report");
+            if (s.damage_type) {
+                const auto& t = spell_damage_types();
+                if (std::find(t.begin(), t.end(), *s.damage_type) == t.end()) c.add(Severity::Error, A, s.uid, subj, "unknown damage type '" + *s.damage_type + "'");
+            }
+            if (s.damage.is_array()) {
+                if (s.damage.size() > shipped->projectiles.size())
+                    c.add(Severity::Error, A, s.uid, subj, "the damage list has " + std::to_string(s.damage.size()) + " values, " + shipped->name + " has " + std::to_string(shipped->projectiles.size()) + " projectile levels");
+                for (auto& v : s.damage)
+                    if (!v.is_number()) c.add(Severity::Error, A, s.uid, subj, "the damage list must hold numbers");
+            } else if (!s.damage.is_null() && !s.damage.is_number()) {
+                c.add(Severity::Error, A, s.uid, subj, "the damage must be a number or a list of numbers");
+            }
+        }
+        if (s.mode == Mode::Edit && shipped && !s.mana_cost && !s.mana_mult && !s.scroll_mana_cost && !s.orb_mana_cost && !s.requirements && !s.consume && s.damage.is_null() &&
+            !s.damage_mult && !s.speed && !s.speed_mult && !s.radius && !s.radius_mult && !s.damage_type && !s.effect && s.properties.empty() && s.extra.empty())
+            c.add(Severity::Warning, A, s.uid, subj, "the spell changes nothing");
+        check_properties(c, A, s.uid, subj, s.properties, nullptr);
+    }
+}
+
+void check_npc_groups(Ctx& c) {
+    const char* A = "NPC groups";
+    int n = 0;
+    std::set<std::string> npc_skills;
+    for (auto& s : npc_skill_names(c.g)) npc_skills.insert(s);
+    for (auto& g : c.p.npc_groups) {
+        ++n;
+        const std::string subj = !g.group.empty() ? g.group : !g.match.empty() ? g.match : !g.names.empty() ? g.names.front() : "group " + std::to_string(n);
+        if (g.group.empty() && g.match.empty() && g.exclude.empty() && g.names.empty())
+            c.add(Severity::Warning, A, g.uid, subj, "no selector: the group applies to every NPC and monster of the game");
+        const bool any = g.hp_mult || g.mana_mult || g.level_mult || g.level_add || g.xp_mult || g.damage_mult || g.skills_mult || g.skills_add || g.guild || g.species || g.attitude ||
+                         g.bravery || g.damage_calc || g.ai_group || !g.extra.empty();
+        if (!any) c.add(Severity::Warning, A, g.uid, subj, "the group changes nothing");
+        for (auto* v : {&g.hp_mult, &g.mana_mult, &g.level_mult, &g.xp_mult, &g.damage_mult})
+            if (*v && **v < 0) c.add(Severity::Error, A, g.uid, subj, "a factor must not be negative");
+        if (g.skills_mult)
+            for (auto& [k, v] : *g.skills_mult) {
+                if (!npc_skills.empty() && !npc_skills.count(k)) c.add(Severity::Error, A, g.uid, subj, "skills_mult: unknown skill '" + k + "'");
+                if (v < 0) c.add(Severity::Error, A, g.uid, subj, "skills_mult." + k + " must not be negative");
+            }
+        if (g.skills_add) check_skills(c, A, g.uid, subj, *g.skills_add, "skills_add");
+        // patterns and what the selector matches
+        std::string perr;
+        for (const std::string* pat : {&g.match, &g.exclude})
+            if (!pat->empty()) {
+                lua_pattern_matches(*pat, "x", perr);
+                if (!perr.empty()) c.add(Severity::Error, A, g.uid, subj, "bad Lua pattern '" + *pat + "': " + perr);
+            }
+        if (c.g && perr.empty()) {
+            std::string err;
+            const auto found = npc_group_templates(g, *c.g, err);
+            if (!err.empty()) c.add(Severity::Error, A, g.uid, subj, err);
+            else if (found.empty()) c.add(Severity::Error, A, g.uid, subj, "the selector matches no NPC or monster template (the layer refuses a selector that matches nothing)");
+            for (auto& name : g.names) {
+                const TemplateInfo* t = c.g->tpl(name);
+                if (!t) c.add(Severity::Error, A, g.uid, subj, "names: '" + name + "' is no template of the game");
+                else if (t->kind != TplKind::Npc && t->kind != TplKind::Monster) c.add(Severity::Error, A, g.uid, subj, "names: '" + name + "' is no NPC or monster");
+            }
+            if (!g.group.empty()) {
+                bool any_in = false;
+                for (auto& t : c.g->templates())
+                    if (t->group == g.group || t->group.rfind(g.group + "/", 0) == 0) {
+                        any_in = true;
+                        break;
+                    }
+                if (!any_in) c.add(Severity::Error, A, g.uid, subj, "no templates in the group '" + g.group + "' (docs/TEMPLATES.md)");
+            }
+        }
+    }
 }
 
 void check_recipes(Ctx& c) {
@@ -560,6 +678,11 @@ std::vector<Problem> validate(const Project& p, const GameData* game, const Worl
         if (r.mode == Mode::New) c.new_templates.insert(p2m::lower(r.name));
     for (auto& n : p.npc_templates)
         if (n.mode == Mode::New) c.new_templates.insert(p2m::lower(n.name));
+    for (auto& s : p.spells)  // the item templates a new spell makes
+        if (s.mode == Mode::New) {
+            if (s.forms.empty()) c.new_templates.insert(p2m::lower(s.name));
+            for (auto& f : s.forms) c.new_templates.insert(p2m::lower(new_spell_template(s.name, f)));
+        }
     for (auto& a : p.assets) {
         c.asset_files.insert(p2m::lower(p2m::bare_name(a.file)));
         c.own_icon_lists |= asset_kind(a.file) == "iconlist";
@@ -572,6 +695,8 @@ std::vector<Problem> validate(const Project& p, const GameData* game, const Worl
     if (p.mod.name.empty()) c.add(Severity::Warning, "Mod", "", p.mod.id, "the mod has no name");
     if (p.mod.languages.empty()) c.add(Severity::Error, "Mod", "", p.mod.id, "the mod needs at least one language");
     check_items(c);
+    check_spells(c);
+    check_npc_groups(c);
     check_recipes(c);
     check_npc_templates(c);
     check_placed_npcs(c);

@@ -1,4 +1,5 @@
 #include "app/editor_util.h"
+#include "core/spells.h"
 
 #include <imgui.h>
 
@@ -559,6 +560,11 @@ std::vector<std::string> project_item_names(const Project& p) {
         if (i.mode == Mode::New && !i.name.empty()) v.push_back(i.name);
     for (auto& r : p.recipes)
         if (r.mode == Mode::New && !r.name.empty()) v.push_back(r.name);
+    for (auto& s : p.spells) {  // the item templates of a new spell: crystal / rune, scroll, orb
+        if (s.mode != Mode::New || s.name.empty()) continue;
+        if (s.forms.empty()) v.push_back(s.name);
+        for (auto& f : s.forms) v.push_back(new_spell_template(s.name, f));
+    }
     return v;
 }
 

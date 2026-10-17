@@ -53,6 +53,7 @@ public:
         const Project& p = app.project;
         ImGui::BulletText("%zu items, %zu item groups", p.items.size(), p.item_groups.size());
         ImGui::BulletText("%zu recipes", p.recipes.size());
+        ImGui::BulletText("%zu spells, %zu NPC groups", p.spells.size(), p.npc_groups.size());
         ImGui::BulletText("%zu NPC templates, %zu placed NPCs", p.npc_templates.size(), p.npcs.size());
         ImGui::BulletText("%zu dialogues, %zu quests", p.dialogs.size(), p.quests.size());
         ImGui::BulletText("%zu world spawns, %zu containers, %zu removals, %zu moves", p.world.spawns.size(), p.world.containers.size(), p.world.removals.size(),

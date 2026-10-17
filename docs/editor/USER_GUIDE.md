@@ -42,6 +42,8 @@ Panels can be dragged, docked and tabbed; **Window > Reset layout** brings back 
 | **Items** | your new items, changes of shipped items and item groups (below) |
 | **Recipes** | new crafting recipes and changes of shipped ones (below) |
 | **NPCs** | NPC and monster templates, and placed NPCs (below) |
+| **NPC groups** | relative changes for every NPC template a selector matches (below) |
+| **Spells** | changes of the 21 shipped spells and new spells (below) |
 | **Dialogues** | conversations as node graphs (below) |
 | **Quests** | quests and their flow as node graphs (below) |
 | **World** | the game world in 3D (below) |
@@ -116,6 +118,28 @@ Two kinds of objects:
 
 The export declares every placed NPC with `risen.npc.persistent` (with conditions: `risen.spawn.when`): made in a new game (or when the condition
 first holds), found again after a load, never made twice.
+
+## Spells
+
+A spell is a group of items and projectile templates (docs/SPELL_PROPERTIES.md), so the panel edits those pieces:
+
+* **+ Change shipped**: one of the 21 shipped spells. **Mana cost** (or a **factor**, the two exclude each other), for rune spells the **scroll** and **orb** costs, **requirements**
+  (`{ Fireball = 2 }`, `{ Circle = 3 }`), *used up by a cast*; for the projectile spells (Fireball, Frost, Missile) the projectile: **damage** (one value, or one per level), a factor,
+  **damage type**, **speed**, **radius**, the flying effect. The shipped numbers are shown next to every field. Other properties of the crystal / rune by name (`gCCastInfo_PS.StartTask`
+  re-uses another spell's effect).
+* **+ New spell**: made of the pieces of a shipped one: the template name (`<name>`, `<name>_Scroll`, `<name>_Orb`), the forms to make (crystal and scroll for projectile spells, rune,
+  scroll and orb for the others), label, description, icon, value and the same numbers. The new items are known to the item pickers (recipes, loot, quest rewards).
+
+Exported as the `spells` and `new_spells` sections of `data/balance.lua`. Settings the panel has no field for (a per-form table like `scroll = { mana_cost = 7 }`, `projectile_properties`)
+are kept as they are. A projectile setting on a rune spell, a scroll cost on a projectile spell, an unknown damage type or a damage list longer than the spell's projectile levels is a
+problem (the layer would refuse the whole `risen.balance.install`).
+
+## NPC groups
+
+**+ Group** adds relative changes for many NPC and monster templates at once: the selector is a **template group path** (the templates below it, `Monster/Kapitel 2`), a **Lua pattern**
+on the name (`^Wolf`), a pattern to **leave out** and extra **names**; empty = every NPC and monster. The panel lists what the selector matches (the layer refuses a selector that
+matches nothing, so does the Problems panel). Changes: factors for hit points, mana, level, experience and damage, *level added*, skills added or multiplied (`{ ProtEdge = 1.1 }`), guild,
+species, attitude, bravery, damage calculation, AI group. Everything is relative to the shipped values: applying it twice never compounds. Exported as `npc_groups`.
 
 ## Dialogues
 

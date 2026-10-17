@@ -192,7 +192,7 @@ std::vector<Ingredient> ingredients_of(const json& v) {
 }
 
 void import_balance(Ctx& c, const json& b) {
-    static const std::set<std::string> known = {"items", "new_items", "item_groups", "recipes", "new_recipes", "npcs", "new_npcs"};
+    static const std::set<std::string> known = {"items", "new_items", "item_groups", "recipes", "new_recipes", "npcs", "new_npcs", "spells", "new_spells", "npc_groups"};
     for (auto& [k, v] : b.items())
         if (!known.count(k)) {
             c.p.extra_balance[k] = v;
@@ -252,6 +252,90 @@ void import_balance(Ctx& c, const json& b) {
             opt(e, "value_mult", g.value_mult);
             opt(e, "damage_mult", g.damage_mult);
             c.p.item_groups.push_back(g);
+        }
+    // spells: the settings the editor has fields for; anything else of an entry (per-form tables, projectile_properties) is kept in `extra`
+    auto spell_fields = [&](SpellDef& d, const json& e, bool fresh) {
+        static const std::set<std::string> typed = {"mana_cost", "mana_mult", "scroll_mana_cost", "orb_mana_cost", "requires", "consume", "damage", "damage_mult", "damage_type",
+                                                    "speed", "speed_mult", "radius", "radius_mult", "effect", "properties"};
+        static const std::set<std::string> fresh_keys = {"base", "forms", "name", "description", "icon", "value"};
+        opt(e, "mana_cost", d.mana_cost);
+        opt(e, "mana_mult", d.mana_mult);
+        opt(e, "scroll_mana_cost", d.scroll_mana_cost);
+        opt(e, "orb_mana_cost", d.orb_mana_cost);
+        if (e.contains("requires")) d.requirements = int_map(e["requires"]);
+        opt(e, "consume", d.consume);
+        if (e.contains("damage")) d.damage = e["damage"];
+        opt(e, "damage_mult", d.damage_mult);
+        opt(e, "damage_type", d.damage_type);
+        opt(e, "speed", d.speed);
+        opt(e, "speed_mult", d.speed_mult);
+        opt(e, "radius", d.radius);
+        opt(e, "radius_mult", d.radius_mult);
+        opt(e, "effect", d.effect);
+        d.properties = props_of(e);
+        for (auto& [k, v] : e.items())
+            if (!typed.count(k) && !(fresh && fresh_keys.count(k))) d.extra[k] = v;
+    };
+    if (b.contains("spells"))
+        for (auto& [name, e] : b["spells"].items()) {
+            SpellDef d;
+            d.uid = new_uid();
+            d.mode = Mode::Edit;
+            d.name = name;
+            spell_fields(d, e, false);
+            c.p.spells.push_back(d);
+        }
+    if (b.contains("new_spells"))
+        for (auto& [name, e] : b["new_spells"].items()) {
+            SpellDef d;
+            d.uid = new_uid();
+            d.mode = Mode::New;
+            d.name = name;
+            d.base = e.value("base", std::string());
+            if (e.contains("forms") && e["forms"].is_array())
+                for (auto& f : e["forms"])
+                    if (f.is_string()) d.forms.push_back(f.get<std::string>());
+            if (e.contains("name")) d.label = text_of(c, e["name"]);
+            if (e.contains("description")) d.description = text_of(c, e["description"]);
+            opt(e, "icon", d.icon);
+            opt(e, "value", d.value);
+            spell_fields(d, e, true);
+            c.p.spells.push_back(d);
+        }
+    if (b.contains("npc_groups"))
+        for (auto& e : b["npc_groups"]) {
+            static const std::set<std::string> typed = {"group", "match", "exclude", "names", "hp_mult", "mana_mult", "level_mult", "level_add", "xp_mult", "damage_mult", "skills_mult",
+                                                        "skills_add", "guild", "species", "attitude", "bravery", "damage_calc", "ai_group"};
+            NpcGroup g;
+            g.uid = new_uid();
+            g.group = e.value("group", std::string());
+            g.match = e.value("match", std::string());
+            g.exclude = e.value("exclude", std::string());
+            if (e.contains("names") && e["names"].is_array())
+                for (auto& n : e["names"])
+                    if (n.is_string()) g.names.push_back(n.get<std::string>());
+            opt(e, "hp_mult", g.hp_mult);
+            opt(e, "mana_mult", g.mana_mult);
+            opt(e, "level_mult", g.level_mult);
+            opt(e, "level_add", g.level_add);
+            opt(e, "xp_mult", g.xp_mult);
+            opt(e, "damage_mult", g.damage_mult);
+            if (e.contains("skills_mult") && e["skills_mult"].is_object()) {
+                std::map<std::string, double> m;
+                for (auto& [k, v] : e["skills_mult"].items())
+                    if (v.is_number()) m[k] = v.get<double>();
+                g.skills_mult = m;
+            }
+            if (e.contains("skills_add")) g.skills_add = int_map(e["skills_add"]);
+            opt(e, "guild", g.guild);
+            opt(e, "species", g.species);
+            opt(e, "attitude", g.attitude);
+            opt(e, "bravery", g.bravery);
+            opt(e, "damage_calc", g.damage_calc);
+            opt(e, "ai_group", g.ai_group);
+            for (auto& [k, v] : e.items())
+                if (!typed.count(k)) g.extra[k] = v;
+            c.p.npc_groups.push_back(g);
         }
     if (b.contains("recipes"))
         for (auto& [name, e] : b["recipes"].items()) {

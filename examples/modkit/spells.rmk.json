@@ -1,0 +1,81 @@
+{
+  "format": "risen-modkit-project",
+  "format_version": 1,
+  "mod": {
+    "id": "modkit_spells",
+    "name": "risen-modkit spells and NPC groups",
+    "version": "1.0.0",
+    "author": "risen-spass",
+    "description": "The example project of the Spells and NPC groups panels: changes of shipped spells, a new spell made of the pieces of Fireball, and relative changes for groups of NPC templates.",
+    "languages": ["English", "German"]
+  },
+  "spells": [
+    {
+      "uid": "5ee1a0c0d11a4f70a1b2c3d4e5f60001",
+      "mode": "edit",
+      "name": "Fireball",
+      "mana_cost": 12,
+      "damage": [100, 120, 150],
+      "damage_type": "Fire"
+    },
+    {
+      "uid": "5ee1a0c0d11a4f70a1b2c3d4e5f60002",
+      "mode": "edit",
+      "name": "Frost",
+      "requires": { "Frost": 2 },
+      "damage_mult": 2,
+      "speed_mult": 1.5,
+      "extra": { "projectile_properties": { "gCProjectile2_PS": { "SweepTestRadius": 12 } } }
+    },
+    {
+      "uid": "5ee1a0c0d11a4f70a1b2c3d4e5f60003",
+      "mode": "edit",
+      "name": "Light",
+      "mana_cost": 7,
+      "scroll_mana_cost": 3
+    },
+    {
+      "uid": "5ee1a0c0d11a4f70a1b2c3d4e5f60004",
+      "mode": "edit",
+      "name": "Skeleton",
+      "mana_mult": 0.5
+    },
+    {
+      "uid": "5ee1a0c0d11a4f70a1b2c3d4e5f60005",
+      "mode": "new",
+      "name": "Spass_Fireball_Strong",
+      "base": "Fireball",
+      "forms": ["crystal", "scroll"],
+      "label": { "English": "Strong Fireball", "German": "Starker Feuerball" },
+      "description": { "English": "A fireball that hurts twice as much." },
+      "mana_cost": 24,
+      "requires": { "Fireball": 2 },
+      "damage_mult": 2
+    },
+    {
+      "uid": "5ee1a0c0d11a4f70a1b2c3d4e5f60006",
+      "mode": "new",
+      "name": "Spass_Skeleton_Cheap",
+      "base": "Skeleton",
+      "forms": ["rune", "scroll", "orb"],
+      "label": { "English": "Cheap Skeleton" },
+      "mana_cost": 15,
+      "requires": { "Circle": 2 },
+      "extra": { "scroll": { "mana_cost": 7 } }
+    }
+  ],
+  "npc_groups": [
+    {
+      "uid": "6aa2b1d1e22b5f81b2c3d4e5f6070001",
+      "match": "^Stingrat",
+      "hp_mult": 1.5,
+      "damage_mult": 2
+    },
+    {
+      "uid": "6aa2b1d1e22b5f81b2c3d4e5f6070002",
+      "group": "Monster/Kapitel 2",
+      "level_add": 1,
+      "skills_mult": { "ProtEdge": 1.1 }
+    }
+  ]
+}
