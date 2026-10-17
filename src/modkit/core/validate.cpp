@@ -387,6 +387,44 @@ void check_dialogs(Ctx& c) {
     }
 }
 
+bool guid_text_ok(const std::string& s) {
+    if (s.size() != 36) return false;
+    for (size_t i = 0; i < s.size(); ++i) {
+        if (i == 8 || i == 13 || i == 18 || i == 23) {
+            if (s[i] != '-') return false;
+        } else if (!std::isxdigit(static_cast<unsigned char>(s[i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void check_world(Ctx& c) {
+    const char* A = "World";
+    for (auto& s : c.p.world.spawns) {
+        const std::string subj = s.template_name.empty() ? "(spawn)" : s.template_name;
+        if (s.template_name.empty()) c.add(Severity::Error, A, s.uid, subj, "the spawn names no template");
+        else if (!c.is_project_template(s.template_name) && c.g && !c.g->tpl(s.template_name))
+            c.add(Severity::Error, A, s.uid, subj, "no template of the game or the project");
+        if (s.amount < 1) c.add(Severity::Error, A, s.uid, subj, "the amount must be 1 or more");
+        if (s.rotation != Vec3{0, 0, 0}) c.add(Severity::Warning, A, s.uid, subj, "the rotation is not exported yet (risen.entity.spawn places without one)");
+        for (double x : s.position)
+            if (!std::isfinite(x) || std::fabs(x) > 1e7) c.add(Severity::Error, A, s.uid, subj, "the position is not a usable number");
+    }
+    for (auto& ct : c.p.world.containers) {
+        const std::string subj = ct.entity_name.empty() ? ct.guid : ct.entity_name;
+        if (!guid_text_ok(ct.guid)) c.add(Severity::Error, A, ct.uid, subj, "the entity id is not of the form xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx");
+        else if (c.w) {
+            const WorldEntity* e = c.w->by_guid(ct.guid);
+            if (!e) c.add(Severity::Error, A, ct.uid, subj, "no entity with this id in the world " + c.w->name);
+            else if (!e->inventory) c.add(Severity::Warning, A, ct.uid, subj, "the entity has no inventory in the world file");
+        }
+        if (ct.items.empty()) c.add(Severity::Warning, A, ct.uid, subj, "no items to add");
+        for (auto& i : ct.items)
+            if (!item_known(c, i.item)) c.add(Severity::Error, A, ct.uid, subj, "'" + i.item + "' is no item of the game or the project");
+    }
+}
+
 }  // namespace
 
 std::vector<Problem> validate(const Project& p, const GameData* game, const World* world) {
@@ -412,6 +450,7 @@ std::vector<Problem> validate(const Project& p, const GameData* game, const Worl
     check_placed_npcs(c);
     check_quests(c);
     check_dialogs(c);
+    check_world(c);
     return out;
 }
 

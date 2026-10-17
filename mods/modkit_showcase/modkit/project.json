@@ -187,6 +187,21 @@
           "yaw": 90
         }
       }
+    },
+    {
+      "uid": "8cbd05f3b5eee76dd7e9ca3d08f70fcb",
+      "name": "MK_Watcher",
+      "template": "Peasant_1_02",
+      "position": [
+        -31900.0,
+        600.0,
+        -4800.0
+      ],
+      "label": {
+        "English": "Watcher",
+        "German": "Wächter"
+      },
+      "peaceful": true
     }
   ],
   "dialogs": [
@@ -954,8 +969,35 @@
   ],
   "world": {
     "world": "World",
-    "spawns": [],
-    "containers": [],
+    "spawns": [
+      {
+        "uid": "326ecf3611c6f23ba2ca2d3ecd671721",
+        "template": "MK_Hob_Knife",
+        "position": [
+          -31950.0,
+          620.0,
+          -4650.0
+        ]
+      }
+    ],
+    "containers": [
+      {
+        "uid": "50f361b09f7c18c44ba02d9b2b9f92b2",
+        "guid": "2c2c2522-cdad-4dba-aba1-12a5e2054790",
+        "entity_name": "Object_Interact_Animated_Chest_Medium",
+        "layer": "Harbour_Town_Events",
+        "items": [
+          [
+            "MK_Strong_Potion",
+            2
+          ],
+          [
+            "It_Gold",
+            77
+          ]
+        ]
+      }
+    ],
     "removals": [],
     "moves": []
   },

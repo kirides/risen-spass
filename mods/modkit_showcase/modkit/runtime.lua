@@ -10,13 +10,15 @@
 --             into objects that exist) and on every session.start (a new game removes runtime quests); the quest actions of the dialogue lines
 --             are scripts (risen.script.define) defined once at load time. A quest with a flow is started by a dialogue or a trigger (an item, a kill,
 --             a game variable, another quest, the start of a game) and walks its steps from the engine's events
+--   world     entities spawned at a position and items put into containers of the world (by entity ID), once per savegame on world.ready
 --
 -- Events for other mods and tests:
 --   "modkit.applied"   (mod id, when, report) after every application of the balance data (when = "first tick", "session.start (new)", ...)
 --   "modkit.npc_ready" (mod id, npc name, reason) whenever a placed NPC is in the world (reason as risen.npc.persistent's on_ready)
 --   "modkit.quest_action" (mod id, quest, action) after a dialogue line started / succeeded / failed / cancelled a quest
 --   "modkit.quest_started" (mod id, quest), "modkit.objective" (mod id, quest, step), "modkit.quest_done" (mod id, quest, result) for quest flows
-local M = { VERSION = 4 }
+--   "modkit.world_spawned" (mod id, key, entity), "modkit.container_filled" (mod id, key, container) for the world edits
+local M = { VERSION = 5 }
 
 local unpack = table.unpack or unpack
 local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
@@ -264,6 +266,39 @@ local function define_content(id, data)
     end
 end
 
+-- ---- world edits: once per savegame -----------------------------------------------------------------------------------------------------------
+local warned = {}
+local function apply_world(id, w)
+    for _, s in ipairs(w.spawns or {}) do
+        local key = "modkit.world.spawn." .. s.key
+        if not risen.save.get(key) then
+            local e = risen.entity.spawn(s.template, s.position[1], s.position[2], s.position[3])
+            if e then
+                if s.amount and s.amount > 1 then e:set_item_amount(s.amount) end
+                risen.save.set(key, e:id() or true)
+                risen.emit("modkit.world_spawned", id, s.key, e)
+            elseif not warned[key] then
+                warned[key] = true
+                risen.log.warn(("%s: cannot spawn %s"):format(id, s.template))
+            end
+        end
+    end
+    for _, c in ipairs(w.containers or {}) do
+        local key = "modkit.world.container." .. c.key
+        if not risen.save.get(key) then
+            local ent = risen.entity.by_id(c.id)
+            if ent then
+                for _, it in ipairs(c.items or {}) do risen.item.give(ent, it[1], it[2]) end
+                risen.save.set(key, true)
+                risen.emit("modkit.container_filled", id, c.key, ent)
+            elseif not warned[key] then
+                warned[key] = true
+                risen.log.warn(("%s: no entity %s (%s) in this world"):format(id, c.id, tostring(c.name)))
+            end
+        end
+    end
+end
+
 function M.install(data)
     local id = mod and mod.id or "?"
     MOD_ID = id
@@ -291,6 +326,10 @@ function M.install(data)
     if nonempty(data.quests) or nonempty((data.dialogs or {}).infos) then
         risen.on("load.before", function() define_content(id, data) end)
         risen.on("session.start", function() define_content(id, data) end)
+    end
+    local w = data.world or {}
+    if nonempty(w.spawns) or nonempty(w.containers) then
+        risen.on("world.ready", function() apply_world(id, w) end)
     end
     for _, n in ipairs(data.npcs or {}) do
         local spec = npc_spec(id, n, nil)

@@ -336,4 +336,13 @@ TEST(world_meshes_resolve) {
     CHECK(found * 100 >= with * 99);
     const WorldEntity* harbour = w->by_name("Harbour_01_L01");
     CHECK(harbour && harbour->mesh == "Harbour_01_L01._xmsh");
+    // a few chests of the harbour (the placement test uses one)
+    int shown = 0;
+    for (auto& e : w->entities)
+        if (e.kind == TplKind::Interactive && e.inventory && !e.npc && w->layers[e.layer].group == "Cities/Harbour_Town" && shown < 4) {
+            const auto inv = entity_inventory(*g, *w, e);
+            std::printf("  chest %s %s at %.0f %.0f %.0f (%zu stacks) layer %s\n", e.name.c_str(), e.guid.c_str(), e.x(), e.y(), e.z(), inv.size(),
+                        w->layers[e.layer].name.c_str());
+            ++shown;
+        }
 }

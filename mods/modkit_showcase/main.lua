@@ -6,5 +6,6 @@ runtime.install({
     npcs = require("data.npcs"),
     quests = require("data.quests"),
     dialogs = require("data.dialogs"),
+    world = require("data.world"),
 })
 require("custom")

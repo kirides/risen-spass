@@ -256,7 +256,7 @@ TEST(npcs_export_and_validate) {
     CHECK_EQ(b["new_npcs"]["MK_Hob_T"]["loot"]["It_Apple"].get<int>(), 2);
     CHECK_EQ(b["npcs"]["Boar"]["skills"]["Strength"].get<int>(), 33);
     const json n = npcs_data(p);
-    CHECK_EQ(n.size(), size_t(1));
+    CHECK_EQ(n.size(), size_t(2));  // Hob (offset from the player) and the watcher (a world position)
     CHECK(n[0].contains("offset") && !n[0].contains("position"));
     CHECK_EQ(n[0]["equip"][0].get<std::string>(), std::string("MK_Hob_Knife"));
     CHECK_EQ(n[0]["items"][1][1].get<int>(), 3);

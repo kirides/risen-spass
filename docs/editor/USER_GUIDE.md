@@ -170,6 +170,18 @@ pixels at most.
 
 The Browser and the item editor show a turning preview of a template's mesh (drag to turn it).
 
+**Placing** (the buttons next to the search field):
+
+* **Place NPC**: choose one of the project's placed NPCs (or *a new NPC of the template* and the template) and click on the ground: the NPC gets
+  that world position (instead of an offset from the player). **Place item**: choose an item and an amount and click: the mod spawns it there once per
+  savegame. The point under the cursor is read from the rendered depth, so things land on the ground, a roof, a table.
+* **Select** mode: a click on a magenta (NPC) or yellow (item) box selects the project's object; the **gizmo** moves it along the axes, the inspector
+  has the exact position, the template and the amount. Undo covers every move.
+* **Chests**: select a chest (or any entity with an inventory) of the world: *Add items to this container* lists items the mod puts into it once per
+  savegame (found by the entity's ID).
+* The export writes them into `data\world.lua`; the runtime spawns and fills on `world.ready` and remembers it in the savegame's mod data, so a load never
+  spawns or fills twice. Items are spawned without a rotation (the layer cannot rotate a spawn yet).
+
 ## Export
 
 **File > Export mod...** writes the mod into a folder, normally `<Risen>\bin\spass\mods\<mod id>`. The export
@@ -205,6 +217,7 @@ Command line: `risen-modkit --import <mod folder> --save project.rmk.json [--fro
   data\npcs.lua         the placed NPCs (risen.npc.persistent declarations)
   data\quests.lua       the quests (risen.quest.define)
   data\dialogs.lua      the dialogue options (risen.dialog.create, parents first) and the quest actions their lines call
+  data\world.lua        items spawned at a position and items added to containers, once per savegame
   strings\all.csv       texts of shipped items you renamed (first language = fallback), strings\<Language>.csv for the others
   modkit\runtime.lua    the generic code, the same for every exported mod
   modkit\project.json   the editor project the mod was made from (File > Open it, or keep it for a later import)
@@ -213,7 +226,8 @@ Command line: `risen-modkit --import <mod folder> --save project.rmk.json [--fro
 The runtime applies the data with the layer's savegame-safe calls (`risen.balance.install`: on the first tick and on every session start) and emits
 the event `modkit.applied` (`mod id, when, report`) after every application, and `modkit.npc_ready` (`mod id, NPC name, reason`) whenever a
 placed NPC is in the world, and `modkit.quest_action` (`mod id, quest, action`) after a dialogue line started, succeeded, failed or
-cancelled a quest, and `modkit.quest_started` / `modkit.objective` / `modkit.quest_done` for quest flows, so other mods and tests can react. Quests and dialogue options are made on `load.before` and on every session start (the engine
+cancelled a quest, `modkit.quest_started` / `modkit.objective` / `modkit.quest_done` for quest flows, and `modkit.world_spawned` /
+`modkit.container_filled` for the world edits, so other mods and tests can react. Quests and dialogue options are made on `load.before` and on every session start (the engine
 restores their saved state only into objects that exist).
 
 ## Command line
@@ -221,13 +235,15 @@ restores their saved state only into objects that exist).
 ```
 risen-modkit [project.rmk.json] [--data DIR]                       open the editor
 risen-modkit project.rmk.json --export DIR [--data DIR]            validate and export without a window (exit code 0 = exported)
-risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH]   render, save a PNG, exit (tests)
+risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch] [--click x,y ...]
+                                                                   render (after the given clicks), save a PNG, exit (tests)
 --verbose                                                          debug lines on stderr too
 ```
 
 ## Limits
 
-* NPCs, monsters and vegetation are boxes in the world view (actors and SpeedTrees are not decoded); placing things in it comes later (REQUIREMENTS.md section 9).
+* NPCs, monsters and vegetation are boxes in the world view (actors and SpeedTrees are not decoded).
+* Placing buildings and other objects, and moving or removing what the world has, needs a layer extension (stage E12).
 * Icons are not previewed (the game's icon lists are not decoded yet).
 * A quest flow is one chain (no branches inside a quest); branch with dialogues and follow-up quests.
 * A dialogue cannot be played through inside the editor yet (DLG-5); test it in the game.

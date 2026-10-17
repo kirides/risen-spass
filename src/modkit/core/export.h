@@ -19,6 +19,7 @@ std::map<std::string, std::string> render_mod(const Project& p);
 json balance_spec(const Project& p);
 json npcs_data(const Project& p);  // data/npcs.lua: the persistent NPC declarations
 json quests_data(const Project& p);  // data/quests.lua: the quests (risen.quest.define) and their flow
+json world_data(const Project& p);   // data/world.lua: things spawned into the world and items added to containers, once per savegame
 
 struct ExportOptions {
     std::string project_dir;     // where the project file is: asset files are relative to it

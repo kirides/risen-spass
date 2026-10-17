@@ -9,6 +9,7 @@
 #include <imgui_internal.h>
 #include <imgui_stdlib.h>
 #include <nfd.h>
+#include <ImGuizmo.h>
 
 #include <algorithm>
 
@@ -585,7 +586,23 @@ int App::run() {
         apply_ui_scale();
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
+        // --click: each click takes four frames (move, press, release, settle), starting once nothing loads any more
+        if (!options.clicks.empty() && shot_frames_ >= 3) {
+            const int step = shot_frames_ - 3;
+            const size_t i = static_cast<size_t>(step / 4);
+            if (i < options.clicks.size()) {
+                ImGuiIO& io = ImGui::GetIO();
+                const auto [cx, cy] = options.clicks[i];
+                switch (step % 4) {
+                    case 0: io.AddMousePosEvent(cx, cy); break;
+                    case 1: io.AddMouseButtonEvent(0, true); break;
+                    case 2: io.AddMouseButtonEvent(0, false); break;
+                    default: break;
+                }
+            }
+        }
         ImGui::NewFrame();
+        ImGuizmo::BeginFrame();
         draw_frame();
         ImGui::Render();
         int w, h;

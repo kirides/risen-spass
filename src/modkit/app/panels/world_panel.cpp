@@ -11,8 +11,13 @@
 #include <set>
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
+#include <ImGuizmo.h>
+
+#include "app/editor_util.h"
 #include "app/panels/panels.h"
+#include "app/pickers.h"
 #include "app/render/gl_util.h"
 #include "app/render/mesh_renderer.h"
 #include "app/render/resources.h"
@@ -102,6 +107,14 @@ public:
     }
     bool select(App& app, const std::string& key) override {
         if (!world_) return false;
+        if (project_position(app, key)) {
+            proj_sel_ = key;
+            overlay_dirty_ = true;
+            const Vec3& p = *project_position(app, key);
+            cam_.look_at(to_gl(static_cast<float>(p[0]), static_cast<float>(p[1]) + 100, static_cast<float>(p[2])), 900);
+            app.focus_panel(title());
+            return true;
+        }
         for (size_t i = 0; i < world_->entities.size(); ++i)
             if (world_->entities[i].name == key || world_->entities[i].guid == key) {
                 pick(i);
@@ -241,8 +254,42 @@ private:
                 ImGui::EndCombo();
             }
         }
+        // placing: what a click in the view does
+        ImGui::SameLine(0, 24);
+        ImGui::RadioButton("Select", &mode_, 0);
         ImGui::SameLine();
-        ImGui::TextDisabled("  right mouse: look, WASD/QE: move, wheel: speed, click: select, F: focus");
+        ImGui::RadioButton("Place NPC", &mode_, 1);
+        ImGui::SameLine();
+        ImGui::RadioButton("Place item", &mode_, 2);
+        if (mode_ == 1) {
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(200);
+            const PlacedNpc* cur = nullptr;
+            for (auto& n : app.project.npcs)
+                if (n.uid == place_npc_) cur = &n;
+            if (ImGui::BeginCombo("##which", cur ? cur->name.c_str() : "a new NPC of the template")) {
+                if (ImGui::Selectable("a new NPC of the template", !cur)) place_npc_.clear();
+                for (auto& n : app.project.npcs)
+                    if (ImGui::Selectable(n.name.c_str(), n.uid == place_npc_)) place_npc_ = n.uid;
+                ImGui::EndCombo();
+            }
+            if (!cur) {
+                ImGui::SameLine();
+                std::vector<std::string> mine;
+                for (auto& t : app.project.npc_templates)
+                    if (t.mode == Mode::New) mine.push_back(t.name);
+                ui::template_picker("##npct", place_template_, app.game.get(), {TplKind::Npc, TplKind::Monster}, mine, 200);
+            }
+        } else if (mode_ == 2) {
+            ImGui::SameLine();
+            ui::template_picker("##itemt", place_item_, app.game.get(), {TplKind::Item, TplKind::Recipe}, ui::project_item_names(app.project), 200);
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(90);
+            ImGui::InputInt("amount", &place_amount_);
+            place_amount_ = std::max(1, place_amount_);
+        }
+        ImGui::TextDisabled("right mouse: look, WASD/QE: move, wheel: speed, click: %s, F: focus, gizmo: move the selected project object",
+                            mode_ == 0 ? "select" : "place on the ground");
     }
 
     void draw_layers() {
@@ -349,11 +396,17 @@ private:
             const float yaw = glm::radians(e.yaw());
             overlay_.line(p + glm::vec3(0, 20, 0), p + glm::vec3(std::sin(yaw) * 150, 20, -std::cos(yaw) * 150), IM_COL32(255, 255, 255, 255));
         }
-        // the project's placed NPCs with a world position (magenta)
+        // the project's placed NPCs with a world position (magenta) and the things it spawns (yellow); the selected one bright
         for (auto& n : app.project.npcs) {
             if (n.offset) continue;
             const glm::vec3 p = to_gl(static_cast<float>(n.position[0]), static_cast<float>(n.position[1]), static_cast<float>(n.position[2]));
-            overlay_.box(p + glm::vec3(-40, 0, -40), p + glm::vec3(40, 200, 40), IM_COL32(255, 80, 255, 255));
+            const bool sel = proj_sel_ == n.uid;
+            overlay_.box(p + glm::vec3(-40, 0, -40), p + glm::vec3(40, 200, 40), sel ? IM_COL32(255, 200, 255, 255) : IM_COL32(255, 80, 255, 255));
+        }
+        for (auto& s : app.project.world.spawns) {
+            const glm::vec3 p = to_gl(static_cast<float>(s.position[0]), static_cast<float>(s.position[1]), static_cast<float>(s.position[2]));
+            const bool sel = proj_sel_ == s.uid;
+            overlay_.box(p + glm::vec3(-25, 0, -25), p + glm::vec3(25, 50, 25), sel ? IM_COL32(255, 255, 200, 255) : IM_COL32(250, 220, 60, 255));
         }
         overlay_.upload();
         overlay_dirty_ = false;
@@ -402,9 +455,14 @@ private:
             cam_.pos += cam_.forward() * io.MouseWheel * cam_.speed * 0.15f;
         }
         if (hovered && ImGui::IsKeyPressed(ImGuiKey_F) && selected_ < world_->entities.size()) fly_to(world_->entities[selected_]);
-        if (ImGui::IsItemDeactivated() && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && glm::length(glm::vec2(ImGui::GetMouseDragDelta(0).x, ImGui::GetMouseDragDelta(0).y)) < 4) {
-            const float u = (io.MousePos.x - origin.x) / static_cast<float>(w), v = (io.MousePos.y - origin.y) / static_cast<float>(h);
-            pick_at(u, v, aspect);
+        bool clicked = false;
+        float cu = 0, cv = 0;
+        if (ImGui::IsItemDeactivated() && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !gizmo_over_ &&
+            glm::length(glm::vec2(ImGui::GetMouseDragDelta(0).x, ImGui::GetMouseDragDelta(0).y)) < 4) {
+            cu = (io.MousePos.x - origin.x) / static_cast<float>(w);
+            cv = (io.MousePos.y - origin.y) / static_cast<float>(h);
+            if (mode_ == 0 && !pick_project(app, cu, cv, aspect)) pick_at(cu, cv, aspect);
+            else if (mode_ != 0) clicked = true;  // placed after the frame is drawn: the depth buffer tells where the ground is
         }
 
         rt_.resize(w, h);
@@ -415,12 +473,15 @@ private:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         const glm::mat4 vp = cam_.proj(aspect) * cam_.view();
         if (draw_meshes_ && res_) draw_meshes(vp);
+        if (draw_meshes_ && res_) draw_project_meshes(app, vp);
         boxes_.draw(vp);
+        if (clicked) place_at(app, cu, cv, w, h, vp);
         glDisable(GL_DEPTH_TEST);
         overlay_.draw(vp);
         rt_.unbind();
         ImGui::GetWindowDrawList()->AddImage(static_cast<ImTextureID>(static_cast<intptr_t>(rt_.texture())), origin, ImVec2(origin.x + w, origin.y + h),
                                              ImVec2(0, 1), ImVec2(1, 0));
+        draw_gizmo(app, origin, w, h, aspect);
         // camera position in game coordinates
         const glm::vec3 gp = gfx::from_gl(cam_.pos);
         char buf[96];
@@ -461,6 +522,218 @@ private:
         failed_seen_ = 0;
     }
 
+    // the project object (placed NPC, spawn) the ray hits, selected; false when none
+    bool pick_project(App& app, float u, float v, float aspect) {
+        glm::vec3 o, d;
+        cam_.ray(u, v, aspect, o, d);
+        std::string best;
+        float best_t = 1e30f;
+        auto test = [&](const std::string& uid, const Vec3& pos, float r, float hgt) {
+            const glm::vec3 p = to_gl(static_cast<float>(pos[0]), static_cast<float>(pos[1]), static_cast<float>(pos[2]));
+            const float t = ray_box(o, d, p - glm::vec3(r, 0, r), p + glm::vec3(r, hgt, r));
+            if (t > 0 && t < best_t) {
+                best_t = t;
+                best = uid;
+            }
+        };
+        for (auto& n : app.project.npcs)
+            if (!n.offset) test(n.uid, n.position, 40, 200);
+        for (auto& s : app.project.world.spawns) test(s.uid, s.position, 25, 50);
+        if (best.empty()) return false;
+        proj_sel_ = best;
+        selected_ = SIZE_MAX;
+        overlay_dirty_ = true;
+        return true;
+    }
+
+    // the ground under the cursor from the depth buffer (bound render target), in game coordinates
+    bool ground_at(float u, float v, int w, int h, const glm::mat4& vp, glm::vec3& out) {
+        const int px = std::clamp(static_cast<int>(u * w), 0, w - 1), py = std::clamp(static_cast<int>((1.0f - v) * h), 0, h - 1);
+        float depth = 1;
+        glReadPixels(px, py, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
+        if (depth >= 1.0f) return false;
+        const glm::vec4 ndc(u * 2 - 1, (1 - v) * 2 - 1, depth * 2 - 1, 1);
+        glm::vec4 p = glm::inverse(vp) * ndc;
+        if (std::fabs(p.w) < 1e-9f) return false;
+        out = gfx::from_gl(glm::vec3(p) / p.w);
+        return true;
+    }
+
+    void place_at(App& app, float u, float v, int w, int h, const glm::mat4& vp) {
+        glm::vec3 g;
+        if (!ground_at(u, v, w, h, vp, g)) {
+            app.status("Nothing under the cursor to place on (the sky?)");
+            return;
+        }
+        const Vec3 pos{std::round(g.x * 10) / 10, std::round(g.y * 10) / 10, std::round(g.z * 10) / 10};
+        if (mode_ == 1) {
+            PlacedNpc* n = nullptr;
+            for (auto& x : app.project.npcs)
+                if (x.uid == place_npc_) n = &x;
+            if (!n) {
+                if (place_template_.empty()) {
+                    app.status("Choose the template of the new NPC first");
+                    return;
+                }
+                PlacedNpc nn;
+                nn.uid = new_uid();
+                nn.template_name = place_template_;
+                nn.name = ui::unique_template_name(app.project, app.game.get(), ui::name_prefix(app.project) + "_" + place_template_);
+                app.project.npcs.push_back(nn);
+                n = &app.project.npcs.back();
+                place_npc_ = n->uid;
+            }
+            n->position = pos;
+            n->offset = false;
+            proj_sel_ = n->uid;
+            app.status("Placed " + n->name);
+        } else {
+            if (place_item_.empty()) {
+                app.status("Choose the item to place first");
+                return;
+            }
+            WorldSpawn s;
+            s.uid = new_uid();
+            s.template_name = place_item_;
+            s.position = pos;
+            s.amount = place_amount_;
+            app.project.world.spawns.push_back(s);
+            proj_sel_ = s.uid;
+            app.status("Placed " + place_item_);
+        }
+        selected_ = SIZE_MAX;
+        overlay_dirty_ = true;
+        app.touch();
+    }
+
+    Vec3* project_position(App& app, const std::string& uid) {
+        for (auto& n : app.project.npcs)
+            if (n.uid == uid && !n.offset) return &n.position;
+        for (auto& s : app.project.world.spawns)
+            if (s.uid == uid) return &s.position;
+        return nullptr;
+    }
+
+    void draw_gizmo(App& app, const ImVec2& origin, int w, int h, float aspect) {
+        gizmo_over_ = false;
+        Vec3* pos = proj_sel_.empty() ? nullptr : project_position(app, proj_sel_);
+        if (!pos) return;
+        ImGuizmo::SetOrthographic(false);
+        ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
+        ImGuizmo::SetRect(origin.x, origin.y, static_cast<float>(w), static_cast<float>(h));
+        const glm::mat4 view = cam_.view(), proj = cam_.proj(aspect);
+        if (!gizmo_active_) gizmo_ = glm::translate(glm::mat4(1), to_gl(static_cast<float>((*pos)[0]), static_cast<float>((*pos)[1]), static_cast<float>((*pos)[2])));
+        ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), ImGuizmo::TRANSLATE, ImGuizmo::WORLD, glm::value_ptr(gizmo_));
+        gizmo_over_ = ImGuizmo::IsOver() || ImGuizmo::IsUsing();
+        const bool using_now = ImGuizmo::IsUsing();
+        if (using_now) {
+            gizmo_active_ = true;
+            overlay_dirty_ = true;
+            const glm::vec3 g = gfx::from_gl(glm::vec3(gizmo_[3]));
+            *pos = {std::round(g.x * 10) / 10, std::round(g.y * 10) / 10, std::round(g.z * 10) / 10};
+        } else if (gizmo_active_) {
+            gizmo_active_ = false;  // one drag = one undo step: the model was written while dragging, the step is taken now
+            app.touch();
+        }
+    }
+
+    // the meshes of the items the project spawns (at their position, no rotation: the spawn has none)
+    void draw_project_meshes(App& app, const glm::mat4& vp) {
+        mesh_r_.begin(vp, glm::vec3(0.35f, -1.0f, 0.25f));
+        for (auto& s : app.project.world.spawns) {
+            const TemplateInfo* t = app.game ? app.game->tpl(s.template_name) : nullptr;
+            std::string mesh = t ? t->mesh : std::string();
+            for (auto& it : app.project.items)
+                if (it.name == s.template_name && it.mode == Mode::New) {
+                    if (it.mesh) mesh = *it.mesh;
+                    else if (const TemplateInfo* b = app.game ? app.game->tpl(it.base) : nullptr) mesh = b->mesh;
+                }
+            if (mesh.empty()) continue;
+            const gfx::GpuMesh* m = res_->mesh(compiled_name(p2m::bare_name(mesh)));
+            if (!m) continue;
+            const glm::mat4 model = glm::translate(glm::mat4(1), to_gl(static_cast<float>(s.position[0]), static_cast<float>(s.position[1]), static_cast<float>(s.position[2]))) *
+                                    glm::scale(glm::mat4(1), glm::vec3(1, 1, -1));
+            mesh_r_.draw(*m, model, *res_, proj_sel_ == s.uid ? glm::vec4(1.4f, 1.3f, 0.9f, 1) : glm::vec4(1));
+        }
+        mesh_r_.end();
+    }
+
+    void draw_project_inspector(App& app) {
+        bool ch = false;
+        for (auto& n : app.project.npcs) {
+            if (n.uid != proj_sel_) continue;
+            ImGui::TextUnformatted(n.name.c_str());
+            ImGui::TextDisabled("placed NPC of the project (%s)", n.template_name.c_str());
+            float p[3] = {static_cast<float>(n.position[0]), static_cast<float>(n.position[1]), static_cast<float>(n.position[2])};
+            if (ImGui::DragFloat3("position", p, 5.0f, 0, 0, "%.1f")) {
+                n.position = {p[0], p[1], p[2]};
+                overlay_dirty_ = true;
+                ch = true;
+            }
+            if (ImGui::Button("Edit in NPCs")) {
+                const std::string uid = n.uid;
+                app.defer([&app, uid] { app.select_in(kPanelNpcs, uid); });
+            }
+        }
+        std::string remove;
+        for (auto& s : app.project.world.spawns) {
+            if (s.uid != proj_sel_) continue;
+            ImGui::TextUnformatted(s.template_name.c_str());
+            ImGui::TextDisabled("spawned once per savegame by the mod");
+            ch |= ui::template_picker("Template", s.template_name, app.game.get(), {TplKind::Item, TplKind::Recipe}, ui::project_item_names(app.project), 200);
+            ImGui::SetNextItemWidth(120);
+            if (ImGui::InputInt("Amount", &s.amount)) {
+                s.amount = std::max(1, s.amount);
+                ch = true;
+            }
+            float p[3] = {static_cast<float>(s.position[0]), static_cast<float>(s.position[1]), static_cast<float>(s.position[2])};
+            if (ImGui::DragFloat3("position", p, 5.0f, 0, 0, "%.1f")) {
+                s.position = {p[0], p[1], p[2]};
+                overlay_dirty_ = true;
+                ch = true;
+            }
+            if (ImGui::Button("Remove from the project")) remove = s.uid;
+        }
+        if (!remove.empty()) {
+            auto& v = app.project.world.spawns;
+            v.erase(std::remove_if(v.begin(), v.end(), [&](const WorldSpawn& x) { return x.uid == remove; }), v.end());
+            proj_sel_.clear();
+            overlay_dirty_ = true;
+            ch = true;
+        }
+        if (ch) app.touch();
+    }
+
+    // items the mod adds to a container of the world (a chest, a corpse ...)
+    void draw_container_editor(App& app, const WorldEntity& e) {
+        ImGui::SeparatorText("Items this mod adds");
+        ContainerEdit* ce = nullptr;
+        for (auto& c : app.project.world.containers)
+            if (c.guid == e.guid) ce = &c;
+        if (!ce) {
+            if (ImGui::Button("Add items to this container")) {
+                ContainerEdit c;
+                c.uid = new_uid();
+                c.guid = e.guid;
+                c.entity_name = e.name;
+                c.layer = world_->layers[e.layer].name;
+                c.items.push_back({"It_Gold", 50, false});
+                app.project.world.containers.push_back(c);
+                app.touch();
+            }
+            ImGui::TextDisabled("Put once per savegame into this entity (risen.entity.by_id).");
+            return;
+        }
+        bool ch = ui::inventory_list("ce", ce->items, app, ui::project_item_names(app.project), false);
+        if (ImGui::SmallButton("Remove these additions")) {
+            const std::string uid = ce->uid;
+            auto& v = app.project.world.containers;
+            v.erase(std::remove_if(v.begin(), v.end(), [&](const ContainerEdit& x) { return x.uid == uid; }), v.end());
+            ch = true;
+        }
+        if (ch) app.touch();
+    }
+
     void pick_at(float u, float v, float aspect) {
         glm::vec3 o, d;
         cam_.ray(u, v, aspect, o, d);
@@ -484,9 +757,14 @@ private:
             best = i;
         }
         if (best != SIZE_MAX) pick(best);
+        if (best != SIZE_MAX) proj_sel_.clear();
     }
 
     void draw_inspector(App& app) {
+        if (!proj_sel_.empty() && project_position(app, proj_sel_)) {
+            draw_project_inspector(app);
+            return;
+        }
         if (selected_ >= world_->entities.size()) {
             ImGui::TextWrapped("Click an entity in the view, or find one by name.");
             ImGui::Spacing();
@@ -532,6 +810,7 @@ private:
             inv_ = e.inventory ? entity_inventory(*app.game, *world_, e) : std::vector<std::pair<std::string, int>>{};
             props_for_ = selected_;
         }
+        if (e.inventory && !e.npc) draw_container_editor(app, e);
         if (!inv_.empty()) {
             ImGui::SeparatorText("Inventory");
             for (auto& [item, n] : inv_) {
@@ -573,6 +852,13 @@ private:
     gfx::MeshRenderer mesh_r_;
     std::vector<std::string> mesh_names_;  // per entity: the compiled mesh name ("" = none)
     size_t drawn_ = 0, failed_seen_ = 0;
+    // placing
+    int mode_ = 0;  // 0 select, 1 place NPC, 2 place item
+    std::string place_npc_, place_template_ = "Peasant_1_01", place_item_ = "It_Apple";
+    int place_amount_ = 1;
+    std::string proj_sel_;  // the selected project object (placed NPC or spawn uid)
+    glm::mat4 gizmo_{1.0f};
+    bool gizmo_active_ = false, gizmo_over_ = false;
     bool boxes_dirty_ = true, overlay_dirty_ = true;
     gfx::LineBatch boxes_, overlay_;
     gfx::RenderTarget rt_;

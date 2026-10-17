@@ -292,6 +292,32 @@ json quests_data(const Project& p) {
     return list;
 }
 
+json world_data(const Project& p) {
+    json spawns = json::array(), containers = json::array();
+    for (auto& s : p.world.spawns) {
+        json e = json::object();
+        e["key"] = s.uid.substr(0, 12);  // the key of "already done" in risen.save: stable across renames
+        e["template"] = s.template_name;
+        e["position"] = json::array({s.position[0], s.position[1], s.position[2]});
+        if (s.amount != 1) e["amount"] = s.amount;
+        spawns.push_back(e);
+    }
+    for (auto& c : p.world.containers) {
+        json e = json::object();
+        e["key"] = c.uid.substr(0, 12);
+        e["id"] = c.guid;
+        if (!c.entity_name.empty()) e["name"] = c.entity_name;
+        json items = json::array();
+        for (auto& i : c.items) items.push_back(json::array({i.item, i.amount}));
+        e["items"] = items;
+        containers.push_back(e);
+    }
+    json w = json::object();
+    w["spawns"] = spawns;
+    w["containers"] = containers;
+    return w;
+}
+
 json npcs_data(const Project& p) {
     json list = json::array();
     for (auto& n : p.npcs) {
@@ -375,6 +401,7 @@ std::map<std::string, std::string> render_mod(const Project& p) {
                     "    npcs = require(\"data.npcs\"),\n"
                     "    quests = require(\"data.quests\"),\n"
                     "    dialogs = require(\"data.dialogs\"),\n"
+                    "    world = require(\"data.world\"),\n"
                     "})\n"
                     "require(\"custom\")\n";
 
@@ -395,6 +422,7 @@ std::map<std::string, std::string> render_mod(const Project& p) {
         dialogs["quest_actions"] = unique;
         f["data/dialogs.lua"] = data_file("Dialogue options: risen.dialog.create in this order (parents first), on load.before and on every session.start; the quest actions their lines call.", dialogs);
     }
+    f["data/world.lua"] = data_file("World edits: entities spawned and items put into containers once per savegame (on world.ready; risen.save remembers what was done).", world_data(p));
     f["modkit/runtime.lua"] = runtime_lua();
     f["modkit/project.json"] = dump_project(p);
 

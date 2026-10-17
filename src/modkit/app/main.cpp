@@ -103,6 +103,14 @@ int main(int argc, char** argv) {
         else if (a == "--panel") opts.panel = next("a panel title");
         else if (a == "--select") opts.select = next("a name");
         else if (a == "--camera") opts.camera = next("x,y,z,yaw,pitch");
+        else if (a == "--click") {
+            float x = 0, y = 0;
+            if (std::sscanf(next("x,y").c_str(), "%f,%f", &x, &y) != 2) {
+                std::fprintf(stderr, "--click wants x,y\n");
+                return 2;
+            }
+            opts.clicks.push_back({x, y});
+        }
         else if (a == "--export") export_dir = next("a directory");
         else if (a == "--import") import_dir = next("a mod folder");
         else if (a == "--save") save_path = next("a project file");

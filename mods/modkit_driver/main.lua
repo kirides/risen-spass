@@ -45,7 +45,29 @@ T.plan {
     "after the load the kill pays once more",
     "the game-start quest runs",
     "carrying three potions finishes it and sets the variable",
+    "an item is spawned where it was placed",
+    "a chest of the world got the items",
+    "an NPC stands at his world position",
+    "after the load: nothing spawned or filled twice",
 }
+
+local spawned, filled = {}, {}
+risen.on("modkit.world_spawned", function(id, key, e) if id == "modkit_showcase" then spawned[#spawned + 1] = e end end)
+risen.on("modkit.container_filled", function(id, key, c) if id == "modkit_showcase" then filled[#filled + 1] = key end end)
+local CHEST = "2c2c2522-cdad-4dba-aba1-12a5e2054790"
+local KNIFE_AT = { -31950, 620, -4650 }
+local function near(e, p, r)
+    local x, y, z = e:position()
+    return x ~= nil and math.abs(x - p[1]) < r and math.abs(z - p[3]) < r
+end
+local function knives_near()
+    local t = risen.template.get("MK_Hob_Knife")
+    local n = 0
+    for _, e in ipairs(t and t:instances(1000) or {}) do
+        if near(e, KNIFE_AT, 400) then n = n + 1 end
+    end
+    return n
+end
 
 local npc_ready = {}
 
@@ -82,6 +104,19 @@ T.run(function()
     T.wait_until(function() return applied["session.start (new)"] ~= nil end, 30, "modkit.applied on session.start")
     local rep = applied["session.start (new)"]
     T.expect("the export was applied without failures", rep.ok and #(rep.failed or {}) == 0, table.concat(rep.failed or {}, "; "))
+
+    -- world edits (on world.ready of the new game)
+    T.wait_until(function() return #spawned > 0 and #filled > 0 end, 30, "world edits applied")
+    local knife = spawned[1]
+    local kx, ky, kz = 0, 0, 0
+    if knife then kx, ky, kz = knife:position() end
+    T.expect("an item is spawned where it was placed", knife ~= nil and near(knife, KNIFE_AT, 300) and knives_near() == 1,
+             ("%s at %.0f %.0f %.0f, %d near"):format(tostring(knife and knife:template() and knife:template():name()), kx or 0, ky or 0, kz or 0, knives_near()))
+    local chest = risen.entity.by_id(CHEST)
+    T.eq("a chest of the world got the items", chest and { risen.item.count(chest, "MK_Strong_Potion"), risen.item.count(chest, "It_Gold") >= 77 }, { 2, true })
+    T.wait_until(function() return risen.entity.get("MK_Watcher") ~= nil end, 30, "MK_Watcher made")
+    local watcher = risen.entity.get("MK_Watcher")
+    T.expect("an NPC stands at his world position", watcher ~= nil and near(watcher, { -31900, 600, -4800 }, 300), watcher and table.concat({ watcher:position() }, " ") or "missing")
 
     T.expect("new item exists", risen.template.exists("MK_Hob_Knife"))
     T.eq("new item numbers", { prop("MK_Hob_Knife", "gCItem_PS", "GoldValue"), prop("MK_Hob_Knife", "gCDamage_PS", "DamageAmount") }, { 250, 20 })
@@ -234,6 +269,9 @@ T.run(function()
         kill_wolf()
         local g3, p3 = wallet()
         T.eq("after the load the kill pays once more", { qstatus("Q_MK_Wolves"):find("Success") ~= nil, g3 - gold0, p3 - pot0 }, { true, 50, 1 })
+
+        local chest2 = risen.entity.by_id(CHEST)
+        T.eq("after the load: nothing spawned or filled twice", { knives_near(), chest2 and risen.item.count(chest2, "MK_Strong_Potion") }, { 1, 2 })
 
         -- Q_MK_Potions started with the new game: done while the player carries three
         T.expect("the game-start quest runs", risen.quest.is_running("Q_MK_Potions"))

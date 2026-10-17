@@ -642,6 +642,27 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
         if (npcs.is_array()) import_npcs(c, npcs);
         if (quests.is_array()) import_quests(c, quests);
         if (dialogs.is_object()) import_dialogs(c, dialogs);
+        const json world = data("world.lua");
+        if (world.is_object()) {
+            for (auto& s : world.value("spawns", json::array())) {
+                WorldSpawn ws;
+                ws.uid = s.value("key", std::string()) + new_uid().substr(12);  // the key is the uid's start: kept
+                ws.template_name = s.value("template", std::string());
+                const json pos = s.value("position", json::array({0, 0, 0}));
+                for (size_t i = 0; i < 3 && i < pos.size(); ++i) ws.position[i] = pos[i].get<double>();
+                ws.amount = s.value("amount", 1);
+                p.world.spawns.push_back(ws);
+            }
+            for (auto& ct : world.value("containers", json::array())) {
+                ContainerEdit ce;
+                ce.uid = ct.value("key", std::string()) + new_uid().substr(12);
+                ce.guid = ct.value("id", std::string());
+                ce.entity_name = ct.value("name", std::string());
+                for (auto& it : ct.value("items", json::array()))
+                    if (it.is_array() && !it.empty()) ce.items.push_back({it[0].get<std::string>(), it.size() > 1 ? it[1].get<int>() : 1, false});
+                p.world.containers.push_back(ce);
+            }
+        }
         // the languages: English first, then the others in a stable order
         p.mod.languages = {"English"};
         for (auto& l : c.languages)

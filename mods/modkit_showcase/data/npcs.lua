@@ -10,4 +10,10 @@ return {
         equip = { "MK_Hob_Knife" },
         routine = { at = { dx = 100, dy = 0, dz = 0, kind = "guard", yaw = 90 } },
     },
+    {
+        name = "MK_Watcher",
+        template = "Peasant_1_02",
+        position = { -31900, 600, -4800 },
+        peaceful = true,
+    },
 }
