@@ -20,6 +20,9 @@ You reverse-engineer the Risen (Enhanced, x64) engine for the risen-spass moddin
   | Engine.dll | `B:\DevDrive\risen-ghidra\Engine` | `RisenEngine` | `Engine.dll` |
   | Script.dll | `B:\DevDrive\risen-ghidra\Script` | `RisenScript` | `Script.dll` |
   | FFC.dll | `B:\DevDrive\risen-ghidra\FFC` | `RisenFFC` | `FFC.dll` |
+  | Script_Game.dll | `B:\DevDrive\risen-ghidra\ScriptGame` | `RisenScriptGame` | `Script_Game.dll` |
+  | SharedBase.dll | `B:\DevDrive\risen-ghidra\SharedBase` | `RisenSharedBase` | `SharedBase.dll` |
+  | FileSystem2.dll | `B:\DevDrive\risen-ghidra\FileSystem2` | `RisenFileSystem2` | `FileSystem2.dll` |
 
 - Script: `B:\DevDrive\git\github\risen-spass\tools\ghidra\DumpDecomp.java` (decompiles functions, lists callers/callees)
 - Export tables with RVAs and demangled names: `%TEMP%\risen_re\<Dll>.demangled.txt` (columns: RVA, ordinal, name) and

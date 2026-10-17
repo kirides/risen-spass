@@ -98,7 +98,7 @@ Natives may use typed parameters: argument types are checked (`SOL_EXCEPTIONS_SA
   `%TEMP%\risen_re\<Dll>.demangled.txt` (RVA, ordinal, name), regenerate with `tools/dump_exports.py` +
   `tools/demangle_exports.py`. Bind with `GetProcAddress(decorated name)`, not addresses.
 - Decompile with headless Ghidra (projects in `B:\DevDrive\risen-ghidra`, Ghidra at `B:\D\ghidra_12.0_PUBLIC`, JDK 21):
-  use the **`ghidra-decompiler` subagent** (`.claude/agents/ghidra-decompiler.md`) or `tools/ghidra/DumpDecomp.java`.
+  use the **`decompile` skill** (`.claude/skills/decompile/SKILL.md`: RVA lookup, the headless command, how to read the output), the **`ghidra-decompiler` subagent** (`.claude/agents/ghidra-decompiler.md`) or `tools/ghidra/DumpDecomp.java`.
   The Ghidra MCP server only has `Risen.exe` loaded.
 - The engine's log function is an empty stub in this build; failures are silent. Use `risen.debug.trace_files`, the event log
   (`mods/eventlog`), `risen.engine.missing()` and decompilation to find out why something returns `false`.
