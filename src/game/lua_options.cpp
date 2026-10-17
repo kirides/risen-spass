@@ -327,9 +327,9 @@ function risen.options.reset(mod, id)
     return true, last
 end
 
--- the value as the menu shows it: a boolean as on / off in the text language (strings SPASS_Opt_On / SPASS_Opt_Off), the rest as show()
+-- the value as the menu shows it: a boolean as the game's own On / Off of the text language (HUD2_Text_On / HUD2_Text_Off, as on its Settings pages), the rest as show()
 local function value_text(v)
-    if type(v) == "boolean" then return lookup(v and "SPASS_Opt_On" or "SPASS_Opt_Off", v and "on" or "off") end
+    if type(v) == "boolean" then return lookup(v and "HUD2_Text_On" or "HUD2_Text_Off", v and "on" or "off") end
     return show(v)
 end
 

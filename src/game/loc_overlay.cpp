@@ -285,10 +285,19 @@ void bindLoc(sol::state_view lua, sol::table risen) {
             if (!s.loc_exists_id(admin, key.get())) {
                 return;
             }
-            OutUString out;
-            s.loc_get_string(admin, out.ptr(), key.get());
-            text = out.take();
             found = true;
+            // The game's own text: the string table's LookupValue(language, id). (eCLocAdmin2::GetString(id) is a one-argument wrapper that forwards `this` as its
+            // second string and returns nothing useful: every game string read through it was empty.)
+            const UString name(id);
+            const std::string language = currentLanguage();
+            for (const std::string& lang : {language, language + "_Text"}) {
+                const UString l(lang);
+                UString out;
+                if (s.table_lookup_value3(s.loctable_instance(), l.get(), name.get(), out.raw())) {
+                    text = out.utf8();
+                    break;
+                }
+            }
         });
         if (!found) {
             return sol::nullopt;

@@ -71,7 +71,8 @@ end
 ---------------------------------------------------------------------------------------------------------------------
 
 ---Creates (or finds again, after a reload of the mod) everything and wires the click scripts to `controller`:
----controller.on_row(i), on_action(name), on_page(delta), on_answer(choice), on_open(), on_opt(i, dir) (an arrow or the value of option row i).
+---controller.on_row(i), on_action(name), on_page(delta), on_answer(choice), on_open(), on_opt(i, dir) (an arrow or the value of option row i), text(key) (a text of the page
+---in the text language).
 function UI.install(controller)
     local self = setmetatable({ controller = controller, rows = {}, tabs = {}, w = {} }, UI)
     local ok, why = pcall(self._build, self)
@@ -291,7 +292,7 @@ function UI:_build()
     local big = present["spass_tab_mods"] or src.big_tab:clone(page)
     setp(big, "Name", "spass_tab_mods")
     setp(big, "OnClick", self:_tab_script())
-    big:set_text("Mods")
+    big:set_text(self.controller.text("mods_title"))
     big:set_position(TAB_X0 + MODS_SLOT * TAB_STEP, 650)
     self.big_tab = big
 
@@ -332,7 +333,7 @@ function UI:_add_tab(id, src)
         end
         setp(tab, "Name", "spass_tab_mods_" .. id)
     end
-    tab:set_text("Mods")
+    tab:set_text(self.controller.text("mods_title"))
     setp(tab, "OnClick", self:_tab_script())
     for _, c in ipairs(kids(p)) do
         if c:class() == "eCScriptRadioButton" then
@@ -534,9 +535,9 @@ function UI:render(snap)
     set_text(W.spass_dtitle, snap.detail_title or "")
     if in_prompt then
         set_text(W.spass_prompt, table.concat(prompt.lines, "\n"))
-        set_text(W.spass_yes, prompt.yes or "Yes")
+        set_text(W.spass_yes, prompt.yes or self.controller.text("yes"))
         set_text(W.spass_alt, prompt.alt or "")
-        set_text(W.spass_no, prompt.no or "Cancel")
+        set_text(W.spass_no, prompt.no or self.controller.text("cancel"))
     else
         local lines = {}
         for _, l in ipairs(snap.detail or {}) do

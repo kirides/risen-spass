@@ -27,6 +27,10 @@ end
 
 local controller = {}
 
+function controller.text(key)
+    return model and model:_t(key) or key
+end
+
 function controller.on_open()
     model:close_options()
     model:refresh()

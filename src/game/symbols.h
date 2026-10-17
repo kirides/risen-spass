@@ -30,7 +30,7 @@
     /* ---- FFC.dll: string tables (every localized string read passes through LookupValue) ------------ */      \
     X(table_lookup_value3, L"FFC.dll", "?LookupValue@CFXTableMap@@QEBA_NAEBVbCUnicodeString@@0AEAV2@@Z", bool (*)(const void* self, const void* lang, const void* key, void* out), true) \
     X(table_lookup_value2, L"FFC.dll", "?LookupValue@CFXTableMap@@QEBA_NAEBVbCUnicodeString@@AEAV2@@Z", bool (*)(const void* self, const void* key, void* out), true) \
-    X(table_has_key, L"FFC.dll", "?HasKey@CFXTableMap@@QEBA_NAEBVbCUnicodeString@@@Z", bool (*)(const void* self, const void* key), true) \
+    X(loctable_instance, L"FFC.dll", "?GetInstance@CFXLocTable@@SAAEAV1@XZ", void* (*)(), true)     X(table_has_key, L"FFC.dll", "?HasKey@CFXTableMap@@QEBA_NAEBVbCUnicodeString@@@Z", bool (*)(const void* self, const void* key), true) \
     X(locstr_get_key, L"FFC.dll", "?GetKey@CFXLocString@@QEBA?AVbCUnicodeString@@XZ", void* (*)(const void* self, void* ret), true) \
     X(locstr_get_text, L"FFC.dll", "?GetText@CFXLocString@@QEBA?AVbCUnicodeString@@XZ", void* (*)(const void* self, void* ret), true) \
     X(locstr_get_text_col_a, L"FFC.dll", "?GetText@CFXLocString@@QEBA?AVbCUnicodeString@@AEBVbCString@@@Z", void* (*)(const void* self, void* ret, const void* col), true) \

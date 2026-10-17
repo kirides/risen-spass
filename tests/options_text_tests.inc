@@ -41,7 +41,7 @@ TEST(options_texts_given_as_string_ids_are_looked_up_when_listed) {
         });
         risen["loc"] = loc;
     });
-    fakeStrings() = { { "T_Title", "Titel" }, { "T_Group", "Gruppe" }, { "T_Name", "Taste" }, { "T_Desc", "Beschreibung" }, { "T_Mode_a", "Alpha" }, { "SPASS_Opt_On", "an" } };
+    fakeStrings() = { { "T_Title", "Titel" }, { "T_Group", "Gruppe" }, { "T_Name", "Taste" }, { "T_Desc", "Beschreibung" }, { "T_Mode_a", "Alpha" }, { "HUD2_Text_On", "an" } };
     t.write("mods/txt/mod.toml", toml("txt"));
     t.write("mods/txt/main.lua", R"LUA(
         local def, why = risen.options.define{
@@ -60,7 +60,7 @@ TEST(options_texts_given_as_string_ids_are_looked_up_when_listed) {
     CHECK(probe(rt, "t.view") == "Titel|Taste|Beschreibung|Gruppe|an|T_Missing|@literal|Alpha|T_Mode_b|c|Plain text|off");
     // the language changes while the game runs: the next listing follows (ids are looked up, not copied)
     fakeStrings()["T_Name"] = "Key";
-    fakeStrings()["SPASS_Opt_On"] = "on!";
+    fakeStrings()["HUD2_Text_On"] = "on!";
     CHECK(probe(rt, "t.view").find("|Key|") != std::string::npos && probe(rt, "t.view").find("|on!|") != std::string::npos);
     rt.stop();
 }
@@ -77,6 +77,11 @@ TEST(modmanager_model_texts_come_from_the_host_and_fall_back_to_english) {
     sol::table strings = lua.create_table();
     for (const auto& [k, v] : german) strings[k] = v;
     lua.set("GERMAN", strings);
+    lua.script(R"LUA(
+        -- what the game itself says in German for the labels the manager takes from it (model.lua, GAME)
+        GAMEDE = { HUD2_Options = "Optionen", HUD_Menu_Back = "Zurück", HUD2_Default = "Standardwerte", HUD_Menu_ResetWarning = "Das Verstellen dieses Reglers erfordert einen Neustart.",
+            HUD2_Button_Yes = "Ja", HUD2_Button_No = "Nein", HUD_Cancel = "Abbrechen" }
+    )LUA");
     lua.script(R"LUA(
         local function mod(id) return { id = id, name = id, version = "1", state = "loaded", enabled = true, requires = {}, load_after = {}, needed_by = {}, reloadable = true,
             restart_required = {}, data = { present = false, keys = {} }, load_count = 1 } end
@@ -103,9 +108,10 @@ TEST(modmanager_model_texts_come_from_the_host_and_fall_back_to_english) {
         local s = en:snapshot()
         result.en = table.concat({ s.title, s.summary, s.prev_label, s.next_label, s.buttons.up.label, s.buttons.reset.label, s.hint }, "|")
         -- the German strings of the shipped file
-        local de = snap({ mods = mods, options = options, version = "1", text = function(id) return GERMAN[id] end })
+        local de = snap({ mods = mods, options = options, version = "1", text = function(id) return GERMAN[id] or GAMEDE[id] end })
         s = de:snapshot()
         result.de = table.concat({ s.title, s.summary, s.prev_label, s.next_label, s.buttons.up.label, s.buttons.reset.label, s.hint }, "|")
+        result.de_down = s.buttons.down.label
         de:select("k")
         de:press("toggle")
         result.de_msg = de.message.text
@@ -114,14 +120,33 @@ TEST(modmanager_model_texts_come_from_the_host_and_fall_back_to_english) {
         -- a host whose text function fails or lacks an id: English again, nothing raises
         local broken = snap({ mods = mods, options = options, version = "1", text = function(id) error("boom") end })
         result.broken = broken:snapshot().buttons.down.label
+        -- the list of mods, its buttons, details and questions in German
+        local function mods_host(extra)
+            local h = { mods = mods, options = options, version = "1", text = function(id) return GERMAN[id] or GAMEDE[id] end }
+            for k, v in pairs(extra or {}) do h[k] = v end
+            return h
+        end
+        local list = Model.new(mods_host(), { rows = 5 })
+        s = list:snapshot()
+        result.de_list = table.concat({ s.title, s.summary, s.rows[1].text, s.buttons.toggle.label, s.buttons.reload.label, s.buttons.up.label, s.buttons.down.label, s.buttons.reset.label,
+            s.buttons.options.label, s.detail[2].text }, "|")
+        local ask = Model.new(mods_host({ self_id = "opt" }), { rows = 5 })
+        ask:press("toggle")
+        result.de_ask = table.concat(ask.prompt.lines, "|") .. "|" .. ask.prompt.yes .. "|" .. ask.prompt.no
+        ask:answer("no")
+        result.de_cancel = ask.message.text .. "|" .. ask:snapshot().buttons.toggle.label
         local partial = snap({ mods = mods, options = options, version = "1", text = function(id) if id == "SPASS_ModMgr_opt_default" then return "Standard!" end end })
         result.partial = partial:snapshot().buttons.up.label .. "|" .. partial:snapshot().buttons.down.label
     )LUA");
     sol::table r = lua["result"];
     const auto get = [&](const char* k) { sol::object o = r[k]; return o.is<std::string>() ? o.as<std::string>() : std::string("<missing ") + k + ">"; };
     CHECK(get("en") == "Options: opt|2 options, 1 changed|< Prev|Next >|Default value|Back to the mods|Default: 50 (0 to 100, step 25).");
-    CHECK(get("de") == "Optionen: opt|2 Optionen, 1 geändert|< Vorige|Nächste >|Standardwert|Zurück zu den Mods|Standard: 50 (0 bis 100, Schritt 25).");
-    CHECK(get("de_msg") == "Taste: a. Gilt ab dem nächsten Spielstart.");
+    CHECK(get("de") == "Optionen: opt|2 Optionen, 1 geändert|< Vorige|Nächste >|Standardwert|Zurück|Standard: 50 (0 bis 100, Schritt 25).");   // "Zurück" is the game's own
+    CHECK(get("de_down") == "Standardwerte");                                                                                                   // ... and so is this
+    CHECK(get("de_msg") == "Taste: a. Das Verstellen dieses Reglers erfordert einen Neustart.");
+    CHECK(get("de_list") == "Mods|1 Mod: 1 geladen|opt  1|Ausschalten|Neu laden|Nach oben|Nach unten|Standardreihenfolge|Optionen (2)|Zustand: geladen");
+    CHECK(get("de_ask") == "opt ist diese Seite. Wird sie ausgeschaltet, verschwindet der Reiter „Mods“ für immer.|Wieder einschalten: den Eintrag in der mods.toml löschen und das Spiel neu starten.|Ausschalten|Abbrechen");
+    CHECK(get("de_cancel") == "Abgebrochen.|Ausschalten");
     CHECK(get("de_max") == "false:Zahl ist am Maximum.");
     CHECK(get("broken") == "All defaults");
     CHECK(get("partial") == "Standard!|All defaults");
@@ -142,21 +167,36 @@ TEST(string_files_of_the_options_pages_are_complete_in_every_language) {
         }
         for (const auto& [id, text] : german) CHECK(english.count(id) == 1);        // and nothing else
     }
-    // every key of the model's TEXT table and every "@id" of quickloot has a string
+    // the model's texts: every key of its TEXT table (except the game's own labels, GAME) has a string, every string belongs to a key, every key the code asks for exists
     const auto manager = readStrings(mods / "modmanager" / "strings" / "all.csv");
     const std::string model = slurp(mods / "modmanager" / "model.lua");
-    const auto from = model.find("local TEXT = {");
-    const auto to = model.find("\n}\n", from);
-    CHECK(from != std::string::npos && to != std::string::npos);
-    int keys = 0;
-    std::istringstream table(model.substr(from, to - from));
-    for (std::string line; std::getline(table, line);) {
-        const auto eq = line.find(" = \"");
-        if (line.rfind("    ", 0) != 0 || eq == std::string::npos) continue;
-        ++keys;
-        CHECK(manager.count("SPASS_ModMgr_" + line.substr(4, eq - 4)) == 1);
+    const auto keysOf = [&](const char* start) {
+        std::set<std::string> out;
+        const auto from = model.find(start);
+        const auto to = model.find("\n}\n", from);
+        CHECK(from != std::string::npos && to != std::string::npos);
+        std::istringstream table(model.substr(from, to - from));
+        for (std::string line; std::getline(table, line);) {
+            const auto eq = line.find(" = \"");
+            if (line.rfind("    ", 0) != 0 || eq == std::string::npos) continue;
+            out.insert(line.substr(4, eq - 4));
+        }
+        return out;
+    };
+    const auto text = keysOf("local TEXT = {");
+    const auto game = keysOf("local GAME = {");
+    CHECK(text.size() >= 100 && game.size() >= 5);
+    for (const auto& key : game) CHECK(text.count(key) == 1);                       // a game label always has an English fallback
+    for (const auto& key : text) CHECK((manager.count("SPASS_ModMgr_" + key) == 1) != (game.count(key) == 1));   // ours or the game's, not both
+    for (const auto& [id, value] : manager) CHECK(id.rfind("SPASS_ModMgr_", 0) == 0 && text.count(id.substr(13)) == 1 && game.count(id.substr(13)) == 0);
+    int asked = 0;
+    for (const std::regex& pattern : {std::regex("_t\\(\"([a-z0-9_]*[a-z0-9])\""), std::regex("\"((?:tag|data|state)_(?!off\")[a-z_]*[a-z])\"")}) {
+        for (std::sregex_iterator it(model.begin(), model.end(), pattern), end; it != end; ++it) {
+            ++asked;
+            CHECK(text.count((*it)[1]) == 1);
+        }
     }
-    CHECK(keys >= 30);
+    CHECK(asked >= 80);
     const auto quick = readStrings(mods / "quickloot" / "strings" / "all.csv");
     const std::string main = slurp(mods / "quickloot" / "main.lua");
     for (const char* id : {"enabled", "key", "modifier", "items", "corpses", "chests", "keys", "max_distance", "print", "pickup_sound", "pickup_sound_gap", "hold_repeat", "repeat_ms", "witness_mode", "witness_veto"}) {

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <map>
+#include <regex>
 #include <cmath>
 #include <cstring>
 #include <sstream>

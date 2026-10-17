@@ -10,12 +10,96 @@ M.__index = M
 
 M.ROWS = 12
 
--- The texts of the options page. The ids are `SPASS_ModMgr_<key>` in mods/modmanager/strings/*.csv (risen.loc, so the page follows the text language); what stands here is
--- the English fallback (a host without a `text` function, a missing string) and what the unit tests expect.
+-- Every text of the page. The ids are `SPASS_ModMgr_<key>` in mods/modmanager/strings/*.csv (risen.loc, so the page follows the text language); what stands here is the English
+-- fallback (a host without a `text` function, a missing string) and what the unit tests expect. A key listed in GAME takes the game's own string (the same label in every
+-- language the game has) before ours.
 local TEXT = {
-    options_button = "Options (%d)",
+    mods_title = "Mods",
+    mods_summary_one = "%d mod: %d loaded",
+    mods_summary_many = "%d mods: %d loaded",
+    summary_failed = ", %d failed",
+    summary_off = ", %d off",
+    restart_note = "The load order changes at the next start.",
+    no_mods = "No mods installed",
+    no_mods_hint = "Put mod folders into bin\\spass\\mods.",
+    tag_failed = "failed",
+    tag_skipped = "skipped",
+    tag_off = "off",
+    tag_unloaded = "unloaded",
+    state = "State: %s",
+    state_loaded = "loaded",
+    state_failed = "failed",
+    state_skipped = "skipped",
+    state_disabled = "disabled",
+    state_unloaded = "unloaded",
+    state_loaded_order = "loaded, load order %d",
+    state_reloaded = ", reloaded %dx",
+    by_author = "   by %s",
+    requires = "Requires: %s",
+    loads_after = "Loads after: %s",
+    needed_by = "Needed by: %s",
+    reload_note = "Reload: %s",
+    restart_required = "Restart required: %s",
+    savegame_data = "Savegame data: %s",
+    written_by = " (written by %s)",
+    data_npc_one = "persistent NPC",
+    data_npc_many = "persistent NPCs",
+    data_rule_one = "spawn rule",
+    data_rule_many = "spawn rules",
+    data_ai_one = "saved AI state",
+    data_ai_many = "saved AI states",
+    data_routine_one = "routine record",
+    data_routine_many = "routine records",
+    data_value_one = "saved value",
+    data_value_many = "saved values",
+    switch_off = "Switch off",
+    switch_on = "Switch on",
+    reload = "Reload",
+    move_up = "Move up",
+    move_up_blocked = "Move up (blocked)",
+    move_down = "Move down",
+    move_down_blocked = "Move down (blocked)",
+    default_order = "Default order",
+    dir_up = "up",
+    dir_down = "down",
+    first_mod = "it is the first mod in the load order",
+    last_mod = "it is the last mod in the load order",
+    would_break = "the load order would break a dependency",
+    mods_read_failed = "Could not read the mod list: %s",
+    switched_off_what = "Switched off %s",
+    switched_on_what = "Switched on %s",
+    reloaded_what = "Reloaded %s",
+    done = "done",
+    refused = "refused",
+    not_possible = "not possible",
+    cancelled = "Cancelled.",
+    yes = "Yes",
+    no = "No",
+    cancel = "Cancel",
+    ask_self_off_1 = "%s is this page. Switched off, the Mods tab disappears for good.",
+    ask_self_off_2 = "Switch it on again by editing mods.toml (delete the entry) and restarting.",
+    ask_cascade_off_1 = "%s is needed by %s.",
+    ask_cascade_off_2_one = "Switch off that mod too?",
+    ask_cascade_off_2_many = "Switch off all of them too?",
+    btn_switch_all_off = "Switch all off",
+    ask_data_off_1 = "%s left data in this game: %s.",
+    ask_data_off_2 = "Switched off, they stay in the savegame (nameless and without their mod).",
+    btn_off_remove = "Switch off and remove its NPCs",
+    btn_off_only = "Switch off only",
+    ask_cascade_on_1 = "%s needs %s, which is switched off.",
+    ask_cascade_on_2 = "Switch on the required mods too?",
+    btn_switch_all_on = "Switch all on",
+    leftovers_list_failed = "Switched off %s, but its leftovers could not be listed: %s",
+    leftovers_remove_failed = "Switched off %s, but its leftovers could not be removed: %s",
+    removed_npcs = "Switched off %s and removed %d of its NPC(s) from this game.",
+    cannot_reload = "Cannot reload %s: %s",
+    move_sentence = "%s: %s.",
+    cannot_move = "%s cannot move %s: %s",
+    moved = "%s moved %s. The new load order applies at the next start.",
+    order_save_failed = "Could not save the order: %s",
+    order_reset_failed = "Could not reset the order: %s",
+    order_reset = "Load order reset to the default (alphabetical, dependencies first). It applies at the next start.",
     options_button_none = "Options",
-    title = "Options: %s",
     summary_one = "%d option, %d changed",
     summary_many = "%d options, %d changed",
     prev = "< Prev",
@@ -31,7 +115,6 @@ local TEXT = {
     reset_done = "Reset %d option(s) to their defaults.",
     no_change = "%s: no change.",
     changed_error = "%s changed, but: %s",
-    changed_restart = "%s: %s. Applies at the next start of the game.",
     changed = "%s: %s",
     opt_switch_off = "Switch off",
     opt_switch_on = "Switch on",
@@ -50,14 +133,31 @@ local TEXT = {
 }
 M.TEXT = TEXT
 
----The text `key` of the options page in the text language (`format` arguments fill its %s / %d).
+-- keys that are the game's own label (the HUD tables of the game, every language it ships): used as they are, before our strings
+local GAME = {
+    options_button_none = "HUD2_Options",     -- "Options" / "Optionen"
+    opt_back = "HUD_Menu_Back",                -- "Back" / "Zurück"
+    opt_all_defaults = "HUD2_Default",         -- "Default values" / "Standardwerte"
+    hint_restart = "HUD_Menu_ResetWarning",    -- "Changing this control will require you to restart the game."
+    yes = "HUD2_Button_Yes",
+    no = "HUD2_Button_No",
+    cancel = "HUD_Cancel",
+}
+M.GAME = GAME
+
+---The text `key` of the page in the text language (`format` arguments fill its %s / %d).
 function M:_t(key, ...)
     local fallback = TEXT[key] or key
     local text
     if self.host.text then
-        local ok, got = pcall(self.host.text, "SPASS_ModMgr_" .. key)
-        if ok and type(got) == "string" and got ~= "" then
-            text = got
+        for _, id in ipairs({ GAME[key] or false, "SPASS_ModMgr_" .. key }) do
+            if id then
+                local ok, got = pcall(self.host.text, id)
+                if ok and type(got) == "string" and got ~= "" then
+                    text = got
+                    break
+                end
+            end
         end
     end
     if select("#", ...) == 0 then
@@ -82,20 +182,22 @@ local function plural(n, one, many)
 end
 
 -- "3 persistent NPCs, 1 spawn rule" for what a mod left in the savegame; nil when there is nothing.
-function M.describe_data(data)
+---`word(key)` gives the words of the text language (the model's `_t`); without it the English ones.
+function M.describe_data(data, word)
     if type(data) ~= "table" or not data.present then
         return nil
     end
+    word = word or function(key) return TEXT[key] end
     local parts = {}
     local function add(n, one, many)
         if type(n) == "number" and n > 0 then
-            parts[#parts + 1] = ("%d %s"):format(n, plural(n, one, many))
+            parts[#parts + 1] = ("%d %s"):format(n, word(n == 1 and one or many))
         end
     end
-    add(data.npcs, "persistent NPC", "persistent NPCs")
-    add(data.spawn_rules, "spawn rule", "spawn rules")
-    add(data.ai_states, "saved AI state", "saved AI states")
-    add(data.routines, "routine record", "routine records")
+    add(data.npcs, "data_npc_one", "data_npc_many")
+    add(data.spawn_rules, "data_rule_one", "data_rule_many")
+    add(data.ai_states, "data_ai_one", "data_ai_many")
+    add(data.routines, "data_routine_one", "data_routine_many")
     -- other keys of the mod's own store
     local other = 0
     for k, n in pairs(data.keys or {}) do
@@ -103,7 +205,7 @@ function M.describe_data(data)
             other = other + 1
         end
     end
-    add(other, "saved value", "saved values")
+    add(other, "data_value_one", "data_value_many")
     if #parts == 0 then
         return nil
     end
@@ -129,7 +231,7 @@ local function tone_of(entry, dirty)
     return "ok"
 end
 
-local STATE_TAG = { loaded = "", failed = "failed", skipped = "skipped", disabled = "off", unloaded = "unloaded" }
+local STATE_TAG = { loaded = "", failed = "tag_failed", skipped = "tag_skipped", disabled = "tag_off", unloaded = "tag_unloaded" }
 
 ---@param host { mods: table, version: string }
 ---@param opts? { rows?: integer, option_rows?: integer }
@@ -167,7 +269,7 @@ function M:refresh()
     local list, err = safe(self.host.mods.list)
     if type(list) ~= "table" then
         -- keep what was shown; say why it is not up to date
-        self:_say("Could not read the mod list: " .. tostring(err), "error")
+        self:_say(self:_t("mods_read_failed", tostring(err)), "error")
         return
     end
     local ord = safe(self.host.mods.order) or {}
@@ -436,13 +538,13 @@ function M:can_move(id, dir)
     local ids = self:_moved(id, dir)
     local ok, why
     if not ids then
-        ok, why = nil, dir < 0 and "it is the first mod in the load order" or "it is the last mod in the load order"
+        ok, why = nil, self:_t(dir < 0 and "first_mod" or "last_mod")
     else
         local good, reason = safe(self.host.mods.check_order, ids)
         if good then
             ok = true
         else
-            ok, why = false, reason or "the load order would break a dependency"
+            ok, why = false, reason or self:_t("would_break")
         end
     end
     self.block_cache[key] = { ok, why }
@@ -477,11 +579,11 @@ end
 
 function M:_report_message(report, reason, what)
     if not report then
-        self:_say(what .. ": " .. tostring(reason or "refused"), "error")
+        self:_say(self:_t("name_reason", what, tostring(reason or self:_t("refused"))), "error")
         return false
     end
     local tone = "info"
-    local text = what .. ": " .. tostring(report.summary or "done")
+    local text = self:_t("name_reason", what, tostring(report.summary or self:_t("done")))
     local restart = 0
     for _, a in ipairs(report.actions or {}) do
         restart = restart + #(a.restart_required or {})
@@ -492,7 +594,7 @@ function M:_report_message(report, reason, what)
     if reason or report.ok == false then
         tone = "error"
         if reason and not text:find(reason, 1, true) then
-            text = what .. ": " .. tostring(reason)
+            text = self:_t("name_reason", what, tostring(reason))
         end
     elseif restart > 0 then
         tone = "warn"
@@ -503,21 +605,21 @@ end
 
 function M:_do_disable(id, cascade)
     local report, reason = safe(self.host.mods.disable, id, { cascade = cascade or false, now = true })
-    local ok = self:_report_message(report, reason, "Switched off " .. id)
+    local ok = self:_report_message(report, reason, self:_t("switched_off_what", id))
     self:refresh()
     return ok
 end
 
 function M:_do_enable(id, cascade)
     local report, reason = safe(self.host.mods.enable, id, { cascade = cascade or false, now = true })
-    local ok = self:_report_message(report, reason, "Switched on " .. id)
+    local ok = self:_report_message(report, reason, self:_t("switched_on_what", id))
     self:refresh()
     return ok
 end
 
 ---The ask() of a confirmation: the page shows `lines` and the buttons yes / alt / no (alt only when given).
 function M:_ask(kind, id, lines, yes, alt, no)
-    self.prompt = { kind = kind, id = id, lines = lines, yes = yes, alt = alt, no = no or "Cancel" }
+    self.prompt = { kind = kind, id = id, lines = lines, yes = yes, alt = alt, no = no or self:_t("cancel") }
 end
 
 ---Switch the selected mod off or on (asks first when others need it, or when it left data in the savegame).
@@ -532,24 +634,24 @@ function M:toggle()
         if self.host.self_id and id == self.host.self_id and not self.self_warned then
             self.self_warned = true
             self:_ask("self_off", id, {
-                ("%s is this page. Switched off, the Mods tab disappears for good."):format(e.name),
-                "Switch it on again by editing mods.toml (delete the entry) and restarting.",
-            }, "Switch off", nil, "Cancel")
+                self:_t("ask_self_off_1", e.name),
+                self:_t("ask_self_off_2"),
+            }, self:_t("switch_off"), nil, self:_t("cancel"))
             return "prompt"
         end
         local deps = enabled_dependents(self, e)
         if #deps > 0 then
             self:_ask("cascade_off", id, {
-                ("%s is needed by %s."):format(e.name, join(deps)),
-                ("Switch off %s too?"):format(plural(#deps, "that mod", "all of them")),
-            }, "Switch all off", nil, "Cancel")
+                self:_t("ask_cascade_off_1", e.name, join(deps)),
+                self:_t(#deps == 1 and "ask_cascade_off_2_one" or "ask_cascade_off_2_many"),
+            }, self:_t("btn_switch_all_off"), nil, self:_t("cancel"))
             return "prompt"
         end
         if has_world_data(e) then
             self:_ask("data_off", id, {
-                ("%s left data in this game: %s."):format(e.name, M.describe_data(e.data)),
-                "Switched off, they stay in the savegame (nameless and without their mod).",
-            }, "Switch off and remove its NPCs", "Switch off only", "Cancel")
+                self:_t("ask_data_off_1", e.name, M.describe_data(e.data, function(k) return self:_t(k) end)),
+                self:_t("ask_data_off_2"),
+            }, self:_t("btn_off_remove"), self:_t("btn_off_only"), self:_t("cancel"))
             return "prompt"
         end
         return self:_do_disable(id, false)
@@ -557,9 +659,9 @@ function M:toggle()
     local need = disabled_requirements(self, e)
     if #need > 0 then
         self:_ask("cascade_on", id, {
-            ("%s needs %s, which is switched off."):format(e.name, join(need)),
-            "Switch on the required mods too?",
-        }, "Switch all on", nil, "Cancel")
+            self:_t("ask_cascade_on_1", e.name, join(need)),
+            self:_t("ask_cascade_on_2"),
+        }, self:_t("btn_switch_all_on"), nil, self:_t("cancel"))
         return "prompt"
     end
     return self:_do_enable(id, false)
@@ -573,7 +675,7 @@ function M:answer(choice)
     end
     self.prompt = nil
     if choice == "no" or choice == nil then
-        self:_say("Cancelled.", "info")
+        self:_say(self:_t("cancelled"), "info")
         return true
     end
     if p.kind == "self_off" and choice == "yes" then
@@ -591,7 +693,7 @@ function M:answer(choice)
             end
             local list, reason = safe(self.host.mods.orphans, p.id)
             if not list then
-                self:_say(("Switched off %s, but its leftovers could not be listed: %s"):format(p.id, tostring(reason)), "warn")
+                self:_say(self:_t("leftovers_list_failed", p.id, tostring(reason)), "warn")
                 return false
             end
             ---@type integer|nil, string|nil
@@ -600,10 +702,10 @@ function M:answer(choice)
                 removed, why = safe(self.host.mods.remove_orphans, p.id, list)
             end
             if removed == nil then
-                self:_say(("Switched off %s, but its leftovers could not be removed: %s"):format(p.id, tostring(why)), "warn")
+                self:_say(self:_t("leftovers_remove_failed", p.id, tostring(why)), "warn")
                 return false
             end
-            self:_say(("Switched off %s and removed %d of its NPC(s) from this game."):format(p.id, removed), "info")
+            self:_say(self:_t("removed_npcs", p.id, removed), "info")
             self:refresh()
             return true
         elseif choice == "alt" then
@@ -620,11 +722,11 @@ function M:reload()
     end
     self.prompt = nil
     if e.reloadable == false then
-        self:_say("Cannot reload " .. e.name .. ": " .. tostring(e.reload_note or e.reason or "not possible"), "error")
+        self:_say(self:_t("cannot_reload", e.name, tostring(e.reload_note or e.reason or self:_t("not_possible"))), "error")
         return false
     end
     local report, reason = safe(self.host.mods.reload, e.id, { now = true })
-    local ok = self:_report_message(report, reason, "Reloaded " .. e.name)
+    local ok = self:_report_message(report, reason, self:_t("reloaded_what", e.name))
     self:refresh()
     return ok
 end
@@ -637,22 +739,22 @@ function M:move(dir)
     self.prompt = nil
     local ok, why = self:can_move(e.id, dir)
     if ok == nil then
-        self:_say(e.name .. ": " .. why .. ".", "info")
+        self:_say(self:_t("move_sentence", e.name, why), "info")
         return false
     end
     if not ok then
-        self:_say(("%s cannot move %s: %s"):format(e.name, dir < 0 and "up" or "down", why), "error")
+        self:_say(self:_t("cannot_move", e.name, self:_t(dir < 0 and "dir_up" or "dir_down"), why), "error")
         return false
     end
     local ids = self:_moved(e.id, dir)
     local saved, reason = safe(self.host.mods.set_order, ids)
     if not saved then
-        self:_say("Could not save the order: " .. tostring(reason), "error")
+        self:_say(self:_t("order_save_failed", tostring(reason)), "error")
         return false
     end
     self.order_changed = true
     self:refresh()
-    self:_say(("%s moved %s. The new load order applies at the next start."):format(e.name, dir < 0 and "up" or "down"), "warn")
+    self:_say(self:_t("moved", e.name, self:_t(dir < 0 and "dir_up" or "dir_down")), "warn")
     return true
 end
 
@@ -660,12 +762,12 @@ function M:reset_order()
     self.prompt = nil
     local saved, reason = safe(self.host.mods.set_order, nil)
     if not saved then
-        self:_say("Could not reset the order: " .. tostring(reason), "error")
+        self:_say(self:_t("order_reset_failed", tostring(reason)), "error")
         return false
     end
     self.order_changed = true
     self:refresh()
-    self:_say("Load order reset to the default (alphabetical, dependencies first). It applies at the next start.", "warn")
+    self:_say(self:_t("order_reset"), "warn")
     return true
 end
 
@@ -683,7 +785,7 @@ function M:_say_change(id, report)
     elseif report.error then
         self:_say(self:_t("changed_error", label, report.error), "error")
     elseif report.restart then
-        self:_say(self:_t("changed_restart", label, shown), "warn")
+        self:_say(self:_t("changed", label, shown) .. ". " .. self:_t("hint_restart"), "warn")
     else
         self:_say(self:_t("changed", label, shown), "info")
     end
@@ -830,7 +932,7 @@ function M:row_label(e)
     local text = ("%s  %s"):format(clip(e.name ~= "" and e.name or e.id, 30), e.version or "")
     local tag = STATE_TAG[e.state]
     if tag and tag ~= "" then
-        text = text .. "  (" .. tag .. ")"
+        text = text .. "  (" .. self:_t(tag) .. ")"
     end
     if e.state == "loaded" and e.restart_required and #e.restart_required > 0 then
         text = text .. "  *"
@@ -846,38 +948,36 @@ function M:detail(e)
     if e.name and #e.name > 27 then
         add(e.name)
     end
-    add(("%s %s%s"):format(e.id, e.version or "", (e.author and e.author ~= "") and ("   by " .. e.author) or ""))
-    local state = e.state
+    add(("%s %s%s"):format(e.id, e.version or "", (e.author and e.author ~= "") and self:_t("by_author", e.author) or ""))
+    local state = TEXT["state_" .. tostring(e.state)] and self:_t("state_" .. e.state) or tostring(e.state)
     if e.state == "loaded" and e.load_order then
-        state = ("loaded, load order %d"):format(e.load_order)
+        state = self:_t("state_loaded_order", e.load_order)
         if (e.load_count or 1) > 1 then
-            state = state .. (", reloaded %dx"):format(e.load_count - 1)
+            state = state .. self:_t("state_reloaded", e.load_count - 1)
         end
     end
-    add("State: " .. state, tone_of(e, false) == "fail" and "fail" or nil)
+    add(self:_t("state", state), tone_of(e, false) == "fail" and "fail" or nil)
     if e.reason and e.reason ~= "" then
         add(e.reason, "fail")
     end
     if #(e.requires or {}) > 0 then
-        add("Requires: " .. join(e.requires))
+        add(self:_t("requires", join(e.requires)))
     end
     if #(e.load_after or {}) > 0 then
-        add("Loads after: " .. join(e.load_after))
+        add(self:_t("loads_after", join(e.load_after)))
     end
     if #(e.needed_by or {}) > 0 then
-        add("Needed by: " .. join(e.needed_by))
+        add(self:_t("needed_by", join(e.needed_by)))
     end
-    if e.reloadable == false and e.reload_note and e.reload_note ~= "" then
-        add("Reload: " .. e.reload_note)
-    elseif e.reload_note and e.reload_note ~= "" then
-        add("Reload: " .. e.reload_note)
+    if e.reload_note and e.reload_note ~= "" then
+        add(self:_t("reload_note", e.reload_note))
     end
     for _, r in ipairs(e.restart_required or {}) do
-        add("Restart required: " .. r, "warn")
+        add(self:_t("restart_required", r), "warn")
     end
-    local data = M.describe_data(e.data)
+    local data = M.describe_data(e.data, function(k) return self:_t(k) end)
     if data then
-        add("Savegame data: " .. data .. (e.data.saved_version and (" (written by " .. e.data.saved_version .. ")") or ""))
+        add(self:_t("savegame_data", data) .. (e.data.saved_version and self:_t("written_by", e.data.saved_version) or ""))
     end
     if e.description and e.description ~= "" then
         add(e.description)
@@ -970,7 +1070,7 @@ function M:_options_snapshot()
     local mod = self.entries[self.selected]
     local snap = {
         view = "options",
-        title = clip(self:_t("title", item.title or (mod and mod.name ~= "" and mod.name) or item.mod), 30),
+        title = clip(self:_t("options_button_none") .. ": " .. (item.title or (mod and mod.name ~= "" and mod.name) or item.mod), 30),
         summary = self:_t(#entries == 1 and "summary_one" or "summary_many", #entries, changed),
         prev_label = self:_t("prev"),
         next_label = self:_t("next"),
@@ -1030,16 +1130,16 @@ function M:snapshot()
             off = off + 1
         end
     end
-    local summary = ("%d %s: %d loaded"):format(#self.order, plural(#self.order, "mod", "mods"), loaded)
+    local summary = self:_t(#self.order == 1 and "mods_summary_one" or "mods_summary_many", #self.order, loaded)
     if failed > 0 then
-        summary = summary .. (", %d failed"):format(failed)
+        summary = summary .. self:_t("summary_failed", failed)
     end
     if off > 0 then
-        summary = summary .. (", %d off"):format(off)
+        summary = summary .. self:_t("summary_off", off)
     end
     local snap = {
         view = "mods",
-        title = "Mods",
+        title = self:_t("mods_title"),
         summary = summary,
         version = self.host.version,
         rows = rows,
@@ -1049,7 +1149,7 @@ function M:snapshot()
         selected = self.selected,
         message = self.message,
         prompt = self.prompt,
-        restart_note = dirty and "The load order changes at the next start." or nil,
+        restart_note = dirty and self:_t("restart_note") or nil,
     }
     local e = self:selected_entry()
     if e then
@@ -1059,26 +1159,26 @@ function M:snapshot()
         local up_ok, up_why = self:can_move(e.id, -1)
         local down_ok, down_why = self:can_move(e.id, 1)
         snap.buttons = {
-            toggle = { label = on and "Switch off" or "Switch on", enabled = true },
-            reload = { label = "Reload", enabled = e.reloadable ~= false, why = e.reload_note },
-            up = { label = up_ok == false and "Move up (blocked)" or "Move up", enabled = up_ok ~= nil, why = up_why, blocked = up_ok == false },
-            down = { label = down_ok == false and "Move down (blocked)" or "Move down", enabled = down_ok ~= nil, why = down_why, blocked = down_ok == false },
-            reset = { label = "Default order", enabled = #self.custom_order > 0 or self.order_changed },
+            toggle = { label = self:_t(on and "switch_off" or "switch_on"), enabled = true },
+            reload = { label = self:_t("reload"), enabled = e.reloadable ~= false, why = e.reload_note },
+            up = { label = self:_t(up_ok == false and "move_up_blocked" or "move_up"), enabled = up_ok ~= nil, why = up_why, blocked = up_ok == false },
+            down = { label = self:_t(down_ok == false and "move_down_blocked" or "move_down"), enabled = down_ok ~= nil, why = down_why, blocked = down_ok == false },
+            reset = { label = self:_t("default_order"), enabled = #self.custom_order > 0 or self.order_changed },
             options = { label = self:_t("options_button_none"), enabled = false },
         }
         local n = self:option_count(e.id)
         if n > 0 then
-            snap.buttons.options = { label = self:_t("options_button", n), enabled = true }
+            snap.buttons.options = { label = self:_t("options_button_none") .. (" (%d)"):format(n), enabled = true }
         end
     else
-        snap.detail_title = "No mods installed"
-        snap.detail = { { text = "Put mod folders into bin\\spass\\mods." } }
+        snap.detail_title = self:_t("no_mods")
+        snap.detail = { { text = self:_t("no_mods_hint") } }
         snap.buttons = {
-            toggle = { label = "Switch off", enabled = false },
-            reload = { label = "Reload", enabled = false },
-            up = { label = "Move up", enabled = false },
-            down = { label = "Move down", enabled = false },
-            reset = { label = "Default order", enabled = false },
+            toggle = { label = self:_t("switch_off"), enabled = false },
+            reload = { label = self:_t("reload"), enabled = false },
+            up = { label = self:_t("move_up"), enabled = false },
+            down = { label = self:_t("move_down"), enabled = false },
+            reset = { label = self:_t("default_order"), enabled = false },
             options = { label = self:_t("options_button_none"), enabled = false },
         }
     end
