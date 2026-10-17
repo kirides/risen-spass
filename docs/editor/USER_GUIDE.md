@@ -151,6 +151,15 @@ The export copies the files into `sounds\` of the mod (a game sound is unpacked 
 `sound = "sounds/<file>"`; the layer compiles it and the line lasts as long as the audio (`docs/LUA_API.md` "Voice lines"). SaySound's
 **SoundName** plays a sound the engine already knows (a game sound, or a compiled `._xsnd` of the project) by its raw name, without subtitle.
 
+### Playing a dialogue through
+
+**Play through** in the Dialogues panel (or **Window > Conversation**) plays the dialogue like a player. Pick options, read the lines; the NPC's answers, quest
+actions, log entries and commands appear in grey. The right side lists every condition the dialogue's options use (`quest Q_X is Running`, `player has 2 It_IronOre`, ...)
+with a control for the fact behind it (quest state, carried amount, variable, event, skill, dead NPC) and a **pin** (as world / yes / no) to force a condition. The
+options update at once. **Talk again** starts a new conversation (used-up options stay used, the world stays), **New game** resets everything. Quest actions
+and `Give` / `SetGameEvent` / `RunQuest` commands change the pretend world, so a quest started in one answer unlocks the next. The panel rebuilds when you edit the
+dialogue and keeps the world. It lists options that can never be reached (their parent is no option of the dialogue).
+
 ## Assets
 
 The **Assets** panel holds the project's own files: **Add files...** (several at once), **Remove**, **Reload** (after a file changed outside the editor).
@@ -350,7 +359,7 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 * Lip sync: a voiced line of the mod has no lip-sync motion (the face does not move); a data-only import turns game sounds the export unpacked into
   project audio files (an import from `modkit\project.json` keeps them as game sounds).
 * A quest flow is one chain (no branches inside a quest); branch with dialogues and follow-up quests.
-* A dialogue cannot be played through inside the editor yet (DLG-5); test it in the game.
+* The Conversation panel follows the layer's documented rules for dialogue options, it does not run the engine: commands other than End, Give, Say, quest and game-event commands are only listed; test the finished mod with Play.
 * A template's shipped loot is not shown (the editor cannot read it offline yet).
 * Icons are offered from the shipped items' icons; a preview of meshes and icons comes with stage E8.
 * Linux and macOS builds are part of the CMake setup but were not built yet (no such host in the development setup).

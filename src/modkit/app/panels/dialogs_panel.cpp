@@ -233,6 +233,11 @@ private:
         ui::help("The NPC who owns the options: a placed NPC of the project (pick it, or drag it here from the NPCs panel or the Browser), or the unique "
                  "entity name of an NPC in the world.");
         ImGui::SameLine();
+        if (ImGui::Button("Play through")) {
+            const std::string uid = d.uid;
+            app.defer([&app, uid] { app.select_in(kPanelConversation, uid); });
+        }
+        ImGui::SameLine();
         ImGui::TextDisabled("  right-click: new node · drag from a pin into space: new linked node · Del: delete");
         if (ch) app.touch();
     }

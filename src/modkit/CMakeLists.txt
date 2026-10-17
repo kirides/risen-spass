@@ -37,6 +37,7 @@ add_library(modkit_core STATIC
     core/behavior.cpp
     core/catalog.cpp
     core/dialog.cpp
+    core/dialog_sim.cpp
     core/export.cpp
     core/gamedata.cpp
     core/gamelog.cpp
@@ -92,6 +93,7 @@ add_executable(risen-modkit
     app/panels/assets_panel.cpp
     app/panels/behaviors_panel.cpp
     app/panels/browser_panel.cpp
+    app/panels/conversation_panel.cpp
     app/panels/dialogs_panel.cpp
     app/panels/items_panel.cpp
     app/panels/problems_panel.cpp

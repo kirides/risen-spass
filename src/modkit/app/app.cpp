@@ -100,6 +100,7 @@ App::App(AppOptions opts) : options(std::move(opts)) {
     panels_.push_back(make_recipes_panel());
     panels_.push_back(make_npcs_panel());
     panels_.push_back(make_dialogs_panel());
+    panels_.push_back(make_conversation_panel());
     panels_.push_back(make_quests_panel());
     panels_.push_back(make_world_panel());
     panels_.push_back(make_assets_panel());
@@ -518,7 +519,7 @@ void App::setup_default_layout(unsigned int dockspace_id) {
     ImGui::DockBuilderDockWindow(kPanelBrowser, left);
     ImGui::DockBuilderDockWindow(kPanelLog, bottom);
     ImGui::DockBuilderDockWindow("Problems", bottom);
-    for (const char* t : {"Items", "Recipes", "NPCs", "Dialogues", "Quests", "World", kPanelAssets, kPanelBehaviors, kPanelSettings}) ImGui::DockBuilderDockWindow(t, center);
+    for (const char* t : {"Items", "Recipes", "NPCs", "Dialogues", kPanelConversation, "Quests", "World", kPanelAssets, kPanelBehaviors, kPanelSettings}) ImGui::DockBuilderDockWindow(t, center);
     ImGui::DockBuilderFinish(dockspace_id);
 }
 
@@ -759,7 +760,11 @@ int App::run() {
     load_game_data();
     if (!options.project.empty()) open_project(options.project);
     else project_replaced();
-    if (!options.panel.empty()) focus_request_ = options.panel;
+    if (!options.panel.empty()) {
+        focus_request_ = options.panel;
+        for (auto& p : panels_)
+            if (options.panel == p->title()) p->open = true;
+    }
     pending_select_ = options.select;
 
     int rc = 0;
