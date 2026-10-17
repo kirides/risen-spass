@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -33,7 +34,7 @@ public:
     const std::string& path() const { return path_; }
     const std::vector<PakEntry>& entries() const { return entries_; }
     const PakEntry* find(const std::string& path) const;  // case-insensitive full path
-    Bytes read(const PakEntry& e) const;                  // throws Error on a damaged member
+    Bytes read(const PakEntry& e) const;                  // throws Error on a damaged member; safe to call from several threads
 
 private:
     Pak() = default;
@@ -42,6 +43,7 @@ private:
 
     std::string path_;
     FILE* f_ = nullptr;
+    mutable std::mutex io_;
     std::vector<PakEntry> entries_;
     std::unordered_map<std::string, size_t> by_path_;
 };

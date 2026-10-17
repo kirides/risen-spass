@@ -5,10 +5,40 @@
   "description": "Hook-based Lua (LuaJIT) scripting layer for Risen (Enhanced, x64)",
   "dependencies": [
     "luajit",
-    "minhook",
+    {
+      "name": "minhook",
+      "platform": "windows"
+    },
     "sol2",
     "spdlog",
     "tomlplusplus",
     "zlib"
-  ]
+  ],
+  "features": {
+    "modkit": {
+      "description": "risen-modkit, the cross-platform mod editor (docs/editor/REQUIREMENTS.md)",
+      "dependencies": [
+        "glfw3",
+        {
+          "name": "glad",
+          "features": [
+            "gl-api-33"
+          ]
+        },
+        {
+          "name": "imgui",
+          "features": [
+            "docking-experimental",
+            "glfw-binding",
+            "opengl3-binding"
+          ]
+        },
+        "imgui-node-editor",
+        "imguizmo",
+        "nativefiledialog-extended",
+        "nlohmann-json",
+        "stb"
+      ]
+    }
+  }
 }

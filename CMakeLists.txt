@@ -2,8 +2,27 @@ cmake_minimum_required(VERSION 3.25)
 
 project(risen_spass VERSION 0.1.0 LANGUAGES CXX)
 
-if(NOT WIN32 OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-    message(FATAL_ERROR "risen-spass targets 64-bit Windows only (Risen Enhanced is x64).")
+# The layer (sentry.dll) targets 64-bit Windows only (Risen Enhanced is x64). The mod editor risen-modkit (src/modkit,
+# docs/editor/REQUIREMENTS.md) and the offline readers it shares with risen-pack2mod build on Linux and macOS too.
+if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(SPASS_BUILD_LAYER_DEFAULT ON)
+else()
+    set(SPASS_BUILD_LAYER_DEFAULT OFF)
+endif()
+option(SPASS_BUILD_LAYER "Build the layer (sentry.dll), risen-pack2mod and their tests (64-bit Windows only)" ${SPASS_BUILD_LAYER_DEFAULT})
+if(SPASS_BUILD_LAYER AND NOT (WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8))
+    message(FATAL_ERROR "The layer targets 64-bit Windows only (Risen Enhanced is x64). Configure with -DSPASS_BUILD_LAYER=OFF to build only risen-modkit.")
+endif()
+# risen-modkit needs the vcpkg manifest feature "modkit" (the presets enable it)
+if("modkit" IN_LIST VCPKG_MANIFEST_FEATURES)
+    set(SPASS_BUILD_MODKIT_DEFAULT ON)
+else()
+    set(SPASS_BUILD_MODKIT_DEFAULT OFF)
+endif()
+option(SPASS_BUILD_MODKIT "Build risen-modkit, the mod editor (needs the vcpkg feature modkit)" ${SPASS_BUILD_MODKIT_DEFAULT})
+option(SPASS_BUILD_TESTS "Build the unit tests" ON)
+if(SPASS_BUILD_TESTS)
+    enable_testing()
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
@@ -20,10 +39,12 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO "Release")
 set(CMAKE_MAP_IMPORTED_CONFIG_MINSIZEREL "Release")
 
-find_package(spdlog CONFIG REQUIRED)
-find_package(minhook CONFIG REQUIRED)
+if(SPASS_BUILD_LAYER)
+    find_package(spdlog CONFIG REQUIRED)
+    find_package(minhook CONFIG REQUIRED)
+    find_package(tomlplusplus CONFIG REQUIRED)
+endif()
 find_package(sol2 CONFIG REQUIRED)
-find_package(tomlplusplus CONFIG REQUIRED)
 
 # The vcpkg luajit port ships headers in include/luajit and lua51.lib, but no CMake package.
 find_path(LUAJIT_INCLUDE_DIR NAMES lua.hpp PATH_SUFFIXES luajit REQUIRED)
@@ -45,6 +66,7 @@ set_target_properties(luajit::luajit PROPERTIES
     IMPORTED_LOCATION_DEBUG "${LUAJIT_LIBRARY_DEBUG}"
     INTERFACE_INCLUDE_DIRECTORIES "${LUAJIT_INCLUDE_DIR}")
 
+if(SPASS_BUILD_LAYER)
 # ---------------------------------------------------------------------------------------------
 # Core library: everything except the proxy entry point, so tests/tools can link it.
 # ---------------------------------------------------------------------------------------------
@@ -119,6 +141,7 @@ target_link_libraries(spass_core PUBLIC
 if(MSVC)
     target_compile_options(spass_core PUBLIC /W4 /permissive- /utf-8 /Zc:__cplusplus /EHsc /FS)
 endif()
+endif()
 
 # ---------------------------------------------------------------------------------------------
 # risen-pack2mod: standalone converter from a Risen mod's .pNN / .pak archives to a mod for the layer (docs/PACK2MOD.md).
@@ -173,9 +196,12 @@ target_link_libraries(pack2mod_core PUBLIC ZLIB::ZLIB)
 if(MSVC)
     target_compile_options(pack2mod_core PUBLIC /W4 /permissive- /utf-8 /Zc:__cplusplus /EHsc /FS)
 endif()
-add_executable(risen-pack2mod src/pack2mod/main.cpp)
-target_link_libraries(risen-pack2mod PRIVATE pack2mod_core)
+if(SPASS_BUILD_LAYER)
+    add_executable(risen-pack2mod src/pack2mod/main.cpp)
+    target_link_libraries(risen-pack2mod PRIVATE pack2mod_core)
+endif()
 
+if(SPASS_BUILD_LAYER)
 # ---------------------------------------------------------------------------------------------
 # The proxy DLL. Risen.exe statically imports sentry.dll (crash reporter), so a DLL named
 # sentry.dll that forwards every export to the renamed original (sentry_orig.dll) is loaded
@@ -207,11 +233,17 @@ install(DIRECTORY mods/ DESTINATION spass/mods)
 # ---------------------------------------------------------------------------------------------
 # Unit tests that run without the game (string files, mod discovery, the Lua runtime): `ctest -C RelWithDebInfo`
 # ---------------------------------------------------------------------------------------------
-option(SPASS_BUILD_TESTS "Build the unit tests" ON)
 if(SPASS_BUILD_TESTS)
-    enable_testing()
     add_executable(spass_tests tests/test_main.cpp)
     target_link_libraries(spass_tests PRIVATE spass_core pack2mod_core)
     target_compile_definitions(spass_tests PRIVATE SPASS_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
     add_test(NAME spass_tests COMMAND spass_tests)
+endif()
+endif()
+
+# ---------------------------------------------------------------------------------------------
+# risen-modkit: the mod editor (src/modkit, docs/editor/REQUIREMENTS.md)
+# ---------------------------------------------------------------------------------------------
+if(SPASS_BUILD_MODKIT)
+    add_subdirectory(src/modkit)
 endif()

@@ -11,7 +11,8 @@
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
-        "VCPKG_HOST_TRIPLET": "x64-windows-static-md"
+        "VCPKG_HOST_TRIPLET": "x64-windows-static-md",
+        "VCPKG_MANIFEST_FEATURES": "modkit"
       }
     },
     {
@@ -22,12 +23,24 @@
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
-        "VCPKG_HOST_TRIPLET": "x64-windows-static-md"
+        "VCPKG_HOST_TRIPLET": "x64-windows-static-md",
+        "VCPKG_MANIFEST_FEATURES": "modkit"
+      }
+    },
+    {
+      "name": "unix",
+      "displayName": "Ninja Multi-Config (Linux / macOS: only risen-modkit and its tests)",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build-unix",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "VCPKG_MANIFEST_FEATURES": "modkit"
       }
     }
   ],
   "buildPresets": [
     { "name": "debug", "configurePreset": "default", "configuration": "Debug" },
-    { "name": "release", "configurePreset": "default", "configuration": "RelWithDebInfo" }
+    { "name": "release", "configurePreset": "default", "configuration": "RelWithDebInfo" },
+    { "name": "unix-release", "configurePreset": "unix", "configuration": "RelWithDebInfo" }
   ]
 }

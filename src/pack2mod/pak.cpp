@@ -9,6 +9,29 @@ namespace p2m {
 
 namespace {
 constexpr size_t kHeader = 0x30;
+
+// 64-bit file positions; _wfopen keeps non-ASCII paths working on Windows (the narrow API would use the ANSI code page)
+FILE* open_read(const std::string& path) {
+#ifdef _WIN32
+    return _wfopen(std::filesystem::u8path(path).c_str(), L"rb");
+#else
+    return std::fopen(path.c_str(), "rb");
+#endif
+}
+int seek64(FILE* f, uint64_t off, int whence) {
+#ifdef _WIN32
+    return _fseeki64(f, static_cast<long long>(off), whence);
+#else
+    return fseeko(f, static_cast<off_t>(off), whence);
+#endif
+}
+uint64_t tell64(FILE* f) {
+#ifdef _WIN32
+    return static_cast<uint64_t>(_ftelli64(f));
+#else
+    return static_cast<uint64_t>(ftello(f));
+#endif
+}
 }
 
 Pak::~Pak() {
@@ -18,17 +41,17 @@ Pak::~Pak() {
 std::unique_ptr<Pak> Pak::open(const std::string& path) {
     std::unique_ptr<Pak> pk(new Pak());
     pk->path_ = path;
-    pk->f_ = _wfopen(std::filesystem::u8path(path).c_str(), L"rb");
+    pk->f_ = open_read(path);
     if (!pk->f_) throw Error("cannot open " + path);
     Bytes head(kHeader, '\0');
     if (std::fread(head.data(), 1, kHeader, pk->f_) != kHeader) throw Error(path + ": not a G3V0 archive (too short)");
     if (head.compare(4, 4, "G3V0") != 0) throw Error(path + ": not a G3V0 archive");
     const uint64_t toc_off = rd64(head, 0x20), total = rd64(head, 0x28);
-    _fseeki64(pk->f_, 0, SEEK_END);
-    const uint64_t file_size = static_cast<uint64_t>(_ftelli64(pk->f_));
+    seek64(pk->f_, 0, SEEK_END);
+    const uint64_t file_size = tell64(pk->f_);
     if (toc_off < kHeader || toc_off > file_size) throw Error(path + ": table of contents outside the file");
     Bytes toc(static_cast<size_t>(file_size - toc_off), '\0');
-    _fseeki64(pk->f_, static_cast<long long>(toc_off), SEEK_SET);
+    seek64(pk->f_, toc_off, SEEK_SET);
     if (!toc.empty() && std::fread(toc.data(), 1, toc.size(), pk->f_) != toc.size()) throw Error(path + ": cannot read the table of contents");
     pk->parse_toc(toc, total - toc_off);
     for (size_t i = 0; i < pk->entries_.size(); ++i) pk->by_path_[lower(pk->entries_[i].path)] = i;
@@ -82,8 +105,11 @@ const PakEntry* Pak::find(const std::string& path) const {
 
 Bytes Pak::read(const PakEntry& e) const {
     Bytes raw(e.stored, '\0');
-    _fseeki64(f_, static_cast<long long>(e.offset), SEEK_SET);
-    if (e.stored && std::fread(raw.data(), 1, e.stored, f_) != e.stored) throw Error(path_ + ": cannot read " + e.path);
+    {
+        std::lock_guard<std::mutex> lock(io_);  // one FILE*, shared by the reader threads of the editor
+        seek64(f_, e.offset, SEEK_SET);
+        if (e.stored && std::fread(raw.data(), 1, e.stored, f_) != e.stored) throw Error(path_ + ": cannot read " + e.path);
+    }
     if (!e.compressed()) return raw;
     Bytes out(e.size, '\0');
     uLongf n = e.size;
