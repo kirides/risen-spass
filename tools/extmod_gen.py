@@ -470,6 +470,15 @@ def gen_new(ctx, d):
                 continue
             if r["amount"] != 1:
                 ctx.warn.append("%s: ResultAmount %s (the engine's craft makes one result)" % (name, r["amount"]))
+            fix = DANGLING_RESULT.get(name)
+            if fix and (not isinstance(r["result"], str) or r["result"].startswith("@")) and fix[0] in new_items_known(d):
+                ctx.warn.append("%s: the mod's recipe produces a template that is in neither archive (its own error); chained to %s instead (%s)" % (name, fix[0], fix[1]))
+                r = dict(r)
+                r["result"] = fix[0]
+            if name in DANGLING_INGREDIENT and any(not isinstance(i, str) or i.startswith("@") for i, _ in r["ingredients"]):
+                ctx.warn.append("%s: the mod's recipe consumes a template that is in neither archive (its own error); it consumes %s instead (the stage itself, like every other stage)" % (name, DANGLING_INGREDIENT[name]))
+                r = dict(r)
+                r["ingredients"] = [((DANGLING_INGREDIENT[name] if (not isinstance(i, str) or i.startswith("@")) else i), n) for i, n in r["ingredients"]]
             unresolved = [i for i, _ in r["ingredients"] if not isinstance(i, str) or i.startswith("@")] + ([r["result"]] if not isinstance(r["result"], str) or r["result"].startswith("@") else [])
             if unresolved:
                 ctx.bad("recipe", name, "ingredient or result unresolved: %s" % unresolved, "author")
@@ -477,6 +486,20 @@ def gen_new(ctx, d):
             recipes[name] = recipe_lua(r)
             stats["new recipe items"] += 1
     return new_items, recipes, stats
+
+
+# two smithing stages of the mod produce a template that exists in neither archive (the chain is broken in the mod itself): chain them to the nearest existing template
+DANGLING_RESULT = {
+    "It_2H_Dark_Wind_Hot": ("It_2H_Dark_Wind_Dull", "the anvil step skips the missing 'shaped' stage and makes the dull blade"),
+    "It_Staff_Obsidian_Dull": ("It_Staff_Slicer", "the grindstone makes the shipped staff whose mesh the dull stage already shows (It_Wpn_Staff_Slicer_Dull)"),
+}
+
+
+DANGLING_INGREDIENT = {"It_Staff_Obsidian_Dull": "It_Staff_Obsidian_Dull"}
+
+
+def new_items_known(d):
+    return set(d.mod) | set(d.van)
 
 
 def recipe_lua(r):
@@ -507,6 +530,11 @@ def csv_field(s):
     return s
 
 
+# hud2.tab: of 41 changed and 130 missing rows only these four are real text changes of the mod (map button names, the transcription text of the writing desk);
+# the others are spreadsheet quote artefacts or Enhanced-only rows the classic-based table lacks (replacing the table would lose 130 rows: apply single rows only)
+HUD2_REAL = {"HUD2_Button_RegionMap", "HUD2_Button_WorlMap", "HUD2_Btn_LogInfoMap", "HUD2_Recipe_WriteScroll"}
+
+
 def gen_strings(ctx, d, out, wanted_ids, melee=False):
     """new rows of items / focus / documents and the changed rows of the templates the mod touches -> strings/*.csv"""
     vt = {}
@@ -516,15 +544,18 @@ def gen_strings(ctx, d, out, wanted_ids, melee=False):
     rows = {lang: collections.OrderedDict() for lang in LANG_OF.values()}
     stats = collections.Counter()
     for k, (label, pak, e) in sorted(d.layers["compiled"].files.items()):
-        if k not in ("items.tab", "focus.tab", "documents.tab") and not (k == "skills.tab" and melee):
+        if k not in ("items.tab", "focus.tab", "documents.tab", "hud2.tab") and not (k == "skills.tab" and melee):
             if k.endswith(".tab"):
-                ctx.bad("strings", k, "not applied: %s (skill names / hud texts belong to the melee system and are applied with it)" % k, "M21")
+                ctx.bad("strings", k, "not applied: %s (skill names belong to the melee system and are applied with it)" % k, "M21")
             continue
         cols, mr = g3tab.read(pak.read(e))
         vc, vr = vt.get(k, ([], {}))
         for rid, cells in mr.items():
             isnew = rid not in vr
-            if not isnew and not (rid.startswith(("FO_", "ITEMDESC_")) and rid.split("_", 1)[1] in wanted_ids) and not (k == "skills.tab" and melee):
+            if k == "hud2.tab":
+                if rid not in HUD2_REAL:
+                    continue
+            elif not isnew and not (rid.startswith(("FO_", "ITEMDESC_")) and rid.split("_", 1)[1] in wanted_ids) and not (k == "skills.tab" and melee):
                 continue
             for col, text in cells.items():
                 lang = LANG_OF.get(col)
@@ -741,10 +772,42 @@ def gen_combat(ctx, d, out, mode):
         m = mod_by.get(sp["name"])
         if m is not None and any(_canon(sp[k]) != _canon(m[k]) for k in ("styles", "moves", "ais")):
             ctx.warn.append("combat table: species %s differs from the mod's after writing" % sp["name"])
-    os.makedirs(os.path.join(out, "assets"), exist_ok=True)
-    with open(os.path.join(out, "assets", "compiled_combatspecies.bin"), "wb") as f:
+    os.makedirs(os.path.join(out, "variants"), exist_ok=True)
+    with open(os.path.join(out, "variants", "combat_%s.bin" % mode), "wb") as f:
         f.write(data)
     return {"mode": mode, "volume": pick[-1][0], "bytes": len(data), "changed": changed}
+
+
+def gen_weather(ctx, d, out):
+    """WeatherStates.g3ws of the mod (only the WindPower values differ: 0.55 / 0.65 / 0.7 -> 0.3, 51 bytes): a loose copy shadows library.pak's file like the combat table does"""
+    bk = d.base["common"].files.get("weatherstates.g3ws")
+    hist = d.layers["common"].history.get("weatherstates.g3ws", [])
+    if not bk or not hist:
+        ctx.warn.append("no WeatherStates.g3ws in the baseline or the mod")
+        return None
+    data = hist[-1][1].read(hist[-1][2])
+    base = bk[1].read(bk[2])
+    if data == base:
+        return None
+    if len(data) != len(base):
+        ctx.warn.append("WeatherStates.g3ws: the mod's file has another size than the baseline's (%d / %d): not converted" % (len(data), len(base)))
+        return None
+    n = sum(1 for x, y in zip(data, base) if x != y)
+    os.makedirs(os.path.join(out, "variants"), exist_ok=True)
+    with open(os.path.join(out, "variants", "WeatherStates.g3ws"), "wb") as f:
+        f.write(data)
+    return {"volume": hist[-1][0], "bytes": len(data), "bytes_differing": n}
+
+
+# asset groups the player can switch (scripts/extmod-features.ps1 moves the files of a group between assets/ and assets_off/; the engine mounts assets/ at start)
+def asset_groups(assets):
+    names = list(assets["new"]) + list(assets["replaced"])
+    g = collections.OrderedDict()
+    g["caves"] = ("darker caves and dungeons (18 lightmap textures)", [n for n in names if n.startswith("Levelmesh_")])
+    g["vegetation"] = ("the vegetation update (herbs, SpeedTree atlas, swamp, props)", [n for n in names if n.startswith(("Nat_", "ST_", "Arch_"))])
+    g["skins"] = ("armor, head, helmet and monster skins, lizard and female actors, GUI icon sheet", [n for n in names if n.startswith(("Ani_", "GUI_")) and not n.startswith("Ani_Hero_Armor_Guard_Heavy") and not n.startswith("Ani_Hero_Armor_Crawler")])
+    g["weapon_meshes"] = ("meshes, materials, textures of the weapons, shields and helmets (needed by the new items)", [n for n in names if n.startswith(("It_", "ItWpn_", "Item_"))])
+    return g
 
 
 # ---------------------------------------------------------------------------------------------------------------- main
@@ -784,6 +847,20 @@ def main():
     st_str = gen_strings(ctx, d, out, wanted, a.combat == "p01")
     assets = gen_assets(ctx, d, out, not a.no_assets)
     combat = gen_combat(ctx, d, out, a.combat)
+    combat_p01 = gen_combat(ctx, d, out, "p01") if a.combat != "p01" else combat
+    combat_p02 = gen_combat(ctx, d, out, "p02") if a.combat != "p02" else combat
+    weather = gen_weather(ctx, d, out)
+    os.makedirs(os.path.join(out, "assets"), exist_ok=True)
+    if combat is not None:
+        shutil.copyfile(os.path.join(out, "variants", "combat_%s.bin" % a.combat), os.path.join(out, "assets", "compiled_combatspecies.bin"))
+    if weather is not None:
+        shutil.copyfile(os.path.join(out, "variants", "WeatherStates.g3ws"), os.path.join(out, "assets", "WeatherStates.g3ws"))
+    groups = asset_groups(assets)
+    groups["combat"] = ("the melee system: combat table (variants/combat_p01.bin = changelog, combat_p02.bin = shipped)", ["compiled_combatspecies.bin"])
+    groups["wind"] = ("wind strength 0.3 (WeatherStates.g3ws)", ["WeatherStates.g3ws"] if weather else [])
+    write(os.path.join(out, "features.json"), json.dumps({"groups": {k: {"about": v[0], "files": v[1]} for k, v in groups.items()},
+                                                          "combat_variants": {"changelog": "variants/combat_p01.bin", "shipped": "variants/combat_p02.bin"},
+                                                          "default_combat": a.combat}, indent=1) + "\n")
 
     # items that became recipes -> new recipe items the player is given (a property set cannot be added to a shipped template)
     new_recipes = collections.OrderedDict()
@@ -833,7 +910,7 @@ def main():
             ("assets_identical_skipped", assets["identical_skipped"]), ("asset_bytes", assets["bytes"])])),
         ("stats", dict(st_items + st_new + st_str)),
         ("items_changed", sorted(items)), ("new_items", sorted(new_items)), ("new_recipes", sorted(new_recipes)), ("patches", sorted(patches)),
-        ("combat_table", combat), ("assets", assets), ("unconverted", ctx.unconverted), ("warnings", ctx.warn), ("deferred", deferred),
+        ("combat_table", combat), ("weather", weather), ("assets", assets), ("unconverted", ctx.unconverted), ("warnings", ctx.warn), ("deferred", deferred),
     ])
     write(os.path.join(out, "manifest.json"), json.dumps(manifest, indent=1, ensure_ascii=False) + "\n")
     print(json.dumps(manifest["counts"], indent=1))

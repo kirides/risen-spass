@@ -109,12 +109,14 @@ local function stage_patches(instances, first, counts)
     end
 end
 
+local function on(flag) return cfg[flag] ~= false end   -- every feature group is on unless config.lua says false
+
 local function apply(when, instances, first)
     local counts = {}
-    stage_new_items(instances, first, counts)
-    stage_items(instances, first, counts)
-    stage_recipes(instances, first, counts)
-    stage_patches(instances, first, counts)
+    if on("new_items") then stage_new_items(instances, first, counts) end
+    if on("balance") then stage_items(instances, first, counts) end
+    if on("new_items") then stage_recipes(instances, first, counts) end
+    if on("balance") then stage_patches(instances, first, counts) end
     M.passes[#M.passes + 1] = { when = when, counts = counts }
     local parts = {}
     for _, k in ipairs(sorted(counts)) do parts[#parts + 1] = k .. "=" .. counts[k] end
@@ -187,6 +189,7 @@ local dialog_done = false
 risen.on("tick", function()
     if dialog_done then return end
     dialog_done = true
+    if not on("dialogue") or not on("new_items") then return end
     local ok, err = pcall(stage_dialog)
     if not ok then fail(true, "dialogue", "stage", err) end
 end)
@@ -244,10 +247,13 @@ end
 
 risen.on("world.ready", function(mode)
     if (risen.gamevar.get("RISEN_EXTENDED_WORLD") or 0) ~= 0 then return end
+    if not on("world") and not on("dialogue") then return end
     risen.gamevar.set("RISEN_EXTENDED_WORLD", 1)
-    local ok, err = pcall(stage_world)
-    if not ok then fail(true, "world", "stage", err) end
-    if mode == "new" then
+    if on("world") and on("new_items") then
+        local ok, err = pcall(stage_world)
+        if not ok then fail(true, "world", "stage", err) end
+    end
+    if mode == "new" and on("dialogue") and on("new_items") then
         local ok2, err2 = pcall(stage_stock)
         if not ok2 then fail(true, "stock", "stage", err2) end
     end
@@ -273,6 +279,7 @@ local function stage_teachers()
 end
 
 risen.on("world.ready", function()
+    if not on("teachers") then return end
     local ok, err = pcall(stage_teachers)
     if not ok then fail(true, "teachers", "stage", err) end
 end)
@@ -289,13 +296,13 @@ risen.on("world.ready", function(mode)
     local player = risen.entity.player()
     if not player then return end
     for _, name in ipairs(sorted(REC.new)) do
-        if cfg.learn_recipes then
+        if cfg.learn_recipes and on("new_items") then
             local ok, err = pcall(function() risen.recipe.learn_once(player, name) end)
             if not ok then log.warn("risen_extended: learn " .. name .. ": " .. tostring(err)) end
         end
     end
     local kit = cfg.starter_kit
-    if mode == "new" and kit and kit ~= "none" then
+    if mode == "new" and kit and kit ~= "none" and on("new_items") then
         for _, name in ipairs(sorted(NEW)) do
             local skip = false
             if kit == "plans" and not name:find("_Recipe$") then skip = true end

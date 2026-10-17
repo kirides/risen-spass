@@ -23,6 +23,7 @@ return function(M)
             "goldsmith recipe crafts", "smithing chain crafts", "monster actor swaps are applied", "a monster with a new actor spawns", "loose assets resolve to the mod",
             "replaced stock assets are shadowed", "second pass keeps the numbers",
             "dialogue edits applied", "an XP reward is on its info", "a trader refill is on its info", "chapter 1 trader stock is on the traders", "the combat table is the mod's (no backwards hop)", "a fight under the new combat table", "teacher limits are raised", "world edits applied", "a chest holds its new item",
+            "hud2 texts are applied", "wind file and combat table are the mod's", "the two repaired smithing chains",
         },
         load = { "load: the templates resolve", "load: items are still in the inventory", "load: the numbers are applied again" },
     }
@@ -266,6 +267,16 @@ return function(M)
             local box = WORLD.containers[1]
             local be = box and risen.entity.by_id(box.id)
             T.expect("a chest holds its new item", be ~= nil and risen.item.count(be, box.items[1].item) >= box.items[1].count, box and (box.name .. " " .. box.items[1].item))
+
+            T.section("texts, wind, repaired chains")
+            local wr = risen.loc.get("HUD2_Recipe_WriteScroll") or ""
+            local rmap = risen.loc.get("HUD2_Button_WorlMap") or ""
+            T.expect("hud2 texts are applied", wr:lower():find("transcription", 1, true) ~= nil and rmap:lower():find("world map", 1, true) ~= nil, ("WriteScroll %q, WorlMap %q"):format(wr:sub(1, 60), rmap))
+            local wphys = risen.vfs.lookup_physical("WeatherStates.g3ws") or ""
+            T.expect("wind file and combat table are the mod's", wphys:lower():find("risen_extended", 1, true) ~= nil, "WeatherStates.g3ws -> " .. wphys)
+            local dw, so = M.rec.edit["It_2H_Dark_Wind_Hot"], M.rec.edit["It_Staff_Obsidian_Dull"]
+            T.expect("the two repaired smithing chains", dw ~= nil and dw.result == "It_2H_Dark_Wind_Dull" and so ~= nil and so.result == "It_Staff_Slicer" and so.ingredients[1].item == "It_Staff_Obsidian_Dull",
+                ("Dark Wind hot -> %s; obsidian staff dull -> %s from %s"):format(tostring(dw and dw.result), tostring(so and so.result), tostring(so and so.ingredients[1] and so.ingredients[1].item)))
 
             T.section("combat table")
             local phys = risen.vfs.lookup_physical("compiled_combatspecies.bin") or ""

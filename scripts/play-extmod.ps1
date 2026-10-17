@@ -18,6 +18,7 @@
 .PARAMETER Fresh     Delete the play copy's savegames and settings first.
 .PARAMETER NoStart   Only prepare the copy.
 .PARAMETER WindowSize  Client size of the window (default 1600x900).
+.PARAMETER Features  Feature groups of the mod that are files, e.g. 'combat=off,caves=off,wind=off' (scripts\extmod-features.ps1; combat = changelog | shipped | off, the others on | off). Applied to the play copy after the refresh.
 .PARAMETER Trace     Optional [debug] trace channels for the layer's log (bin\spass\spass.log).
 #>
 param(
@@ -27,7 +28,8 @@ param(
     [switch]$Fresh,
     [switch]$NoStart,
     [string]$WindowSize = '1600x900',
-    [string]$Trace = ''
+    [string]$Trace = '',
+    [string]$Features = ''
 )
 $ErrorActionPreference = 'Stop'
 $root = 'B:\DevDrive\extmod-milestones'
@@ -94,6 +96,12 @@ foreach ($m in $want) {
 }
 $LASTEXITCODE = 0
 Remove-Item (Join-Path $bin 'spass\test-result.json') -ErrorAction SilentlyContinue
+if ($Features -ne '') {
+    $fs = Join-Path $PSScriptRoot 'extmod-features.ps1'
+    if (-not (Test-Path $fs)) { $fs = Join-Path $Snapshot 'extmod-features.ps1' }
+    if (-not (Test-Path $fs)) { throw 'extmod-features.ps1 not found next to play.ps1' }
+    & $fs -ModDir (Join-Path $modsDir 'risen_extended') -Set $Features
+}
 
 # window size from ConfigUser.xml (never resized at run time: that misaligns the UI and the mouse)
 if ($WindowSize -notmatch '^(\d+)x(\d+)$') { throw "-WindowSize must look like 1600x900, not '$WindowSize'" }

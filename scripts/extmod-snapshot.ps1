@@ -59,6 +59,7 @@ foreach ($m in $layerMods) {
 if ($LASTEXITCODE -ge 8) { throw "robocopy risen_extended failed ($LASTEXITCODE)" }
 $LASTEXITCODE = 0
 Copy-Item (Join-Path $repo 'scripts\play-extmod.ps1') (Join-Path $dest 'play.ps1')
+Copy-Item (Join-Path $repo 'scripts\extmod-features.ps1') (Join-Path $dest 'extmod-features.ps1')
 
 # ---- facts ----
 Push-Location $repo
