@@ -381,6 +381,10 @@ private:
         }
         ui::section("Other properties");
         ch |= ui::prop_edits("props", n.properties, g, target);
+        ui::section("Behaviours (every NPC of this template)");
+        ch |= ui::behavior_uses("bhv", n.behaviors, app);
+        ui::help("Scripts that run on every NPC of this template: the ones in the world and every later spawn (risen.behavior.attach_template). "
+                 "Works on a shipped template too (Change shipped): every wolf of the game, ...");
         ui::section("Notes");
         ch |= ui::input_multiline("##notes", n.notes, 3);
         if (ch) app.touch();
@@ -419,6 +423,10 @@ private:
         ch |= ui::inventory_list("inv", n.items, app, ui::project_item_names(app.project), true);
         ui::section("Routine");
         ch |= routine_editor(n.routine);
+        ui::section("Behaviours");
+        ch |= ui::behavior_uses("bhv", n.behaviors, app);
+        ui::help("Scripts that run on him while he is in the world (Behaviours panel): greet the player, guard a spot, react to a quest of the game, ... "
+                 "Their parameters can be set per NPC.");
         ui::section("Appears when");
         ch |= ui::condition_list("appear", n.appear_when, app, "from the start of a game");
         ui::help("He comes into the world only once this holds, e.g. after a quest of the game was solved (quest Rufo_GoToDruidHut is Success): enemies "

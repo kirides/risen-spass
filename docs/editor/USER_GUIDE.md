@@ -46,6 +46,7 @@ Panels can be dragged, docked and tabbed; **Window > Reset layout** brings back 
 | **Quests** | quests and their flow as node graphs (below) |
 | **World** | the game world in 3D (below) |
 | **Assets** | the project's own files: compiled resources and audio (below) |
+| **Behaviours** | scripts that run on NPCs, like components in Unity / Unreal (below) |
 | **Problems** | what is wrong with the project (errors block the export, warnings do not); click a line to jump to the object |
 | **Log** | what the editor did, and problems reading the game data |
 | **Settings** | data directory, export folder, UI scale |
@@ -165,6 +166,22 @@ A file inside the project's folder is stored relative to it, so save the project
   40x40 cell of the mod's icon atlas instead (`<mod>_IconAtlas._ximg` + `<mod>_Icons.ximl`, registered by the runtime before the items are made;
   the item's icon is then `IC_<mod>_<name>`).
 * **Image lists** (`.ximl` + the `._ximg` it names): your own icon lists; the runtime registers every one of them.
+
+## Behaviours
+
+A behaviour is a Lua script that runs on every NPC it is attached to (the layer's `risen.behavior`, docs/LUA_API.md "Behaviours"):
+
+* **+ New behaviour** writes `behaviors/<name>.lua` next to the project from a commented starter and opens it in your code editor (the program
+  your system uses to edit `.lua` files); **Add a script...** takes an existing file. The script returns its definition: `params` (defaults),
+  `interval`, `near`, and functions -- `start`, `update(self, dt)`, `on_player_near` / `far`, `on_talk`, `on_items`, `on_damage`, `on_death`,
+  `on_quest` (every quest, the original game's included), `events` for any other event, `stop`. `self.state` is saved with the game.
+* The panel shows what the editor read from the file (description, parameters with defaults, handlers) or the error, read again whenever the file
+  changes on disk, and where the behaviour is attached.
+* **Attach** it by dragging it from the list onto the *Behaviours* section of a placed NPC (just him) or an NPC template (every NPC of it: the
+  world's own and later spawns; a *changed shipped* template works too, e.g. every wolf of the game), or with *attach a behaviour...* there. Each
+  parameter of the script becomes a field (number, checkbox, text -- a text field also takes a template dropped from the Browser); a value equal
+  to the default is not stored, *default* resets one.
+* The export checks every script like the layer does (a broken one refuses the export with the reason) and copies it into `behaviors/` of the mod.
 
 ## Quests
 

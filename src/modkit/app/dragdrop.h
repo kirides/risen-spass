@@ -30,4 +30,10 @@ const DragTemplate* drop_target(const std::vector<TplKind>& kinds, const std::ve
 // a drop target for the unique names of placed NPCs only (dialogue owners)
 const DragTemplate* drop_entity();
 
+// behaviour scripts (the Behaviours panel) dragged onto an NPC or a template
+inline constexpr const char* kDragBehavior = "MK_BEHAVIOR";
+void drag_behavior_source(const std::string& name);
+// the behaviour's name when one was dropped on the last item this frame, else ""
+std::string drop_behavior();
+
 }  // namespace mk::ui

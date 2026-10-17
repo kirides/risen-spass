@@ -10,6 +10,7 @@
 #include <stdexcept>
 
 #include "core/assets.h"
+#include "core/export.h"
 #include "core/graph.h"
 #include "core/paths.h"
 #include "pack2mod/util.h"
@@ -695,6 +696,39 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
                     if (m.contains("rotation")) er.rotation = vec3(m["rotation"]);
                     (std::string(section) == "removals" ? p.world.removals : p.world.moves).push_back(er);
                 }
+            }
+        }
+        // behaviours: the scripts stay in behaviors/ of the mod (like the asset files), the attachments go back onto their NPCs and templates
+        const json behaviors = data("behaviors.lua");
+        if (behaviors.is_object()) {
+            for (auto& s : behaviors.value("scripts", json::array())) {
+                const std::string name = s.value("name", std::string());
+                if (name.empty()) continue;
+                p.behaviors.push_back({new_uid(), name, u8str(fs::absolute(root / u8(behavior_module_file(name))))});
+            }
+            auto use = [](const json& a) {
+                BehaviorUse u;
+                u.behavior = a.value("behavior", std::string());
+                if (a.contains("params") && a["params"].is_object()) u.params = a["params"];
+                return u;
+            };
+            for (auto& a : behaviors.value("npcs", json::array())) {
+                PlacedNpc* n = p.npc(a.value("target", std::string()));
+                if (n) n->behaviors.push_back(use(a));
+                else r.warnings.push_back("behaviour " + a.value("behavior", std::string()) + " on " + a.value("target", std::string()) + ": no placed NPC of that name (dropped)");
+            }
+            for (auto& a : behaviors.value("templates", json::array())) {
+                const std::string tname = a.value("template", std::string());
+                NpcTemplateDef* d = p.npc_template(tname);
+                if (!d) {
+                    NpcTemplateDef nt;  // a shipped template the mod only gives behaviours
+                    nt.uid = new_uid();
+                    nt.mode = Mode::Edit;
+                    nt.name = tname;
+                    p.npc_templates.push_back(nt);
+                    d = &p.npc_templates.back();
+                }
+                d->behaviors.push_back(use(a));
             }
         }
         // the languages: English first, then the others in a stable order

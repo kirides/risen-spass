@@ -385,6 +385,25 @@ function M.install(data)
     if nonempty(w.spawns) or nonempty(w.containers) or nonempty(w.removals) or nonempty(w.moves) then
         risen.on("world.ready", function() apply_world(id, w) end)
     end
+    -- behaviours: the scripts first (risen.behavior.define), then the attachments; an NPC that is not in the world yet gets his when he appears
+    local b = data.behaviors or {}
+    for _, s in ipairs(b.scripts or {}) do
+        local ok, def = pcall(require, s.module)
+        if not ok or type(def) ~= "table" then
+            risen.log.error(("%s: behaviour %s: %s"):format(id, s.name, ok and "the script returns no table" or tostring(def)))
+        else
+            local done, why = risen.behavior.define(s.name, def)
+            if not done then risen.log.error(("%s: behaviour %s: %s"):format(id, s.name, tostring(why))) end
+        end
+    end
+    for _, a in ipairs(b.npcs or {}) do
+        local ok, why = risen.behavior.attach(a.target, a.behavior, a.params)
+        if not ok then risen.log.error(("%s: behaviour %s on %s: %s"):format(id, a.behavior, a.target, tostring(why))) end
+    end
+    for _, a in ipairs(b.templates or {}) do
+        local ok, why = risen.behavior.attach_template(a.template, a.behavior, a.params)
+        if not ok then risen.log.error(("%s: behaviour %s on template %s: %s"):format(id, a.behavior, a.template, tostring(why))) end
+    end
     for _, n in ipairs(data.npcs or {}) do
         local spec = npc_spec(id, n, nil)
         local ok, why

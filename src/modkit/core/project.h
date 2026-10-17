@@ -77,6 +77,13 @@ struct RecipeDef {
     std::string notes;
 };
 
+// a behaviour attached to an NPC (risen.behavior.attach) or to every NPC of a template (attach_template): the script's name and the parameters
+// that differ from the script's defaults
+struct BehaviorUse {
+    std::string behavior;
+    json params = json::object();
+};
+
 struct NpcTemplateDef {
     std::string uid;
     Mode mode = Mode::New;
@@ -88,6 +95,7 @@ struct NpcTemplateDef {
     std::optional<IntMap> skills;
     std::optional<std::string> damage_type, guild, species, attitude, bravery, damage_calc, combat_species, ai_group;
     std::optional<IntMap> loot;  // target amounts the template carries
+    std::vector<BehaviorUse> behaviors;  // on every NPC of the template (the world's and later spawns)
     PropEdits properties;
     std::string notes;
 };
@@ -114,6 +122,7 @@ struct PlacedNpc {
     bool respawn = false;
     int version = 1;
     json appear_when, leave_when;  // conditions (condition data of section 7.2; null = always / never)
+    std::vector<BehaviorUse> behaviors;
     std::string notes;
 };
 
@@ -181,6 +190,13 @@ struct WorldEdits {
     std::vector<EntityRef> removals, moves;
 };
 
+// a behaviour script (risen.behavior.define): a Lua file of the project that returns the definition table ({ params = ..., update = function(self, dt) ... })
+struct BehaviorScript {
+    std::string uid;
+    std::string name;  // the behaviour's name (letters, digits, _ . -)
+    std::string file;  // path relative to the project file
+};
+
 struct AssetFile {
     std::string uid;
     std::string file;  // path relative to the project file
@@ -198,6 +214,7 @@ struct Project {
     std::vector<QuestDef> quests;
     WorldEdits world;
     std::vector<AssetFile> assets;
+    std::vector<BehaviorScript> behaviors;
     json editor = json::object();  // editor-only state (notes, view settings); exported with project.json
     // balance sections the editor has no panel for (spells, new_spells, npc_groups, ... of an imported mod): written into data/balance.lua as they are
     json extra_balance = json::object();

@@ -19,6 +19,7 @@ std::unique_ptr<Panel> make_quests_panel();
 std::unique_ptr<Panel> make_world_panel();
 std::unique_ptr<Panel> make_problems_panel();
 std::unique_ptr<Panel> make_assets_panel();
+std::unique_ptr<Panel> make_behaviors_panel();
 
 // window titles, used for the default docking layout
 inline constexpr const char* kPanelMod = "Mod";
@@ -33,5 +34,6 @@ inline constexpr const char* kPanelQuests = "Quests";
 inline constexpr const char* kPanelWorld = "World";
 inline constexpr const char* kPanelProblems = "Problems";
 inline constexpr const char* kPanelAssets = "Assets";
+inline constexpr const char* kPanelBehaviors = "Behaviours";
 
 }  // namespace mk

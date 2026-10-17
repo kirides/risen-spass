@@ -1,9 +1,11 @@
 #include "core/export.h"
 
 #include <algorithm>
+#include <map>
 #include <set>
 
 #include "core/assets.h"
+#include "core/behavior.h"
 #include "core/dialog.h"
 #include "core/gamedata.h"
 #include "core/image.h"
@@ -399,6 +401,48 @@ std::string data_file(const std::string& about, const json& v) { return std::str
 
 }  // namespace
 
+std::string behavior_module_file(const std::string& name) {
+    std::string s = name;
+    for (char& c : s)
+        if (c == '.' || c == '-') c = '_';
+    return "behaviors/" + s + ".lua";
+}
+
+json behaviors_data(const Project& p) {
+    json scripts = json::array(), npcs = json::array(), templates = json::array();
+    for (auto& b : p.behaviors) {
+        std::string module = behavior_module_file(b.name);
+        module = p2m::replace_all(module.substr(0, module.size() - 4), "/", ".");
+        scripts.push_back(json{{"name", b.name}, {"module", module}});
+    }
+    auto use = [](const BehaviorUse& u) {
+        json o = json::object();
+        o["behavior"] = u.behavior;
+        // sorted by name: the file stays the same whatever order the editor (or an import, Lua tables have none) gave them
+        json params = json::object();
+        if (u.params.is_object()) {
+            std::map<std::string, json> sorted;
+            for (auto& [k, v] : u.params.items()) sorted[k] = v;
+            for (auto& [k, v] : sorted) params[k] = v;
+        }
+        o["params"] = params;
+        return o;
+    };
+    for (auto& n : p.npcs)
+        for (auto& u : n.behaviors) {
+            json o = use(u);
+            o["target"] = n.name;
+            npcs.push_back(o);
+        }
+    for (auto& t : p.npc_templates)
+        for (auto& u : t.behaviors) {
+            json o = use(u);
+            o["template"] = t.name;
+            templates.push_back(o);
+        }
+    return json{{"scripts", scripts}, {"npcs", npcs}, {"templates", templates}};
+}
+
 std::map<std::string, std::string> render_mod(const Project& p) {
     std::map<std::string, std::string> f;
     const ModInfo& m = p.mod;
@@ -429,6 +473,7 @@ std::map<std::string, std::string> render_mod(const Project& p) {
                     "    dialogs = require(\"data.dialogs\"),\n"
                     "    world = require(\"data.world\"),\n"
                     "    assets = require(\"data.assets\"),\n"
+                    "    behaviors = require(\"data.behaviors\"),\n"
                     "})\n"
                     "require(\"custom\")\n";
     f["data/assets.lua"] = data_file("Assets: the image lists of icons the runtime registers (risen.assets.load_icons) before the items that use them are made.",
@@ -452,6 +497,8 @@ std::map<std::string, std::string> render_mod(const Project& p) {
         f["data/dialogs.lua"] = data_file("Dialogue options: risen.dialog.create in this order (parents first), on load.before and on every session.start; the quest actions their lines call.", dialogs);
     }
     f["data/world.lua"] = data_file("World edits: entities spawned and items put into containers once per savegame (on world.ready; risen.save remembers what was done); entities of the world removed or moved (by id, on every world.ready).", world_data(p));
+    f["data/behaviors.lua"] = data_file("Behaviours: the scripts in behaviors/ (risen.behavior.define) and the NPCs and templates they are attached to (risen.behavior.attach / attach_template).",
+                                        behaviors_data(p));
     f["modkit/runtime.lua"] = runtime_lua();
     f["modkit/project.json"] = dump_project(p);
 
@@ -611,7 +658,22 @@ ExportResult export_mod(const Project& p, const std::string& out_dir, const Expo
             }
             put(sound_export_path(ref), snd->audio);
         }
-        for (const char* dir : {"assets", "sounds"}) {
+        // behaviour scripts: checked like risen.behavior.define checks them, copied into behaviors/
+        for (auto& b : p.behaviors) {
+            const fs::path src = u8(b.file).is_absolute() ? u8(b.file) : base / u8(b.file);
+            if (b.file.empty() || !fs::exists(src, ec)) {
+                r.errors.push_back("behaviour " + b.name + ": the script file is missing (" + (b.file.empty() ? std::string("none chosen") : u8str(src)) + ")");
+                continue;
+            }
+            const std::string code = read_text(src);
+            const BehaviorInfo info = read_behavior_code(code, u8str(src.filename()));
+            if (!info.ok) {
+                r.errors.push_back("behaviour " + b.name + ": " + info.error);
+                continue;
+            }
+            put(behavior_module_file(b.name), code);
+        }
+        for (const char* dir : {"assets", "sounds", "behaviors"}) {
             if (!fs::is_directory(out / dir, ec)) continue;
             for (auto it = fs::directory_iterator(out / dir, ec); !ec && it != fs::directory_iterator(); it.increment(ec)) {
                 const std::string rel = std::string(dir) + "/" + u8str(it->path().filename());

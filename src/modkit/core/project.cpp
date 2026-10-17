@@ -114,6 +114,16 @@ template <class T>
 void put(json& j, const char* k, const std::optional<T>& v) {
     if (v) j[k] = *v;
 }
+json behavior_uses(const std::vector<BehaviorUse>& v) {
+    json a = json::array();
+    for (auto& b : v) {
+        json o = json::object();
+        o["behavior"] = b.behavior;
+        if (b.params.is_object() && !b.params.empty()) o["params"] = b.params;
+        a.push_back(o);
+    }
+    return a;
+}
 void put_text(json& j, const char* k, const Text& t) {
     if (!t.empty()) j[k] = t;
 }
@@ -405,6 +415,7 @@ json to_json(const Project& p) {
         put(o, "combat_species", x.combat_species);
         put(o, "ai_group", x.ai_group);
         put(o, "loot", x.loot);
+        if (!x.behaviors.empty()) o["behaviors"] = behavior_uses(x.behaviors);
         put_props(o, x.properties);
         put_str(o, "notes", x.notes);
         npct.push_back(o);
@@ -431,6 +442,7 @@ json to_json(const Project& p) {
         if (x.version != 1) o["version"] = x.version;
         if (!x.appear_when.is_null()) o["appear_when"] = x.appear_when;
         if (!x.leave_when.is_null()) o["leave_when"] = x.leave_when;
+        if (!x.behaviors.empty()) o["behaviors"] = behavior_uses(x.behaviors);
         put_str(o, "notes", x.notes);
         npcs.push_back(o);
     }
@@ -504,12 +516,28 @@ json to_json(const Project& p) {
         assets.push_back(o);
     }
     j["assets"] = assets;
+    if (!p.behaviors.empty()) {
+        json bs = json::array();
+        for (auto& b : p.behaviors) bs.push_back(json{{"uid", b.uid}, {"name", b.name}, {"file", b.file}});
+        j["behaviors"] = bs;
+    }
     if (!p.extra_balance.empty()) j["extra_balance"] = p.extra_balance;
     j["editor"] = p.editor;
     return j;
 }
 
 // ---- JSON -> Project -------------------------------------------------------------------------------------------------------------------------------------
+static void get_behavior_uses(const Reader& r, const json& e, std::vector<BehaviorUse>& out) {
+    auto it = e.find("behaviors");
+    if (it == e.end() || !it->is_array()) return;
+    for (auto& b : *it) {
+        BehaviorUse u;
+        r.get(b, "behavior", u.behavior);
+        if (auto p = b.find("params"); p != b.end() && p->is_object()) u.params = *p;
+        if (!u.behavior.empty()) out.push_back(std::move(u));
+    }
+}
+
 Project project_from_json(const json& j, std::vector<std::string>* warnings) {
     if (!j.is_object() || j.value("format", std::string()) != "risen-modkit-project") throw std::runtime_error("not a risen-modkit project (\"format\" is missing)");
     const int ver = j.value("format_version", 0);
@@ -619,6 +647,7 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
         r.get(e, "combat_species", x.combat_species);
         r.get(e, "ai_group", x.ai_group);
         r.get(e, "loot", x.loot);
+        get_behavior_uses(r, e, x.behaviors);
         get_props(r, e, x.properties);
         r.get(e, "notes", x.notes);
         return x;
@@ -642,6 +671,7 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
         r.get(e, "version", x.version);
         r.get(e, "appear_when", x.appear_when);
         r.get(e, "leave_when", x.leave_when);
+        get_behavior_uses(r, e, x.behaviors);
         r.get(e, "notes", x.notes);
         return x;
     });
@@ -697,6 +727,13 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
         r.get(e, "file", a.file);
         r.get(e, "kind", a.kind);
         return a;
+    });
+    read_list(j, "behaviors", p.behaviors, warnings, [](const Reader& r, const json& e) {
+        BehaviorScript b;
+        r.get_uid(e, b.uid);
+        r.get(e, "name", b.name);
+        r.get(e, "file", b.file);
+        return b;
     });
     if (auto e = j.find("editor"); e != j.end() && e->is_object()) p.editor = *e;
     if (auto e = j.find("extra_balance"); e != j.end() && e->is_object()) p.extra_balance = *e;

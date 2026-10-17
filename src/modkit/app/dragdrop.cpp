@@ -73,4 +73,22 @@ const DragTemplate* drop_entity() {
     return out;
 }
 
+void drag_behavior_source(const std::string& name) {
+    if (name.empty() || !ImGui::BeginDragDropSource()) return;
+    char buf[128] = {};
+    std::strncpy(buf, name.c_str(), sizeof buf - 1);
+    ImGui::SetDragDropPayload(kDragBehavior, buf, sizeof buf);
+    ImGui::Text("behaviour %s", name.c_str());
+    ImGui::TextDisabled("drop it on an NPC's Behaviours section");
+    ImGui::EndDragDropSource();
+}
+
+std::string drop_behavior() {
+    std::string out;
+    if (!ImGui::BeginDragDropTarget()) return out;
+    if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload(kDragBehavior)) out = static_cast<const char*>(p->Data);
+    ImGui::EndDragDropTarget();
+    return out;
+}
+
 }  // namespace mk::ui

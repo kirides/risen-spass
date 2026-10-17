@@ -33,6 +33,10 @@ bool condition_args(App& app, json& dd);
 // state without conditions ("from the start"). A nested condition (an import) is shown as text and can be replaced by a list.
 bool condition_list(const char* id, json& cond, App& app, const char* none_label);
 
+// the behaviours attached to an NPC or a template: per behaviour its parameters (fields made from the script's defaults; only values that differ
+// are stored), remove; attach from a combo or by dropping a behaviour of the Behaviours panel on the section
+bool behavior_uses(const char* id, std::vector<BehaviorUse>& uses, App& app);
+
 // the kind of a template name: the game's kind; a new template of the project has the kind of its base (items Item, recipes Recipe, NPC templates
 // Npc when the base is unknown); Other when nothing knows the name
 TplKind kind_of(const App& app, const std::string& name);

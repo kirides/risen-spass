@@ -7,6 +7,7 @@
 #include "app/dragdrop.h"
 #include "app/pickers.h"
 #include "app/widgets.h"
+#include "core/behavior.h"
 #include "core/catalog.h"
 #include "core/graph.h"
 
@@ -380,6 +381,131 @@ bool condition_list(const char* id, json& cond, App& app, const char* none_label
         else if (list.size() == 1) cond = list[0];
         else cond = json::array({mode == 1 ? "all" : "any", list});
         ch = true;
+    }
+    ImGui::PopID();
+    return ch;
+}
+
+namespace {
+
+// one parameter: the field follows the type of the default; a value equal to the default is not stored
+bool param_field(const std::string& key, const json& def, json& params) {
+    const bool set = params.contains(key);
+    json cur = set ? params[key] : def;
+    bool changed = false;
+    ImGui::PushID(key.c_str());
+    ImGui::SetNextItemWidth(220);
+    if (def.is_boolean()) {
+        bool v = cur.is_boolean() ? cur.get<bool>() : false;
+        if (ImGui::Checkbox(key.c_str(), &v)) cur = v, changed = true;
+    } else if (def.is_number_integer()) {
+        int v = cur.is_number() ? cur.get<int>() : 0;
+        if (ImGui::InputInt(key.c_str(), &v)) cur = v, changed = true;
+    } else if (def.is_number()) {
+        double v = cur.is_number() ? cur.get<double>() : 0.0;
+        if (ImGui::InputDouble(key.c_str(), &v, 0, 0, "%.3g")) cur = v, changed = true;
+    } else if (def.is_string()) {
+        std::string v = cur.is_string() ? cur.get<std::string>() : std::string();
+        if (ImGui::InputText(key.c_str(), &v)) cur = v, changed = true;
+        // a text parameter takes a template or NPC name dropped from the Browser (an item to hand out, a monster to call, ...)
+        if (const DragTemplate* d = drop_target(std::initializer_list<TplKind>{}, {dragging() ? std::string(dragging()->name) : std::string()})) cur = std::string(d->name), changed = true;
+    } else {
+        std::string v = cur.dump();
+        if (ImGui::InputText(key.c_str(), &v, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            try {
+                cur = json::parse(v);
+                changed = true;
+            } catch (const std::exception&) {
+            }
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("a table, written as JSON (Enter takes it)");
+    }
+    if (set) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton("default")) {
+            params.erase(key);
+            ImGui::PopID();
+            return true;
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("back to the script's default %s", def.dump().c_str());
+    }
+    ImGui::PopID();
+    if (!changed) return false;
+    if (cur == def) params.erase(key);
+    else params[key] = cur;
+    return true;
+}
+
+}  // namespace
+
+bool behavior_uses(const char* id, std::vector<BehaviorUse>& uses, App& app) {
+    bool ch = false;
+    ImGui::PushID(id);
+    ImGui::BeginGroup();
+    int remove = -1;
+    for (size_t i = 0; i < uses.size(); ++i) {
+        BehaviorUse& u = uses[i];
+        ImGui::PushID(static_cast<int>(i));
+        const BehaviorScript* s = nullptr;
+        for (auto& b : app.project.behaviors)
+            if (b.name == u.behavior) s = &b;
+        BehaviorInfo info;
+        if (s) info = behavior_info(app.project_file(s->file));
+        else info.error = "no behaviour of this name in the project (Behaviours panel)";
+        if (!u.params.is_object()) u.params = json::object();
+        const bool open = ImGui::TreeNodeEx("##b", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth, "%s", u.behavior.c_str());
+        if (!info.description.empty()) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("%s", info.description.c_str());
+        }
+        ImGui::SameLine(ImGui::GetContentRegionAvail().x - 10);
+        if (ImGui::SmallButton("x")) remove = static_cast<int>(i);
+        if (open) {
+            if (!info.ok) {
+                ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "%s", info.error.c_str());
+            } else {
+                if (info.params.empty()) ImGui::TextDisabled("no parameters");
+                for (auto& [k, def] : info.params.items()) ch |= param_field(k, def, u.params);
+                std::string unknown;
+                for (auto& [k, v] : u.params.items())
+                    if (!info.params.contains(k)) unknown = k;
+                if (!unknown.empty()) {
+                    ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), "'%s' is no parameter of the script any more", unknown.c_str());
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("drop it")) {
+                        u.params.erase(unknown);
+                        ch = true;
+                    }
+                }
+            }
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
+    }
+    if (remove >= 0) {
+        uses.erase(uses.begin() + remove);
+        ch = true;
+    }
+    ImGui::SetNextItemWidth(200);
+    if (ImGui::BeginCombo("##attach", "attach a behaviour...")) {
+        for (auto& b : app.project.behaviors) {
+            const bool on = std::any_of(uses.begin(), uses.end(), [&](const BehaviorUse& x) { return x.behavior == b.name; });
+            if (!on && ImGui::Selectable(b.name.c_str())) {
+                uses.push_back({b.name, json::object()});
+                ch = true;
+            }
+        }
+        if (app.project.behaviors.empty()) ImGui::TextDisabled("none yet: create one in the Behaviours panel");
+        ImGui::EndCombo();
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("or drop a behaviour here");
+    ImGui::EndGroup();
+    if (const std::string name = drop_behavior(); !name.empty()) {
+        if (std::none_of(uses.begin(), uses.end(), [&](const BehaviorUse& x) { return x.behavior == name; })) {
+            uses.push_back({name, json::object()});
+            ch = true;
+        }
     }
     ImGui::PopID();
     return ch;

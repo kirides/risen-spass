@@ -127,7 +127,12 @@
       "guild": "Cit",
       "loot": {
         "It_Apple": 2
-      }
+      },
+      "behaviors": [
+        {
+          "behavior": "greeter"
+        }
+      ]
     },
     {
       "uid": "6b1f0e2a9c4d4e5f8a7b6c5d4e3f2a41",
@@ -202,7 +207,16 @@
         "English": "Watcher",
         "German": "Wächter"
       },
-      "peaceful": true
+      "peaceful": true,
+      "behaviors": [
+        {
+          "behavior": "greeter",
+          "params": {
+            "text": "Halt! Who goes there?",
+            "gift": "It_Apple"
+          }
+        }
+      ]
     }
   ],
   "dialogs": [
@@ -1064,6 +1078,13 @@
       "uid": "5f1e0c7a2b9d4e6f8a1b3c5d7e9f0a24",
       "file": "images/ItWpn_SwordMisc_01_Diffuse_01.png",
       "kind": "picture"
+    }
+  ],
+  "behaviors": [
+    {
+      "uid": "b0e1a2c3d4e5f60718293a4b5c6d7e8f",
+      "name": "greeter",
+      "file": "behaviors/greeter.lua"
     }
   ],
   "editor": {}

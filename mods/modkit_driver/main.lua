@@ -58,9 +58,21 @@ T.plan {
     "a world object is moved and turned",
     "after the load: nothing spawned or filled twice",
     "after the load: the removal and the move hold",
+    "behaviour on a placed NPC with its params, on a template's NPC with the defaults",
+    "the behaviour greets the player and hands out its gift",
+    "after the load: the behaviour resumes with its saved state",
 }
 
 local spawned, filled = {}, {}
+-- behaviours (examples/modkit/behaviors/greeter.lua) report through a mod event
+local bhv = {}
+risen.on("modkit_showcase.behavior", function(kind, name, a, b, c) bhv[#bhv + 1] = { kind = kind, name = name, a = a, b = b, c = c } end)
+local function bhv_find(kind, name, from, pred)
+    for i = from or 1, #bhv do
+        local e = bhv[i]
+        if e.kind == kind and e.name == name and (not pred or pred(e)) then return e end
+    end
+end
 risen.on("modkit.world_spawned", function(id, key, e) if id == "modkit_showcase" then spawned[#spawned + 1] = e end end)
 risen.on("modkit.container_filled", function(id, key, c) if id == "modkit_showcase" then filled[#filled + 1] = key end end)
 local CHEST = "2c2c2522-cdad-4dba-aba1-12a5e2054790"
@@ -243,6 +255,19 @@ T.run(function()
         local d = r.work and r.work:distance_to(hob)
         T.expect("placed NPC routine post", r.work ~= nil and d ~= nil and d < 400, ("work=%s distance=%s"):format(tostring(r.work), tostring(d)))
 
+        -- behaviours: greeter on MK_Watcher (his own text, a gift) and, through the template MK_Hob_T, on Hob (the default text)
+        T.wait_until(function() return bhv_find("start", "MK_Watcher") and bhv_find("start", "MK_Hob") end, 20, "the behaviours started")
+        local ws, hs = bhv_find("start", "MK_Watcher"), bhv_find("start", "MK_Hob")
+        T.eq("behaviour on a placed NPC with its params, on a template's NPC with the defaults", { ws and ws.a, hs and hs.a }, { "Halt! Who goes there?", "Hello, stranger!" })
+        local wat, pl = risen.entity.get("MK_Watcher"), risen.entity.player()
+        if wat and pl and not bhv_find("near", "MK_Watcher") then
+            local px, py, pz = pl:position()
+            wat:set_pose({ x = px + 150, y = py + 20, z = pz })
+        end
+        T.wait_until(function() return bhv_find("near", "MK_Watcher") ~= nil end, 10, "the watcher greets")
+        local wn = bhv_find("near", "MK_Watcher")
+        T.expect("the behaviour greets the player and hands out its gift", wn ~= nil and wn.a == 1 and wn.b == true, wn and ("greeted %s, gift %s"):format(tostring(wn.a), tostring(wn.b)) or "no greeting")
+
         -- dialogues: talk like a player (open the conversation, choose an option, wait until it played)
         local names = { "MK_Hob_Who", "MK_Hob_Work", "MK_Hob_Ore", "MK_Hob_Island", "MK_Hob_Pirates", "MK_Hob_Never" }
         local missing = {}
@@ -341,6 +366,9 @@ T.run(function()
         local chest2 = risen.entity.by_id(CHEST)
         T.eq("after the load: nothing spawned or filled twice", { knives_near(), chest2 and risen.item.count(chest2, "MK_Strong_Potion"), benches_near() }, { 1, 2, 1 })
         T.wait_until(function() return risen.entity.by_id(TORCH) == nil and stone_moved() end, 10, "world edits after the load")
+        local w_after = bhv_find("start", "MK_Watcher", 1, function(e) return e.b == true end)
+        T.expect("after the load: the behaviour resumes with its saved state", w_after ~= nil and (w_after.c or 0) >= 1,
+                 w_after and ("resumed, greeted %s"):format(tostring(w_after.c)) or "not resumed")
         local moved2, sp2 = stone_moved()
         T.expect("after the load: the removal and the move hold", risen.entity.by_id(TORCH) == nil and moved2,
                  ("torch %s, stone %s"):format(risen.entity.by_id(TORCH) and "back" or "gone", sp2 and ("%.0f %.0f yaw %.0f"):format(sp2.x, sp2.z, sp2.yaw) or "?"))

@@ -10,6 +10,7 @@
 #include "core/catalog.h"
 #include "core/image.h"
 #include "core/dialog.h"
+#include "core/behavior.h"
 #include "core/quest.h"
 
 namespace mk {
@@ -295,6 +296,27 @@ void check_condition(Ctx& c, const char* A, const std::string& uid, const std::s
     }
 }
 
+// behaviour scripts and their attachments (the scripts' contents are checked by the Behaviours panel and the export, which read the files)
+void check_behaviors(Ctx& c) {
+    const char* A = "Behaviours";
+    std::map<std::string, int> seen;
+    for (auto& b : c.p.behaviors) {
+        const std::string subj = b.name.empty() ? "(unnamed behaviour)" : b.name;
+        if (const std::string why = behavior_name_problem(b.name); !why.empty()) c.add(Severity::Error, A, b.uid, subj, why);
+        if (++seen[b.name] == 2) c.add(Severity::Error, A, b.uid, subj, "two behaviours have this name");
+        if (b.file.empty()) c.add(Severity::Error, A, b.uid, subj, "choose the script file (.lua)");
+    }
+    auto check_uses = [&](const char* area, const std::string& uid, const std::string& subj, const std::vector<BehaviorUse>& uses) {
+        std::set<std::string> on;
+        for (auto& u : uses) {
+            if (!seen.count(u.behavior)) c.add(Severity::Error, area, uid, subj, "the behaviour '" + u.behavior + "' is not in the project (Behaviours panel)");
+            if (!on.insert(u.behavior).second) c.add(Severity::Warning, area, uid, subj, "the behaviour '" + u.behavior + "' is attached twice: the second replaces the first");
+        }
+    };
+    for (auto& n : c.p.npcs) check_uses("NPCs", n.uid, n.name, n.behaviors);
+    for (auto& t : c.p.npc_templates) check_uses("NPCs", t.uid, t.name, t.behaviors);
+}
+
 void check_placed_npcs(Ctx& c) {
     std::map<std::string, int> seen;
     for (auto& n : c.p.npcs) {
@@ -545,6 +567,7 @@ std::vector<Problem> validate(const Project& p, const GameData* game, const Worl
     check_npc_templates(c);
     check_placed_npcs(c);
     check_quests(c);
+    check_behaviors(c);
     check_dialogs(c);
     check_world(c);
     check_assets(c);

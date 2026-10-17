@@ -16,6 +16,7 @@
 
 #include "common/sound_file.h"
 #include "core/assets.h"
+#include "core/behavior.h"
 #include "core/catalog.h"
 #include "core/dialog.h"
 #include "core/export.h"
@@ -328,6 +329,7 @@ TEST(gamedata_real_archives) {
 #include "import_tests.inc"
 #include "asset_tests.inc"
 #include "image_tests.inc"
+#include "behavior_tests.inc"
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);

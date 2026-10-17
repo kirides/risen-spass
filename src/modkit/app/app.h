@@ -96,6 +96,8 @@ public:
     void refresh_assets(bool reload = false);
     // an asset file of the project on disk (relative paths are relative to the project file)
     std::string asset_path(const AssetFile& a) const;
+    // any file of the project (behaviour scripts, ...) on disk: relative paths are relative to the project file
+    std::string project_file(const std::string& file) const;
     // a sound reference (core/assets.h: a project audio file or a game sound) read and unpacked; nullopt + `error` when it cannot be
     std::optional<SoundData> load_sound(const std::string& ref, std::string& error) const;
     // the sound preview: play / stop a reference (errors go to the status bar)
@@ -179,5 +181,7 @@ std::string dialog_open_file(const char* filter_name, const char* filter_spec, c
 std::string dialog_save_file(const char* filter_name, const char* filter_spec, const std::string& default_dir, const std::string& default_name);
 std::string dialog_pick_folder(const std::string& default_dir);
 std::vector<std::string> dialog_open_files(const char* filter_name, const char* filter_spec, const std::string& default_dir);
+// opens a file with the program the system uses for it (the "edit" action first: a script opens in the editor, not the interpreter); false on failure
+bool open_in_os(const std::string& path);
 
 }  // namespace mk

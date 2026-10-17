@@ -101,6 +101,7 @@ App::App(AppOptions opts) : options(std::move(opts)) {
     panels_.push_back(make_quests_panel());
     panels_.push_back(make_world_panel());
     panels_.push_back(make_assets_panel());
+    panels_.push_back(make_behaviors_panel());
     panels_.push_back(make_problems_panel());
     panels_.push_back(make_log_panel());
     panels_.push_back(make_settings_panel());
@@ -186,8 +187,10 @@ gfx::ResourceCache* App::resources() {
     return resources_.get();
 }
 
-std::string App::asset_path(const AssetFile& a) const {
-    const fs::path f = u8(a.file);
+std::string App::asset_path(const AssetFile& a) const { return project_file(a.file); }
+
+std::string App::project_file(const std::string& file) const {
+    const fs::path f = u8(file);
     if (f.is_absolute() || project_path.empty()) return u8str(f);
     return u8str(u8(project_path).parent_path() / f);
 }
@@ -447,7 +450,7 @@ void App::setup_default_layout(unsigned int dockspace_id) {
     ImGui::DockBuilderDockWindow(kPanelBrowser, left);
     ImGui::DockBuilderDockWindow(kPanelLog, bottom);
     ImGui::DockBuilderDockWindow("Problems", bottom);
-    for (const char* t : {"Items", "Recipes", "NPCs", "Dialogues", "Quests", "World", kPanelAssets, kPanelSettings}) ImGui::DockBuilderDockWindow(t, center);
+    for (const char* t : {"Items", "Recipes", "NPCs", "Dialogues", "Quests", "World", kPanelAssets, kPanelBehaviors, kPanelSettings}) ImGui::DockBuilderDockWindow(t, center);
     ImGui::DockBuilderFinish(dockspace_id);
 }
 

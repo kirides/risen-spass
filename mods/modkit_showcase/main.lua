@@ -8,5 +8,6 @@ runtime.install({
     dialogs = require("data.dialogs"),
     world = require("data.world"),
     assets = require("data.assets"),
+    behaviors = require("data.behaviors"),
 })
 require("custom")
