@@ -177,7 +177,9 @@ every entity of every layer with its name, ID, template, position, facing and bo
 player's start point.
 
 * **Move**: hold the right mouse button and look around, W A S D to move, Q / E down / up, Shift faster, the wheel changes the speed (without the right
-  button it moves forward and back). **Click** an entity to select it, **F** flies to the selection.
+  button it moves forward and back). **Click** an entity to select it, **F** flies to the selection. A click selects what is drawn under the
+  cursor: a mesh by its pixels (what stands in front wins), an entity shown as a box by its box; hidden boxes and the level meshes (unless
+  *Level meshes* is on) are never selected.
 * **Show**: the kinds of entities (the colour of a box is its kind: green NPCs, red monsters, yellow items, orange chests and other interactive objects,
   grey objects; effects, navigation helpers and sounds are off at first), the huge boxes of the level meshes, and the layers by folder (the
   navigation, sound and effect layers start hidden).

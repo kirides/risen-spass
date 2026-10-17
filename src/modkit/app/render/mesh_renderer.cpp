@@ -29,10 +29,15 @@ in vec2 v_uv;
 uniform sampler2D tex;
 uniform vec3 light;
 uniform vec4 tint;
+uniform int id_mode;
 out vec4 frag;
 void main() {
     vec4 c = texture(tex, v_uv);
     if (c.a < 0.35) discard;
+    if (id_mode == 1) {
+        frag = tint;
+        return;
+    }
     float d = abs(dot(normalize(v_n), -light));
     vec3 lit = c.rgb * (0.38 + 0.72 * d);
     frag = vec4(lit, 1.0) * tint;
@@ -63,7 +68,13 @@ glm::mat4 entity_model(const float m[16]) {
     return glm::scale(glm::mat4(1.0f), glm::vec3(1, 1, -1)) * glm::make_mat4(m);
 }
 
-void MeshRenderer::begin(const glm::mat4& vp, const glm::vec3& light) {
+glm::vec4 MeshRenderer::id_color(uint32_t id) {
+    return glm::vec4(static_cast<float>(id & 0xff) / 255.0f, static_cast<float>((id >> 8) & 0xff) / 255.0f, static_cast<float>((id >> 16) & 0xff) / 255.0f, 1.0f);
+}
+
+uint32_t MeshRenderer::id_of(const unsigned char rgba[4]) { return static_cast<uint32_t>(rgba[0]) | (static_cast<uint32_t>(rgba[1]) << 8) | (static_cast<uint32_t>(rgba[2]) << 16); }
+
+void MeshRenderer::begin(const glm::mat4& vp, const glm::vec3& light, bool ids) {
     if (!built_) {
         std::string err;
         if (!prog_.build(kVs, kFs, &err)) log_error("mesh shader: " + err);
@@ -73,6 +84,7 @@ void MeshRenderer::begin(const glm::mat4& vp, const glm::vec3& light) {
     prog_.set("view_proj", vp);
     prog_.set("light", glm::normalize(light));
     prog_.set("tex", 0);
+    prog_.set("id_mode", ids ? 1 : 0);
     glActiveTexture(GL_TEXTURE0);
 }
 

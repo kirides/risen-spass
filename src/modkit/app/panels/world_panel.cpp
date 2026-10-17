@@ -374,12 +374,14 @@ private:
 
     void rebuild_boxes() {
         boxes_.clear();
+        box_drawn_.assign(world_->entities.size(), 0);
         for (size_t i = 0; i < world_->entities.size(); ++i) {
             const WorldEntity& e = world_->entities[i];
             if (!visible(e)) continue;
             // with meshes on, a box only for what has no mesh (or a mesh the editor cannot read)
             if (draw_meshes_ && !boxes_for_meshes_ && !mesh_names_[i].empty() && !(res_ && res_->failed(mesh_names_[i]))) continue;
             if (draw_meshes_ && !boxes_plain_objects_ && e.kind == TplKind::Object && mesh_names_[i].empty()) continue;
+            box_drawn_[i] = 1;  // what the user sees can be clicked (pick_at)
             const int edit = i < edit_state_.size() ? edit_state_[i] : 0;
             if (edit == 1) {  // removed by the mod: a red box where it was
                 if (e.has_box()) boxes_.box(to_gl(e.box_min[0], e.box_min[1], e.box_max[2]), to_gl(e.box_max[0], e.box_max[1], e.box_min[2]), IM_COL32(255, 50, 50, 255));
@@ -491,17 +493,18 @@ private:
             cam_.pos += cam_.forward() * io.MouseWheel * cam_.speed * 0.15f;
         }
         if (hovered && ImGui::IsKeyPressed(ImGuiKey_F) && selected_ < world_->entities.size()) fly_to(world_->entities[selected_]);
-        bool clicked = false;
+        bool clicked = false, pick_wanted = false;
         float cu = 0, cv = 0;
         if (ImGui::IsItemDeactivated() && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !gizmo_over_ &&
             glm::length(glm::vec2(ImGui::GetMouseDragDelta(0).x, ImGui::GetMouseDragDelta(0).y)) < 4) {
             cu = (io.MousePos.x - origin.x) / static_cast<float>(w);
             cv = (io.MousePos.y - origin.y) / static_cast<float>(h);
-            if (mode_ == 0 && !pick_project(app, cu, cv, aspect)) pick_at(cu, cv, aspect);
+            if (mode_ == 0 && !pick_project(app, cu, cv, aspect)) pick_wanted = true;
             else if (mode_ != 0) clicked = true;  // placed after the frame is drawn: the depth buffer tells where the ground is
         }
 
         rt_.resize(w, h);
+        if (pick_wanted) pick_at(cu, cv, aspect, w, h, cam_.proj(aspect) * cam_.view());
         rt_.bind();
         glEnable(GL_DEPTH_TEST);
         glDisable(GL_CULL_FACE);
@@ -525,13 +528,18 @@ private:
         ImGui::GetWindowDrawList()->AddText(ImVec2(origin.x + 8, origin.y + h - 22), IM_COL32(200, 200, 200, 255), buf);
     }
 
-    void draw_meshes(const glm::mat4& vp) {
-        res_->update(6.0);
+    // `ids`: the picking pass (pick_at): the same meshes, each in the colour of its entity number; level meshes in black (they hide what is behind
+    // them, but are only clickable when their boxes are shown)
+    void draw_meshes(const glm::mat4& vp, bool ids = false) {
+        if (!ids) res_->update(6.0);
         const gfx::Frustum fr(vp);
         const glm::vec3 cam_game = gfx::from_gl(cam_.pos);
         const float d2 = draw_distance_ * draw_distance_;
-        mesh_r_.begin(vp, glm::vec3(0.35f, -1.0f, 0.25f));
-        drawn_ = 0;
+        mesh_r_.begin(vp, glm::vec3(0.35f, -1.0f, 0.25f), ids);
+        if (!ids) {
+            drawn_ = 0;
+            mesh_drawn_.assign(world_->entities.size(), 0);
+        }
         size_t failed_before = failed_seen_;
         for (size_t i = 0; i < world_->entities.size(); ++i) {
             if (mesh_names_[i].empty()) continue;
@@ -547,15 +555,23 @@ private:
             if (edit == 0 && e.has_box() && !fr.sees(to_gl(e.box_min[0], e.box_min[1], e.box_max[2]), to_gl(e.box_max[0], e.box_max[1], e.box_min[2]))) continue;
             const gfx::GpuMesh* m = res_->mesh(mesh_names_[i]);
             if (!m) {
-                if (res_->failed(mesh_names_[i])) ++failed_seen_;
+                if (!ids && res_->failed(mesh_names_[i])) ++failed_seen_;
+                continue;
+            }
+            if (ids) {
+                const glm::vec4 c = (!level || show_level_) ? gfx::MeshRenderer::id_color(static_cast<uint32_t>(i + 1)) : glm::vec4(0);
+                mesh_r_.draw(*m, gfx::entity_model(edit == 2 ? moved_matrix_.at(i).data() : e.matrix.data()), *res_, c);
                 continue;
             }
             glm::vec4 tint = i == selected_ ? glm::vec4(1.4f, 1.3f, 0.9f, 1) : glm::vec4(1);
             if (edit == 2) tint *= glm::vec4(1.3f, 1.05f, 0.75f, 1);
             mesh_r_.draw(*m, gfx::entity_model(edit == 2 ? moved_matrix_.at(i).data() : e.matrix.data()), *res_, tint);
             ++drawn_;
+            // level meshes are always drawn, but only clickable when their boxes are shown (they would swallow every click)
+            if (!level || show_level_) mesh_drawn_[i] = 1;
         }
         mesh_r_.end();
+        if (ids) return;
         // meshes that turned out unreadable get their box back
         if (failed_seen_ != failed_before) boxes_dirty_ = true;
         failed_seen_ = 0;
@@ -928,25 +944,60 @@ private:
         if (e.npc) ImGui::TextDisabled("An NPC: his routine moves him again, and removing him can break quests.");
     }
 
-    void pick_at(float u, float v, float aspect) {
+    // What is under the cursor: the meshes by an ID pass into the view's render target (exact: the mesh's pixels, holes of foliage included,
+    // hidden by what is in front), the entities drawn as boxes by the ray; the nearer one wins. Undrawn entities (hidden boxes of vegetation,
+    // helpers, meshes beyond the distance) and level meshes without their boxes are never selected.
+    void pick_at(float u, float v, float aspect, int w, int h, const glm::mat4& vp) {
         glm::vec3 o, d;
         cam_.ray(u, v, aspect, o, d);
+        const float dlen = std::max(glm::length(d), 1e-6f);
         size_t best = SIZE_MAX;
-        float best_t = 1e30f;
+        float best_t = 1e30f;   // distance along the ray, in GL units
+        float surface_t = 1e30f;  // the nearest drawn surface under the cursor
+        if (draw_meshes_ && res_) {
+            rt_.bind();
+            glEnable(GL_DEPTH_TEST);
+            glDisable(GL_BLEND);
+            glClearColor(0, 0, 0, 0);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            draw_meshes(vp, true);
+            const int px = std::clamp(static_cast<int>(u * w), 0, w - 1), py = std::clamp(static_cast<int>((1.0f - v) * h), 0, h - 1);
+            unsigned char rgba[4] = {};
+            float depth = 1;
+            glReadPixels(px, py, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+            glReadPixels(px, py, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
+            rt_.unbind();
+            if (depth < 1.0f) {
+                const glm::vec4 ndc(u * 2 - 1, (1 - v) * 2 - 1, depth * 2 - 1, 1);
+                const glm::vec4 p = glm::inverse(vp) * ndc;
+                if (std::fabs(p.w) > 1e-9f) surface_t = glm::length(glm::vec3(p) / p.w - o);
+            }
+            const uint32_t id = gfx::MeshRenderer::id_of(rgba);
+            if (id > 0 && id <= world_->entities.size()) {
+                best = id - 1;
+                best_t = surface_t;
+            }
+        }
         for (size_t i = 0; i < world_->entities.size(); ++i) {
             const WorldEntity& e = world_->entities[i];
             if (!visible(e)) continue;
+            // boxes the user sees (a mesh that is drawn was tested above, by its pixels)
+            if (i >= box_drawn_.size() || !box_drawn_[i]) continue;
             glm::vec3 mn, mx;
+            // a moved entity is clicked where it is drawn now
+            glm::vec3 off(0);
+            if (auto mv = moved_matrix_.find(i); mv != moved_matrix_.end()) off = glm::vec3(mv->second[12] - e.x(), mv->second[13] - e.y(), mv->second[14] - e.z());
             if (e.has_box()) {
-                mn = to_gl(e.box_min[0], e.box_min[1], e.box_max[2]);
-                mx = to_gl(e.box_max[0], e.box_max[1], e.box_min[2]);
+                mn = to_gl(e.box_min[0] + off.x, e.box_min[1] + off.y, e.box_max[2] + off.z);
+                mx = to_gl(e.box_max[0] + off.x, e.box_max[1] + off.y, e.box_min[2] + off.z);
             } else {
-                const glm::vec3 p = to_gl(e.x(), e.y(), e.z());
+                const glm::vec3 p = to_gl(e.x() + off.x, e.y() + off.y, e.z() + off.z);
                 mn = p - glm::vec3(25, 0, 25);
                 mx = p + glm::vec3(25, 50, 25);
             }
-            const float t = ray_box(o, d, mn, mx);
+            const float t = ray_box(o, d, mn, mx) * dlen;
             if (t <= 0 || t >= best_t) continue;  // a box around the camera (t == 0) does not count
+            if (t > surface_t + 50.0f) continue;  // behind a drawn surface (a hill, a wall)
             best_t = t;
             best = i;
         }
@@ -1046,6 +1097,7 @@ private:
     gfx::ResourceCache* res_ = nullptr;  // App::resources()
     gfx::MeshRenderer mesh_r_;
     std::vector<std::string> mesh_names_;  // per entity: the compiled mesh name ("" = none)
+    std::vector<char> box_drawn_, mesh_drawn_;  // per entity: its box is in the batch / its mesh was drawn last frame (what a click may select)
     size_t drawn_ = 0, failed_seen_ = 0;
     // placing
     int mode_ = 0;  // 0 select, 1 place NPC, 2 place item or object
