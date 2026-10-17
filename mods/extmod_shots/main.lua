@@ -109,6 +109,29 @@ T.run(function()
             risen.input.simulate("ZoomIn", true); wait_s(z); risen.input.simulate("ZoomIn", false)
             wait_s(0.5)
             wait_s(1)
+        elseif scene == "gold" then
+            -- gold as an item of the category Misc: lying on the ground (focus text), picked up, in the inventory, in a chest
+            local pl, px, py, pz, dx, dz = view()
+            local x, y, z = at(px, py, pz, dx, dz, 160, 0)
+            local g = risen.entity.spawn("It_Gold", x, y, z)
+            risen.item.give(p, "It_Gold", 237)
+            wait_s(2)
+            shot(tag .. "_gold_1_ground")
+            local before = risen.item.count(p, "It_Gold")
+            local ok = g and risen.item.pick_up(p, g)
+            wait_s(2)
+            risen.log.info(("extmod_shots: gold pick_up -> %s, count %d -> %d, category %s"):format(tostring(ok), before, risen.item.count(p, "It_Gold"), tostring(risen.template.get("It_Gold"):get_property("gCItem_PS", "Category"))))
+            shot(tag .. "_gold_2_picked")
+            risen.input.simulate("Inventory", true); wait_s(0.2); risen.input.simulate("Inventory", false)
+            wait_s(3)
+            shot(tag .. "_gold_3_inventory")
+            risen.input.simulate("Inventory", true); wait_s(0.2); risen.input.simulate("Inventory", false)
+            wait_s(2)
+            local chest = risen.entity.spawn("Object_Interact_Animated_Chest_Poor", x + 150 * dz, y, z - 150 * dx)
+            if chest then
+                local n = risen.item.give(chest, "It_Gold", 100)
+                risen.log.info(("extmod_shots: gold into a chest -> %s, chest holds %d"):format(tostring(n), risen.item.count(chest, "It_Gold")))
+            end
         elseif scene == "start" then
             for i = 1, 3 do
                 shot(("%s_start_%d"):format(tag, i))

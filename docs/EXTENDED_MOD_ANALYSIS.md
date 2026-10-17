@@ -177,3 +177,16 @@ Engine enum names are learned from the game itself (`tools/extmod_enums.py` join
 
 Three trader entries of the mod name templates that do not exist and are mapped when exactly one template fits (`It_Crystal_Frost_Mage` -> `...Magei`, `It_BS_RuneSword_01` -> `It_BS_RuneSword`, `It_Bow_Eaglehunter` -> `It_Bow_WEaglehunter`); each is a warning in `manifest.json`.
 
+### Phase D: looked at, played, gaps closed (snapshot `03-play`)
+
+| Question | Result |
+|---|---|
+| Do replaced stock textures / meshes show? | yes: with and without the mod in the same scene, armor textures (Don Fighter, Druid), the leather helmet mesh, shields and foliage differ visibly; lizards and women render with their replaced actors; no missing, white or pink model among the 76 equippable new items |
+| Darker caves | yes, in four dungeons the loose lightmaps give 0.56-0.95 of the unmodded brightness (the blue ambient glow of the caves is nearly gone) |
+| Pickpocket XP | the 65 "pickpocket" infos are the **lessons** of the trainers (a topic "I have a question about picking pockets", condition type PickPocket); the engine pays an added `GiveXP` through a conversation (+100); the shipped lessons are offered only in pickpocket mode and their voiced lines never end in the test setup, so they were not played |
+| Teaching | played: Sam teaches DEX +5 at 100 (the game stops at 100) and refuses at the old and near the new limit |
+| Chapter refills | the chapter infos are the gates (cooking recipes 2, Crawler armor and gems 3, Trollfist and Heavy Guard armor 4); an added `RunScript` refill stocks a trader through a conversation; the shipped chapter infos stall on their first voiced line here |
+| Melee styles | `risen.npc.combat_style`: p01 confirmed (Sword -> one-hand styles, Axe -> two-hand styles, staff 2.1, no style for a two-hander without Axe skill); a fight lands blows; the blow steps towards its target, so the reach was not measured |
+| Gold | Misc category: shows in the inventory with its coin icon, picked up, a chest accepts it |
+| Gaps | hud2: 4 real rows applied (the other 167 differences are classic-vs-Enhanced noise); wind: the loose `WeatherStates.g3ws` is read by the engine; two broken smithing chains repaired (Dark Wind hot -> dull, obsidian staff dull consumes itself and makes the Slicer staff); Gothic easter eggs found (Dexter's ring, Rod's boots); Uriziel placed by nothing in the archives; guildless armors = the Crawler / Heavy Guard armors sold in chapters 3 / 4 |
+| Switches | `config.lua` run-time groups, `scripts/extmod-features.ps1` for the file groups (combat table variants p01 / p02 / off, wind, caves, vegetation, skins) |

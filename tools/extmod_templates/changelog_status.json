@@ -2,72 +2,72 @@
  {
   "id": 1,
   "item": "Lizard skins (24 monster templates, 49 textures, 34 materials, 16 actors)",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "actor swaps + loose assets"
+  "note": "actor swaps + loose assets; seen on screen: lizards render with their (different) skins, no missing textures (shots liz*, mod_mons*)"
  },
  {
   "id": 2,
   "item": "Small vegetation update (4 textures)",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "loose textures replacing stock names (probe P1)"
+  "note": "loose textures replacing stock names; on screen the jungle foliage is darker / more olive than without the mod (same scene, same light): the replaced SpeedTree atlas is in use"
  },
  {
   "id": 3,
   "item": "Female mesh changed (9 actors)",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "loose actors replacing stock names; skeleton compatibility untested"
+  "note": "loose actors replacing stock names; seen on screen: women in the replaced actors render and stand correctly (cmp_women), skeleton compatible; animation in a fight not looked at"
  },
  {
   "id": 4,
   "item": "Armor / monster skins, head textures",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "loose textures replacing stock names"
+  "note": "seen on screen: Don Fighter / Druid / Guard armor, the leather helmet (a new metal cap), the shields differ from the shipped look (cmp_hero_*, ~10 of 13 armors changed visibly)"
  },
  {
   "id": 5,
   "item": "Darker caves / dungeons (18 lightmaps, light spell range)",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "lightmaps replaced; It_Cast_Light range 1000 -> 1500"
+  "note": "seen in 4 dungeons: the loose lightmaps make the caves, the old mine and the mini dungeons clearly darker (mean brightness 0.56-0.95 of the unmodded game, cmp_cave*); It_Cast_Light range 1500"
  },
  {
   "id": 6,
   "item": "Pickpocket gives XP by required level (65 dialogue infos)",
   "status": "generated",
   "needs": "",
-  "note": "67 XP rewards appended to the pickpocket infos (read back); a real pickpocket was not played"
+  "note": "67 XP rewards on the pickpocket lessons (read back); the engine pays an added GiveXP through a real conversation (extplay: +100 XP). The lessons themselves are offered by the engine in pickpocket mode and their voiced lines never end in the test setup: not played"
  },
  {
   "id": 7,
   "item": "Doyle XP when found later; quest XP (Caspar, Doyle, Cole, Esteban)",
   "status": "generated",
   "needs": "",
-  "note": "XP rewards of Caspar, Doyle, Cole, Esteban (changed amounts); read back, not played"
+  "note": "XP rewards of Caspar, Doyle, Cole, Esteban (changed amounts) read back; the command path is the one verified for the lessons"
  },
  {
   "id": 8,
   "item": "Wisdom useful for non-mages (INT books, XP books)",
   "status": "generated",
   "needs": "",
-  "note": "books and transcription recipes; INT books/plans not placed in the world yet (M20)"
+  "note": "books and transcription recipes; hud2 text for the transcription; INT books / plans not placed in the world by the mod"
  },
  {
   "id": 9,
   "item": "Teacher limits (STR/DEX up to 150/200)",
   "status": "verified",
   "needs": "",
-  "note": "9 placed teachers raised through risen.npc.set_teach_limit (read back); a real teaching dialogue was not played"
+  "note": "9 teachers raised; a real teaching dialogue played (extplay): Sam offers and teaches DEX +5 at 100 (the game stops at 100), refuses it at the old limit and near 200"
  },
  {
   "id": 10,
   "item": "New smithing recipes (11 weapons, whole chains)",
   "status": "generated",
   "needs": "",
-  "note": "recipe items converted; plans are handed out by the starter kit until traders/world placement (M20)"
+  "note": "recipe items converted, two broken chains (Dark Wind, obsidian staff) repaired; plans are handed out by the starter kit option until traders sell them (chapter infos)"
  },
  {
   "id": 11,
@@ -81,14 +81,14 @@
   "item": "Big gems sold earlier",
   "status": "generated",
   "needs": "",
-  "note": "trader entries (chapter 3) run by the chapter info; not played that far"
+  "note": "trader entries (chapter 3: Costa ruby, Jack sapphire, Oscar emerald) run by the chapter-3 info; the info is the gate; a RunScript command added the same way stocks the trader through a real conversation"
  },
  {
   "id": 13,
   "item": "Melee system 1H / 2H / staff (weapon types, skills)",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "p01 combat table (75 Human styles), weapon use types, skill names Onehanded/Twohanded fighting; a fight runs under the new table, the feel is for the play test"
+  "note": "p01 table loaded: a one-hand weapon follows the Sword skill (None_Axe_S5 at Sword 5), a two-hand weapon the Axe skill (None_2H_S5, range 2.0; none without it), a staff the Staff skill (None_Staff_S5, 2.1); a two-hander fight lands blows"
  },
  {
   "id": 14,
@@ -114,9 +114,9 @@
  {
   "id": 17,
   "item": "2H reach higher from a skill",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "HitRange 200/220/250 and staff 210/230 are in the loaded table"
+  "note": "risen.npc.combat_style: two-hand style range 2.0 at Axe 1, 2.5 at Axe 9; staff 2.1; the blow itself steps towards its target, so the true reach was not measured"
  },
  {
   "id": 18,
@@ -149,16 +149,16 @@
  {
   "id": 22,
   "item": "A few armors for guildless players",
-  "status": "partial",
+  "status": "generated",
   "needs": "",
-  "note": "armors exist (Crawler, Guard Heavy); who may buy/wear them is script-side"
+  "note": "Crawler armor (chapter 3, Oscar) and Heavy Guard armor (chapter 4, Leto) are sold by the chapter infos; what the guilds may wear is script-side (nothing in the archives)"
  },
  {
   "id": 23,
   "item": "Captain armor only in chapter 4",
-  "status": "partial",
+  "status": "generated",
   "needs": "M20",
-  "note": "stocked by the chapter-4 info of the mod (Leto); the gate is the chapter info itself"
+  "note": "stocked by the chapter-4 info of the mod (Leto): the gate is that info, as in the mod; the added-command path is verified"
  },
  {
   "id": 24,
@@ -191,9 +191,9 @@
  {
   "id": 28,
   "item": "Gold as an item that can be put into chests",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "category Misc; behaviour of gold pickup to be checked in play"
+  "note": "category Misc: a gold stack shows in the inventory with its coin icon and counter, is picked up, and a chest accepts it (shot goldm_*); the UI chest drag was not played"
  },
  {
   "id": 29,
@@ -219,30 +219,30 @@
  {
   "id": 32,
   "item": "Recipes baked plaice / hunter's pan buyable from chapter 2",
-  "status": "partial",
+  "status": "generated",
   "needs": "M20",
-  "note": "values converted; the sellers' entries are in the chapter infos"
+  "note": "recipe values converted; the sellers (Jasmin, Illumar) are in the chapter-2 info, which is the gate"
  },
  {
   "id": 33,
   "item": "Uriziel, Trollfaust, crawler armor, guard armors in the game",
   "status": "partial",
   "needs": "",
-  "note": "items exist; sold/placed as the mod's stock lists say"
+  "note": "Crawler / Heavy Guard armor, Trollfist (chapter 4, Oscar) are in the chapter stock; Uriziel is in no trader list, loot table or world layer of the archives (placed by a script that is not shipped): not obtainable"
  },
  {
   "id": 34,
   "item": "Gothic easter eggs (2)",
-  "status": "na",
+  "status": "generated",
   "needs": "",
-  "note": "not identifiable in the archives"
+  "note": "found: the engraved name \"Dexter\" (It_Ri_Thief, farm chest) and \"Who the hell is Rod..\" (It_Rods_Boots, swamp chest) are Gothic references; both are placed (chests); The One Ring (Tolkien) exists but is placed nowhere"
  },
  {
   "id": 35,
   "item": "Trader stock (106 refills: weapons, blanks, recipes, runes, crystals ...)",
-  "status": "partial",
+  "status": "generated",
   "needs": "",
-  "note": "105 refills added to the 4 chapter infos (read back); chapter 1 (25 entries) also handed out at the start of a new game and verified; chapters 2-4 depend on the engine running the infos"
+  "note": "105 refills on the 4 chapter infos (read back); chapter 1 handed out at the start and verified; a RunScript refill added the same way stocks a trader through a real conversation; chapters 2-4 themselves not played (shipped infos cannot be played to their commands: the voiced Say lines stall)"
  },
  {
   "id": 36,
@@ -254,8 +254,8 @@
  {
   "id": 37,
   "item": "Wind strength (WeatherStates)",
-  "status": "missing",
+  "status": "generated",
   "needs": "M22",
-  "note": ""
+  "note": "WeatherStates.g3ws (WindPower 0.3) as a loose file; the engine reads the loose copy at start (file trace); the strength was not looked at"
  }
 ]

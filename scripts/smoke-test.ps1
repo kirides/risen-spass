@@ -33,6 +33,7 @@
       ex_combat    - example: a Fireball that hits harder every time it hits the same target, counters in risen.save, reset on death (mods/example_stacking_fireball); save, then a fresh-process load where the count continues
       quickloot_react - quick loot and the NPCs (M5e, mods/quickloot): the engine's theft assessment on the quick path against the animated path in a watched area (items, chests, cupboards, sarcophagi, corpses, out of sight / range, dropped items); witness_mode ignore in a second run
       ex_ignore_theft - example: NPCs that ignore thefts while a game variable is set (risen.ai.perceive("theft") answers 0), animated and quick path (mods/example_ignore_theft)
+      extplay      - the generated mod's play checks: a conversation runs added GiveXP / RunScript commands, Sam teaches past the game's cap and refuses at it, the melee table's styles (risen.npc.combat_style), a fight with a two-hander; skipped when the generated mod is absent
       extmod       - the generated Risen Extended mod (mods/risen_extended, tools/extmod_gen.py; docs/EXTENDED_MOD_ANALYSIS.md): applied entries, the archive numbers in the engine, new items spawn / equip, recipes craft, monster actors, loose assets, save + load in a second process; skipped when the generated mod is absent
       hardening    - every public function and method called with ~1.6 million wrong-typed / hostile argument combinations (mods/hardening): the game must survive and keep ticking
 
@@ -61,7 +62,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'modmanager', 'extmod', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'modmanager', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -307,6 +308,11 @@ $scenarios = [ordered]@{
                      Phases = @(
                          @{ Name = 'main'; Param = @('check=extmod', 'phase=main'); Start = 'new'; Keep = $false; Limit = 300 }
                          @{ Name = 'load'; Param = @('check=extmod', 'phase=load'); Start = 'load'; Keep = $true; Limit = 200 }
+                     ) }
+    # the real engine paths of the generated mod (conversations, teaching, melee styles, a fight): needs the generated mod too
+    extplay     = @{ Est = 220; Title = 'Risen Extended: play checks (generated mod)'; Kind = 'result'; Mods = @('risen_extended'); Limit = 420; Requires = 'mods/risen_extended/manifest.json'
+                     Phases = @(
+                         @{ Name = 'play'; Param = @('check=extplay'); Start = 'new'; Keep = $false; Limit = 420 }
                      ) }
 }
 

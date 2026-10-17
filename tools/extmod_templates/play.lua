@@ -33,9 +33,57 @@ end
 return function(M)
     T.plan {
         "added GiveXP pays through a conversation", "added RunScript refill stocks the trader", "teaching: +5 offered at DEX 100 (limit 200)", "teaching: +5 accepted", "teaching: refused at the old limit 100", "teaching: refused near the new limit",
-        "melee: one-hand weapon follows the Sword skill", "melee: two-hand weapon follows the Axe skill", "melee: staff follows the Staff skill", "melee: a two-hand weapon without the skill has no style",
+        "melee: one-hand weapon follows the Sword skill", "melee: two-hand weapon follows the Axe skill", "melee: staff follows the Staff skill", "melee: a two-hand weapon without the skill has no style", "fight: the two-hand weapon hits a standing target", "fight: the style carries the longer reach at Axe 9",
     }
     local DEX, STR, LP, SWORD, AXE, STAFF = 8, 7, 4, 16, 17, 18
+
+    -- a two-hand weapon against a frozen wolf (an ice statue that stands still, hit points enough for any number of blows): how far does the blow reach at Axe 1 and at Axe 9?
+    -- The p01 table gives the two-hand styles a HitRange of 200 (Axe 1-5), 220 (6-8) and 250 (9-10) on top of the move's own range.
+    local function reach_of(p, axe_level)
+        risen.npc.set_skill_base(p, AXE, axe_level)
+        local yaw = risen.math.yaw_of(p)
+        local dir = risen.math.from_yaw(yaw)
+        local dx, dz = dir.x, dir.z
+        local px, py, pz = p:position()
+        local best, hits_total = 0, 0
+        for _, d in ipairs({ 200, 240, 280, 320, 360, 400 }) do
+            local wolf = risen.npc.spawn("Wolf", px + dx * d, py + 5, pz + dz * d, { name = ("EXT_ReachWolf_%d_%d"):format(axe_level, d), hp_max = 100000, hp = 100000, peaceful = true })
+            local hp0 = wolf and wolf:hp() or 0
+            if wolf then
+                wolf:set_frozen(true)
+                wait_s(1)
+                for _ = 1, 3 do
+                    risen.input.simulate("PrimaryAction", true); wait_s(0.15); risen.input.simulate("PrimaryAction", false); wait_s(1.1)
+                end
+                local hp1 = wolf:hp() or hp0
+                if hp1 < hp0 then best = d hits_total = hits_total + 1 end
+                risen.log.info(("extplay: reach Axe %d wolf at %d: hp %s -> %s"):format(axe_level, d, tostring(hp0), tostring(hp1)))
+                pcall(wolf.kill, wolf)
+            end
+        end
+        return best, hits_total
+    end
+
+    local function fight(p)
+        T.section("fight")
+        risen.npc.set_stats(p, { skills = { Strength = 200, Dexterity = 200 } })
+        risen.item.give(p, "It_2H_Steel_Sharp", 1)
+        local equipped = risen.item.equip(p, "It_2H_Steel_Sharp")
+        risen.input.simulate("WeaponMode", true); wait_s(0.3); risen.input.simulate("WeaponMode", false)
+        wait_s(2)
+        local sty = risen.npc.combat_style(p)
+        risen.log.info(("extplay: fight: equipped %s, style %s state %s"):format(tostring(equipped), sty and sty.name or "?", tostring(p:state())))
+        local r1, h1 = reach_of(p, 1)
+        local r9, h9 = reach_of(p, 9)
+        T.expect("fight: the two-hand weapon hits a standing target", h1 > 0 and h9 > 0, ("hits Axe 1 %d, Axe 9 %d"):format(h1, h9))
+        -- the player steps towards his target while he swings (a blow lands at 4 m as well), so the weapon's own reach cannot be measured this way; the HitRange of the style is read through risen.npc.combat_style
+        risen.npc.set_skill_base(p, AXE, 9)
+        local s9 = risen.npc.combat_style(p, { right = "2H" })
+        sty = risen.npc.combat_style(p, { right = "2H" }) and sty
+        risen.npc.set_skill_base(p, AXE, 1)
+        sty = risen.npc.combat_style(p, { right = "2H" })
+        T.expect("fight: the style carries the longer reach at Axe 9", s9 ~= nil and s9.hit_range >= 2.5, ("Axe 9: style %s, hit_range %s (Axe 1: %s); farthest hit %d / %d (steps forward while swinging)"):format(s9 and s9.name or "?", tostring(s9 and s9.hit_range), sty and tostring(sty.hit_range) or "?", r1, r9))
+    end
 
     T.run(function()
         T.wait_event("session.start", 240, function(m) return m == "new" end)
@@ -45,6 +93,7 @@ return function(M)
         local p = assert(risen.entity.player())
         risen.npc.set_stats(p, { hp_max = 9000, hp = 9000 })
         risen.item.give(p, "It_Gold", 50000)
+        if T.param("only", "") == "fight" then fight(p) T.finish("extplay fight") return end
 
         -- ---- added commands run: the mod appends GiveXP (pickpocket lessons ...) and RunScript refills (chapter infos) to shipped infos. A shipped info cannot be played to its
         -- commands here: its voiced Say lines never end in this setup (the conversation stays on the first line), and the pickpocket lessons are only offered in pickpocket mode.
@@ -141,6 +190,7 @@ return function(M)
             T.expect("melee: a two-hand weapon without the skill has no style", n2s:sub(1, 4) == "nil:", "2H with Sword 5 and Axe 0 -> " .. n2s)
             risen.npc.set_skill_base(p, SWORD, 0); risen.npc.set_skill_base(p, AXE, 0); risen.npc.set_skill_base(p, STAFF, 0)
         end
+        fight(p)
         T.finish("extplay done")
     end, "extplay")
 end
