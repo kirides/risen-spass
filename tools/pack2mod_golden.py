@@ -59,17 +59,17 @@ def main():
             # Explained differences (docs/PACK2MOD.md "Golden test"):
             #  * the oracle's research keyed entities by name, so of two chests called Object_Interact_Animated_Chest_Lizard in BD_Farm_Events.lrent it kept one;
             #    the C++ tool keys by entity id and finds both
-            #  * the mod's It_Axe_Ogreaxe is a rename of the game's It_Axe_Ogre (same GUIDs): the research counted Karakos' re-serialised equipment slot as an
-            #    equipped Ogreaxe; the C++ tool compares by the game's names and leaves the shipped axe (the rename is listed in its report)
+            #  (the second explained difference of the earlier golden runs, Karakos' "It_Axe_Ogreaxe", was a file name artefact: templates are known by their entity name,
+            #   the file It_Axe_Ogreaxe.tple holds the engine template It_Axe_Ogre, docs/RE.md section 48; both generators agree now)
             from collections import Counter
             ca, cb = Counter(lines(a, True)), Counter(lines(b, True))
             only_a, only_b = ca - cb, cb - ca
-            want_a = Counter(['        { id = "3ea8344a-6c0e-4d0a-8de5-55dc4f182d33", item = "It_Axe_Ogreaxe", name = "Karakos" },'])
+            want_a = Counter()
             want_b = Counter(['            id = "28e2d7f0-1e5e-4b6d-a0e2-5dfecef81841",', '            items = {', '                { count = 1, item = "It_Po_EXP_Special" },',
                               '                { count = 1, item = "It_BlackPearl" },', '            },', '            layer = "BD_Farm_Events.lrent",',
                               '            name = "Object_Interact_Animated_Chest_Lizard",', '        },', '        {'])
             if only_a == want_a and only_b == want_b:
-                print("world.lua: 2 explained differences (extra BD_Farm chest found by entity id, Karakos' axe: a GUID rename, not applied)")
+                print("world.lua: 1 explained difference (extra BD_Farm chest found by entity id)")
                 same += 1
             else:
                 diffs.append("data/world.lua differs unexpectedly: only py %r, only cpp %r" % (dict(only_a), dict(only_b)))

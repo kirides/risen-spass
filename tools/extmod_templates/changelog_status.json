@@ -121,9 +121,9 @@
  {
   "id": 18,
   "item": "Ogre club / pickaxe equippable",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "new items"
+  "note": "the mod changes the shipped It_Axe_Ogre / It_Pickaxe in place (its files It_Axe_Ogreaxe / It_Axe_Pickaxe carry those entity names): category Weapon, use type Axe, STR 200 / 10; the pickaxes placed in the world (Wild_Outdoor, Pirate_Coast), Karakos' ogre axe and a fresh spawn carry the new numbers, the pickaxe equips (scenario extmod)"
  },
  {
   "id": 19,
@@ -172,7 +172,7 @@
   "item": "Berserker / rune sword purchasable",
   "status": "generated",
   "needs": "",
-  "note": "trader entries; It_BS_RuneSword_01 mapped to It_BS_RuneSword (the mod's typo)"
+  "note": "Oscar's chapter-3 trader entry names It_BS_RuneSword_01, a template of the mod (no typo: the engine name is the file's entity name); a refill run the way the chapter info does it stocks Oscar with it (scenario extmod); the Berserker sword is It_Axe_Trollfist (chapter 4)"
  },
  {
   "id": 26,
@@ -226,9 +226,9 @@
  {
   "id": 33,
   "item": "Uriziel, Trollfaust, crawler armor, guard armors in the game",
-  "status": "partial",
+  "status": "verified",
   "needs": "",
-  "note": "Crawler / Heavy Guard armor, Trollfist (chapter 4, Oscar) are in the chapter stock; Uriziel is in no trader list, loot table or world layer of the archives (placed by a script that is not shipped): not obtainable"
+  "note": "Uriziel is the shipped It_BS_RuneSword template changed in place (file It_2H_Uriziel): the sword placed in the Titan dungeon (Dungeon_Titan_Items) is Uriziel now (2150 g, 90, Ice, two-hand, STR 130 read back from the placed entity); the Mighty axe (It_2H_Berserk, BD_Waterfall) is the Trollfist data; Crawler / Heavy Guard armor, the Berserker sword It_Axe_Trollfist are in the chapter stock"
  },
  {
   "id": 34,

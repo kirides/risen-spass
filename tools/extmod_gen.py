@@ -113,6 +113,14 @@ class Data:
     pass
 
 
+def ename(t):
+    """The name the engine knows a template by: the entity name (string 1), not the file name (docs/RE.md section 48);
+    anything but a plain identifier falls back to the file name (same rule as src/pack2mod/tple.h)."""
+    if len(t.strings) > 1 and t.strings[1] and all((c.isalnum() and ord(c) < 128) or c in "_()-" for c in t.strings[1]):
+        return t.strings[1]
+    return t.name[:-5]
+
+
 def load(modroot, baseline):
     d = Data()
     d.base = X.load_baseline(baseline)
@@ -126,21 +134,21 @@ def load(modroot, baseline):
     for k, (label, pak, e) in d.base["common"].files.items():
         if k.endswith(".tple"):
             t = g3tple.parse(pak.read(e))
-            d.van[t.name[:-5]] = t
-            d.vdir[t.name[:-5]] = e.path
+            d.van[ename(t)] = t
+            d.vdir[ename(t)] = e.path
     d.mod, d.mlabel = {}, {}
     for k, (label, pak, e) in d.layers["common"].files.items():
         if k.endswith(".tple"):
             t = g3tple.parse(pak.read(e))
-            d.mod[t.name[:-5]] = t
-            d.mlabel[t.name[:-5]] = label
+            d.mod[ename(t)] = t
+            d.mlabel[ename(t)] = label
     d.guid = {}
     for t in list(d.van.values()):
         for g in t.guids:
-            d.guid.setdefault(g, t.name[:-5])
+            d.guid.setdefault(g, ename(t))
     for t in d.mod.values():
         for g in t.guids:
-            d.guid[g] = t.name[:-5]
+            d.guid[g] = ename(t)
     return d
 
 

@@ -2,6 +2,7 @@
 // a tolerant scanner that walks the stream, recognises property headers and resynchronises byte by byte.
 #pragma once
 
+#include <cctype>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -53,7 +54,19 @@ struct Template {
     std::vector<std::string> guids;    // "@" + 32 hex, the records "db 00 <guid>" in the header
     std::string guid;                  // the entity GUID (second record), how other templates refer to this one
     std::vector<Prop> props;
-    std::string base_name() const { return name.size() >= 5 ? name.substr(0, name.size() - 5) : std::string(); }
+    // the name of the file without ".tple" (the editor's name; mod authors rename files without touching the entity name inside)
+    std::string file_name() const { return name.size() >= 5 ? name.substr(0, name.size() - 5) : std::string(); }
+    // the name the ENGINE knows the template by: the entity name, string 1 of the table (docs/RE.md section 48: the game has no template "Fire",
+    // its file Fire.tple holds VFX_Env_Fire_Campfire_01). Only a plain identifier counts, anything else falls back to the file name.
+    std::string base_name() const {
+        if (strings.size() > 1 && !strings[1].empty()) {
+            bool plain = true;
+            for (unsigned char c : strings[1])
+                if (!(std::isalnum(c) && c < 0x80) && c != '_' && c != '(' && c != ')' && c != '-') plain = false;
+            if (plain) return strings[1];
+        }
+        return file_name();
+    }
 };
 
 // throws Error ("no string table") when the data is no GENOMFLE file

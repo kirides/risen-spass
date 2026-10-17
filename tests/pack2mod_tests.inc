@@ -446,6 +446,41 @@ TEST(p2m_end_to_end_conversion) {
     CHECK(p2m::run_convert(lst, log6) == 0 && log6.str().find("It_Axe.tple") != std::string::npos && log6.str().find("same\t") != std::string::npos);
 }
 
+TEST(p2m_entity_name_decides_the_template_name) {
+    // the engine knows a template by the entity name inside the file (string 1), not by the file name (docs/RE.md section 48): a mod that renames files in its editor
+    TempDir t;
+    auto named = [](const std::string& file, const std::string& entity, int g, int gold, int damage) {
+        TplBuilder b;
+        b.strs = {file + ".tple", entity};
+        b.set("gCItem_PS");
+        b.lng("GoldValue", gold);
+        b.enm("UseType", "gEItemUseType", 1);
+        b.enm("Category", "gEItemCategory", 1);
+        b.set("gCDamage_PS");
+        b.lng("DamageAmount", damage);
+        return b.build(guid_bytes(g), guid_bytes(g + 100));
+    };
+    t.write("game/data/common/templates.pak", p2m::build_pak({{"Items/It_Pick.tple", named("It_Pick", "It_Pick", 1, 10, 5), true}}));
+    t.write("game/data/compiled/strings.pak", p2m::build_pak({{"x.tab", p2m::build_tab({"English_Text"}, {{"A", {"a"}}}), true}}));
+    // the file It_Pick_Axe holds the template the engine calls It_Pick (the game's GUID); the file It_Pick holds the old data under a new name and a new GUID
+    t.write("mod/common/templates.p00", p2m::build_pak({{"It_Pick_Axe.tple", named("It_Pick_Axe", "It_Pick", 1, 50, 15), false}, {"It_Pick.tple", named("It_Pick", "It_Pick_Misc", 2, 10, 0), false}}));
+    p2m::Options o;
+    o.inputs = {(t.path / "mod").string()};
+    o.baseline = (t.path / "game/data").string();
+    o.out = (t.path / "out").string();
+    std::ostringstream log;
+    p2m::Counts c;
+    CHECK(p2m::run_convert(o, log, &c) == 0);
+    CHECK(c.items_changed == 1 && c.new_items == 1);
+    const std::string items = p2m::read_file((t.path / "out/data/items.lua").string());
+    CHECK(items.find("It_Pick = ") != std::string::npos && items.find("value = 50") != std::string::npos && items.find("damage = 15") != std::string::npos);
+    CHECK(items.find("It_Pick_Axe") == std::string::npos);
+    const std::string nw = p2m::read_file((t.path / "out/data/new_items.lua").string());
+    CHECK(nw.find("It_Pick_Misc = ") != std::string::npos && nw.find("base = \"It_Pick\"") != std::string::npos && nw.find("It_Pick_Axe") == std::string::npos);
+    // same GUID, same engine name: no GUID reuse is reported
+    CHECK(p2m::read_file((t.path / "out/report.md").string()).find("reuse the GUID") == std::string::npos);
+}
+
 TEST(p2m_layering_later_volume_wins_and_flat_names) {
     TempDir t;
     t.write("game/data/common/templates.pak", p2m::build_pak({{"Items/A/It_Sword.tple", item_tpl("It_Sword", 1, 1, 50, 15, {}, "m.xmsh"), true}}));

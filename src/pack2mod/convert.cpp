@@ -354,10 +354,9 @@ int run_convert(const Options& o, std::ostream& log, Counts* counts_out) {
             }
         }
         if (count)
-            ctx.notes.push_back(std::to_string(count) + " new template(s) take over the GUID of a game template, i.e. the mod renamed or replaced it (" + list +
-                                (count > 8 ? ", ..." : "") +
-                                "): whatever the game's world places or references by that GUID is the new template in the mod. Recipe ingredients resolve to the mod's template; "
-                                "placements in world layers are compared with the game's names, so they stay the game's template (the rename is not applied to placed entities)");
+            ctx.notes.push_back(std::to_string(count) + " new template(s) reuse the GUID of a game template (copy and paste without a new id: " + list + (count > 8 ? ", ..." : "") +
+                                "). Templates are known by their entity name, not by the file name, so this is no rename; the engine has two templates with one GUID, "
+                                "which one a world placement or a GUID reference means is not known (the converter lets the game's template win for placements and the mod's for recipes)");
     }
 
     // ---- stages

@@ -23,9 +23,10 @@ return function(M)
             "goldsmith recipe crafts", "smithing chain crafts", "monster actor swaps are applied", "a monster with a new actor spawns", "loose assets resolve to the mod",
             "replaced stock assets are shadowed", "second pass keeps the numbers",
             "dialogue edits applied", "an XP reward is on its info", "a trader refill is on its info", "chapter 1 trader stock is on the traders", "the combat table is the mod's (no backwards hop)", "a fight under the new combat table", "teacher limits are raised", "world edits applied", "a chest holds its new item",
-            "hud2 texts are applied", "wind file and combat table are the mod's", "the two repaired smithing chains",
+            "hud2 texts are applied", "wind file and combat table are the mod's", "the repaired smithing chains",
+            "placed items carry the mod's data", "Karakos carries the changed ogre axe", "renamed weapons are equippable", "Oscar sells the runesword from chapter 3",
         },
-        load = { "load: the templates resolve", "load: items are still in the inventory", "load: the numbers are applied again" },
+        load = { "load: the templates resolve", "load: items are still in the inventory", "load: the numbers are applied again", "load: stacks of the changed shipped items survive" },
     }
     T.plan(PLAN[phase] or {})
 
@@ -275,7 +276,7 @@ return function(M)
             local wphys = risen.vfs.lookup_physical("WeatherStates.g3ws") or ""
             T.expect("wind file and combat table are the mod's", wphys:lower():find("risen_extended", 1, true) ~= nil, "WeatherStates.g3ws -> " .. wphys)
             local dw, so = M.rec.edit["It_2H_Dark_Wind_Hot"], M.rec.edit["It_Staff_Obsidian_Dull"]
-            T.expect("the two repaired smithing chains", dw ~= nil and dw.result == "It_2H_Dark_Wind_Dull" and so ~= nil and so.result == "It_Staff_Slicer" and so.ingredients[1].item == "It_Staff_Obsidian_Dull",
+            T.expect("the repaired smithing chains", dw ~= nil and dw.result == "It_2H_Dark_Wind_Shaped" and so ~= nil and so.result == "It_Staff_Slicer" and so.ingredients[1].item == "It_Staff_Obsidian_Dull",
                 ("Dark Wind hot -> %s; obsidian staff dull -> %s from %s"):format(tostring(dw and dw.result), tostring(so and so.result), tostring(so and so.ingredients[1] and so.ingredients[1].item)))
 
             T.section("combat table")
@@ -290,12 +291,78 @@ return function(M)
             local hits = 0
             risen.on("entity.damaged", function(victim, attacker, lost) if lost and lost > 0 then hits = hits + 1 end end)
             local fx, fy, fz = p:position()
-            local a = risen.npc.spawn("Inq_Novice_Fighter_01", (fx or 0) + 1500, fy or 0, fz or 0, { name = "EXT_Fighter_A", guild = "Inq", hp_max = 3000, level = 10, items = { { "It_Axe_Ogreaxe", 1 } }, equip = true })
+            local a = risen.npc.spawn("Inq_Novice_Fighter_01", (fx or 0) + 1500, fy or 0, fz or 0, { name = "EXT_Fighter_A", guild = "Inq", hp_max = 3000, level = 10, items = { { "It_Axe_Ogre", 1 } }, equip = true })
             local bb = risen.npc.spawn("Don_Henchman_S_01", (fx or 0) + 1600, fy or 0, fz or 0, { name = "EXT_Fighter_B", guild = "Pir", hp_max = 3000, level = 10, items = { { "It_1H_Epee", 1 } }, equip = true })
             T.wait_until(function() return hits >= 3 end, 40, "blows between the fighters")
             T.expect("a fight under the new combat table", a ~= nil and bb ~= nil and hits >= 3, ("%d blows landed"):format(hits))
             if a then a:kill() end
             if bb then bb:kill() end
+
+            T.section("shipped templates the mod changes in place")
+            -- The mod's files It_Axe_Ogreaxe / It_Axe_Pickaxe / It_2H_Uriziel / It_Axe_Trollfist carry the ENTITY names It_Axe_Ogre / It_Pickaxe / It_BS_RuneSword / It_2H_Berserk
+            -- (the engine knows a template by that name, RE.md section 48): the shipped templates get new numbers, and what the world places (GUID) follows. Entity ids are
+            -- from the game's own layers (Wild_Outdoor_Item, Pirate_Coast_Item, Dungeon_Titan_Items, BD_Waterfall_Items).
+            local function has_stack(e, name)
+                for i = 0, e:stack_count() - 1 do local s = e:stack_item(i) if s and s:name() == name then return true end end
+                return false
+            end
+            local PLACED = {
+                { "f0ab2fda-d678-492f-8235-30a82481f41c", "It_Pickaxe" }, { "b5ff1115-89ab-4151-8fad-bd95bb7d76b7", "It_Pickaxe" },
+                { "a2196abd-8fb8-4f99-90e4-765e28ebc3f5", "It_BS_RuneSword" }, { "366a344c-8482-440f-aaed-d12ce618e413", "It_2H_Berserk" },
+            }
+            local badp, seen = {}, {}
+            for _, pl in ipairs(PLACED) do
+                local e, want = risen.entity.by_id(pl[1]), M.items[pl[2]]
+                if not e then badp[#badp + 1] = pl[2] .. " " .. pl[1] .. ": not found"
+                elseif not want then badp[#badp + 1] = pl[2] .. ": no data"
+                else
+                    -- the engine reports category and use type as numbers: a fresh spawn of the (changed) template is the reference
+                    local ref = risen.entity.spawn(pl[2], (x or 0) + 100, (y or 0) + 10, z or 0, true)
+                    local rc, ru = ref and ref:item_category(), ref and ref:item_use_type()
+                    if ref then ref:kill() end
+                    local got = { value = e:item_value(), category = e:item_category(), use = e:item_use_type(), damage = num(e:get_property("gCDamage_PS", "DamageAmount")), str = (e:requirements() or {}).Strength }
+                    local wstr
+                    for _, r in ipairs(want.requires or {}) do if r.skill == "Strength" then wstr = r.amount end end
+                    seen[#seen + 1] = ("%s v%s cat %s/%s use %s/%s d%s s%s"):format(pl[2], tostring(got.value), tostring(got.category), tostring(rc), tostring(got.use), tostring(ru), tostring(got.damage), tostring(got.str))
+                    if want.value and got.value ~= want.value then badp[#badp + 1] = pl[2] .. " value " .. tostring(got.value) end
+                    if want.damage and got.damage ~= want.damage then badp[#badp + 1] = pl[2] .. " damage " .. tostring(got.damage) end
+                    if want.category and got.category ~= rc then badp[#badp + 1] = pl[2] .. " category " .. tostring(got.category) end
+                    if want.use_type and got.use ~= ru then badp[#badp + 1] = pl[2] .. " use type " .. tostring(got.use) end
+                    if wstr and got.str ~= wstr then badp[#badp + 1] = pl[2] .. " strength " .. tostring(got.str) end
+                end
+            end
+            T.eq("placed items carry the mod's data", badp, {})
+            risen.log.info("extmod: placed items: " .. table.concat(seen, "; "))
+            local karakos = risen.entity.by_id("3ea8344a-6c0e-4d0a-8de5-55dc4f182d33")
+            local ogre = M.items.It_Axe_Ogre
+            local kst
+            if karakos then for i = 0, karakos:stack_count() - 1 do local s = karakos:stack_item(i) if s and s:name() == "It_Axe_Ogre" then kst = s end end end
+            T.expect("Karakos carries the changed ogre axe", kst ~= nil and ogre ~= nil and kst:item_value() == ogre.value and num(kst:get_property("gCDamage_PS", "DamageAmount")) == ogre.damage,
+                ("Karakos %s, stack value %s damage %s, want %s / %s"):format(tostring(karakos ~= nil), tostring(kst and kst:item_value()), tostring(kst and kst:get_property("gCDamage_PS", "DamageAmount")), tostring(ogre and ogre.value), tostring(ogre and ogre.damage)))
+            -- the changed shipped weapons are weapons now: category Weapon, equippable once the requirements are met, also as stacks of the old name
+            local unusable = {}
+            for _, name in ipairs({ "It_Pickaxe", "It_Axe_Ogre", "It_BS_RuneSword", "It_2H_Berserk", "It_BS_RuneSword_01", "It_Axe_Trollfist", "It_Axe_Ogre_Old", "It_Pickaxe_Misc" }) do
+                risen.item.give(p, name, 1)
+                if not risen.item.can_use(p, name) then unusable[#unusable + 1] = name end
+            end
+            local eq_ok = risen.item.equip(p, "It_Pickaxe")
+            T.sleep(20)
+            T.eq("renamed weapons are equippable", { unusable, eq_ok }, { {}, true })
+            -- Oscar's chapter 3 list names the runesword (the mod's It_BS_RuneSword_01); the chapter info runs this script, here it is called the way main.lua stocks chapter 1
+            local oscar = risen.entity.get("Oscar")
+            local sold = false
+            for _, t in ipairs(DLG.trade) do
+                if t.chapter == 3 then
+                    for _, en in ipairs(t.entries) do
+                        if en.trader == "Oscar" and en.item == "It_BS_RuneSword_01" and oscar then
+                            local item = risen.entity.spawn(en.item, (x or 0) + 100, (y or 0) + 10, z or 0)
+                            if item then pcall(function() risen.script.call("OnTradeInfo_RefillTradeItems", oscar, item, en.count) end) item:kill() end
+                            sold = has_stack(oscar, "It_BS_RuneSword_01")
+                        end
+                    end
+                end
+            end
+            T.expect("Oscar sells the runesword from chapter 3", sold, "Oscar " .. tostring(oscar ~= nil))
 
             -- keep a few things for the load phase
             risen.world.quick_save()
@@ -318,6 +385,11 @@ return function(M)
             if count("It_Necklace_Pearl") < 1 then lost[#lost + 1] = "It_Necklace_Pearl" end
             T.eq("load: items are still in the inventory", lost, {})
             T.eq("load: the numbers are applied again", check_numbers("load"), {})
+            local gone = {}
+            for _, name in ipairs({ "It_Pickaxe", "It_Axe_Ogre", "It_BS_RuneSword", "It_2H_Berserk", "It_BS_RuneSword_01", "It_Axe_Trollfist" }) do
+                if count(name) < 1 then gone[#gone + 1] = name end
+            end
+            T.eq("load: stacks of the changed shipped items survive", gone, {})
         end
     end, "extmod")
 end
