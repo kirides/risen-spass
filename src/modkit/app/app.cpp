@@ -21,6 +21,7 @@
 #include "core/import.h"
 #include "core/log.h"
 #include "core/paths.h"
+#include "core/play.h"
 
 namespace mk {
 
@@ -92,6 +93,7 @@ std::string dialog_pick_folder(const std::string& default_dir) {
 App::App(AppOptions opts) : options(std::move(opts)) {
     settings = Settings::load();
     if (!options.data_dir.empty()) settings.data_dir = options.data_dir;
+    if (!options.game_dir.empty()) settings.game_dir = options.game_dir;
     panels_.push_back(make_project_panel());
     panels_.push_back(make_browser_panel());
     panels_.push_back(make_items_panel());
@@ -270,6 +272,66 @@ void App::refresh_problems() {
     problems_ = validate(project, game.get(), world.get());
 }
 
+void App::poll_game_log() {
+    const double now = glfwGetTime();
+    const PlayPlan plan = play_plan(settings.game_dir);
+    game_log_.set_path(plan.log_file);
+    if (game_log_time_ >= 0 && now - game_log_time_ < 0.5 && !game_problems_dirty_) return;
+    game_log_time_ = now;
+    if (!settings.game_dir.empty() && plan.problem.empty()) {
+        bool reset = false;
+        const size_t before = game_log_lines_.size();
+        std::vector<GameLogLine> fresh;
+        game_log_.poll(fresh, reset);
+        if (reset) game_log_lines_.clear();
+        game_log_lines_.insert(game_log_lines_.end(), fresh.begin(), fresh.end());
+        if (game_log_lines_.size() > 50000) game_log_lines_.erase(game_log_lines_.begin(), game_log_lines_.begin() + static_cast<std::ptrdiff_t>(game_log_lines_.size() - 50000));
+        if (reset || game_log_lines_.size() != before) game_problems_dirty_ = true;
+    }
+    if (game_problems_dirty_) {
+        game_problems_ = game_log_problems(project, game_log_lines_);
+        game_problems_dirty_ = false;
+    }
+}
+
+void App::play() {
+    const PlayPlan plan = play_plan(settings.game_dir);
+    if (!plan.problem.empty()) {
+        status(plan.problem);
+        focus_panel(kPanelSettings);
+        return;
+    }
+    problems_time_ = -1;
+    refresh_problems();
+    if (const size_t errors = error_count(problems_)) {
+        status(std::to_string(errors) + " errors in the project: fix them first (Problems panel)");
+        focus_panel(kPanelProblems);
+        return;
+    }
+    ExportOptions o;
+    o.project_dir = project_path.empty() ? std::string() : u8str(u8(project_path).parent_path());
+    o.game_data_dir = settings.data_dir;
+    o.game = game.get();
+    const ExportResult r = export_mod(project, u8str(u8(plan.mods_dir) / u8(project.mod.id)), o);
+    for (auto& e : r.errors) log_error("play: export: " + e);
+    if (!r.ok) {
+        status("Export failed: " + r.errors.front());
+        return;
+    }
+    PlayOptions po;
+    po.game_dir = settings.game_dir;
+    po.start = static_cast<PlayStart>(std::clamp(settings.play_start, 0, 2));
+    po.force_windowed = settings.play_windowed;
+    const PlayResult pr = play_game(po);
+    log_info("play: " + std::to_string(r.written.size()) + " files written; " + pr.message);
+    status(pr.ok ? pr.message : "Play: " + pr.message);
+    // a new run starts a new log: what the last one said is stale
+    if (pr.ok && !pr.reloaded) {
+        game_log_lines_.clear();
+        game_problems_dirty_ = true;
+    }
+}
+
 void App::draw_export_modal() {
     if (export_open_) {
         ImGui::OpenPopup("Export mod");
@@ -324,6 +386,7 @@ void App::draw_export_modal() {
 }
 
 void App::project_replaced() {
+    game_problems_dirty_ = true;
     for (auto& p : panels_) p->on_project_changed(*this);
     refresh_assets();
     update_title();
@@ -475,6 +538,7 @@ void App::handle_shortcuts() {
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_O, false)) request_open();
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_N, false)) new_project();
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_E, false)) request_export();
+    if (ImGui::IsKeyPressed(ImGuiKey_F5, false)) play();
 }
 
 void App::draw_menu() {
@@ -517,6 +581,31 @@ void App::draw_menu() {
         ImGui::Separator();
         if (ImGui::MenuItem("Reset layout")) layout_done_ = false;
         ImGui::EndMenu();
+    }
+    if (ImGui::BeginMenu("Game")) {
+        if (ImGui::MenuItem("Play: export and start / reload", "F5")) play();
+        if (ImGui::BeginMenu("Start with")) {
+            if (ImGui::MenuItem("Main menu", nullptr, settings.play_start == 0)) { settings.play_start = 0; save_settings(); }
+            if (ImGui::MenuItem("A new game", nullptr, settings.play_start == 1)) { settings.play_start = 1; save_settings(); }
+            if (ImGui::MenuItem("The last quick save", nullptr, settings.play_start == 2)) { settings.play_start = 2; save_settings(); }
+            ImGui::EndMenu();
+        }
+        if (ImGui::MenuItem("Open the game's log")) {
+            const PlayPlan plan = play_plan(settings.game_dir);
+            if (!plan.log_file.empty()) open_in_os(plan.log_file);
+        }
+        if (ImGui::MenuItem("Forget the game's errors")) {
+            game_log_lines_.clear();
+            game_problems_dirty_ = true;
+        }
+        ImGui::EndMenu();
+    }
+    {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.5f, 0.25f, 1));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.22f, 0.62f, 0.3f, 1));
+        if (ImGui::SmallButton("  Play  ")) defer([this] { play(); });
+        ImGui::PopStyleColor(2);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Export the mod into the game folder and start Risen (F5).\nA running game with hot reload picks the new files up.");
     }
     ImGui::EndMainMenuBar();
 }
@@ -586,6 +675,7 @@ void App::draw_modals() {
 
 void App::draw_frame() {
     refresh_problems();
+    poll_game_log();
     refresh_assets();  // cheap when nothing changed; follows undo, open, import
     handle_shortcuts();
     draw_menu();
@@ -676,6 +766,10 @@ int App::run() {
     while (!glfwWindowShouldClose(window_)) {
         glfwPollEvents();
         poll_loader();
+        if (options.play && !game_loading()) {
+            options.play = false;
+            play();
+        }
         if (glfwGetWindowAttrib(window_, GLFW_ICONIFIED)) {
             glfwWaitEventsTimeout(0.1);
             continue;

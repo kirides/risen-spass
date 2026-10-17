@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <functional>
 #include <map>
 #include <regex>
@@ -330,6 +331,7 @@ TEST(gamedata_real_archives) {
 #include "asset_tests.inc"
 #include "image_tests.inc"
 #include "behavior_tests.inc"
+#include "play_tests.inc"
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);

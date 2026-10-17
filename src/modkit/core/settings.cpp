@@ -25,6 +25,9 @@ Settings Settings::load() {
         s.export_dir = j.value("export_dir", std::string());
         s.ui_scale = std::clamp(j.value("ui_scale", 1.0f), 0.5f, 3.0f);
         s.world = j.value("world", std::string("World"));
+        s.game_dir = j.value("game_dir", std::string());
+        s.play_start = std::clamp(j.value("play_start", 1), 0, 2);
+        s.play_windowed = j.value("play_windowed", true);
         if (auto r = j.find("recent"); r != j.end() && r->is_array())
             for (auto& e : *r)
                 if (e.is_string()) s.recent.push_back(e.get<std::string>());
@@ -40,6 +43,9 @@ void Settings::save() const {
     j["export_dir"] = export_dir;
     j["ui_scale"] = ui_scale;
     j["world"] = world;
+    j["game_dir"] = game_dir;
+    j["play_start"] = play_start;
+    j["play_windowed"] = play_windowed;
     j["recent"] = recent;
     try {
         write_text(config_dir() / "settings.json", j.dump(2) + "\n");

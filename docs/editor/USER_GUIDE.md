@@ -261,6 +261,22 @@ The Browser and the item editor show a turning preview of a template's mesh (dra
 * The export writes them into `data\world.lua`; the runtime spawns and fills on `world.ready` and remembers it in the savegame's mod data, so a load never
   spawns or fills twice; a spawned object is marked for the savegame (objects are not by themselves).
 
+## Play and the game's errors
+
+Set the **game folder** (the Risen folder with `bin\Risen.exe` and the mod layer) in **Window > Settings > Play**, choose what the game does at start
+(**Game > Start with**: main menu, a new game, the last quick save) and press the green **Play** button or **F5**:
+
+* The project is validated (errors stop Play), exported into `<game folder>in\spass\mods\<id>` and Risen starts windowed (the setting *Windowed*
+  sets `FullScreen="false"` in `data\ini\ConfigLocal.xml`; the first time a backup `ConfigLocal.xml.modkit-backup` is kept). The editor turns on the layer's
+  file watcher (`[mods] watch = true` in `bin\spass\config.toml`) and, for "new game" / "quick save", adds the tiny helper mod `modkit_autostart`.
+* While that game is running, **Play** only exports again: the layer reloads the mod from the changed files, no restart (the status line says so).
+  A game that was started without the watcher has to be restarted.
+* The editor reads `bin\spass\spass.log` while a game folder is set. Warnings and errors that carry `[<mod id>]` or name something of the project
+  (an item, NPC, quest, a dialogue option's generated name, a `MK_<quest>_<action>` script, ...) appear in the **Problems** panel under *From the game*;
+  a click selects the object. They never block the export. **Game > Forget the game's errors** clears the list, **Game > Open the game's log** opens the file.
+
+Command line: `risen-modkit project.rmk.json --game-dir <Risen folder> --play`.
+
 ## Export
 
 **File > Export mod...** writes the mod into a folder, normally `<Risen>\bin\spass\mods\<mod id>`. The export

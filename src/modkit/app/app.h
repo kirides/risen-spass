@@ -12,6 +12,7 @@
 
 #include "core/assets.h"
 #include "core/gamedata.h"
+#include "core/gamelog.h"
 #include "core/history.h"
 #include "core/project.h"
 #include "core/settings.h"
@@ -30,6 +31,8 @@ class AudioPlayer;
 struct AppOptions {
     std::string project;     // open this project at start
     std::string data_dir;    // overrides the setting
+    std::string game_dir;    // overrides the Play setting (the Risen folder)
+    bool play = false;       // --play: Play once the game data is loaded (a test of the Play button)
     std::string screenshot;  // render `frames` frames, save the window as PNG, exit
     int frames = 10;
     std::string panel;       // focus this panel (screenshots)
@@ -118,6 +121,11 @@ public:
     void select_in(const std::string& panel_title, const std::string& uid_or_name);
     // the validation result of the current project (refreshed twice a second)
     const std::vector<Problem>& problems() const { return problems_; }
+    // problems the running game reported for this mod (spass.log, tailed while a game folder is set), linked to project objects; not part of
+    // problems(): they never block the export
+    const std::vector<Problem>& game_problems() const { return game_problems_; }
+    // Play: export into <game folder>'s bin\spass\mods, then start the game windowed or let a running one hot-reload the mod
+    void play();
     void request_export() { export_open_ = true; }
     void defer(std::function<void()> fn) { deferred_.push_back(std::move(fn)); }  // run after the frame (structural edits)
 
@@ -136,6 +144,7 @@ private:
     void draw_modals();
     void draw_export_modal();
     void refresh_problems();
+    void poll_game_log();
     bool any_busy() const;
     void setup_default_layout(unsigned int dockspace_id);
     void apply_ui_scale();
@@ -159,6 +168,11 @@ private:
     const gfx::ResourceCache* assets_res_ = nullptr;
     const GameData* resources_game_ = nullptr;
     double problems_time_ = -1;
+    LogTail game_log_;
+    std::vector<GameLogLine> game_log_lines_;
+    std::vector<Problem> game_problems_;
+    double game_log_time_ = -1;
+    bool game_problems_dirty_ = false;
     bool export_open_ = false;
     std::string export_dir_;
     std::vector<std::string> export_report_;

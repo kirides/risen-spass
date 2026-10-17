@@ -39,12 +39,14 @@ add_library(modkit_core STATIC
     core/dialog.cpp
     core/export.cpp
     core/gamedata.cpp
+    core/gamelog.cpp
     core/graph.cpp
     core/history.cpp
     core/image.cpp
     core/import.cpp
     core/log.cpp
     core/paths.cpp
+    core/play.cpp
     core/project.cpp
     core/quest.cpp
     core/lua_writer.cpp

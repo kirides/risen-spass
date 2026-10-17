@@ -4,6 +4,7 @@
 
 #include "app/panels/panels.h"
 #include "app/widgets.h"
+#include "core/play.h"
 #include "core/paths.h"
 
 namespace mk {
@@ -55,6 +56,28 @@ public:
                 changed = true;
             }
         }
+        ui::section("Play");
+        ImGui::TextWrapped("The Risen folder (with bin\\Risen.exe and the mod layer) that Play starts. Play exports the mod into its bin\\spass\\mods and starts the game, "
+                           "or, when the game runs with hot reload, lets it reload the mod. The game's errors for this mod appear in the Problems panel.");
+        ImGui::SetNextItemWidth(-90);
+        changed |= ImGui::InputText("##game", &s.game_dir);
+        ImGui::SameLine();
+        if (ImGui::Button("Browse##game")) {
+            const std::string d = dialog_pick_folder(s.game_dir);
+            if (!d.empty()) {
+                s.game_dir = d;
+                changed = true;
+            }
+        }
+        if (!s.game_dir.empty()) {
+            const PlayPlan plan = play_plan(s.game_dir);
+            if (plan.problem.empty()) ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.5f, 1), "Risen.exe found");
+            else ImGui::TextColored(ImVec4(1, 0.6f, 0.4f, 1), "%s", plan.problem.c_str());
+        }
+        const char* starts[] = {"The main menu", "A new game", "The last quick save"};
+        ImGui::SetNextItemWidth(220);
+        changed |= ImGui::Combo("Start with", &s.play_start, starts, 3);
+        changed |= ImGui::Checkbox("Windowed (sets FullScreen=\"false\" in data\\ini\\ConfigLocal.xml, a backup is kept)", &s.play_windowed);
         ui::section("Interface");
         changed |= ImGui::SliderFloat("UI scale", &s.ui_scale, 0.6f, 2.5f, "%.2f");
         if (changed && !ImGui::IsAnyItemActive()) s.save();

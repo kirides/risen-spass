@@ -12,6 +12,9 @@ struct Settings {
     float ui_scale = 1.0f;
     std::vector<std::string> recent;  // most recent first
     std::string world = "World";
+    std::string game_dir;                // the Risen folder Play starts (bin\Risen.exe); Play exports to its bin\spass\mods
+    int play_start = 1;                  // PlayStart: 0 main menu, 1 new game, 2 last quick save
+    bool play_windowed = true;           // Play sets FullScreen="false" in <game_dir>\data\ini\ConfigLocal.xml
 
     void add_recent(const std::string& path);
     static Settings load();  // defaults when the file is missing or broken (logged)
