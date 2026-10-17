@@ -1,0 +1,6 @@
+id          = "meshprobe_shots"
+name        = "Mesh probe screenshots"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Screenshots of the meshprobe item next to the game's club, turned 0, 90 and 180 degrees (the live check of the editor's 3D model import)."
+main        = "main.lua"

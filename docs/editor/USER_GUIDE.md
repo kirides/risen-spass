@@ -199,6 +199,14 @@ A file inside the project's folder is stored relative to it, so save the project
   40x40 cell of the mod's icon atlas instead (`<mod>_IconAtlas._ximg` + `<mod>_Icons.ximl`, registered by the runtime before the items are made;
   the item's icon is then `IC_<mod>_<name>`).
 * **Image lists** (`.ximl` + the `._ximg` it names): your own icon lists; the runtime registers every one of them.
+* **3D models of your own**: **Import 3D model...** reads a Wavefront **OBJ**, a **glTF** (`.gltf` with its `.bin` next to it or embedded, or `.glb`) and writes a compiled mesh
+  `<name>._xmsh` into the project's `assets\` folder (save the project first). The model's triangles are grouped by its materials; the mesh names **game materials**
+  (`._xmat`, which carry the textures): pick one default material and, for a model with several, one per material of the model (the picker lists every material of the game and
+  of the project). **Scale** (a glTF in metres wants 100: the game's units are about centimetres, a human is 180 high), **up axis +Z** (Blender and CAD exports) and
+  **Mirror Z** (OBJ and glTF are right-handed, the game left-handed; switch it off if the model looks mirrored) are the options. Normals are computed when the model has none,
+  tangents from the texture layout. Import the same file again under the same name to update the mesh. Then use the mesh like any other (an item's *Mesh* field, the World view
+  places objects with it). On the command line: `risen-modkit --convert-model model.obj --out My_Mesh._xmsh --material X._xmat [--scale S] [--z-up] [--no-mirror]`.
+  Checked in the game with `mods/meshprobe` (`smoke-test.ps1 -Scenario meshprobe`); skeletal animation and your own materials are not part of it.
 
 ## Behaviours
 
@@ -399,8 +407,9 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 * A spawned object's collision was not checked; level meshes (the landscape, houses that are part of a level mesh) cannot be moved or removed, only
   entities.
 * Icon previews show the game's own icons; a picture of the project used as an item's icon is not previewed (only its name).
-* Meshes in authoring formats (glTF, OBJ, FBX) cannot be added yet; only `._xmsh` files compiled for the engine (AST-4). A new texture on a new mesh
-  needs a material that names it (the editor does not write materials).
+* Models are imported from OBJ and glTF/GLB (not FBX), as static meshes with one UV set and the game's own materials: the editor does not write materials, so a new texture on a
+  new mesh needs a material of the game (or a compiled `._xmat` file in the assets) that names it. Whether the game's axes are the mirror image of OBJ/glTF (the default *Mirror Z*) was
+  inferred from D3D being left-handed, not measured; the triangle winding was (a first version rendered inside out in the game).
 * A picture replaces a game texture only where the engine has not loaded it yet when the mod is mounted (at start: always).
 * Lip sync: a voiced line of the mod has no lip-sync motion (the face does not move); a data-only import turns game sounds the export unpacked into
   project audio files (an import from `modkit\project.json` keeps them as game sounds).

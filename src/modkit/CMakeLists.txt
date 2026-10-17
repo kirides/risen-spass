@@ -54,6 +54,8 @@ add_library(modkit_core STATIC
     core/search.cpp
     core/lua_writer.cpp
     core/mesh.cpp
+    core/meshwrite.cpp
+    core/model_import.cpp
     core/settings.cpp
     core/spells.cpp
     core/tpl_inventory.cpp

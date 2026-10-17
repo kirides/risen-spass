@@ -11,6 +11,7 @@
 #include "core/export.h"
 #include "core/import.h"
 #include "core/log.h"
+#include "core/model_import.h"
 #include "core/paths.h"
 #include "core/validate.h"
 
@@ -19,7 +20,8 @@ namespace {
 constexpr const char* kUsage =
     "risen-modkit [project.rmk.json] [--data DIR] [--screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch] [--click x,y] [--drag x1,y1,x2,y2]]\n"
     "risen-modkit project.rmk.json --export DIR [--data DIR]\n"
-    "risen-modkit --import MODDIR --save project.rmk.json [--from-data]\n";
+    "risen-modkit --import MODDIR --save project.rmk.json [--from-data]\n"
+    "risen-modkit --convert-model model.(obj|gltf|glb) --out My_Mesh._xmsh --material X._xmat [--scale S] [--z-up] [--no-mirror]\n";
 
 int export_headless(const mk::AppOptions& opts, const std::string& out_dir) {
     using namespace mk;
@@ -67,6 +69,50 @@ int export_headless(const mk::AppOptions& opts, const std::string& out_dir) {
 
 }  // namespace
 
+// risen-modkit --convert-model model.obj --out My_Mesh._xmsh --material X._xmat [--scale S] [--z-up] [--no-mirror]
+int convert_model_headless(const std::string& in, const std::string& out, const mk::ModelOptions& opt) {
+    using namespace mk;
+    std::string bytes;
+    try {
+        bytes = read_text(u8(in));
+    } catch (const std::exception& e) {
+        log_error(e.what());
+        return 1;
+    }
+    const fs::path dir = u8(in).parent_path();
+    const ModelSource src = parse_model(bytes, in, [&](const std::string& rel) {
+        try {
+            return read_text(dir / u8(rel));
+        } catch (const std::exception&) {
+            return std::string();
+        }
+    });
+    for (auto& w : src.warnings) log_warn(w);
+    if (!src.error.empty()) {
+        log_error(in + ": " + src.error);
+        return 1;
+    }
+    std::string error;
+    const MeshBuild mesh = model_to_mesh(src, opt, error);
+    if (!error.empty()) {
+        log_error(error);
+        return 1;
+    }
+    const std::string file = build_xmsh(mesh, error);
+    if (!error.empty()) {
+        log_error(error);
+        return 1;
+    }
+    try {
+        write_text(u8(out), file);
+    } catch (const std::exception& e) {
+        log_error(e.what());
+        return 1;
+    }
+    log_info("wrote " + out + ": " + std::to_string(mesh.parts.size()) + " part(s), " + std::to_string(src.triangles()) + " triangles");
+    return 0;
+}
+
 int import_headless(const std::string& dir, const std::string& save, bool prefer_data) {
     using namespace mk;
     ImportResult r = import_mod(dir, prefer_data);
@@ -87,7 +133,8 @@ int import_headless(const std::string& dir, const std::string& save, bool prefer
 
 int main(int argc, char** argv) {
     mk::AppOptions opts;
-    std::string export_dir, import_dir, save_path;
+    std::string export_dir, import_dir, save_path, convert_in, convert_out;
+    mk::ModelOptions model_opt;
     bool from_data = false;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
@@ -125,6 +172,12 @@ int main(int argc, char** argv) {
             opts.clicks.push_back(in);
         }
         else if (a == "--export") export_dir = next("a directory");
+        else if (a == "--convert-model") convert_in = next("a .obj, .gltf or .glb file");
+        else if (a == "--out") convert_out = next("a file name");
+        else if (a == "--material") model_opt.material = next("a game material (X._xmat)");
+        else if (a == "--scale") model_opt.scale = std::atof(next("a number").c_str());
+        else if (a == "--z-up") model_opt.z_up = true;
+        else if (a == "--no-mirror") model_opt.mirror_z = false;
         else if (a == "--import") import_dir = next("a mod folder");
         else if (a == "--save") save_path = next("a project file");
         else if (a == "--from-data") from_data = true;
@@ -146,6 +199,13 @@ int main(int argc, char** argv) {
         }
     }
     mk::log_info("risen-modkit " MK_VERSION);
+    if (!convert_in.empty()) {
+        if (convert_out.empty() || model_opt.material.empty()) {
+            std::fprintf(stderr, "--convert-model needs --out FILE and --material X._xmat\n");
+            return 2;
+        }
+        return convert_model_headless(convert_in, convert_out, model_opt);
+    }
     if (!export_dir.empty()) return export_headless(opts, export_dir);
     if (!import_dir.empty()) {
         if (save_path.empty()) {

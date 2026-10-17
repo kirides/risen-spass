@@ -338,7 +338,9 @@ Each stage ends with a usable feature (or the base the next stage needs), is ver
 
 | **E20** Palette and wizards | the command palette (Ctrl+P: project objects, shipped templates, panels, commands; `core/search.*`) and the Wizards menu (fetch quest, weapon with recipe, trader with stock; `core/wizards.*`, `app/wizards.*`) | EDT-1, EDT-2 | **done** (unit tests `search_*`, `wizard_*`: what a wizard makes compiles, is played through by the dialogue simulator and validates against the game data; screenshots checked; the trader's `DoTrade` was not tried in a real trade) |
 
-Still open from the roadmap of 2026-10-17: **E19** actors (`._xmac`) in the World view and glTF/OBJ to `._xmsh` (AST-4).
+| **E19a** 3D model import (AST-4) | OBJ / glTF / GLB -> `._xmsh`: the writer `core/meshwrite.*` (byte-exact against a shipped mesh, RE.md section 53), the readers `core/model_import.*`, the Assets panel's **Import 3D model...**, `--convert-model`, the probe mods `meshprobe` / `meshprobe_shots` (scenario `meshprobe`) | AST-4 | **done** (unit tests `meshwrite_*`, `model_import_*`; live: the engine loaded the mesh and drew it textured, and the first winding was found wrong from the pictures and fixed; the handedness default is inferred) |
+
+Still open from the roadmap of 2026-10-17: **E19b** actors (`._xmac`) in the World view instead of boxes.
 
 Order rationale: E0-E2 give a usable tool with a real mod at the end of E2; E3-E6 add the other content kinds on the same export pipeline; the world (E7-E8) is independent
 of the content editors and needs format work; placement (E10) needs both; E11/E12 need engine-side work and verification.
@@ -356,8 +358,7 @@ of the content editors and needs format work; placement (E10) needs both; E11/E1
   for removals; the runtime applies removals and moves on every `world.ready`, so it does not depend on what the engine saves (RE.md section 50).
 * **Static mesh templates** -- a spawned object is drawn and stands where it was placed, but it is not save-relevant by itself: the runtime sets it
   (RE.md section 50). Whether such an object collides was not checked.
-* **Custom meshes (AST-4).** Writing an MS02 file the engine accepts is unverified; the risk is contained by verifying in the game (resource state 3 and
-  `risen.debug.screenshot`, RE.md section 26).
+* **Custom meshes (AST-4, solved in E19a).** The MS02 layout is reproduced byte for byte and the engine draws a converted OBJ (RE.md section 53); the handedness default is inferred.
 * **Icons (solved in E15).** `compiled_imagelists.bin` is decoded (RE.md section 51); the editor draws the shipped icons from the atlas. A picture of the project used as an item icon is not previewed.
 * **Placed NPC names.** Dialogues of a *shipped* NPC need its unique entity name; the world layers provide it (the entity name of an NPC instance), the catalogue lists them.
 * **NPC numbers offline (solved in E4).** `gCSkills_PS` is not a reflected property set, but the template stores it as a fixed record (`c9 00 <u32 0x90> c9 00 <u32 0> <u16 4>`

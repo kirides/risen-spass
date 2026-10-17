@@ -17,6 +17,7 @@
 #include "core/assets.h"
 #include "core/image.h"
 #include "core/mesh.h"
+#include "core/model_import.h"
 #include "core/paths.h"
 #include "pack2mod/util.h"
 
@@ -75,6 +76,9 @@ public:
             const std::string dir = app.project_path.empty() ? std::string() : u8str(u8(app.project_path).parent_path());
             add_files(app, dialog_open_files("Resources, pictures and audio", "_xmsh,_xmat,_ximg,_xmac,_xmot,_xsnd,ximl,png,tga,jpg,jpeg,bmp,ogg,wav,mp3", dir));
         }
+        ImGui::SameLine();
+        if (ImGui::Button("Import 3D model...")) begin_model_import(app);
+        ui::help("A model of your own (Wavefront OBJ, glTF, GLB) becomes a compiled mesh (._xmsh) in the project's assets folder. Pick the game materials it uses.");
         ImGui::SameLine();
         if (ImGui::Button("Reload")) {
             app.refresh_assets(true);
@@ -137,12 +141,154 @@ public:
             app.touch();
         }
 
+        draw_model_import(app);
         if (const AssetFile* a = selected(app)) draw_details(app, *a);
         else ImGui::TextDisabled("Add the files of your mod: compiled resources of the engine (made with the game's tools or risen.assets) and audio for voiced lines.");
         ImGui::End();
     }
 
 private:
+    // ---- the import of a 3D model ----
+    struct ModelImport {
+        bool want_open = false, open = false;
+        std::string path, name, error, material;
+        ModelSource source;
+        ModelOptions options;
+        std::vector<std::string> source_materials;
+        std::map<std::string, std::string> mapped;
+    } mi_;
+
+    void begin_model_import(App& app) {
+        if (app.project_path.empty()) {
+            app.status("Save the project first: the mesh is stored in its assets folder");
+            return;
+        }
+        const std::string dir = u8str(u8(app.project_path).parent_path());
+        const std::string f = dialog_open_file("3D models", "obj,gltf,glb", dir);
+        if (f.empty()) return;
+        mi_ = ModelImport{};
+        mi_.path = f;
+        const fs::path p = u8(f);
+        mi_.name = u8str(p.stem());
+        for (char& c : mi_.name)
+            if (!(std::isalnum(static_cast<unsigned char>(c)) && static_cast<unsigned char>(c) < 0x80) && c != '_') c = '_';
+        try {
+            const fs::path folder = p.parent_path();
+            mi_.source = parse_model(read_text(p), u8str(p.filename()), [folder](const std::string& rel) {
+                try {
+                    return read_text(folder / u8(rel));
+                } catch (const std::exception&) {
+                    return std::string();
+                }
+            });
+        } catch (const std::exception& e) {
+            mi_.source.error = e.what();
+        }
+        const std::string ext = p2m::lower(u8str(p.extension()));
+        mi_.options.scale = ext == ".obj" ? 1.0 : 100.0;  // glTF is in metres, the game in about centimetres
+        mi_.options.mirror_z = true;
+        for (auto& g : mi_.source.groups)
+            if (std::find(mi_.source_materials.begin(), mi_.source_materials.end(), g.material) == mi_.source_materials.end()) mi_.source_materials.push_back(g.material);
+        mi_.material = "ItWpn_SwordMisc_01_Diffuse_01._xmat";
+        mi_.want_open = true;
+    }
+
+    void do_model_import(App& app) {
+        ModelOptions o = mi_.options;
+        o.material = mi_.material;
+        o.materials = mi_.mapped;
+        std::string error;
+        const MeshBuild mesh = model_to_mesh(mi_.source, o, error);
+        std::string file;
+        if (error.empty()) file = build_xmsh(mesh, error);
+        if (!error.empty()) {
+            mi_.error = error;
+            return;
+        }
+        const std::string rel = "assets/" + mi_.name + "._xmsh";
+        const fs::path target = u8(app.project_path).parent_path() / u8(rel);
+        try {
+            write_text(target, file);
+        } catch (const std::exception& e) {
+            mi_.error = e.what();
+            return;
+        }
+        const std::string bare = mi_.name + "._xmsh";
+        bool known = false;
+        for (auto& a : app.project.assets)
+            if (p2m::lower(p2m::bare_name(a.file)) == p2m::lower(bare)) {
+                known = true;
+                a.file = rel;
+                a.kind = "mesh";
+                sel_ = a.uid;
+            }
+        if (!known) {
+            AssetFile a{new_uid(), rel, "mesh"};
+            app.project.assets.push_back(a);
+            sel_ = a.uid;
+        }
+        app.touch();
+        app.refresh_assets(true);
+        info_.clear();
+        size_t tris = 0;
+        for (auto& p : mesh.parts) tris += p.indices.size() / 3;
+        app.status("Imported " + bare + ": " + std::to_string(mesh.parts.size()) + " part(s), " + std::to_string(tris) + " triangles");
+        mi_.open = false;
+    }
+
+    void draw_model_import(App& app) {
+        if (mi_.want_open) {
+            ImGui::OpenPopup("Import 3D model");
+            mi_.want_open = false;
+            mi_.open = true;
+        }
+        ImGui::SetNextWindowSize(ImVec2(640, 0), ImGuiCond_Appearing);
+        if (!ImGui::BeginPopupModal("Import 3D model", nullptr)) return;
+        ImGui::TextWrapped("%s", mi_.path.c_str());
+        if (!mi_.source.error.empty()) {
+            ImGui::TextColored(ImVec4(1, 0.45f, 0.4f, 1), "%s", mi_.source.error.c_str());
+            if (ImGui::Button("Close")) ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
+            return;
+        }
+        ImGui::Text("%zu triangles in %zu material group(s)", mi_.source.triangles(), mi_.source.groups.size());
+        for (auto& w : mi_.source.warnings) ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), "%s", w.c_str());
+        ImGui::PushItemWidth(300);
+        ui::input_text("Name of the mesh", mi_.name);
+        ImGui::SameLine();
+        ImGui::TextDisabled("-> assets/%s._xmsh", mi_.name.c_str());
+        ImGui::InputDouble("Scale", &mi_.options.scale, 1, 10, "%g");
+        ui::help("The game's units are about centimetres: a human is 180 units high, so a glTF model in metres wants 100.");
+        ImGui::Checkbox("The model's up axis is +Z", &mi_.options.z_up);
+        ui::help("Blender and CAD models are often +Z up; the game is +Y up.");
+        ImGui::Checkbox("Mirror Z (right-handed model)", &mi_.options.mirror_z);
+        ui::help("OBJ and glTF are right-handed, the game is left-handed: z is negated (which also turns the front faces the way the game wants them). Untick if the model looks mirrored.");
+        ImGui::PopItemWidth();
+        ImGui::SeparatorText("Materials");
+        ImGui::TextDisabled("A mesh names game materials (._xmat); the textures come from them. Pick what each material of the model should become.");
+        ui::asset_picker("Default material", mi_.material, app.game.get(), "_xmat", false, 420);
+        if (mi_.source_materials.size() > 1 || (mi_.source_materials.size() == 1 && !mi_.source_materials[0].empty())) {
+            for (auto& m : mi_.source_materials) {
+                ImGui::PushID(m.c_str());
+                std::string v = mi_.mapped[m];
+                ImGui::AlignTextToFramePadding();
+                ImGui::Text("%s", m.empty() ? "(no material)" : m.c_str());
+                ImGui::SameLine(200);
+                if (ui::asset_picker("##map", v, app.game.get(), "_xmat", false, 420)) mi_.mapped[m] = v;
+                ImGui::PopID();
+            }
+            ImGui::TextDisabled("An empty field uses the default material.");
+        }
+        if (!mi_.error.empty()) ImGui::TextColored(ImVec4(1, 0.45f, 0.4f, 1), "%s", mi_.error.c_str());
+        const bool ok = !mi_.name.empty() && !mi_.material.empty();
+        ImGui::BeginDisabled(!ok);
+        if (ImGui::Button("Import", ImVec2(120, 0))) do_model_import(app);
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(100, 0)) || !mi_.open) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
+    }
+
     std::string sel_;
     // what the details show of a file (read once per selection)
     struct Info {

@@ -1697,3 +1697,33 @@ The Template reference is the entity GUID of an item template (`GameData::templa
 the clothing the engine puts on the NPC). `Type` is 0 for 83 of 88 stacks of the game and 1 for five quest weapons (`sh`'s `It_BS_TitanSword`), `EquipSlot` 0 everywhere. **Verified against the engine:** `mods/npcdump` logged
 `risen.npc.template_inventory` of all NPC and monster templates in the game (82 stacks of 67 templates, the table is `tests/modkit/inventory_tests.inc`); the offline reading gives the same set of (item, amount) pairs for all 359 readable
 templates (2 are not: they are test templates without the record). Six stacks name an item no template of the game has (`Skeleton_SitDead`, `Gnome_Paul_01`, ...): the engine skips them, so does the editor. `core/tpl_inventory.*`.
+
+## 53. Writing meshes: the `._xmsh` layout and the model import (editor stage E19 / AST-4) [reproduced byte for byte; confirmed in the game]
+
+A compiled mesh is `GR01MS02`, a header, a property stream and a payload (section 49 reads it; the writer `core/meshwrite.*` makes it). All integers little endian.
+
+```
+header (0x28)   "GR01" "MS02", u32 0x28, u32 stream length, u32 payload offset (0x28 + stream length), u32 payload length, u64 FILETIME, u64 0
+stream          the object eCMeshResource2 in the inline-string flavour of the GR01 records (section 43: names and types are u16 length + text here, not table indexes):
+                  01 00 01 | 01 00 01 | "eCMeshResource2" | 01 00 00 | c9 00                       accessor header
+                  body: u16 0xc9, u32 size, u16 0xc9, u32 3 properties, then
+                    SubMeshes  bTObjArray<class eCSubMesh>  : u8 1, u32 count, per sub-mesh a body with 6 properties
+                                 MaterialName bCString (u16 length + "X._xmat"), Extends bCBox (6 floats), FirstIndex long, IndexCount long, FirstVertex long, VertexCount long
+                               and, in the body after its properties, the bounding tree: u16 0xc9, u32 node count, nodes of 32 bytes (box 6 floats, u32 first index relative to the
+                               sub-mesh, u32 subtree size); a single node { the sub-mesh's box, 0, 1 } is what 981 of the game's sub-meshes have
+                    LightmapName bCString (u16 0 = empty), Boundary bCBox (the whole mesh)
+                  and u16 0xc9 after the properties of the object; a property is name, type, u16 0x1e, u32 size, payload
+payload         the vertex declaration (D3DVERTEXELEMENT9 x 8 bytes, then D3DDECL_END ff 00 00 00 11 00 00 00), a second D3DDECL_END, 56 zero bytes, then the stream table
+                u32 vertex data size, 0, 0, 1, u32 stride, 10 zero dwords, u32 index data size, 0, u32 format (101 = 16 bit, 102 = 32 bit indices), 1,
+                the vertex data (stream 0, interleaved), the index data (absolute: a sub-mesh's indices start after the vertices of the sub-meshes before it), one byte
+```
+The game's static vertex is 52 bytes: position, normal, tangent (3 floats each at 0, 12, 24), two D3DCOLORs (36, 40; `00 00 ff 00` and `00 00 00 ff` in every shipped static mesh seen) and one UV set (44); the declaration
+also carries the placeholder `(stream 3, offset 0, FLOAT1, TEXCOORD 4)` that the meshes with a lightmap UV set (stride 60) use for real. The last payload byte is 1 for stride 52 and 0 for stride 60 (1552 of
+1666 meshes follow that, the rest are special). The V coordinate is `1 - v` of a modelling tool (D3D v points down; the shipped `-0.808` is `1 - 1.808`). **Checked:** `modkit_tests` `meshwrite_reproduces_a_shipped_mesh` writes
+`It_Wpn_1H_Club._xmsh` from its decoded pieces and gets the same 18854 bytes; 40 shipped static meshes carry the writer's declaration and stream table.
+
+**In the game** (`mods/meshprobe` + `mods/meshprobe_shots`, scenario `meshprobe`, `risen.debug.screenshot`): a mesh made from an OBJ by `risen-modkit --convert-model` is mounted through the mod's `assets` folder, an item template made
+with `mesh = "Spass_Probe.xmsh"` spawns it, and the engine draws it with the material's texture (the pictures are in `bin\spass\screenshots\meshprobe_*.png`). **Winding:** the first version rendered inside out. OBJ and glTF wind their
+front faces counter-clockwise; D3D culls counter-clockwise faces, so the game's front faces are *clockwise*: the importer negates z for a right-handed model (a mirror reverses the winding by itself) and keeps the triangle order,
+and without the mirror it turns the triangles around. **Not verified:** that the game's axes really are the mirror image of OBJ's/glTF's (the default `Mirror Z` is an inference from D3D being left-handed: the importer's option can be
+switched off), what the bounding tree is used for (only single-node trees were written), and meshes with more than 65535 vertices or lightmap UVs.

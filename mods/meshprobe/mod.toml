@@ -1,0 +1,7 @@
+id          = "meshprobe"
+name        = "Mesh probe"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Live check of the editor's 3D model import (AST-4): an item made of a mesh that risen-modkit converted from probe.obj."
+main        = "main.lua"
+assets      = "assets"
