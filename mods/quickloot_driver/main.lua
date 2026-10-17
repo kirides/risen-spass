@@ -186,7 +186,7 @@ local function default_phase()
     local bad2 = risen.effect.start("", p)
     local bad3 = risen.effect.start(("x"):rep(200), p)
     local ok_unknown = risen.effect.start("eff_does_not_exist_01", p)
-    local gone = risen.entity.spawn("It_Apple", px + 400, py + 20, pz); T.sleep(3); gone:kill(); T.sleep(3)
+    local gone = assert(risen.entity.spawn("It_Apple", px + 400, py + 20, pz)); T.sleep(3); gone:kill(); T.sleep(3)
     local bad4 = risen.effect.start("eff_item_apple_transfer_01", gone)
     check("effect.start: bad names and gone entities refused, an unknown name is harmless", bad1 == nil and bad2 == nil and bad3 == nil and bad4 == nil and ok_unknown == true,
         ("bad %s %s %s gone %s unknown %s"):format(tostring(bad1), tostring(bad2), tostring(bad3), tostring(bad4), tostring(ok_unknown)))
