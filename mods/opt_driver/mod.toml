@@ -1,0 +1,7 @@
+id          = "opt_driver"
+name        = "Options menu scenario driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Drives the options page of the in-game mod manager through the engine's input path (scenario `options`). Only meaningful in a test run."
+main        = "main.lua"
+load_after  = ["modmanager", "quickloot"]

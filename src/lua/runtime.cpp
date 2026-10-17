@@ -25,7 +25,7 @@ constexpr const char* kSafeOs[] = {"time", "clock", "date", "difftime"};
 // (Runtime::currentOwner) to the native registries.
 constexpr const char* kOwned[][2] = {
     {"script", "define"}, {"script", "override"}, {"ai", "state"}, {"ai", "callback"}, {"ai", "perceive"},
-    {"combat", "on_damage"}, {"dialog", "create"}, {"quest", "define"}, {"mods", "note_restart"},
+    {"combat", "on_damage"}, {"dialog", "create"}, {"quest", "define"}, {"mods", "note_restart"}, {"options", "define"},
 };
 
 std::string g_owner;  // see Runtime::currentOwner

@@ -27,6 +27,7 @@ end
 local controller = {}
 
 function controller.on_open()
+    model:close_options()
     model:refresh()
     risen.gui.close_menu()
     local ok, why = risen.gui.open(25)
@@ -44,13 +45,23 @@ function controller.on_row(i)
     redraw()
 end
 
+-- an arrow (dir -1 / 1) or the value (1) of row i of the options page: select the option, then one step
+function controller.on_opt(i, dir)
+    local r = model:snapshot().rows[i]
+    if r and model.view == "options" then
+        model:select(r.id)
+        model:option_step(dir)
+    end
+    redraw()
+end
+
 function controller.on_action(name)
     model:press(name)
     redraw()
 end
 
 function controller.on_page(delta)
-    model:page_to(model.page + delta)
+    model:page_to(model:current_page() + delta)
     redraw()
 end
 
@@ -99,6 +110,7 @@ end)
 
 risen.on("ui.page", function(ev)
     if ev.page == 25 and ev.kind == "opened" then
+        model:close_options()
         model:refresh()
         redraw()
     end
@@ -112,10 +124,11 @@ end)
 
 model = Model.new({
     mods = risen.mods,
+    options = risen.options,
     version = risen.version,
     self_id = mod.id,
     log = function(text, tone) risen.log[tone == "info" and "info" or "warn"]("modmanager: " .. text) end,
-}, { rows = 12 })
+}, { rows = 12, option_rows = 10 })
 
 -- Automation interface (the scenario `modmanager`, other mods): `risen.emit("modmanager.state", out)` fills `out.snapshot` (what the page shows), `out.model` and `out.ui`.
 risen.on("modmanager.state", function(out)

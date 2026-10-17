@@ -343,8 +343,24 @@ Click a mod to see its details (id, author, `requires` / `load_after`, what need
 * **Reload** runs the mod again from its files (good for a mod you edit; "Reloaded ..." or the error in red; a mod that is `failed` can be tried again). What a reload cannot change (quests, dialogue infos, created templates ...) is listed as *Restart required*.
 * **Move up / Move down** change the load order, saved in `mods.toml` and applied at the **next start** (the page says so). The dependencies always win: a mod cannot be moved before a mod it `requires` or `load_after`s (the button reads "(blocked)" and a click shows why: *'ext' cannot be loaded before 'base' (requires)*). **Default order** goes back to the automatic order (alphabetical by id, dependencies first).
 The page works without a running game too (at the title screen the menu is behind the console-style "Press START" splash of this copy of the game: in the tests that page is closed first). **ESC** on the page goes back to the main menu; *Continue* returns to the game.
-For a modder: a good `name`, `version`, `author` and `description` in `mod.toml` are what the page shows; declare `requires` for a mod that cannot work without another (it is then switched off and on with it) and `load_after` for a soft ordering; `risen.mods.note_restart("text")` adds a line to *Restart required*. The page is the mod `mods/modmanager` (installed by `install.ps1`; switch it off like any mod, but then the tab is
+For a modder: a good `name`, `version`, `author` and `description` in `mod.toml` are what the page shows (and an **Options** button when the mod declares options, 4.23); declare `requires` for a mod that cannot work without another (it is then switched off and on with it) and `load_after` for a soft ordering; `risen.mods.note_restart("text")` adds a line to *Restart required*. The page is the mod `mods/modmanager` (installed by `install.ps1`; switch it off like any mod, but then the tab is
 gone and `mods.toml` has to be edited by hand to bring it back); its logic (`model.lua`) is plain Lua you can read, the widgets are cloned from the game's own, see [LUA_API.md](LUA_API.md) "GUI windows" to build a page of your own. Limits: the menu is mouse driven (keyboard and gamepad navigation of the page were not driven), the tab exists on the four PC menu pages (not on the gamepad variants), the texts are English only.
+
+### 4.23 Give your mod an options menu (changes apply without a restart)
+Players change options in the game: **ESC > Mods > your mod > Options**. You declare them as a table; the page shows a row per option (`Name:  value`), the buttons change it, and your `on_change` applies the new value at once. Full reference: [LUA_API.md](LUA_API.md) "Options menu".
+```lua
+local cfg = risen.config{ enabled = true, mode = "assess", radius = 450, sound = true }     -- config.toml, then what the menu stored
+risen.options.define{
+  { id = "enabled", name = "My mod", value = cfg.enabled },                                   -- true/false: a toggle
+  { id = "sound",   name = "Sound",  value = cfg.sound, description = "Plays a sound when it works." },
+  { id = "mode", name = "Mode", type = "string", values = { "assess", "veto", "ignore" }, value = cfg.mode },      -- a drop-down
+  { id = "radius", name = "Radius", type = "number", kind = "slider", min = 100, max = 1500, step = 50, value = cfg.radius },
+  on_change = function(id, value) cfg[id] = value end,    -- also redo anything you computed from the option (a key, a table, a timer)
+}
+```
+* Read your options from `cfg` **when you use them** (not once at load) and most options need no more than the one line in `on_change`; recompute what you derived from an option there (as `mods/quickloot` does for its key and its witness mode). An option you can only apply at the next start gets `restart = true` (the page then says so).
+* Nothing else to write for **keeping** the choice: the layer stores what differs from the defaults in `<Risen>\bin\spass\options\<mod id>.toml`, `risen.config` and `risen.options.define` read it at the next start (give every entry a `default`, or the value you passed is the default). The mod's own `config.toml` stays untouched and is the fallback. Delete that file to go back to it. A mod that wants to keep its values elsewhere gives `save = function() ... end` and the layer stores nothing.
+* `enabled = false` in an option is better than `return` at the top of `main.lua`: the mod stays loaded, so the menu can switch it on again. Check the flag in your handlers.
 
 ## 5. Configuration
 

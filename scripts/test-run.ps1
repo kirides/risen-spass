@@ -21,7 +21,7 @@
 .PARAMETER Seconds  Upper bound of the run (without -WaitForResult: how long the game runs).
 .PARAMETER Filter   Regex of log lines to print (default: everything of interest).
 .PARAMETER Keep     Do not delete spass.log and saves before the run (to test loading an earlier save).
-.PARAMETER KeepModsToml  Do not delete <bin>\spass\mods.toml before the run (the choices of the mod manager of an earlier run).
+.PARAMETER KeepModsToml  Do not delete <bin>\spass\mods.toml and <bin>\spass\options before the run (the choices of the mod manager of an earlier run).
 .PARAMETER WaitForResult  Scenario mode: [test] enabled = true, return when test-result.json appears.
 .PARAMETER StallSeconds   Watchdog: kill the game after this long without a new log line (default 90: loading a new game is quiet for up to ~60 s).
 .PARAMETER DeadlineSeconds  [test] deadline_s: the layer itself reports FAIL "timeout" (with the unfinished checks) after this long
@@ -260,7 +260,8 @@ try {
     }
     Set-Content (Join-Path $bin 'spass\config.toml') $cfg
     $modsToml = Join-Path $bin 'spass\mods.toml'   # the player's choices (risen.mods.enable / disable / set_order): never let an earlier run leak into this one
-    if (-not $KeepModsToml) { Remove-Item $modsToml -Force -ErrorAction SilentlyContinue }
+    # ... and so are the choices of the options menu (spass\options\<mod>.toml)
+    if (-not $KeepModsToml) { Remove-Item $modsToml -Force -ErrorAction SilentlyContinue; Remove-Item (Join-Path $bin 'spass\options') -Recurse -Force -ErrorAction SilentlyContinue }
     if ($Disable.Count -gt 0) { Set-Content $modsToml (@('[enabled]') + @($Disable | ForEach-Object { "$_ = false" })) }
     Remove-Item $resultFile -ErrorAction SilentlyContinue
     if (-not $KeepCrash) {

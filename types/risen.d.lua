@@ -3776,6 +3776,108 @@ function saveApi.remove(key) end
 function saveApi.keys() end
 function saveApi.clear() end
 
+---One option of a mod, as the mod declares it for `risen.options.define`. The layer checks it and keeps the value in `value` of the very table the mod passed in.
+---@class OptionEntry
+---@field id string The option's key (letters, digits, `_`, `-`); by convention the key of `config.toml`, so the stored choice and the file agree.
+---@field name? string The label in the menu (default: `id`).
+---@field group? string A heading above this option in the menu (like "Display" on the game's Graphics page); entries with the same `group` should follow each other, the heading appears where the group changes.
+---@field type? "boolean"|"number"|"string" Default: the type of `value`.
+---@field kind? "toggle"|"dropdown"|"slider"|"text" `toggle` (boolean; also `checkbox`, `switch`), `dropdown` (`values`; also `drop-down`, `select`), `slider` (a number between `min` and `max` in steps; also `number`, `range`) or `text`. Default: `values` -> dropdown, boolean -> toggle, number with `min` and `max` -> slider, else text (shown, not editable in the menu).
+---@field value? boolean|number|string The current value (from `risen.config`). The layer writes every change back into this field.
+---@field default? boolean|number|string What "Default value" returns to (default: the first `value`).
+---@field values? any[]|table<any, string> For a drop-down: a list of values, a list of `{ value = v, name = "Label" }`, or a table `value -> label` (shown sorted by label). A `value` outside the list stays in force (and is shown as is) until the player picks another.
+---@field min? number Slider: smallest value.
+---@field max? number Slider: largest value.
+---@field step? number Slider: size of a step (default 1).
+---@field description? string Help text shown next to the option.
+---@field restart? boolean The mod can only apply a change at the next start of the game (the menu says so).
+
+---What `risen.options.define` takes: the entries as the list part of the table (or as `entries = {...}`) and the callbacks.
+---@class OptionsSpec
+---@field title? string Heading of the options page (default: the mod's name).
+---@field entries? OptionEntry[] The entries (instead of the list part).
+---@field on_change? fun(id: string, value: boolean|number|string, old: boolean|number|string) Called after the value of option `id` changed in the menu (or through `risen.options.set`); apply the new value here. An error is logged and shown in the menu.
+---@field save? fun() Called after `on_change` when the mod stores its options itself. Without it the layer keeps the changed values in `<spass>\options\<mod>.toml`, which `risen.config` and `define` read at the next start on top of `config.toml`.
+---@field [integer] OptionEntry
+
+---An option as `risen.options.list` reports it (a copy: changing it changes nothing).
+---@class OptionView
+---@field id string
+---@field name string
+---@field group? string
+---@field type "boolean"|"number"|"string"
+---@field kind "toggle"|"dropdown"|"slider"|"text"
+---@field value boolean|number|string
+---@field default boolean|number|string
+---@field text string The value as the menu shows it (`on`/`off`, the label of a drop-down choice, a number).
+---@field default_text string
+---@field changed boolean The value differs from the default.
+---@field description string
+---@field restart boolean
+---@field values? { value: any, name: string }[] Drop-down choices.
+---@field index? integer Position of the current value in `values`.
+---@field custom? boolean The current value is not one of `values`.
+---@field min? number
+---@field max? number
+---@field step? number
+
+---@class OptionsOfMod
+---@field mod string The mod id.
+---@field title? string
+---@field own_save boolean The mod has a `save` callback (the layer does not store its values).
+---@field entries OptionView[]
+
+---What `risen.options.set` / `reset` report.
+---@class OptionChange
+---@field mod string
+---@field id? string
+---@field old? any
+---@field value? any
+---@field changed boolean
+---@field restart? boolean The change applies at the next start only.
+---@field error? string `on_change` or the storing failed (the value is changed anyway).
+---@field count? integer `reset` of a whole mod: how many options went back to their default.
+
+---Options menu: a mod declares its options, the mod manager (ESC > Mods > the mod > Options) shows them and changes them while the game runs (`mods/quickloot` is the model).
+---@class RisenOptionsApi
+local optionsApi = {}
+---Declares the calling mod's options (once, while it loads; a second call replaces the first). Returns the table, or `nil, reason` when an entry is wrong (nothing is registered then).
+---The values the player stored earlier replace `value` of the entries. Everything is forgotten when the mod is unloaded or reloaded.
+---@param spec OptionsSpec
+---@return OptionsSpec|nil spec
+---@return string|nil reason
+function optionsApi.define(spec) end
+---The value of an option of a mod.
+---@param mod string
+---@param id string
+---@return boolean|number|string|nil value
+---@return string|nil reason
+function optionsApi.get(mod, id) end
+---Sets an option the way the menu does: the value is checked against the entry (type, `values`, `min`/`max`, rounded to `step`), `on_change` is called, then `save` or the layer's store.
+---@param mod string
+---@param id string
+---@param value boolean|number|string
+---@return true|nil ok
+---@return OptionChange|string|nil report_or_reason
+function optionsApi.set(mod, id, value) end
+---One step like the buttons of the menu: a toggle flips, a drop-down takes the next (`dir` 1) or previous (-1) choice (wrapping around), a slider moves by `step` (stays inside `min`..`max`).
+---@param mod string
+---@param id string
+---@param dir 1|-1
+---@return true|nil ok
+---@return OptionChange|string|nil report_or_reason
+function optionsApi.step(mod, id, dir) end
+---Puts one option (or, without `id`, every option of the mod) back to its default.
+---@param mod string
+---@param id? string
+---@return true|nil ok
+---@return OptionChange|string|nil report_or_reason
+function optionsApi.reset(mod, id) end
+---The options of the loaded mods, sorted by mod id (only `mod` when given).
+---@param mod? string
+---@return OptionsOfMod[]
+function optionsApi.list(mod) end
+
 ---The engine's virtual file system, including everything inside the packed archives.
 ---Paths are mount-relative (`ini`, `scripts`, `data/common/...`) or start with `#G3:/`.
 ---@class RisenVfsApi
@@ -4616,6 +4718,7 @@ function logApi.error(...) end
 ---@field loc RisenLocApi
 ---@field save RisenSaveApi
 ---@field vfs RisenVfsApi
+---@field options RisenOptionsApi
 ---@field assets RisenAssetsApi
 ---@field voice RisenVoiceApi
 ---@field debug RisenDebugApi
@@ -4719,7 +4822,7 @@ function risen_.retire(spec) end
 ---@field log RisenLogApi
 
 ---The options of the calling mod: `defaults` is a table of default values that also fixes each option's type; the file `<mod dir>/config.toml` overrides them (an integer fits a number
----default, a nested table merges). A wrong type, an unknown key or a parse error is ignored and listed in the second result (and in `spass.log`); a missing file is no problem.
+---default, a nested table merges), and on top of it the choices the player made in the options menu (`<spass>\options\<mod>.toml`, see `risen.options`). A wrong type, an unknown key or a parse error is ignored and listed in the second result (and in `spass.log`); a missing file is no problem.
 ---`defaults` must not contain `nil` options (use `""`). The defaults table itself is not modified.
 ---@generic T: table
 ---@param defaults T

@@ -486,7 +486,8 @@ A consumed `pressed` should be followed by consuming the matching `held` and `re
 `risen.hud.state()` -> `{ browsing, game, loot, mode, pages }` (`loot` = the loot window is open; `browsing` is true in this test copy, which makes the game's own use key ignore the press).
 
 **Options** (`risen.config`): `local cfg, problems = risen.config({ key = "SecondaryAction", items = true, repeat_ms = 80 })` reads `<mod dir>/config.toml` on top of the defaults (the defaults fix
-each option's type; a wrong type, an unknown key or a broken file is ignored and reported in `problems` and the log).
+each option's type; a wrong type, an unknown key or a broken file is ignored and reported in `problems` and the log). On top of that file come the choices the player made in the
+options menu of the mod manager (`<spass>\options\<mod>.toml`, see "Options menu" below).
 
 **Tracing the engine** (`-Trace calls,hud`, `test-run.ps1 -TraceScripts "^PreInteract,^Interact_,^Unlock,AutoLoot"`): the `calls` channel logs every script the engine calls through a script proxy
 (`script Name(self=.., other=.., arg=..)` and `-> result`), every AI function a character starts (`ai-function PreInteract_Player_Chest (unit of PC_Hero)`) and AI state change (`ai-state ZS_Interact_PreInteract`)
@@ -1156,8 +1157,30 @@ savegame: "Switch off and remove its NPCs" = `disable`, then `orphans` + `remove
 unit-tested; `ui.lua` = the widgets; `main.lua`), shipped with the layer and switchable off like any mod.
 ```lua
 local st = {} ; risen.emit("modmanager.state", st)      -- st.snapshot = what the page shows { rows, detail, buttons, prompt, message, ... }, st.model, st.ui (for tests and other mods)
-st.model:select("my_mod") ; st.model:press("reload")       -- "toggle" | "reload" | "up" | "down" | "reset"; st.model:answer("yes" | "alt" | "no") for a question that was asked
+st.model:select("my_mod") ; st.model:press("reload")       -- "toggle" | "reload" | "up" | "down" | "reset" | "options"; st.model:answer("yes" | "alt" | "no") for a question that was asked
+-- st.model.view is "mods" or "options" (the options of the selected mod, below); there the same buttons mean next value, previous value, default, all defaults, back
 ```
+
+### Options menu (`risen.options`, the **Options** button of the mod manager page, [MODDING_GUIDE.md](MODDING_GUIDE.md) 4.23)
+A mod declares its options as a table of entries; the mod manager shows them (ESC > Mods > the mod > **Options (n)**) and changes them **while the game runs**: the new value is checked, written into the entry, handed to the mod's `on_change`, then stored. Declare once while the mod loads:
+```lua
+local cfg = risen.config{ enabled = true, key = "SecondaryAction", repeat_ms = 80 }      -- config.toml + the choices made in the menu (below)
+risen.options.define{
+  title = "My mod",                                                                   -- heading of the page (default: the mod's name)
+  { id = "enabled", name = "Enabled", value = cfg.enabled, description = "Switches the mod off." },          -- boolean -> toggle
+  { id = "key", name = "Key", type = "string", kind = "dropdown", value = cfg.key, default = "SecondaryAction",
+    values = { { value = "SecondaryAction", name = "Right mouse button" }, "MButton", "V" } },                -- list of values, of { value, name }, or a map value -> label
+  { id = "repeat_ms", name = "Repeat (ms)", type = "number", kind = "slider", value = cfg.repeat_ms, default = 80, min = 20, max = 500, step = 20 },
+  on_change = function(id, value, old) cfg[id] = value end,                           -- apply it: runs after the value changed (an error is logged and shown on the page)
+  -- save = function() ... end,                                                         -- optional: you keep the values yourself; the layer then stores nothing
+}
+```
+* **Entry:** `id` (letters, digits, `_`, `-`; by convention the `config.toml` key), `name`, `type` (`boolean` | `number` | `string`, default: the type of `value`), `kind` (`toggle` | `dropdown` | `slider` | `text`; default: `values` -> dropdown, boolean -> toggle, number with `min` and `max` -> slider, else text), `value` (current), `default` (what **Default value** returns to; default: the first `value`), `values`, `min` / `max` / `step`, `description`, `group` (a heading above the option, where the group changes: the page is laid out like the game's own Settings pages), `restart = true` (the mod only applies it at the next start; the page says so). The entries are the list part of the table (or `entries = {...}`).
+  `define` returns the table, or `nil, reason` for a wrong entry (nothing is registered then). The layer keeps `value` of **your** entry tables up to date. A second `define` of the same mod replaces the first; a reload or unload forgets it.
+* **The page** looks like the game's Settings screens: per option a label on the left and `<  value  >` on the right (the stock arrow and inlay images; a click on the value also takes the next one). A toggle flips with either arrow; a drop-down goes to the next / previous value (wraps around; a `value` outside the list, e.g. from `config.toml`, is shown as it is until the player picks one); a slider (numbers) is drawn like the sliders of the Graphics page, a knob on the track and the number on the right, and moves by `step` inside `min`..`max` (the arrow disappears at the end). Under the rows: the `description` and the default of the selected option. Buttons: **Default value** (the selected option), **All defaults**, **Back to the mods**; changed options are amber. A `text` entry (free text) is shown, not editable (use `config.toml`). Ten rows (headings count) make a page.
+* **Storing:** without `save`, the layer writes the values that differ from their `default` into `<Risen>\bin\spass\options\<mod id>.toml` (the file is deleted when everything is at its default). `risen.config` reads it on top of `config.toml`, and `define` puts it into the entries, so a mod needs nothing more than reading `cfg` (or `value`). Delete the file to start from `config.toml` again. With `save`, the layer calls it after `on_change` and stores nothing.
+* **API:** `risen.options.get(mod, id)`, `set(mod, id, value)` (same checks as the menu: type, `values`, range, rounded to `step`; then `on_change`, `save` / the store), `step(mod, id, dir)` (1 / -1: what the buttons do), `reset(mod [, id])`, `list([mod])` (a copy for UIs: per mod `{ mod, title, own_save, entries = { { id, name, type, kind, value, default, text, default_text, changed, values, index, custom, min, max, step, description, restart } } }`). `set`, `step` and `reset` return `true, report` (`{ changed, old, value, restart, error?, count? }`) or `nil, reason`.
+* `mods/quickloot` is the model: its key, modifier, witness mode and every switch apply at once (`enabled = false` leaves it loaded but idle). Scenario `options`.
 
 ### One-process test suites (`risen.test.reset / suite_begin / suite_finish`, `mods/testsuite`)
 `scripts/test-run.ps1 -Disable a,b` writes those mods as switched off into `mods.toml`; the driver mod `mods/testsuite` (parameter `suite=name:modA+modB,name2:modC`) waits for a running game, then per scenario: `risen.test.reset(name)`, `risen.mods.load` of the scenario's mods (they are told the

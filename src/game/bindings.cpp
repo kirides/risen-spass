@@ -6,6 +6,7 @@
 #include "game/loc_files.h"
 #include "game/loc_overlay.h"
 #include "game/lua_config.h"
+#include "game/lua_options.h"
 #include "game/lua_input.h"
 #include "game/lua_save.h"
 #include "game/lua_entity.h"
@@ -162,7 +163,8 @@ void registerBindings() {
     rt.addBinding(bindInput);           // risen.input
     rt.addBinding(bindHud);
     rt.addBinding(bindGui);             // risen.gui (M16)             // risen.hud
-    rt.addModBinding(bindConfigModApi);  // risen.config(defaults) reads <mod dir>/config.toml
+    rt.addBinding(bindOptions);          // risen.options: the options menu of the mod manager
+    rt.addModBinding(bindConfigModApi);  // risen.config(defaults) reads <mod dir>/config.toml (and the choices made in the options menu)
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo&) { installRecipeModApi(lua, api); });  // after installBalanceModApi: learn = true recipes
     rt.addBinding(bindDialog);
     rt.addModBinding(bindVoiceModApi);  // after bindAssetModApi and bindDialog: wraps risen.dialog.create per mod
@@ -184,6 +186,7 @@ void registerBindings() {
     rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { scripts::releaseOwner(mod, released); });
     rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { aiReleaseOwner(mod, released); });
     rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { combatReleaseOwner(mod, released); });
+    rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { optionsReleaseOwner(mod, released); });
 }
 
 }  // namespace spass::game

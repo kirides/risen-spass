@@ -23,23 +23,29 @@ local DEFAULTS = {
     hold_repeat = true, repeat_ms = 80,
     witness_mode = "assess", witness_veto = 1000, max_distance = 450,
 }
+-- config.toml, then the choices made in the options menu of the mod manager (risen.config merges both). Every option is read from `cfg` when it is used, and the options
+-- menu changes `cfg` while the game runs (the end of this file), so a change applies at once. `enabled = false` leaves the mod loaded but idle, to be switched on in the menu.
 local cfg, problems = risen.config(DEFAULTS)
 for _, p in ipairs(problems) do risen.log.warn("quickloot: " .. p) end
 if not cfg.enabled then
-    risen.log.info("quickloot: disabled by config.toml")
-    return
+    risen.log.info("quickloot: switched off (config.toml or the options menu)")
 end
 
-local witness_mode, why_mode = policy.witness_mode(cfg.witness_mode)
-if not witness_mode then
-    risen.log.warn("quickloot: " .. why_mode .. ", using assess")
-    witness_mode = "assess"
-end
 local have_broadcast = type(risen.ai) == "table" and type(risen.ai.broadcast) == "function"
-if witness_mode == "assess" and not have_broadcast then
-    risen.log.warn("quickloot: this mod layer has no risen.ai.broadcast (the engine's theft assessment): witness_mode falls back to veto")
-    witness_mode = "veto"
+local witness_mode
+local function apply_witness_mode()
+    local mode, why_mode = policy.witness_mode(cfg.witness_mode)
+    if not mode then
+        risen.log.warn("quickloot: " .. why_mode .. ", using assess")
+        mode = "assess"
+    end
+    if mode == "assess" and not have_broadcast then
+        risen.log.warn("quickloot: this mod layer has no risen.ai.broadcast (the engine's theft assessment): witness_mode falls back to veto")
+        mode = "veto"
+    end
+    witness_mode = mode
 end
+apply_witness_mode()
 
 local function trace(fmt, ...)
     if risen.trace.enabled("quickloot") then risen.trace("quickloot", fmt:format(...)) end
@@ -48,18 +54,25 @@ end
 -- ---------------------------------------------------------------------------------------------------------------------------------------------
 -- the key
 -- ---------------------------------------------------------------------------------------------------------------------------------------------
-local key_name = cfg.key
-local is_action = risen.input.action_key(key_name) ~= nil      -- an engine action (events can be consumed) or a raw key (polled)
-local known, why_key = risen.input.pressed(key_name)
-if known == nil then
-    risen.log.error(("quickloot: key '%s' is neither an action nor a key name (%s): the key press does nothing"):format(key_name, tostring(why_key)))
-end
 local MODS = { none = true, shift = "shift", ctrl = "ctrl", alt = "alt" }
-local modifier = MODS[tostring(cfg.modifier):lower()]
-if modifier == nil then
-    risen.log.warn(("quickloot: modifier '%s' is not none/shift/ctrl/alt, using none"):format(tostring(cfg.modifier)))
-    modifier = true
+local key_name, is_action, modifier
+local consuming = false   -- the engine does not see the action events of a press that quick loot used
+local last_step = 0
+local function apply_key()
+    key_name = cfg.key
+    is_action = risen.input.action_key(key_name) ~= nil      -- an engine action (events can be consumed) or a raw key (polled)
+    local known, why_key = risen.input.pressed(key_name)
+    if known == nil then
+        risen.log.error(("quickloot: key '%s' is neither an action nor a key name (%s): the key press does nothing"):format(key_name, tostring(why_key)))
+    end
+    modifier = MODS[tostring(cfg.modifier):lower()]
+    if modifier == nil then
+        risen.log.warn(("quickloot: modifier '%s' is not none/shift/ctrl/alt, using none"):format(tostring(cfg.modifier)))
+        modifier = true
+    end
+    consuming, last_step = false, 0
 end
+apply_key()
 local function modifier_ok()
     if modifier == true then return true end
     return risen.input.modifiers()[modifier] == true
@@ -201,6 +214,7 @@ local function attempt(target, source)
     local player = risen.entity.player()
     if not player or not target or target:position() == nil then return decline("no target") end
     res.target = target:name()
+    if not cfg.enabled then return decline("switched off") end
     local ok, why = player_ready(player)
     if not ok then return decline(why) end
     local dist = player:distance_to(target)
@@ -276,27 +290,26 @@ end)
 -- ---------------------------------------------------------------------------------------------------------------------------------------------
 -- input
 -- ---------------------------------------------------------------------------------------------------------------------------------------------
-local consuming = false   -- the engine does not see the action events of a press that quick loot used
-local last_step = 0
-
-if is_action then
-    risen.on("input.action", function(ev)
-        if ev.action:lower() ~= key_name:lower() then return nil end
-        if ev.phase == "pressed" then
-            last_step = 0
-            consuming = try_focus("key")
-            return consuming or nil
-        elseif ev.phase == "held" then
-            return consuming or nil
-        elseif ev.phase == "released" then
-            local c = consuming
-            consuming = false
-            return c or nil
-        end
-    end)
-end
+risen.on("input.action", function(ev)
+    if not is_action or ev.action:lower() ~= key_name:lower() then return nil end
+    if ev.phase == "pressed" then
+        last_step = 0
+        consuming = cfg.enabled and try_focus("key")
+        return consuming or nil
+    elseif ev.phase == "held" then
+        return consuming or nil
+    elseif ev.phase == "released" then
+        local c = consuming
+        consuming = false
+        return c or nil
+    end
+end)
 
 risen.on("tick", function()
+    if not cfg.enabled then
+        last_step = 0
+        return
+    end
     if not is_action and risen.input.was_pressed(key_name) then
         last_step = 0
         try_focus("key")
@@ -311,6 +324,61 @@ risen.on("tick", function()
         last_step = 0
     end
 end)
+
+-- ---------------------------------------------------------------------------------------------------------------------------------------------
+-- the options menu (mod manager: ESC > Mods > Quick Loot > Options). A change lands in `cfg`; the key and the witness mode are worked out again; the mod manager stores the
+-- choice in <spass>\options\quickloot.toml, which risen.config reads at the next start on top of config.toml. Free key names go into config.toml (a value that is not in the
+-- list stays in force and is shown as it is).
+-- ---------------------------------------------------------------------------------------------------------------------------------------------
+local function entry(id, name, description, extra)
+    local e = { id = id, name = name, description = description, value = cfg[id], default = DEFAULTS[id] }
+    for k, v in pairs(extra or {}) do e[k] = v end
+    return e
+end
+local KEYS = {
+    { value = "SecondaryAction", name = "Right mouse button" }, { value = "PrimaryAction", name = "Left mouse button" }, { value = "Selection", name = "Use key" },
+    { value = "MButton", name = "Middle mouse button" }, { value = "XButton1", name = "Mouse side button 1" }, { value = "XButton2", name = "Mouse side button 2" },
+    "V", "G", "X", "C", "Z", "Y", "B", "N", "H", "J", "K", "L",
+}
+local entries = {}
+local function group(name, ...)   -- the entries of one heading on the page (like the headings of the game's own Settings pages)
+    for _, e in ipairs({ ... }) do
+        e.group = name
+        entries[#entries + 1] = e
+    end
+end
+local function slider(min, max, step) return { type = "number", kind = "slider", min = min, max = max, step = step } end
+group("General",
+    entry("enabled", "Quick loot", "Take what you look at with one key press, without walking over or any animation."),
+    entry("key", "Key", "The key that takes the target. The right mouse button does nothing in the game while no weapon is drawn. More key names (F-keys, Space, ...) can be set in config.toml.",
+        { type = "string", kind = "dropdown", values = KEYS }),
+    entry("modifier", "Modifier key", "A key that has to be held with the key to take something (none = the key alone).",
+        { type = "string", kind = "dropdown", values = { { value = "none", name = "none" }, { value = "shift", name = "Shift" }, { value = "ctrl", name = "Ctrl" }, { value = "alt", name = "Alt" } } }))
+group("What to take",
+    entry("items", "Items on the ground", "Take items that lie on the ground."),
+    entry("corpses", "Dead and knocked-out", "Loot dead and knocked-out humans, the washed-up bodies of the beach and monster or animal carcasses."),
+    entry("chests", "Chests and cupboards", "Open chests, cupboards and sarcophagi."),
+    entry("keys", "Open with a key", "A locked chest is opened with the matching key from the inventory (never lockpicked)."),
+    entry("max_distance", "Reach (units)", "How close the target has to be.", slider(100, 1500, 50)))
+group("Feedback",
+    entry("print", "Item messages", "A line in the game log for every item taken from the ground (looted stacks are printed by the game itself)."),
+    entry("pickup_sound", "Pick-up sound", "The sound of the take animation for items from the ground (it depends on the item: apple, gold, wood, potion, ...)."),
+    entry("pickup_sound_gap", "Sound spacing (ms)", "After one pick-up sound the next waits this long, so holding the key does not pile the sounds up. 0 = a sound for every item.", slider(0, 2000, 100)))
+group("Repeat",
+    entry("hold_repeat", "Hold to repeat", "Hold the key to take everything in reach, one target after the other."),
+    entry("repeat_ms", "Repeat interval (ms)", "The time between two targets while the key is held.", slider(20, 500, 20)))
+group("Witnesses",
+    entry("witness_mode", "Reaction of people", "What people do when you take an item or open a chest: assess = the game's own reaction (they see it, comment, threaten), veto = nothing is taken while a human who sees you is near, ignore = nobody reacts.",
+        { type = "string", kind = "dropdown", values = { { value = "assess", name = "assess (the game reacts)" }, { value = "veto", name = "veto (decline when seen)" }, { value = "ignore", name = "ignore" } } }),
+    entry("witness_veto", "Veto radius", "Reaction = veto only: the distance in game units within which a human who sees you stops quick loot. 0 = never.", slider(0, 3000, 100)))
+entries.title = "Quick Loot"
+entries.on_change = function(id, value)
+    cfg[id] = value
+    if id == "key" or id == "modifier" then apply_key()
+    elseif id == "witness_mode" then apply_witness_mode() end
+    risen.log.info(("quickloot: option %s = %s"):format(id, tostring(value)))
+end
+risen.options.define(entries)
 
 risen.log.info(("quickloot: ready (key %s%s, items=%s corpses=%s chests=%s keys=%s, witnesses: %s)"):format(
     key_name, modifier == true and "" or (" + " .. modifier), tostring(cfg.items), tostring(cfg.corpses), tostring(cfg.chests), tostring(cfg.keys), witness_mode))

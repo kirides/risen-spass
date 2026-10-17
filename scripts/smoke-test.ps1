@@ -62,7 +62,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'modmanager', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'modmanager', 'options', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -278,6 +278,12 @@ $scenarios = [ordered]@{
                                @{ Name = 'main'; Param = @('phase=main'); Start = 'new'; Keep = $false; Limit = 300; Unsafe = $true }
                                @{ Name = 'restart'; Param = @('phase=restart'); Start = 'new'; Keep = $false; Limit = 200; Unsafe = $true; KeepModsToml = $true }
                                @{ Name = 'menu'; Param = @('phase=menu'); Start = 'new'; Keep = $false; Limit = 200; Unsafe = $true; NoAutostart = $true }
+                           ) }
+    # the options page of the mod manager (risen.options) against the mod quickloot: toggle / drop-down / slider / pages / defaults / back, live effect, the store file, a reload; "restart" keeps spass\options
+    options           = @{ Est = 150; Title = 'options menu (mod manager: the options of a mod, live changes, the stored choices, restart)'; Kind = 'result'; Mods = @('modmanager', 'quickloot', 'opt_driver'); Limit = 300
+                           Phases = @(
+                               @{ Name = 'main'; Param = @('phase=main'); Start = 'new'; Keep = $false; Limit = 300; Unsafe = $true }
+                               @{ Name = 'restart'; Param = @('phase=restart'); Start = 'new'; Keep = $false; Limit = 200; Unsafe = $true; KeepModsToml = $true }
                            ) }
     # one process per phase: "save" crafts at the anvil (twice) and saves, "load" crafts again in a fresh process, "load_missing" runs without the mod's content, "load_again" has it again
     ex_recipe         = @{ Est = 250; Title = 'example: a new smithing recipe (save, load, missing, again)'; Kind = 'result'; Mods = @('example_recipe'); Limit = 300

@@ -9,6 +9,7 @@ local M = {}
 M.__index = M
 
 M.ROWS = 12
+M.OPTION_ROWS = 10   -- rows of the options page (one setting per row, like the game's own Settings pages)
 
 local function join(list, sep)
     return table.concat(list or {}, sep or ", ")
@@ -74,6 +75,7 @@ function M.new(host, opts)
     local self = setmetatable({}, M)
     self.host = host
     self.rows_per_page = (opts and opts.rows) or M.ROWS
+    self.opt_rows_per_page = (opts and (opts.option_rows or opts.rows)) or M.OPTION_ROWS
     self.entries = {}        -- id -> entry
     self.order = {}          -- ids as listed (display order)
     self.selected = nil
@@ -82,6 +84,10 @@ function M.new(host, opts)
     self.prompt = nil        -- see ask()
     self.order_changed = false  -- the custom order was changed in this session: it applies at the next start
     self.block_cache = {}
+    self.view = "mods"       -- "mods" | "options" (the options of the selected mod, risen.options)
+    self.opts = {}           -- mod id -> { mod, title, entries } (risen.options.list)
+    self.opt_sel = nil       -- id of the selected option
+    self.opt_page = 1
     self:refresh()
     return self
 end
@@ -132,6 +138,105 @@ function M:refresh()
         self.selected = out[1]
     end
     self:_keep_selection_visible()
+    self:_refresh_options()
+end
+
+-- The options the loaded mods defined (risen.options.list). A host without them has no options page.
+function M:_refresh_options()
+    self.opts = {}
+    local list = self.host.options and safe(self.host.options.list)
+    for _, item in ipairs(type(list) == "table" and list or {}) do
+        if type(item) == "table" and type(item.mod) == "string" and type(item.entries) == "table" and #item.entries > 0 then
+            self.opts[item.mod] = item
+        end
+    end
+    if self.view == "options" then
+        local item = self.selected and self.opts[self.selected]
+        if not item then
+            self.view = "mods"
+        elseif not self:_opt_entry(self.opt_sel) then
+            self.opt_sel = item.entries[1].id
+        end
+    end
+end
+
+-- The rows of the options page in pages: one per option, plus a heading row where the `group` of the entries changes (like "Display" on the game's Graphics page).
+-- A heading is never the last row of a page.
+function M:_opt_pages()
+    local item = self:_opt_item()
+    local items, last = {}, nil
+    for _, e in ipairs(item and item.entries or {}) do
+        if e.group and e.group ~= "" and e.group ~= last then
+            items[#items + 1] = { heading = e.group }
+        end
+        last = e.group
+        items[#items + 1] = { entry = e }
+    end
+    local pages, page = {}, {}
+    local per = math.max(2, self.opt_rows_per_page)
+    for i, it in ipairs(items) do
+        if #page >= per or (it.heading and #page == per - 1 and items[i + 1]) then
+            pages[#pages + 1] = page
+            page = {}
+        end
+        page[#page + 1] = it
+    end
+    if #page > 0 or #pages == 0 then
+        pages[#pages + 1] = page
+    end
+    return pages
+end
+
+---The page of the options list that shows option `id` (nil for an unknown id).
+function M:option_page(id)
+    for n, page in ipairs(self:_opt_pages()) do
+        for _, it in ipairs(page) do
+            if it.entry and it.entry.id == id then
+                return n
+            end
+        end
+    end
+end
+
+function M:option_count(id)
+    local item = self.opts[id or self.selected]
+    return item and #item.entries or 0
+end
+
+---@return OptionsOfMod|nil
+function M:_opt_item()
+    return self.selected and self.opts[self.selected] or nil
+end
+
+function M:_opt_entry(id)
+    local item = self:_opt_item()
+    for _, e in ipairs(item and item.entries or {}) do
+        if e.id == id then
+            return e
+        end
+    end
+end
+
+---Shows the options of the selected mod (false and a message when it has none).
+function M:open_options()
+    self.prompt = nil
+    self.message = nil
+    local item = self:_opt_item()
+    if not item then
+        self:_say("This mod has no options.", "info")
+        return false
+    end
+    self.view = "options"
+    self.opt_sel = item.entries[1].id
+    self.opt_page = 1
+    return true
+end
+
+function M:close_options()
+    self.view = "mods"
+    self.prompt = nil
+    self.message = nil
+    return true
 end
 
 function M:count()
@@ -139,6 +244,9 @@ function M:count()
 end
 
 function M:pages()
+    if self.view == "options" then
+        return #self:_opt_pages()
+    end
     return math.max(1, math.ceil(#self.order / self.rows_per_page))
 end
 
@@ -155,7 +263,12 @@ function M:_keep_selection_visible()
     if i then
         self.page = math.floor((i - 1) / self.rows_per_page) + 1
     end
-    self.page = math.max(1, math.min(self.page, self:pages()))
+    self.page = math.max(1, math.min(self.page, math.max(1, math.ceil(#self.order / self.rows_per_page))))
+end
+
+---The page of the list that is shown (the mods, or the options of the selected mod).
+function M:current_page()
+    return self.view == "options" and self.opt_page or self.page
 end
 
 function M:page_to(n)
@@ -163,12 +276,24 @@ function M:page_to(n)
         return false
     end
     n = math.max(1, math.min(math.floor(n), self:pages()))
-    self.page = n
+    if self.view == "options" then
+        self.opt_page = n
+    else
+        self.page = n
+    end
     return true
 end
 
 ---Selects a mod by id (a click on its row). Returns false for an unknown id.
 function M:select(id)
+    if self.view == "options" then
+        if not self:_opt_entry(id) then
+            return false
+        end
+        self.opt_sel = id
+        self.message = nil
+        return true
+    end
     if not self.entries[id] then
         return false
     end
@@ -482,8 +607,112 @@ function M:reset_order()
     return true
 end
 
----Runs an action by name: "toggle", "reload", "up", "down", "reset".
+---------------------------------------------------------------------------------------------------------------------
+-- Options of the selected mod
+---------------------------------------------------------------------------------------------------------------------
+
+function M:_say_change(id, report)
+    self:refresh()
+    local e = self:_opt_entry(id)
+    local label = e and e.name or id
+    if not report.changed then
+        self:_say(label .. ": no change.", "info")
+    elseif report.error then
+        self:_say(label .. " changed, but: " .. report.error, "error")
+    elseif report.restart then
+        self:_say(("%s: %s. Applies at the next start of the game."):format(label, e and e.text or tostring(report.value)), "warn")
+    else
+        self:_say(("%s: %s"):format(label, e and e.text or tostring(report.value)), "info")
+    end
+    return not report.error
+end
+
+---One step of the selected option: dir = 1 next value / switch / increase, dir = -1 previous value / decrease.
+function M:option_step(dir)
+    local e = self:_opt_entry(self.opt_sel)
+    if not e then
+        return false
+    end
+    self.prompt = nil
+    if e.kind == "text" then
+        self:_say(e.name .. " is free text: change it in the mod's config.toml.", "info")
+        return false
+    end
+    if e.kind == "slider" and type(e.value) == "number" then
+        if dir > 0 and e.value >= e.max then
+            self:_say(e.name .. " is at its maximum.", "info")
+            return false
+        elseif dir < 0 and e.value <= e.min then
+            self:_say(e.name .. " is at its minimum.", "info")
+            return false
+        end
+    end
+    local ok, report = safe(self.host.options.step, self.selected, e.id, dir)
+    if not ok then
+        self:_say(e.name .. ": " .. tostring(report or "refused"), "error")
+        return false
+    end
+    return self:_say_change(e.id, report)
+end
+
+---The selected option back to its default.
+function M:option_default()
+    local e = self:_opt_entry(self.opt_sel)
+    if not e then
+        return false
+    end
+    self.prompt = nil
+    local ok, report = safe(self.host.options.reset, self.selected, e.id)
+    if not ok then
+        self:_say(e.name .. ": " .. tostring(report or "refused"), "error")
+        return false
+    end
+    return self:_say_change(e.id, report)
+end
+
+---Every option of the selected mod back to its default.
+function M:option_defaults_all()
+    if not self:_opt_item() then
+        return false
+    end
+    self.prompt = nil
+    local ok, report = safe(self.host.options.reset, self.selected)
+    if not ok then
+        self:_say("Could not reset: " .. tostring(report or "refused"), "error")
+        return false
+    end
+    self:refresh()
+    ---@type OptionChange
+    local done = type(report) == "table" and report or {}
+    local n = done.count or 0
+    if done.error then
+        self:_say(("Reset %d option(s), but: %s"):format(n, done.error), "error")
+        return false
+    end
+    self:_say(n == 0 and "Everything is at its default already." or ("Reset %d option(s) to their defaults."):format(n), "info")
+    return true
+end
+
+---Runs an action by name: "toggle", "reload", "up", "down", "reset"; "options" opens the options of the selected mod. In the options view the buttons mean: next value
+---(toggle), previous value (reload), this option's default (up), every default (down), back to the mods (reset).
 function M:press(action)
+    if action == "options" then
+        return self:open_options()
+    end
+    if self.view == "options" then
+        if action == "toggle" then
+            return self:option_step(1)
+        elseif action == "reload" then
+            return self:option_step(-1)
+        elseif action == "up" then
+            return self:option_default()
+        elseif action == "down" then
+            return self:option_defaults_all()
+        elseif action == "reset" then
+            return self:close_options()
+        end
+        return false
+    end
     if action == "toggle" then
         return self:toggle()
     elseif action == "reload" then
@@ -593,8 +822,124 @@ function M:detail(e)
     return lines
 end
 
+local function option_detail(e)
+    local lines = {}
+    local function add(text)
+        lines[#lines + 1] = { text = text }
+    end
+    if e.description and e.description ~= "" then
+        add(e.description)
+        add("")
+    end
+    add("Value: " .. e.text .. (e.custom and "  (not in the list)" or ""))
+    add("Default: " .. e.default_text)
+    if e.kind == "slider" then
+        add(("Range: %s to %s, step %s"):format(tostring(e.min), tostring(e.max), tostring(e.step)))
+    elseif e.kind == "dropdown" and e.values then
+        add(("Choice %s of %d"):format(e.index and tostring(e.index) or "-", #e.values))
+    elseif e.kind == "text" then
+        add("Free text: change it in config.toml.")
+    end
+    if e.restart then
+        add("Applies at the next start of the game.")
+    end
+    return lines
+end
+
+-- the one paragraph under the rows: what the selected option is for, its default and when it applies
+local function option_hint(e)
+    local parts = {}
+    if e.description and e.description ~= "" then
+        parts[#parts + 1] = e.description
+    end
+    local tail = "Default: " .. e.default_text .. "."
+    if e.kind == "slider" then
+        tail = ("Default: %s (%s to %s, step %s)."):format(e.default_text, tostring(e.min), tostring(e.max), tostring(e.step))
+    elseif e.kind == "text" then
+        tail = tail .. " Free text: change it in config.toml."
+    end
+    parts[#parts + 1] = tail
+    if e.custom then
+        parts[#parts + 1] = "The current value is not in the list."
+    end
+    if e.restart then
+        parts[#parts + 1] = "Applies at the next start of the game."
+    end
+    return table.concat(parts, " ")
+end
+
+local NEXT_LABEL = { dropdown = "Next value >", slider = "Increase >" }
+local PREV_LABEL = { dropdown = "< Previous value", slider = "< Decrease" }
+
+-- the snapshot of the options of the selected mod
+function M:_options_snapshot()
+    local item = self:_opt_item() or { mod = self.selected or "", entries = {} }
+    local entries = item.entries
+    local rows, changed = {}, 0
+    for _, e in ipairs(entries) do
+        if e.changed then
+            changed = changed + 1
+        end
+    end
+    self.opt_page = math.max(1, math.min(self.opt_page, self:pages()))
+    for n, it in ipairs(self:_opt_pages()[self.opt_page] or {}) do
+        local e = it.entry
+        if not e then
+            rows[#rows + 1] = { heading = true, text = it.heading, label = clip(it.heading, 40), tone = "ok", selected = false, index = n }
+        else
+            local slider = e.kind == "slider" and type(e.value) == "number"
+            rows[#rows + 1] = {
+                id = e.id,
+                index = n,
+                text = ("%s:  %s"):format(clip(e.name, 32), e.text),
+                label = clip(e.name, 40),
+                value_text = clip(e.text, 34),
+                kind = e.kind,
+                fraction = slider and math.max(0, math.min(1, (e.value - e.min) / (e.max - e.min))) or nil,
+                tone = e.changed and "warn" or "ok",
+                selected = e.id == self.opt_sel,
+                editable = e.kind ~= "text",
+                can_prev = e.kind == "toggle" or e.kind == "dropdown" or (slider and e.value > e.min),
+                can_next = e.kind == "toggle" or e.kind == "dropdown" or (slider and e.value < e.max),
+            }
+        end
+    end
+    local mod = self.entries[self.selected]
+    local snap = {
+        view = "options",
+        title = clip("Options: " .. (item.title or (mod and mod.name ~= "" and mod.name) or item.mod), 30),
+        summary = ("%d %s, %d changed"):format(#entries, plural(#entries, "option", "options"), changed),
+        version = self.host.version,
+        rows = rows,
+        page = self.opt_page,
+        pages = self:pages(),
+        count = #entries,
+        selected = self.opt_sel,
+        message = self.message,
+    }
+    local e = self:_opt_entry(self.opt_sel)
+    local free = e == nil or e.kind == "text"
+    snap.detail_title = e and clip(e.name, 27) or ""
+    snap.detail = e and option_detail(e) or {}
+    snap.hint = e and option_hint(e) or ""
+    local slider = e ~= nil and e.kind == "slider" and type(e.value) == "number"
+    local toggle = e ~= nil and e.kind == "toggle"
+    snap.buttons = {
+        toggle = { label = toggle and (e.value and "Switch off" or "Switch on") or (e and NEXT_LABEL[e.kind]) or "Next value >", enabled = not free and not (slider and e.value >= e.max) },
+        reload = { label = (e and PREV_LABEL[e.kind]) or "< Previous value", enabled = not free and not toggle and not (slider and e.value <= e.min) },
+        up = { label = "Default value", enabled = e ~= nil and e.changed == true },
+        down = { label = "All defaults", enabled = changed > 0 },
+        reset = { label = "Back to the mods", enabled = true },
+        options = { label = "Options", enabled = false },
+    }
+    return snap
+end
+
 ---Everything the page draws.
 function M:snapshot()
+    if self.view == "options" and self:_opt_item() then
+        return self:_options_snapshot()
+    end
     local rows = {}
     local first = (self.page - 1) * self.rows_per_page + 1
     local dirty = self:order_pending()
@@ -628,6 +973,7 @@ function M:snapshot()
         summary = summary .. (", %d off"):format(off)
     end
     local snap = {
+        view = "mods",
         title = "Mods",
         summary = summary,
         version = self.host.version,
@@ -653,7 +999,12 @@ function M:snapshot()
             up = { label = up_ok == false and "Move up (blocked)" or "Move up", enabled = up_ok ~= nil, why = up_why, blocked = up_ok == false },
             down = { label = down_ok == false and "Move down (blocked)" or "Move down", enabled = down_ok ~= nil, why = down_why, blocked = down_ok == false },
             reset = { label = "Default order", enabled = #self.custom_order > 0 or self.order_changed },
+            options = { label = "Options", enabled = false },
         }
+        local n = self:option_count(e.id)
+        if n > 0 then
+            snap.buttons.options = { label = ("Options (%d)"):format(n), enabled = true }
+        end
     else
         snap.detail_title = "No mods installed"
         snap.detail = { { text = "Put mod folders into bin\\spass\\mods." } }
@@ -663,6 +1014,7 @@ function M:snapshot()
             up = { label = "Move up", enabled = false },
             down = { label = "Move down", enabled = false },
             reset = { label = "Default order", enabled = false },
+            options = { label = "Options", enabled = false },
         }
     end
     return snap

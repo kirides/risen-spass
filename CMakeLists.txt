@@ -80,6 +80,7 @@ add_library(spass_core STATIC
     src/game/lua_geometry.cpp
     src/game/lua_combat.cpp
     src/game/lua_config.cpp
+    src/game/lua_options.cpp
     src/game/lua_hud.cpp
     src/game/lua_gui.cpp
     src/game/lua_input.cpp

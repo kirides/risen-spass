@@ -37,6 +37,7 @@
 #include "game/loc_files.h"
 #include "game/migrate_lua.h"
 #include "game/lua_config.h"
+#include "game/lua_options.h"
 #include "game/lua_test.h"
 #include "game/lua_entity.h"
 #include "lua/mods.h"
@@ -516,6 +517,8 @@ TEST(balance_install_reports_each_application_to_on_applied) {
 #include "combat_tests.inc"
 #include "mods_tests.inc"
 #include "modmanager_tests.inc"
+#include "options_tests.inc"
+#include "options_model_tests.inc"
 #include "crash_tests.inc"
 #include "pack2mod_tests.inc"
 

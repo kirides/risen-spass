@@ -27,7 +27,14 @@ answering 0 (`mods/example_ignore_theft`): quick loot honours it like the animat
 
 The normal use key keeps doing the game's full interaction (walk, animation, loot window) for everything, also for what quick loot declines.
 
-## Options (`config.toml` in the mod folder)
+## Options (in the game, or `config.toml` in the mod folder)
+
+**In the game:** ESC > **Mods** > Quick Loot > **Options (15)**: every option below (but the free key names) is a row with a toggle, drop-down or slider, and a change **applies at once**, no restart
+(the key and modifier are worked out again, `enabled = false` leaves the mod loaded but idle, ...). The menu stores what differs from the defaults in `<Risen>\bin\spass\options\quickloot.toml`;
+the mod reads that file on top of `config.toml` at the next start (delete it to go back to `config.toml`). The key list of the menu offers the three actions and a few keys; any other key name
+(`F7`, `Space`, ...) is set in `config.toml` and then shown as it is. How the page and the declaration work: [LUA_API.md](LUA_API.md) "Options menu", scenario `options`.
+
+The file `config.toml` (the defaults, edited by hand):
 
 | Option | Default | Meaning |
 |---|---|---|

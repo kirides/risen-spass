@@ -1,5 +1,7 @@
 #include "game/lua_config.h"
 
+#include "game/lua_options.h"
+
 #include <spdlog/spdlog.h>
 #include <toml++/toml.hpp>
 
@@ -86,18 +88,21 @@ void merge(sol::state_view lua, const toml::table& file, sol::table& target, con
 
 }  // namespace
 
-sol::table loadModConfig(sol::state_view lua, const std::filesystem::path& file, const sol::table& defaults, std::vector<std::string>& problems) {
+sol::table loadModConfig(sol::state_view lua, const std::filesystem::path& file, const sol::table& defaults, std::vector<std::string>& problems,
+                         const std::filesystem::path& overrides) {
     sol::table out = copyTable(lua, defaults);
-    std::error_code ec;
-    if (!std::filesystem::exists(file, ec)) {
-        return out;
-    }
-    try {
-        const toml::table parsed = toml::parse_file(file.string());
-        merge(lua, parsed, out, "", problems);
-    } catch (const toml::parse_error& e) {
-        problems.push_back(std::string("config file ") + file.filename().string() + ": " + std::string(e.description()) + " (line " +
-                           std::to_string(e.source().begin.line) + "); defaults used");
+    for (const std::filesystem::path* source : {&file, &overrides}) {
+        std::error_code ec;
+        if (source->empty() || !std::filesystem::exists(*source, ec)) {
+            continue;
+        }
+        try {
+            const toml::table parsed = toml::parse_file(source->string());
+            merge(lua, parsed, out, "", problems);
+        } catch (const toml::parse_error& e) {
+            problems.push_back(std::string("config file ") + source->filename().string() + ": " + std::string(e.description()) + " (line " +
+                               std::to_string(e.source().begin.line) + "); " + (source == &file ? "defaults used" : "ignored"));
+        }
     }
     return out;
 }
@@ -108,7 +113,7 @@ void bindConfigModApi(sol::state_view lua, sol::table api, const lua::ModInfo& m
     api.set_function("config", [dir = mod.dir, id = mod.id](sol::this_state ts, sol::table defaults) {
         sol::state_view L(ts);
         std::vector<std::string> problems;
-        sol::table options = loadModConfig(L, dir / "config.toml", defaults, problems);
+        sol::table options = loadModConfig(L, dir / "config.toml", defaults, problems, optionsStorePath(id));
         sol::table list = L.create_table();
         int i = 1;
         for (const std::string& p : problems) {
