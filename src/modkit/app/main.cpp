@@ -17,7 +17,7 @@
 namespace {
 
 constexpr const char* kUsage =
-    "risen-modkit [project.rmk.json] [--data DIR] [--screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch]]\n"
+    "risen-modkit [project.rmk.json] [--data DIR] [--screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch] [--click x,y] [--drag x1,y1,x2,y2]]\n"
     "risen-modkit project.rmk.json --export DIR [--data DIR]\n"
     "risen-modkit --import MODDIR --save project.rmk.json [--from-data]\n";
 
@@ -111,6 +111,14 @@ int main(int argc, char** argv) {
                 return 2;
             }
             opts.clicks.push_back({x, y});
+        } else if (a == "--drag") {
+            mk::AppOptions::Input in{};
+            if (std::sscanf(next("x1,y1,x2,y2").c_str(), "%f,%f,%f,%f", &in.x, &in.y, &in.x2, &in.y2) != 4) {
+                std::fprintf(stderr, "--drag wants x1,y1,x2,y2\n");
+                return 2;
+            }
+            in.drag = true;
+            opts.clicks.push_back(in);
         }
         else if (a == "--export") export_dir = next("a directory");
         else if (a == "--import") import_dir = next("a mod folder");

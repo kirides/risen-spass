@@ -38,7 +38,7 @@ Panels can be dragged, docked and tabbed; **Window > Reset layout** brings back 
 | Panel | What it does |
 |---|---|
 | **Mod** | the mod's identity: id (folder name, a-z 0-9 _), name, version, author, description, the languages you write texts in (the first is the fallback for all others), dependencies; an overview of the content |
-| **Browser** | every template of the game by group (Items, NPC, Monster, Objects, ...), search by name or label, filter by kind; the inspector shows every property of the selected template. Buttons for the editors: **New item based on this**, **Change this item** |
+| **Browser** | every template of the game by group (Items, NPC, Monster, Objects, ...), search by name or label, filter by kind; the inspector shows every property of the selected template. Buttons for the editors: **New item based on this**, **Change this item**. **Include mod** (on by default) lists what the mod makes too, in the group *Mod* (new items, recipes, NPC templates, placed NPCs; blue, a double click opens one in its editor) |
 | **Items** | your new items, changes of shipped items and item groups (below) |
 | **Recipes** | new crafting recipes and changes of shipped ones (below) |
 | **NPCs** | NPC and monster templates, and placed NPCs (below) |
@@ -49,6 +49,15 @@ Panels can be dragged, docked and tabbed; **Window > Reset layout** brings back 
 | **Problems** | what is wrong with the project (errors block the export, warnings do not); click a line to jump to the object |
 | **Log** | what the editor did, and problems reading the game data |
 | **Settings** | data directory, export folder, UI scale |
+
+**Drag and drop**: drag a row of the Browser (or of the lists in the Items, Recipes and NPCs panels) onto
+
+* a **template field** (base item, NPC template, recipe result, quest and dialogue items, ...): it takes the name when the kind fits (an item field
+  takes items, an NPC template field NPCs and monsters; a placed NPC only where a field takes NPC names, e.g. quest targets);
+* an **inventory, loot or ingredient list** (placed NPCs, chests in the World panel, NPC template loot, recipes, quest rewards): dropped on a row it
+  replaces that row's item, dropped anywhere else on the list it adds the item (or one more of it when the list has it already);
+* the **item names of an item group**, the **owner** of a dialogue (placed NPCs);
+* the **World view**: an NPC or monster becomes a new placed NPC where you drop it, a placed NPC moves there, items and objects are spawned there.
 
 **File** menu: new / open / save (`*.rmk.json`, plain JSON that works well in git), **Export mod...** (`Ctrl+E`). **Edit > Undo / Redo** (`Ctrl+Z`, `Ctrl+Y`) covers every change.
 
@@ -184,6 +193,8 @@ player's start point.
   grey objects; effects, navigation helpers and sounds are off at first), the huge boxes of the level meshes, and the layers by folder (the
   navigation, sound and effect layers start hidden).
 * **Find** an entity by name or template; the list flies to the one you choose.
+* **Drop** a template or placed NPC from the Browser (or the NPCs / Items panel) onto the view to place it on the ground under the cursor (the tooltip
+  says what the drop does); it does the same as the place modes below, without choosing the template first.
 * The **inspector** shows the selected entity: its template (*Template in Browser*), its ID (*Copy id*: what `risen.entity.by_id` takes), the position
   (*Copy position*: `{ x, y, z }` for Lua or a placed NPC), the facing, the layer, the mesh, the inventory of chests and NPCs, and every property.
 * The project's placed NPCs with a world position are drawn as magenta boxes. Dialogue owners can be picked from the world's NPCs, and the Problems
@@ -271,7 +282,7 @@ restores their saved state only into objects that exist).
 risen-modkit [project.rmk.json] [--data DIR]                       open the editor
 risen-modkit project.rmk.json --export DIR [--data DIR]            validate and export without a window (exit code 0 = exported)
 risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch] [--click x,y ...]
-                                                                   render (after the given clicks), save a PNG, exit (tests)
+                    [--drag x1,y1,x2,y2 ...]                       render (after the given clicks and drags, in order), save a PNG, exit (tests)
 --verbose                                                          debug lines on stderr too
 ```
 

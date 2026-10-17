@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "app/panels/panels.h"
+#include "app/dragdrop.h"
 #include "app/editor_util.h"
 #include "app/pickers.h"
 #include "app/prop_editor.h"
@@ -141,6 +142,7 @@ private:
             if (!filter_.empty() && i.name.find(filter_) == std::string::npos && lbl.find(filter_) == std::string::npos) continue;
             ImGui::PushID(i.uid.c_str());
             if (ImGui::Selectable(i.name.empty() ? "(unnamed)" : i.name.c_str(), sel_ == i.uid)) sel_ = i.uid;
+            ui::drag_source(i.name, TplKind::Item, false, i.mode == Mode::New, lbl);
             if (ImGui::BeginPopupContextItem()) {
                 if (ImGui::MenuItem("Duplicate")) {
                     ItemDef d = i;
@@ -299,7 +301,12 @@ private:
         ui::help("A Lua pattern on the template name, e.g. ^It_Po_");
         ch |= ui::input_text("Exclude pattern", gr.exclude);
         ImGui::TextUnformatted("Also these items (one per line)");
+        ui::help("Type the names or drag items here from the Browser.");
         ch |= ui::string_list("##names", gr.names);
+        if (const ui::DragTemplate* d = ui::drop_target({TplKind::Item, TplKind::Recipe})) {
+            if (std::find(gr.names.begin(), gr.names.end(), d->name) == gr.names.end()) gr.names.push_back(d->name);
+            ch = true;
+        }
         ui::section("Settings");
         ch |= ui::opt_double("Value factor", gr.value_mult, nullptr, 1.0);
         ch |= ui::opt_double("Damage factor", gr.damage_mult, nullptr, 1.0);

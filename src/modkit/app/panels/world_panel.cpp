@@ -8,6 +8,7 @@
 #include <cmath>
 #include <future>
 #include <map>
+#include <optional>
 #include <set>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -15,6 +16,7 @@
 
 #include <ImGuizmo.h>
 
+#include "app/dragdrop.h"
 #include "app/editor_util.h"
 #include "common/pose.h"
 #include "app/panels/panels.h"
@@ -89,6 +91,13 @@ std::string val_text(const p2m::Val& v) {
         }
         default: return "-";
     }
+}
+
+// what can be placed in the world (a drop on the view, the place modes)
+const std::vector<TplKind>& place_kinds() {
+    static const std::vector<TplKind> k = {TplKind::Npc,    TplKind::Monster,     TplKind::Item,  TplKind::Recipe,
+                                           TplKind::Object, TplKind::Interactive, TplKind::Effect};
+    return k;
 }
 
 class WorldPanel : public Panel {
@@ -492,9 +501,19 @@ private:
         } else if (hovered && io.MouseWheel != 0) {
             cam_.pos += cam_.forward() * io.MouseWheel * cam_.speed * 0.15f;
         }
+        // a template or placed NPC dropped from the Browser / the NPCs panel: placed where it was dropped (after the frame is drawn, like a click)
+        std::vector<std::string> placed;
+        for (auto& n : app.project.npcs) placed.push_back(n.name);
+        std::optional<ui::DragTemplate> dropped;
+        if (const ui::DragTemplate* d = ui::drop_target(place_kinds(), placed)) dropped = *d;
+        if (hovered && ui::dragging()) drop_preview(*ui::dragging());
         if (hovered && ImGui::IsKeyPressed(ImGuiKey_F) && selected_ < world_->entities.size()) fly_to(world_->entities[selected_]);
         bool clicked = false, pick_wanted = false;
         float cu = 0, cv = 0;
+        if (dropped) {
+            cu = (io.MousePos.x - origin.x) / static_cast<float>(w);
+            cv = (io.MousePos.y - origin.y) / static_cast<float>(h);
+        }
         if (ImGui::IsItemDeactivated() && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !gizmo_over_ &&
             glm::length(glm::vec2(ImGui::GetMouseDragDelta(0).x, ImGui::GetMouseDragDelta(0).y)) < 4) {
             cu = (io.MousePos.x - origin.x) / static_cast<float>(w);
@@ -515,6 +534,7 @@ private:
         if (draw_meshes_ && res_) draw_project_meshes(app, vp);
         boxes_.draw(vp);
         if (clicked) place_at(app, cu, cv, w, h, vp);
+        if (dropped) drop_at(app, *dropped, cu, cv, w, h, vp);
         glDisable(GL_DEPTH_TEST);
         overlay_.draw(vp);
         rt_.unbind();
@@ -616,52 +636,87 @@ private:
         return true;
     }
 
-    void place_at(App& app, float u, float v, int w, int h, const glm::mat4& vp) {
+    // the ground under the cursor rounded to a tenth, or nullopt (with a status line) when there is none
+    std::optional<Vec3> ground_pos(App& app, float u, float v, int w, int h, const glm::mat4& vp) {
         glm::vec3 g;
         if (!ground_at(u, v, w, h, vp, g)) {
             app.status("Nothing under the cursor to place on (the sky?)");
-            return;
+            return std::nullopt;
         }
-        const Vec3 pos{std::round(g.x * 10) / 10, std::round(g.y * 10) / 10, std::round(g.z * 10) / 10};
-        if (mode_ == 1) {
-            PlacedNpc* n = nullptr;
-            for (auto& x : app.project.npcs)
-                if (x.uid == place_npc_) n = &x;
-            if (!n) {
-                if (place_template_.empty()) {
-                    app.status("Choose the template of the new NPC first");
-                    return;
-                }
-                PlacedNpc nn;
-                nn.uid = new_uid();
-                nn.template_name = place_template_;
-                nn.name = ui::unique_template_name(app.project, app.game.get(), ui::name_prefix(app.project) + "_" + place_template_);
-                app.project.npcs.push_back(nn);
-                n = &app.project.npcs.back();
-                place_npc_ = n->uid;
-            }
-            n->position = pos;
-            n->offset = false;
-            proj_sel_ = n->uid;
-            app.status("Placed " + n->name);
+        return Vec3{std::round(g.x * 10) / 10, std::round(g.y * 10) / 10, std::round(g.z * 10) / 10};
+    }
+
+    void place_at(App& app, float u, float v, int w, int h, const glm::mat4& vp) {
+        if (mode_ == 1 && !place_npc_.empty()) {
+            if (auto pos = ground_pos(app, u, v, w, h, vp)) move_npc(app, place_npc_, *pos);
+        } else if (mode_ == 1) {
+            if (place_template_.empty()) return app.status("Choose the template of the new NPC first");
+            if (auto pos = ground_pos(app, u, v, w, h, vp)) place_npc_ = new_npc(app, place_template_, *pos);
         } else {
-            if (place_item_.empty()) {
-                app.status("Choose the item to place first");
-                return;
-            }
-            WorldSpawn s;
-            s.uid = new_uid();
-            s.template_name = place_item_;
-            s.position = pos;
-            s.rotation = {std::round(place_yaw_), 0, 0};
-            s.amount = place_amount_;
-            app.project.world.spawns.push_back(s);
-            proj_sel_ = s.uid;
-            app.status("Placed " + place_item_);
+            if (place_item_.empty()) return app.status("Choose the item to place first");
+            if (auto pos = ground_pos(app, u, v, w, h, vp)) new_spawn(app, place_item_, *pos, place_amount_);
         }
+    }
+
+    // a drop on the view: an NPC or monster template becomes a new placed NPC, a placed NPC moves there, anything else is spawned
+    void drop_at(App& app, const ui::DragTemplate& d, float u, float v, int w, int h, const glm::mat4& vp) {
+        const auto pos = ground_pos(app, u, v, w, h, vp);
+        if (!pos) return;
+        if (d.entity) {
+            for (auto& n : app.project.npcs)
+                if (n.name == d.name) return move_npc(app, n.uid, *pos);
+        } else if (d.kind == TplKind::Npc || d.kind == TplKind::Monster) {
+            new_npc(app, d.name, *pos);
+        } else {
+            new_spawn(app, d.name, *pos, 1);
+        }
+    }
+
+    // what a drop would do, as a tooltip while a payload is over the view
+    static void drop_preview(const ui::DragTemplate& d) {
+        const auto& k = place_kinds();
+        const std::string name = d.name;
+        if (d.entity) ImGui::SetTooltip("Move %s here", name.c_str());
+        else if (d.kind == TplKind::Npc || d.kind == TplKind::Monster) ImGui::SetTooltip("A new NPC of %s here", name.c_str());
+        else if (std::find(k.begin(), k.end(), d.kind) != k.end()) ImGui::SetTooltip("Spawn %s here", name.c_str());
+        else ImGui::SetTooltip("%s cannot be placed in the world", name.c_str());
+    }
+
+    void after_place(App& app, const std::string& uid, const std::string& what) {
+        proj_sel_ = uid;
         selected_ = SIZE_MAX;
         overlay_dirty_ = true;
+        app.status(what);
         app.touch();
+    }
+    void move_npc(App& app, const std::string& uid, const Vec3& pos) {
+        for (auto& n : app.project.npcs)
+            if (n.uid == uid) {
+                n.position = pos;
+                n.offset = false;
+                return after_place(app, n.uid, "Placed " + n.name);
+            }
+    }
+    // a new placed NPC of `tpl` at `pos`; returns its uid
+    std::string new_npc(App& app, const std::string& tpl, const Vec3& pos) {
+        PlacedNpc nn;
+        nn.uid = new_uid();
+        nn.template_name = tpl;
+        nn.name = ui::unique_template_name(app.project, app.game.get(), ui::name_prefix(app.project) + "_" + tpl);
+        nn.position = pos;
+        app.project.npcs.push_back(nn);
+        after_place(app, nn.uid, "Placed " + nn.name + " (a new NPC: name, inventory and routine in the NPCs panel)");
+        return nn.uid;
+    }
+    void new_spawn(App& app, const std::string& tpl, const Vec3& pos, int amount) {
+        WorldSpawn sp;
+        sp.uid = new_uid();
+        sp.template_name = tpl;
+        sp.position = pos;
+        sp.rotation = {std::round(place_yaw_), 0, 0};
+        sp.amount = amount;
+        app.project.world.spawns.push_back(sp);
+        after_place(app, sp.uid, "Placed " + tpl);
     }
 
     Vec3* project_position(App& app, const std::string& uid) {

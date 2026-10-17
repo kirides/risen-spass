@@ -675,20 +675,26 @@ int App::run() {
         apply_ui_scale();
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
-        // --click: each click takes four frames (move, press, release, settle), starting once nothing loads any more
+        // --click / --drag, starting once nothing loads any more: a click takes four frames (move, press, release, settle), a drag ten (move, press,
+        // four moves to the end, two frames held there so the target accepts, release, settle)
         if (!options.clicks.empty() && shot_frames_ >= 3) {
-            const int step = shot_frames_ - 3;
-            const size_t i = static_cast<size_t>(step / 4);
+            int step = shot_frames_ - 3;
+            size_t i = 0;
+            while (i < options.clicks.size() && step >= (options.clicks[i].drag ? 10 : 4)) step -= options.clicks[i++].drag ? 10 : 4;
             if (i < options.clicks.size()) {
                 ImGuiIO& cio = ImGui::GetIO();
-                const auto [cx, cy] = options.clicks[i];
+                const AppOptions::Input& in = options.clicks[i];
                 // every step: the GLFW backend posts the real cursor position each frame while the window has the focus
-                cio.AddMousePosEvent(cx, cy);
-                switch (step % 4) {
-                    case 1: cio.AddMouseButtonEvent(0, true); break;
-                    case 2: cio.AddMouseButtonEvent(0, false); break;
-                    default: break;
+                float px = in.x, py = in.y;
+                if (in.drag && step >= 2) {
+                    const float f = std::min(1.0f, static_cast<float>(step - 1) / 4.0f);
+                    px = in.x + (in.x2 - in.x) * f;
+                    py = in.y + (in.y2 - in.y) * f;
                 }
+                cio.AddMousePosEvent(px, py);
+                const int release = in.drag ? 8 : 2;
+                if (step == 1) cio.AddMouseButtonEvent(0, true);
+                else if (step == release) cio.AddMouseButtonEvent(0, false);
             }
         }
         ImGui::NewFrame();

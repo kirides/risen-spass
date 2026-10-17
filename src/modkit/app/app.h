@@ -36,7 +36,12 @@ struct AppOptions {
     int width = 1600, height = 900;
     std::string select;      // select an object by name in its panel (screenshots)
     std::string camera;      // the World view's camera: "x,y,z,yaw,pitch" in game coordinates and degrees (screenshots)
-    std::vector<std::pair<float, float>> clicks;  // left clicks at window coordinates, one after the other once the app is idle (UI tests)
+    // left clicks and drags at window coordinates, one after the other once the app is idle (UI tests)
+    struct Input {
+        float x, y, x2 = 0, y2 = 0;
+        bool drag = false;  // press at x,y, move to x2,y2, release
+    };
+    std::vector<Input> clicks;
 };
 
 class App;

@@ -73,6 +73,7 @@ add_executable(risen-modkit
     app/audio.cpp
     app/fonts.cpp
     app/screenshot.cpp
+    app/dragdrop.cpp
     app/editor_util.cpp
     app/node_canvas.cpp
     app/pickers.cpp

@@ -1,12 +1,17 @@
 // Browser panel: the game's templates by group, search by name and label, filter by kind, the property inspector and the actions the editors offer
-// ("New item based on this", "Edit this item", ...).
+// ("New item based on this", "Edit this item", ...). "Include mod" lists the project's new items, recipes, NPC templates and placed NPCs too. Every
+// row is a drag source (app/dragdrop.h): into template fields, inventories and the World view.
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
 #include <algorithm>
+#include <cstring>
 #include <map>
 
+#include "app/dragdrop.h"
+#include "app/editor_util.h"
 #include "app/panels/panels.h"
+#include "app/pickers.h"
 #include "app/render/mesh_preview.h"
 #include "app/widgets.h"
 
@@ -45,6 +50,32 @@ struct Node {
     size_t total = 0;
 };
 
+// an object the project makes, as the Browser lists it
+struct ModEntry {
+    std::string uid, name, label, base, mesh;
+    const char* group;  // "Items", "Recipes", "NPC templates", "Placed NPCs"
+    const char* panel;  // the editor panel
+    TplKind kind;
+    bool entity = false;  // a placed NPC
+};
+
+std::vector<ModEntry> mod_entries(const App& app) {
+    std::vector<ModEntry> v;
+    const Project& p = app.project;
+    auto first = [](const Text& t) { return t.empty() ? std::string() : t.begin()->second; };
+    for (auto& i : p.items)
+        if (i.mode == Mode::New && !i.name.empty()) v.push_back({i.uid, i.name, first(i.label), i.base, i.mesh.value_or(""), "Items", kPanelItems, TplKind::Item});
+    for (auto& r : p.recipes)
+        if (r.mode == Mode::New && !r.name.empty())
+            v.push_back({r.uid, r.name, first(r.label), r.base, r.mesh.value_or(""), "Recipes", kPanelRecipes, TplKind::Recipe});
+    for (auto& t : p.npc_templates)
+        if (t.mode == Mode::New && !t.name.empty())
+            v.push_back({t.uid, t.name, first(t.label), t.base, "", "NPC templates", kPanelNpcs, ui::kind_of(app, t.name)});
+    for (auto& n : p.npcs)
+        if (!n.name.empty()) v.push_back({n.uid, n.name, first(n.label), n.template_name, "", "Placed NPCs", kPanelNpcs, TplKind::Npc, true});
+    return v;
+}
+
 class BrowserPanel : public Panel {
 public:
     const char* title() const override { return kPanelBrowser; }
@@ -60,6 +91,7 @@ public:
         if (!t) return false;
         selected_ = t;
         selected_name_ = t->name;
+        sel_mod_.clear();
         filter_ = t->name;
         app.focus_panel(title());
         return true;
@@ -78,6 +110,12 @@ public:
             return;
         }
         if (game_ != g) rebuild(*g);
+        mods_ = include_mod_ ? mod_entries(app) : std::vector<ModEntry>{};
+        if (!sel_mod_.empty() && std::none_of(mods_.begin(), mods_.end(), [&](const ModEntry& m) { return m.uid == sel_mod_; })) sel_mod_.clear();
+        ImGui::Checkbox("Include mod", &include_mod_);
+        ui::help("Also list what the mod makes: its new items, recipes, NPC templates and placed NPCs (group Mod). Drag any row into a template field, "
+                 "an inventory or loot list, or the World view.");
+        ImGui::SameLine();
         ImGui::SetNextItemWidth(-140);
         ImGui::InputTextWithHint("##filter", "search name or label", &filter_);
         ImGui::SameLine();
@@ -90,10 +128,11 @@ public:
         }
         const float list_h = std::max(120.0f, ImGui::GetContentRegionAvail().y * 0.45f);
         ImGui::BeginChild("##tree", ImVec2(0, list_h), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY);
-        if (!filter_.empty()) draw_flat(*g);
-        else draw_tree(*g);
+        if (!filter_.empty()) draw_flat(app, *g);
+        else draw_tree(app, *g);
         ImGui::EndChild();
-        draw_inspector(app, *g);
+        if (const ModEntry* m = selected_mod()) draw_mod_inspector(app, *g, *m);
+        else draw_inspector(app, *g);
         ImGui::End();
     }
 
@@ -101,6 +140,15 @@ private:
     bool passes(const GameData& g, const TemplateInfo& t) const {
         if (kind_filter_ >= 0 && static_cast<int>(t.kind) != kind_filter_) return false;
         return icontains(t.name, filter_) || icontains(g.label(t.name), filter_) || icontains(t.group, filter_);
+    }
+    bool passes(const ModEntry& m) const {
+        if (kind_filter_ >= 0 && static_cast<int>(m.kind) != kind_filter_) return false;
+        return icontains(m.name, filter_) || icontains(m.label, filter_) || icontains(std::string("Mod/") + m.group, filter_);
+    }
+    const ModEntry* selected_mod() const {
+        for (auto& m : mods_)
+            if (m.uid == sel_mod_) return &m;
+        return nullptr;
     }
     void rebuild(const GameData& g) {
         game_ = &g;
@@ -118,15 +166,50 @@ private:
         }
     }
     void row(const GameData& g, const TemplateInfo& t) {
-        if (ImGui::Selectable(t.name.c_str(), selected_ == &t)) {
+        if (ImGui::Selectable(t.name.c_str(), selected_ == &t && sel_mod_.empty())) {
             selected_ = &t;
             selected_name_ = t.name;
+            sel_mod_.clear();
         }
         const std::string lbl = g.label(t.name);
+        ui::drag_source(t.name, t.kind, false, false, lbl);
         ImGui::SameLine(ImGui::GetContentRegionAvail().x * 0.55f);
         ImGui::TextDisabled("%s", lbl.empty() ? kind_name(t.kind) : lbl.c_str());
     }
-    void draw_flat(const GameData& g) {
+    void mod_row(const ModEntry& m) {
+        ImGui::PushID(m.uid.c_str());
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.55f, 0.8f, 1.0f, 1.0f));
+        if (ImGui::Selectable(m.name.c_str(), sel_mod_ == m.uid)) sel_mod_ = m.uid;
+        ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) open_in_editor_ = m.uid;
+        ui::drag_source(m.name, m.kind, m.entity, true, m.label);
+        ImGui::SameLine(ImGui::GetContentRegionAvail().x * 0.55f);
+        ImGui::TextDisabled("%s", !m.label.empty() ? m.label.c_str() : m.entity ? "placed NPC" : kind_name(m.kind));
+        ImGui::PopID();
+    }
+    void draw_mod_node() {
+        size_t c = 0;
+        for (auto& m : mods_) c += passes(m);
+        if (!c) return;
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+        if (!ImGui::TreeNodeEx("##mod", ImGuiTreeNodeFlags_SpanAvailWidth, "Mod  (%zu)", c)) return;
+        for (const char* grp : {"Items", "Recipes", "NPC templates", "Placed NPCs"}) {
+            size_t n = 0;
+            for (auto& m : mods_) n += std::strcmp(m.group, grp) == 0 && passes(m);
+            if (!n) continue;
+            ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+            if (ImGui::TreeNodeEx(grp, ImGuiTreeNodeFlags_SpanAvailWidth, "%s  (%zu)", grp, n)) {
+                for (auto& m : mods_)
+                    if (std::strcmp(m.group, grp) == 0 && passes(m)) mod_row(m);
+                ImGui::TreePop();
+            }
+        }
+        ImGui::TreePop();
+    }
+    void draw_flat(App& app, const GameData& g) {
+        for (auto& m : mods_)
+            if (passes(m)) mod_row(m);
+        flush_open(app);
         std::vector<const TemplateInfo*> list;
         for (auto& t : g.templates())
             if (passes(g, *t)) list.push_back(t.get());
@@ -139,7 +222,21 @@ private:
                 ImGui::PopID();
             }
     }
-    void draw_tree(const GameData& g) { draw_node(g, root_); }
+    void draw_tree(App& app, const GameData& g) {
+        draw_mod_node();
+        flush_open(app);
+        draw_node(g, root_);
+    }
+    // a double click on a mod row opens it in its editor
+    void flush_open(App& app) {
+        if (open_in_editor_.empty()) return;
+        for (auto& m : mods_)
+            if (m.uid == open_in_editor_) {
+                const std::string panel = m.panel, uid = m.uid;
+                app.defer([&app, panel, uid] { app.select_in(panel, uid); });
+            }
+        open_in_editor_.clear();
+    }
     size_t count(const GameData& g, const Node& n) const {
         size_t c = 0;
         for (auto* t : n.items) c += passes(g, *t);
@@ -193,6 +290,44 @@ private:
                 app.defer([&app, act, t] { act->run(app, *t); });
             }
         }
+        draw_props(g, *t);
+        ImGui::EndChild();
+    }
+
+    void draw_mod_inspector(App& app, const GameData& g, const ModEntry& m) {
+        ImGui::BeginChild("##inspector");
+        ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1.0f), "%s", m.name.c_str());
+        if (!m.label.empty()) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("\"%s\"", m.label.c_str());
+        }
+        const TemplateInfo* base = m.base.empty() ? nullptr : g.tpl(m.base);
+        if (m.entity) ImGui::TextDisabled("placed NPC of the mod, template %s", m.base.c_str());
+        else ImGui::TextDisabled("%s new in the mod%s%s", kind_name(m.kind), m.base.empty() ? "" : ", based on ", m.base.c_str());
+        if (ImGui::Button((std::string("Open in ") + m.panel).c_str())) {
+            const std::string panel = m.panel, uid = m.uid;
+            app.defer([&app, panel, uid] { app.select_in(panel, uid); });
+        }
+        if (base) {
+            ImGui::SameLine();
+            if (ImGui::Button(m.entity ? "Template in Browser" : "Base in Browser")) {
+                selected_ = base;
+                selected_name_ = base->name;
+                sel_mod_.clear();
+            }
+        }
+        ImGui::TextDisabled("Drag the name from the list into a template field, an inventory or the World view.");
+        const std::string mesh = !m.mesh.empty() ? m.mesh : base ? base->mesh : std::string();
+        if (!mesh.empty()) preview_.draw(app, mesh, ImVec2(std::min(ImGui::GetContentRegionAvail().x, 300.0f), 160));
+        if (base) {
+            ImGui::SeparatorText(m.entity ? "Properties of the template" : "Properties of the base (the mod's changes are in its editor)");
+            draw_props(g, *base);
+        }
+        ImGui::EndChild();
+    }
+
+    void draw_props(const GameData& g, const TemplateInfo& tr) {
+        const TemplateInfo* t = &tr;
         ImGui::InputTextWithHint("##pfilter", "filter properties", &prop_filter_);
         if (ImGui::BeginTable("##props", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY)) {
             ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthStretch, 3);
@@ -214,7 +349,6 @@ private:
             }
             ImGui::EndTable();
         }
-        ImGui::EndChild();
     }
 
     const GameData* game_ = nullptr;
@@ -223,6 +357,9 @@ private:
     MeshPreview preview_;
     std::string selected_name_, filter_, prop_filter_;
     int kind_filter_ = -1;
+    bool include_mod_ = true;
+    std::vector<ModEntry> mods_;  // rebuilt every frame (the project changes under the panel)
+    std::string sel_mod_, open_in_editor_;
 };
 
 }  // namespace

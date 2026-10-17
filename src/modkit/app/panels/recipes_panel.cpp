@@ -5,6 +5,7 @@
 
 #include <algorithm>
 
+#include "app/dragdrop.h"
 #include "app/editor_util.h"
 #include "app/panels/panels.h"
 #include "app/pickers.h"
@@ -115,6 +116,7 @@ private:
         for (auto& r : p.recipes) {
             ImGui::PushID(r.uid.c_str());
             if (ImGui::Selectable(r.name.empty() ? "(unnamed)" : r.name.c_str(), sel_ == r.uid)) sel_ = r.uid;
+            ui::drag_source(r.name, TplKind::Recipe, false, r.mode == Mode::New, ui::label_of(app, r.name));
             if (ImGui::BeginPopupContextItem()) {
                 if (ImGui::MenuItem("Duplicate")) {
                     RecipeDef d = r;

@@ -5,6 +5,7 @@
 
 #include <algorithm>
 
+#include "app/dragdrop.h"
 #include "app/editor_util.h"
 #include "app/node_canvas.h"
 #include "app/panels/panels.h"
@@ -225,7 +226,12 @@ private:
         ImGui::SameLine();
         ImGui::SetNextItemWidth(160);
         ch |= ImGui::InputTextWithHint("Owner NPC", "or a unique name", &d.owner);
-        ui::help("The NPC who owns the options: a placed NPC of the project, or the unique entity name of an NPC in the world.");
+        if (const ui::DragTemplate* dr = ui::drop_entity()) {
+            d.owner = dr->name;
+            ch = true;
+        }
+        ui::help("The NPC who owns the options: a placed NPC of the project (pick it, or drag it here from the NPCs panel or the Browser), or the unique "
+                 "entity name of an NPC in the world.");
         ImGui::SameLine();
         ImGui::TextDisabled("  right-click: new node · drag from a pin into space: new linked node · Del: delete");
         if (ch) app.touch();

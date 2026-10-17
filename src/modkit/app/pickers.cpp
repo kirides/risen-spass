@@ -1,6 +1,7 @@
 #include "app/pickers.h"
 
 #include "app/audio.h"
+#include "app/dragdrop.h"
 #include "app/widgets.h"
 #include "core/assets.h"
 #include "pack2mod/util.h"
@@ -52,7 +53,11 @@ bool template_picker(const char* label, std::string& name, const GameData* game,
     changed |= ImGui::InputText("##name", &name);
     if (!known) {
         ImGui::PopStyleColor();
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("No template with this name in the game data or the project");
+        if (ImGui::IsItemHovered() && !dragging()) ImGui::SetTooltip("No template with this name in the game data or the project");
+    }
+    if (const DragTemplate* d = drop_target(kinds, extra)) {
+        name = d->name;
+        changed = true;
     }
     ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
     static std::string filter;

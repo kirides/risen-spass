@@ -5,6 +5,7 @@
 
 #include <algorithm>
 
+#include "app/dragdrop.h"
 #include "app/editor_util.h"
 #include "app/panels/panels.h"
 #include "app/pickers.h"
@@ -254,6 +255,7 @@ private:
         for (auto& n : p.npc_templates) {
             ImGui::PushID(n.uid.c_str());
             if (ImGui::Selectable(n.name.empty() ? "(unnamed)" : n.name.c_str(), sel_ == n.uid)) sel_ = n.uid;
+            ui::drag_source(n.name, ui::kind_of(app, n.name), false, n.mode == Mode::New, ui::label_of(app, n.name));
             if (ImGui::BeginPopupContextItem()) {
                 if (ImGui::MenuItem("Place one")) {
                     const std::string t = n.name;
@@ -270,6 +272,7 @@ private:
         for (auto& n : p.npcs) {
             ImGui::PushID(n.uid.c_str());
             if (ImGui::Selectable(n.name.empty() ? "(unnamed)" : n.name.c_str(), sel_ == n.uid)) sel_ = n.uid;
+            ui::drag_source(n.name, TplKind::Npc, true, true, n.template_name);
             if (ImGui::BeginPopupContextItem()) {
                 if (ImGui::MenuItem("Duplicate")) {
                     PlacedNpc d = n;

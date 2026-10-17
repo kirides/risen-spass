@@ -27,6 +27,10 @@ bool ingredient_list(const char* id, std::vector<Ingredient>& v, App& app, const
 // a list of (item, amount, equip) rows
 bool inventory_list(const char* id, std::vector<InvItem>& v, App& app, const std::vector<std::string>& extra, bool with_equip);
 
+// the kind of a template name: the game's kind; a new template of the project has the kind of its base (items Item, recipes Recipe, NPC templates
+// Npc when the base is unknown); Other when nothing knows the name
+TplKind kind_of(const App& app, const std::string& name);
+
 // the names of the project's new items and recipe items (for pickers)
 std::vector<std::string> project_item_names(const Project& p);
 
