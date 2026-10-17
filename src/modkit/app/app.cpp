@@ -66,12 +66,63 @@ App::App(AppOptions opts) : options(std::move(opts)) {
     settings = Settings::load();
     if (!options.data_dir.empty()) settings.data_dir = options.data_dir;
     panels_.push_back(make_project_panel());
+    panels_.push_back(make_browser_panel());
     panels_.push_back(make_log_panel());
     panels_.push_back(make_settings_panel());
     history.reset(project);
 }
 
-App::~App() = default;
+App::~App() {
+    if (loader_.joinable()) {
+        loader_cancel_ = true;
+        loader_.join();
+    }
+}
+
+void App::load_game_data() {
+    if (loader_.joinable()) {
+        loader_cancel_ = true;
+        loader_.join();
+    }
+    loader_cancel_ = false;
+    loader_done_ = false;
+    loaded_.reset();
+    loader_error_.clear();
+    if (settings.data_dir.empty()) return;
+    const std::string dir = settings.data_dir;
+    loader_ = std::thread([this, dir] {
+        try {
+            auto gd = GameData::load(
+                dir,
+                [this](float f, const std::string& what) {
+                    std::lock_guard<std::mutex> lock(loader_mu_);
+                    loader_fraction_ = f;
+                    loader_what_ = what;
+                },
+                &loader_cancel_);
+            std::lock_guard<std::mutex> lock(loader_mu_);
+            loaded_ = gd;
+        } catch (const std::exception& e) {
+            std::lock_guard<std::mutex> lock(loader_mu_);
+            loader_error_ = e.what();
+        }
+        loader_done_ = true;
+    });
+}
+
+void App::poll_loader() {
+    if (!loader_.joinable() || !loader_done_) return;
+    loader_.join();
+    std::lock_guard<std::mutex> lock(loader_mu_);
+    if (loaded_) {
+        game = loaded_;
+        loaded_.reset();
+        status("Game data: " + std::to_string(game->templates().size()) + " templates from " + std::to_string(game->archive_count()) + " archives");
+        for (auto& p : panels_) p->on_project_changed(*this);
+    } else if (!loader_error_.empty()) {
+        status("Cannot read the game data: " + loader_error_);
+    }
+}
 
 void App::status(const std::string& text) {
     status_ = text;
@@ -177,10 +228,10 @@ void App::setup_default_layout(unsigned int dockspace_id) {
     ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
     ImGui::DockBuilderSetNodeSize(dockspace_id, ImGui::GetMainViewport()->WorkSize);
     ImGuiID center = dockspace_id;
-    ImGuiID left = ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, 0.24f, nullptr, &center);
+    ImGuiID left = ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, 0.28f, nullptr, &center);
     ImGuiID bottom = ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, 0.24f, nullptr, &center);
     ImGui::DockBuilderDockWindow(kPanelMod, left);
-    ImGui::DockBuilderDockWindow("Browser", left);
+    ImGui::DockBuilderDockWindow(kPanelBrowser, left);
     ImGui::DockBuilderDockWindow(kPanelLog, bottom);
     ImGui::DockBuilderDockWindow("Problems", bottom);
     for (const char* t : {"Items", "Recipes", "NPCs", "Dialogues", "Quests", "World", kPanelSettings}) ImGui::DockBuilderDockWindow(t, center);
@@ -244,7 +295,14 @@ void App::draw_status_bar() {
                          ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 2));
     if (ImGui::Begin("##status", nullptr, f)) {
-        ImGui::TextDisabled("%s", settings.data_dir.empty() ? "No game data directory (Settings)" : settings.data_dir.c_str());
+        if (game_loading()) {
+            std::lock_guard<std::mutex> lock(loader_mu_);
+            ImGui::ProgressBar(loader_fraction_, ImVec2(160, 0), ("loading " + loader_what_).c_str());
+        } else if (game) {
+            ImGui::TextDisabled("%s (%zu templates)", game->data_dir().c_str(), game->templates().size());
+        } else {
+            ImGui::TextDisabled("%s", settings.data_dir.empty() ? "No game data directory (Settings)" : "Game data not loaded");
+        }
         ImGui::SameLine(ImGui::GetWindowWidth() * 0.45f);
         ImGui::TextUnformatted(status_.c_str());
     }
@@ -360,20 +418,16 @@ int App::run() {
     ImGui_ImplGlfw_InitForOpenGL(window_, true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
 
+    load_game_data();
     if (!options.project.empty()) open_project(options.project);
     else project_replaced();
     if (!options.panel.empty()) focus_request_ = options.panel;
-    if (!options.select.empty()) {
-        const std::string sel = options.select;
-        defer([this, sel] {
-            for (auto& p : panels_)
-                if (p->select(*this, sel)) break;
-        });
-    }
+    pending_select_ = options.select;
 
     int rc = 0;
     while (!glfwWindowShouldClose(window_)) {
         glfwPollEvents();
+        poll_loader();
         if (glfwGetWindowAttrib(window_, GLFW_ICONIFIED)) {
             glfwWaitEventsTimeout(0.1);
             continue;
@@ -392,13 +446,21 @@ int App::run() {
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         ++frame_;
-        if (!options.screenshot.empty() && frame_ >= options.frames) {
+        // screenshots wait for the game data (a minute at most), then count their frames
+        if (!game_loading() || glfwGetTime() > 60) ++shot_frames_;
+        if (!options.screenshot.empty() && shot_frames_ >= options.frames) {
             rc = save_screenshot(options.screenshot, w, h) ? 0 : 1;
             glfwSetWindowShouldClose(window_, 1);
         }
         glfwSwapBuffers(window_);
 
         // structural edits and file actions run between frames
+        // --select: once the game data is there (or there is none to wait for)
+        if (!pending_select_.empty() && !game_loading()) {
+            for (auto& p : panels_)
+                if (p->select(*this, pending_select_)) break;
+            pending_select_.clear();
+        }
         auto todo = std::move(deferred_);
         deferred_.clear();
         for (auto& fn : todo) fn();

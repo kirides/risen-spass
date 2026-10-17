@@ -1,6 +1,7 @@
 // Unit tests of risen-modkit's core (no GUI, no game data needed). Build target `modkit_tests`; run with ctest or directly.
 //   modkit_tests [--data <Risen>\data] [filter]    --data also runs the tests that read the real game archives
 // A tiny self-contained runner, like tests/test_main.cpp. Test groups live in *.inc files next to this one.
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -10,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "core/gamedata.h"
 #include "core/history.h"
 #include "core/log.h"
 #include "core/paths.h"
@@ -250,6 +252,57 @@ TEST(path_within) {
     CHECK(!path_within(base.parent_path(), base));
     CHECK(!path_within(base.string() + "x", base));
     CHECK(path_within(base / "a" / ".." / "c", base));
+}
+
+// ---- game data (needs --data) ----------------------------------------------------------------------------------------------------------------------------
+
+static std::shared_ptr<GameData> game_data() {
+    static std::shared_ptr<GameData> g;
+    if (!g && !g_data_dir.empty()) g = GameData::load(g_data_dir);
+    return g;
+}
+
+TEST(gamedata_rejects_wrong_dir) {
+    bool threw = false;
+    try {
+        GameData::load(u8str(temp_dir("nodata")));
+    } catch (const std::exception&) {
+        threw = true;
+    }
+    CHECK(threw);
+}
+
+TEST(gamedata_real_archives) {
+    auto g = game_data();
+    if (!g) {
+        std::printf("  (skipped: no --data)\n");
+        return;
+    }
+    CHECK(g->templates().size() > 2500);
+    const TemplateInfo* sword = g->tpl("it_1h_sword");  // case-insensitive
+    CHECK(sword && sword->kind == TplKind::Item);
+    if (sword) {
+        CHECK_EQ(sword->group, std::string("Items/Weapons_Swords"));
+        CHECK(sword->get("gCItem_PS.GoldValue") != nullptr);
+        CHECK(!sword->mesh.empty());
+        CHECK(!sword->icon.empty());
+    }
+    CHECK_EQ(g->label("It_1H_Sword"), std::string("Sword"));
+    CHECK(!g->label("It_1H_Sword", "German").empty());
+    const TemplateInfo* wolf = g->tpl("Wolf");
+    CHECK(wolf && wolf->kind == TplKind::Monster);
+    const TemplateInfo* peasant = g->tpl("Peasant_1_01");
+    CHECK(peasant && peasant->kind == TplKind::Npc);
+    CHECK(g->tpl("It_Recipe_Health_01") && g->tpl("It_Recipe_Health_01")->kind == TplKind::Recipe);
+    CHECK(std::find(g->languages().begin(), g->languages().end(), "German") != g->languages().end());
+    CHECK(g->assets("_xmsh").size() > 1500);
+    CHECK(g->exists("It_Wpn_1H_Sword._xmsh"));
+    CHECK(std::find(g->worlds().begin(), g->worlds().end(), "World") != g->worlds().end());
+    CHECK(g->paths_with_prefix("projects/World/").size() > 500);
+    std::map<TplKind, int> kinds;
+    for (auto& t : g->templates()) kinds[t->kind]++;
+    for (auto& [k, n] : kinds) std::printf("  %-12s %d\n", kind_name(k), n);
+    std::printf("  loaded in %.2f s\n", g->load_seconds());
 }
 
 int main(int argc, char** argv) {

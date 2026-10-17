@@ -32,8 +32,13 @@ public:
                 changed = true;
             }
         }
+        if (ImGui::Button(app.game ? "Reload game data" : "Load game data")) {
+            s.save();
+            app.load_game_data();
+        }
         std::error_code ec;
         if (!s.data_dir.empty()) {
+            ImGui::SameLine();
             const bool ok = fs::exists(u8(s.data_dir) / "common", ec) && fs::exists(u8(s.data_dir) / "compiled", ec);
             if (ok) ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.5f, 1), "common and compiled found");
             else ImGui::TextColored(ImVec4(1, 0.6f, 0.4f, 1), "this folder has no common / compiled sub-folders");

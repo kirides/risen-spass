@@ -1,11 +1,15 @@
 // The risen-modkit application: window, main loop, menus, docking layout, project file handling. Panels draw into it and edit `project`.
 #pragma once
 
+#include <atomic>
 #include <functional>
 #include <memory>
+#include <mutex>
+#include <thread>
 #include <string>
 #include <vector>
 
+#include "core/gamedata.h"
 #include "core/history.h"
 #include "core/project.h"
 #include "core/settings.h"
@@ -25,6 +29,13 @@ struct AppOptions {
 };
 
 class App;
+
+// an action the Browser offers for a game template ("New item based on this", "Edit this item"); registered by the editor panels
+struct TemplateAction {
+    std::string label;
+    std::vector<TplKind> kinds;  // empty = every kind
+    std::function<void(App&, const TemplateInfo&)> run;
+};
 
 class Panel {
 public:
@@ -50,6 +61,13 @@ public:
     History history;
     Settings settings;
     AppOptions options;
+
+    // the game's data (nullptr until loaded; loading runs on a worker thread, started at start-up and when the data directory changes)
+    std::shared_ptr<const GameData> game;
+    void load_game_data();
+    bool game_loading() const { return loader_.joinable(); }
+
+    std::vector<TemplateAction> template_actions;
 
     void touch() { history.touch(); }  // a panel changed `project`
     void status(const std::string& text);  // the status bar line
@@ -87,8 +105,16 @@ private:
     std::function<void()> after_discard_;  // the action waiting for the "unsaved changes" answer
     bool ask_discard_ = false, want_quit_ = false, layout_done_ = false;
     std::string title_shown_;
-    int frame_ = 0;
-    std::string focus_request_;
+    int frame_ = 0, shot_frames_ = 0;
+    std::string focus_request_, pending_select_;
+    // game data loader
+    void poll_loader();
+    std::thread loader_;
+    std::atomic<bool> loader_done_{false}, loader_cancel_{false};
+    std::mutex loader_mu_;
+    std::shared_ptr<GameData> loaded_;
+    std::string loader_error_, loader_what_;
+    float loader_fraction_ = 0;
 };
 
 // helpers implemented in other files
