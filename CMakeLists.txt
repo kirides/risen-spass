@@ -120,6 +120,62 @@ if(MSVC)
 endif()
 
 # ---------------------------------------------------------------------------------------------
+# risen-pack2mod: standalone converter from a Risen mod's .pNN / .pak archives to a mod for the layer (docs/PACK2MOD.md).
+# Depends only on zlib; the generic Lua code of a converted mod (tools/extmod_templates/main.lua, config.lua) is embedded.
+# ---------------------------------------------------------------------------------------------
+find_package(ZLIB REQUIRED)
+set(P2M_EMBED_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/tools/extmod_templates/main.lua|kP2mMainLua"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tools/extmod_templates/config.lua|kP2mConfigLua")
+set(P2M_EMBED_SRC "extern const unsigned char kP2mMainLua[];
+extern const unsigned long long kP2mMainLuaSize;
+extern const unsigned char kP2mConfigLua[];
+extern const unsigned long long kP2mConfigLuaSize;
+")
+foreach(_entry IN LISTS P2M_EMBED_FILES)
+    string(REPLACE "|" ";" _parts "${_entry}")
+    list(GET _parts 0 _file)
+    list(GET _parts 1 _sym)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_file}")
+    file(READ "${_file}" _hex HEX)
+    string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," _arr "${_hex}")
+    string(APPEND P2M_EMBED_SRC "const unsigned char ${_sym}[] = { ${_arr} 0x00 };
+const unsigned long long ${_sym}Size = sizeof(${_sym}) - 1;
+")
+endforeach()
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/pack2mod_embedded.cpp.tmp" "${P2M_EMBED_SRC}")
+execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/pack2mod_embedded.cpp.tmp" "${CMAKE_CURRENT_BINARY_DIR}/pack2mod_embedded.cpp")
+
+add_library(pack2mod_core STATIC
+    src/pack2mod/cli.cpp
+    src/pack2mod/convert.cpp
+    src/pack2mod/cs.cpp
+    src/pack2mod/data.cpp
+    src/pack2mod/dialog.cpp
+    src/pack2mod/items.cpp
+    src/pack2mod/json_in.cpp
+    src/pack2mod/library.cpp
+    src/pack2mod/lua_emit.cpp
+    src/pack2mod/pak.cpp
+    src/pack2mod/strings_stage.cpp
+    src/pack2mod/tab.cpp
+    src/pack2mod/text.cpp
+    src/pack2mod/tple.cpp
+    src/pack2mod/util.cpp
+    src/pack2mod/world.cpp
+    "${CMAKE_CURRENT_BINARY_DIR}/pack2mod_embedded.cpp"
+)
+target_include_directories(pack2mod_core PUBLIC src)
+target_compile_features(pack2mod_core PUBLIC cxx_std_20)
+target_compile_definitions(pack2mod_core PUBLIC WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING P2M_VERSION="${PROJECT_VERSION}")
+target_link_libraries(pack2mod_core PUBLIC ZLIB::ZLIB)
+if(MSVC)
+    target_compile_options(pack2mod_core PUBLIC /W4 /permissive- /utf-8 /Zc:__cplusplus /EHsc /FS)
+endif()
+add_executable(risen-pack2mod src/pack2mod/main.cpp)
+target_link_libraries(risen-pack2mod PRIVATE pack2mod_core)
+
+# ---------------------------------------------------------------------------------------------
 # The proxy DLL. Risen.exe statically imports sentry.dll (crash reporter), so a DLL named
 # sentry.dll that forwards every export to the renamed original (sentry_orig.dll) is loaded
 # before main() without touching any game binary. See docs/RE.md and scripts/install.ps1.
@@ -154,7 +210,7 @@ option(SPASS_BUILD_TESTS "Build the unit tests" ON)
 if(SPASS_BUILD_TESTS)
     enable_testing()
     add_executable(spass_tests tests/test_main.cpp)
-    target_link_libraries(spass_tests PRIVATE spass_core)
+    target_link_libraries(spass_tests PRIVATE spass_core pack2mod_core)
     target_compile_definitions(spass_tests PRIVATE SPASS_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
     add_test(NAME spass_tests COMMAND spass_tests)
 endif()

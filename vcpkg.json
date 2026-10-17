@@ -8,6 +8,7 @@
     "minhook",
     "sol2",
     "spdlog",
-    "tomlplusplus"
+    "tomlplusplus",
+    "zlib"
   ]
 }

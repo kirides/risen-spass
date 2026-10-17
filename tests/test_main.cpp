@@ -4,7 +4,10 @@
 #include <windows.h>
 #include <dbghelp.h>
 
+#include <array>
 #include <cmath>
+#include <cstring>
+#include <sstream>
 #include <cstdint>
 #include <cstdio>
 #include <filesystem>
@@ -38,6 +41,14 @@
 #include "game/lua_entity.h"
 #include "lua/mods.h"
 #include "lua/runtime.h"
+#include "pack2mod/convert.h"
+#include "pack2mod/cs.h"
+#include "pack2mod/json_in.h"
+#include "pack2mod/lua_emit.h"
+#include "pack2mod/pak.h"
+#include "pack2mod/tab.h"
+#include "pack2mod/text.h"
+#include "pack2mod/tple.h"
 
 #pragma comment(lib, "dbghelp.lib")
 
@@ -506,6 +517,7 @@ TEST(balance_install_reports_each_application_to_on_applied) {
 #include "mods_tests.inc"
 #include "modmanager_tests.inc"
 #include "crash_tests.inc"
+#include "pack2mod_tests.inc"
 
 }  // namespace
 
