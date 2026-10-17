@@ -149,5 +149,7 @@ void installPersistentNpcModApi(sol::state_view lua, sol::table api, const std::
 void installSpawnWhenModApi(sol::state_view lua, sol::table api, const std::string& modId);
 // risen.dialog.create learns `when` / `engine` (dialog_cond_lua.h): per-mod, after installSpawnWhenModApi. (lua_persistent_npc.cpp)
 void installDialogCondModApi(sol::state_view lua, sol::table api, const std::string& modId);
+// risen.behavior: scripts attached to NPCs (behavior_lua.h)
+void installBehaviorModApi(sol::state_view lua, sol::table api, const std::string& modId);
 
 }  // namespace spass::game

@@ -1,5 +1,6 @@
 #include <spdlog/spdlog.h>
 
+#include "game/behavior_lua.h"
 #include "game/dialog_cond_lua.h"
 #include "game/lua_entity.h"
 #include "game/persistent_npc_lua.h"
@@ -33,6 +34,19 @@ void installSpawnWhenModApi(sol::state_view lua, sol::table api, const std::stri
     sol::protected_function_result res = fn(api, modId);
     if (!res.valid()) {
         spdlog::error("lua: spawn-when api failed to run: {}", res.get<sol::error>().what());
+    }
+}
+
+void installBehaviorModApi(sol::state_view lua, sol::table api, const std::string& modId) {
+    sol::load_result loaded = lua.load(kBehaviorChunk, "=risen.behavior");
+    if (!loaded.valid()) {
+        spdlog::error("lua: behaviour api failed to load: {}", loaded.get<sol::error>().what());
+        return;
+    }
+    sol::protected_function fn = loaded;
+    sol::protected_function_result res = fn(api, modId);
+    if (!res.valid()) {
+        spdlog::error("lua: behaviour api failed to run: {}", res.get<sol::error>().what());
     }
 }
 

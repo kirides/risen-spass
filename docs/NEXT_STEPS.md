@@ -167,7 +167,7 @@ Learned: a quest-bound option makes the engine append the speakers' labels to th
 Done: the real template names are listed in [`TEMPLATES.md`](TEMPLATES.md) (`risen.template.list`; 2679 templates, groups `NPC/<area>`, `Monster`, `Items/...`);
 **any property of any property set by name** (`Entity:get_property/set_property`, e.g. `gCNPC_PS` `Guild`, `Species`, `GuardStatus`, `BraveryOverride`);
 all guild names and numbers; a **peaceful** spawn option (citizen guild: pirates leave it alone; `AttitudeLock` does not help); `Entity:kill()` verified to remove an entity.
-Done (M10): behaviour through routines (`risen.npc.set_routine`: posts, day/night points, patrols); (M11): behaviour in Lua (`risen.ai.state`, perception handlers). Open: relationships beyond guilds (individual enemies, party membership), appearance
+Done (M10): behaviour through routines (`risen.npc.set_routine`: posts, day/night points, patrols); (M11): behaviour in Lua (`risen.ai.state`, perception handlers). Done (2026-10-17): **behaviours** (`risen.behavior`: scripts attached to one NPC or every NPC of a template, like Unity components; start / update / stop, death, damage, talk, items, any quest of the game (`on_quest`), player near / far, any other event; state saved with the game; scenario `behaviors`, 41 checks). Open: relationships beyond guilds (individual enemies, party membership), appearance
 (head/body templates `NPC/_HumanParts`), named spawn points (needs an entity/waypoint enumeration), `Decay` as a gentler despawn.
 
 ## 4. New content
@@ -202,5 +202,7 @@ a visual verification path (screen capture of the D3D9 window is black: hook `Pr
 * The engine's log function is an empty stub; failures are silent. The generic fatal-error handler cannot even show its dialog text
   ("can't load ge3dialog resource dll") — use `risen.debug.trace_files` and the event log to see what happened before.
 * Spawned NPCs next to hostile guilds fight immediately.
+* Hardening crashed once (2026-10-17) in the engine (`SharedBase.dll+0x62f50`, a null read under `Script_Game.dll` / `Game.dll` frames, nothing of the layer on the stack) right after
+  fuzzing `Entity:set_state` with wrong arguments; the rerun passed (13/13). Probably a fuzzed AI state the engine runs a frame later: open.
 * Steam may relaunch the real install (RE.md §13): `run-windowed.ps1` sets `SteamAppId`; document the same safeguard for modders who launch a copied install.
 * ~~The game rewrites `%LOCALAPPDATA%\Risen\ConfigUser.xml` for the test copy~~ — solved by `[debug] app_data` (RE.md §15).

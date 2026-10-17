@@ -1,0 +1,6 @@
+id          = "behaviors"
+name        = "Behaviours: live test mod"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Attaches Lua behaviours (risen.behavior) to persistent NPCs and to every NPC of a template and records what they are told; the scenario `behaviors` (docs/DEVELOPMENT.md) uses it. Only meaningful in a test run."
+main        = "main.lua"

@@ -213,6 +213,20 @@ risen.ai.state("ZS_My_Watch", { interval = 0.5, task = "OnRoutine",
 A state is run by the engine's AI like its own `ZS_*` states (`begin` once, `loop` every `interval` seconds, `finish` at the end; `ctx.reason`, `ctx.data` scratch table, `ctx.args`). `task = "OnRoutine"` keeps the engine's perception; `on` hooks the `Assess*` scripts, `risen.ai.perceive(kind, fn, filter)` handles one without a state; return `true` from a perception handler to say "handled".
 **A Lua state is not saved**: `{ persist = true }` makes the layer start it again after every load. Starting a state from inside an engine callback is deferred to the end of the frame. No Lua AI *functions* and no overriding of stock states. Examples: `example_ai`, `aistates`.
 
+### 4.10b Scripts on NPCs (behaviours, like Unity components)
+
+```lua
+risen.behavior.define("greeter", { near = 400, params = { text = "Hello, stranger!" },
+    on_player_near = function(self) risen.hud.log(self.params.text) self.state.greeted = (self.state.greeted or 0) + 1 end,
+    on_quest = function(self, quest, status) if quest == "Rufo_GoToDruidHut" and status == "Success" then self.params.text = "The druid sends his regards." end end })
+risen.behavior.attach("MyMod_Hob", "greeter", { text = "Welcome to Harbour Town!" })   -- one NPC
+risen.behavior.attach_template("Wolf", "pack_hunter")                                  -- every NPC of a template
+```
+The layer starts it whenever the NPC is in the world (after a load too, with its saved `self.state`), calls `update(self, dt)` every `interval` seconds and the handlers
+(`on_death`, `on_damage`, `on_talk`, `on_items`, `on_quest` for every quest of the game and of mods, `on_player_near` / `far`, `events` for anything else) and stops it when the NPC
+dies. A callback that raises switches only that attachment off. **Enemies that appear after a quest of the original game:** `risen.spawn.when{ name = "MyMod_Ambusher",
+template = "Pirate_M_01", offset = { 800, 0, 0 }, when = risen.cond.quest("Rufo_GoToDruidHut", "Success") }` (4.8), then attach a behaviour to it. Example: `behaviors` (scenario).
+
 ### 4.11 Spoken dialogue lines
 
 ```lua

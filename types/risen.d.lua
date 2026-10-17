@@ -4709,6 +4709,113 @@ function logApi.error(...) end
 
 ---@alias EventHandle integer
 
+---A behaviour attached to an NPC (`self` of the callbacks of `risen.behavior.define`; `risen.behavior.get` returns it).
+---@class BehaviorInstance
+---@field entity Entity The NPC it runs on.
+---@field name string The behaviour's name.
+---@field key string The target key: the NPC's unique name, or `"@" .. Entity:id()` for template NPCs and nameless entities (the key of its saved state).
+---@field target string The same as `key`.
+---@field params table The parameters: the definition's `params` with the attachment's `params` on top.
+---@field state table Saved with the game (the mod's `risen.save`, key `behaviors`) and given back after a load: keep plain data in it (numbers, strings, booleans, tables of those). Something that cannot be saved (a function, an Entity) resets it on the next save, with a warning.
+---@field resumed boolean `true` when `state` came from an earlier session (a loaded savegame, an NPC that came back).
+---@field time number Seconds it has been running in this session.
+local BehaviorInstance = {}
+
+---Ends this attachment (`stop` gets `"detached"`) and forgets its saved state. On a single NPC the attachment is gone for good; on an NPC of a template
+---attachment only for this session (the template gives it back at the next load).
+function BehaviorInstance:detach() end
+
+---@alias BehaviorStopReason "detached"|"died"|"removed"|"restarted"
+
+---@class BehaviorDef
+---@field params? table Defaults of the parameters (plain data). `attach` overrides them per NPC; risen-modkit shows them as fields.
+---@field interval? number Seconds between `update` calls (default 0.5, 0 = every frame).
+---@field near? number Distance (units, 100 = 1 m) for `on_player_near` / `on_player_far`.
+---@field description? string What it does (shown by tools).
+---@field start? fun(self: BehaviorInstance) The NPC is in the world: 40 frames after `world.ready` (after a load too, then `self.resumed` is true), or when it appears later.
+---@field update? fun(self: BehaviorInstance, dt: number) Every `interval` seconds while the NPC lives; `dt` = seconds since the last call (a frame counts 0.25 s at most, so a menu pause does not pile up).
+---@field stop? fun(self: BehaviorInstance, reason: BehaviorStopReason) It ends: detached, the NPC died (after `on_death`) or was removed, or `attach` gave it new parameters (`"restarted"`, it starts again). **Not** called when the world is torn down (a load, a new game, quitting) or the mod is reloaded.
+---@field on_death? fun(self: BehaviorInstance, killer: Entity|nil) The NPC died (`entity.died`); `stop("died")` follows.
+---@field on_damage? fun(self: BehaviorInstance, attacker: Entity|nil, damage: integer) A hit took hit points (`entity.damaged`).
+---@field on_talk? fun(self: BehaviorInstance, info: string) The player chose a dialogue option the NPC owns (`info.started`).
+---@field on_items? fun(self: BehaviorInstance, template: string, delta: integer, total: integer, cause: InventoryCause) The NPC's inventory changed (`inventory.changed`).
+---@field on_quest? fun(self: BehaviorInstance, quest: string, status: string, previous: string) Any quest changed status (`quest.status_changed`), **the game's own quests included**: `status` `"Running"`, `"Success"`, `"Failed"`, ... Compare `quest` with the id you care about.
+---@field events? table<string, fun(self: BehaviorInstance, ...)> Any other event (the layer's: `gamevar.changed`, `crafting`, `entity.destroyed`, ...; or a mod's own `risen.emit` name): the handler gets `self` and the event's arguments, on every running attachment of this behaviour.
+---@field on_player_near? fun(self: BehaviorInstance, player: Entity, distance: number) The player came within `near` (checked every frame; once per approach).
+---@field on_player_far? fun(self: BehaviorInstance, player: Entity, distance: number) The player left the `near` distance again.
+
+---@class BehaviorAttachment
+---@field kind "name"|"id"|"template"
+---@field target string The unique name, entity ID or template name.
+---@field behavior string
+---@field running boolean
+---@field count integer How many NPCs run it (template attachments can have many).
+---@field persist boolean
+
+---Behaviours: scripts attached to NPCs, like components in Unity or Unreal (see `mods/example_behaviors`, `mods/behaviors`). Define one, attach it to an NPC
+---(or every NPC of a template); the layer starts it whenever the NPC is in the world, calls `update` and the event handlers, saves `self.state` with the game
+---and stops it when the NPC dies or is gone. A callback that raises is logged once and switches that attachment off until the next session.
+---@class RisenBehaviorApi
+local behaviorApi = {}
+
+---Defines (or redefines: running attachments use the new functions at once) a behaviour of this mod.
+---@param name string Letters, digits, `_ . -`, up to 64 characters, not starting with a digit.
+---@param def BehaviorDef
+---@return true|nil ok
+---@return string|nil reason
+function behaviorApi.define(name, def) end
+
+---Attaches a behaviour to one NPC. Made while the mod loads, it is a declaration for every session: the behaviour starts whenever the NPC is in the world.
+---Made during a session (a quest handler, a dialogue script) it lasts for that session, or for that savegame with `{ persist = true }`. Attaching again
+---with other parameters restarts it with them.
+---@param target string|Entity|PersistentNpc The NPC's unique name, an Entity (one without a unique name is kept by its ID) or a persistent NPC / spawn rule handle.
+---@param name string A behaviour this mod defined.
+---@param params? table Parameters on top of the definition's (plain data).
+---@param opts? { persist?: boolean }
+---@return true|nil ok
+---@return string|nil reason
+function behaviorApi.attach(target, name, params, opts) end
+
+---Attaches a behaviour to every NPC of a template: the world's own (when the behaviours start) and every one spawned later. Each gets its own state, saved by
+---its entity ID.
+---@param template string|Template
+---@param name string
+---@param params? table
+---@return true|nil ok
+---@return string|nil reason
+function behaviorApi.attach_template(template, name, params) end
+
+---Detaches a behaviour from one NPC (`stop("detached")`, the saved state goes too).
+---@param target string|Entity|PersistentNpc
+---@param name string
+---@return boolean found
+function behaviorApi.detach(target, name) end
+
+---Detaches a template attachment: stops it on every NPC of the template.
+---@param template string|Template
+---@param name string
+---@return boolean found
+function behaviorApi.detach_template(template, name) end
+
+---The running behaviour on an NPC (its `self`), or nil when it is not running.
+---@param target string|Entity|PersistentNpc
+---@param name string
+---@return BehaviorInstance|nil
+function behaviorApi.get(target, name) end
+
+---This mod's attachments and whether they run.
+---@return BehaviorAttachment[]
+function behaviorApi.list() end
+
+---The names of this mod's behaviours, sorted.
+---@return string[]
+function behaviorApi.defined() end
+
+---How many callbacks raised an error, and the last message.
+---@return integer count
+---@return string|nil last
+function behaviorApi.failures() end
+
 ---The modding API. Every mod gets its own `risen` view with its mod id baked in.
 ---@class RisenApi
 ---@field version string Version of risen-spass.
@@ -4724,6 +4831,7 @@ function logApi.error(...) end
 ---@field npc RisenNpcApi
 ---@field cond RisenCondApi
 ---@field spawn RisenSpawnApi
+---@field behavior RisenBehaviorApi
 ---@field spell RisenSpellApi
 ---@field recipe RisenRecipeApi
 ---@field interact RisenInteractApi
@@ -4854,6 +4962,11 @@ function risen_.retire(spec) end
 ---@return T options
 ---@return string[] problems
 function risen_.config(defaults) end
+
+---Seconds of a steady clock (zero when the Lua runtime started): measure frame times and cooldowns with differences of it. It keeps running while a
+---menu pauses the world.
+---@return number seconds
+function risen_.clock() end
 
 ---Emits a mod-to-mod event; the arguments are passed to the handlers unchanged.
 ---@param event string

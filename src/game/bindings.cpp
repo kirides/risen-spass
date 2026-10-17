@@ -180,6 +180,7 @@ void registerBindings() {
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installPersistentNpcModApi(lua, api, mod.id); });  // after bindSave: risen.npc.persistent keeps its records in the mod's risen.save
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installSpawnWhenModApi(lua, api, mod.id); });  // after the persistent NPCs: risen.spawn.when / risen.cond (M8)
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installDialogCondModApi(lua, api, mod.id); });  // after risen.cond and the voice wrapper: dialogue conditions (M9)
+    rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installBehaviorModApi(lua, api, mod.id); });  // after bindSave: risen.behavior keeps attachments and states in the mod's risen.save
     bindModStrings();
 
     // hot reload (M15): what a torn-down mod instance registered in the native registries is undone

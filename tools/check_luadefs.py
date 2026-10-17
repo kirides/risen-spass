@@ -74,6 +74,7 @@ for path in sorted(list((root / 'src').rglob('*.cpp')) + [root / 'src/game/npc_b
 bound['risen.on'] = bound['risen.off'] = bound['risen.emit'] = 'src/lua/runtime.cpp'
 bound['risen.config'] = 'src/game/lua_config.cpp'   # per-mod: api.set_function("config", ...)
 bound['risen.on_unload'] = 'src/lua/runtime.cpp'    # per-mod (M15)
+bound['risen.clock'] = 'src/lua/runtime.cpp'        # risen_.set_function("clock", ...) on the shared table
 bound['risen.migrate'] = 'src/game/migrate_lua.h'   # per-mod (M15): `function api.migrate(` in the chunk of migrate_lua.h
 bound['risen.retire'] = 'src/game/migrate_lua.h'    # per-mod (M15): `function api.retire(`
 for fn in re.findall(r'^function M\.(\w+)\(', (root / 'src/game/migrate_lua.h').read_text(encoding='utf-8'), flags=re.M):
@@ -136,6 +137,9 @@ for fn in re.findall(r'^function Stream:(\w+)\(', geo_src, flags=re.M):
 # the AI bridge (M11): the per-mod risen.ai.start / stop / forget / persisted (the chunk in ai_lua.h defines `function ai.<name>(` on the mod's ai table)
 for fn in re.findall(r'^function ai\.(\w+)\(', (root / 'src/game/ai_lua.h').read_text(encoding='utf-8'), flags=re.M):
     bound[f'ai.{fn}'] = 'src/game/ai_lua.h'
+# per-mod risen.behavior.* (the chunk in behavior_lua.h defines `function behavior.<name>(`)
+for fn in re.findall(r'^function behavior\.(\w+)\(', (root / 'src/game/behavior_lua.h').read_text(encoding='utf-8'), flags=re.M):
+    bound[f'behavior.{fn}'] = 'src/game/behavior_lua.h'
 # per-mod risen.dialog.create (wrapped) / compile / describe (the chunk in dialog_cond_lua.h defines `function own.<name>(` on the mod's dialog table)
 for fn in re.findall(r'^function own\.(\w+)\(', (root / 'src/game/dialog_cond_lua.h').read_text(encoding='utf-8'), flags=re.M):
     bound[f'dialog.{fn}'] = 'src/game/dialog_cond_lua.h'

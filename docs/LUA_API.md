@@ -756,6 +756,45 @@ local rng = R.new(7); rng:persist("loot")               -- a separate stream who
   The generator is sfc32: the sequence of a seed is the same on every machine. **`math.random` is different:** LuaJIT has one generator per Lua state; the sandbox gives every mod the same functions, so *all mods share it*, any `math.randomseed` reseeds it for everyone, and it starts from the same state in every run (an unseeded mod gets the same numbers each time): use `risen.random`.
 * **Limits.** The test is one ray between two points (no head-above-the-wall); characters never block unless asked; stealth, light and the NPC's `AssessActive` rules are not part of it; `camera = true` is only meaningful for the player (the camera follows him); the camera's FOV axis is inferred. Natives refuse |coordinate| > 1e7 and more than 64 ignored entities; all functions return `nil, reason` instead of raising.
 
+## Behaviours — `risen.behavior` (scripts attached to NPCs; see `mods/behaviors`)
+Like components in Unity or Unreal: define a behaviour once, attach it to an NPC (or to every NPC of a template); the layer starts it whenever the NPC is in the
+world, calls `update` and the event handlers, keeps `self.state` in the savegame and stops it when the NPC dies or is gone.
+```lua
+risen.behavior.define("guard_post", {
+    params = { radius = 600, warning = "Halt!" },   -- defaults; attach() overrides them per NPC (risen-modkit shows them as fields)
+    interval = 0.5,                                  -- update() every 0.5 s (0 = every frame)
+    near = 500,                                      -- on_player_near / on_player_far at this distance
+    start = function(self) self.state.warned = self.state.warned or 0 end,   -- self.resumed: the state came from a savegame
+    update = function(self, dt) end,
+    on_player_near = function(self, player, d) risen.hud.log(self.params.warning) self.state.warned = self.state.warned + 1 end,
+    on_quest = function(self, quest, status) if quest == "Rufo_GoToDruidHut" and status == "Success" then self.entity:set_guild(7) end end,   -- the game's quests too
+    on_death = function(self, killer) end, on_damage = function(self, attacker, damage) end,
+    on_talk = function(self, info) end, on_items = function(self, template, delta, total, cause) end,
+    events = { ["gamevar.changed"] = function(self, name, value) end },   -- any other event, a mod's own risen.emit names included
+    stop = function(self, reason) end,               -- "detached" | "died" | "removed" | "restarted"
+})
+risen.behavior.attach("MyMod_Guard", "guard_post", { radius = 800 })     -- a unique name, an Entity or a persistent NPC handle
+risen.behavior.attach_template("Wolf", "pack_hunter")                    -- every NPC of the template, the world's and later spawns
+risen.behavior.get("MyMod_Guard", "guard_post")      -- the running `self` (or nil)      risen.behavior.detach(target, name)   detach_template(template, name)
+risen.behavior.list()   risen.behavior.defined()   risen.behavior.failures()
+```
+* **`self`** (`BehaviorInstance`): `entity`, `name`, `key` (the unique name, or `"@" .. Entity:id()` for template NPCs and nameless entities), `params` (defaults with the attachment's on top),
+  `state` (saved with the game: plain data), `resumed`, `time` (seconds running in this session), `self:detach()`.
+* **When it runs.** Behaviours start 40 frames after `world.ready` (the persistent NPCs have their names back after 30), after a load too (`self.resumed`, the saved `state`), and
+  when the NPC appears later (a look every 15 frames; a template's NPCs 3 frames after `entity.spawned`). `update` gets the seconds since its last call (a frame counts 0.25 s at
+  most, so a menu pause does not pile up; `risen.clock()` is the steady clock it uses). A dead NPC gets `on_death` and `stop("died")` and is not started again; a removed one
+  `stop("removed")`. `stop` is **not** called when the world is torn down (load, new game, quit) or the mod is hot-reloaded.
+* **Declarations.** An attachment made while the mod loads holds for every session. One made during a session (in a quest script, a dialogue, `on_ready`) lasts for that session;
+  `attach(target, name, params, { persist = true })` keeps it in the savegame (`risen.save` key `behaviors_attached`). Attaching again with other parameters restarts it.
+* **Events.** `on_death` (`entity.died`), `on_damage` (`entity.damaged`), `on_talk` (`info.started` of an option the NPC owns), `on_items` (`inventory.changed`), `on_quest`
+  (`quest.status_changed`: **every** quest, the original game's included), `on_player_near` / `on_player_far` (the distance `near`, checked every frame), and `events` for any
+  other event name.
+* **Errors** never reach the engine: a callback that raises is logged once (`risen.behavior.failures()`) and switches that one attachment off until the next session.
+* **Storage.** `risen.save` key `behaviors`: `{ [key] = { [behaviour] = state } }`; a state that cannot be saved (a function, an Entity) is reset with a warning at the next save.
+  Trace channel `behavior` (`-Trace behavior`) logs definitions, starts and stops.
+* **Spawning, not behaving:** NPCs that should *appear* when something happened (enemies after a quest of the game was solved) are `risen.spawn.when{ when = risen.cond.quest("<any quest id>", "Success") }`
+  (next sections); a behaviour can be attached to them like to any persistent NPC.
+
 ## AI states and perception — `risen.ai` (see `mods/example_ai`, `mods/aistates`, [RE.md §36](RE.md))
 The NPCs' behaviour is a stack of **AI states** (`ZS_HangAround`, `ZS_Watch`, `ZS_Attack_CombatMove`, ... `risen.ai.list("state")` names the 246 the game has): script functions the engine runs for an NPC every frame in which he is not in the middle of an action, plus a **task callback** (`OnRoutine`, ...) about once a second, which sweeps what the NPC perceives and runs the game's `Assess*` scripts (`AssessActive`, `AssessDamage`, ...). The layer registers Lua functions in the same registry, so a state written in Lua is run by the engine like its own, and the `Assess*` scripts can be hooked.
 ```lua

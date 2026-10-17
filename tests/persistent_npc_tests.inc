@@ -70,7 +70,7 @@ void setupPersistentNpcMock(sol::state& lua) {
         function serialize(v)
             if type(v) == "table" then
                 local out = {}
-                for k, x in pairs(v) do out[#out + 1] = "[" .. string.format("%q", k) .. "]=" .. serialize(x) end
+                for k, x in pairs(v) do out[#out + 1] = "[" .. (type(k) == "number" and tostring(k) or string.format("%q", k)) .. "]=" .. serialize(x) end
                 return "{" .. table.concat(out, ",") .. "}"
             elseif type(v) == "string" then return string.format("%q", v) end
             return tostring(v)

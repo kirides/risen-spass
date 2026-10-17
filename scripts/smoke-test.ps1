@@ -24,6 +24,7 @@
       ex_dialog_when - example: a smuggler whose secret needs iron ore AND trust AND a guild (mods/example_dialog_when)
       routines     - NPC routines (M10, mods/routines): guard post, displaced guard, work/relax/sleep by the clock, a patrol ring, idempotence, a persistent NPC with a `routine`; save + in-process load, then fresh-process loads (same declaration, changed declaration)
       ex_routines  - example: a gatekeeper with a day, an evening and a night post and a patrol (mods/example_routines)
+      behaviors    - behaviours attached to NPCs (risen.behavior, mods/behaviors): lifecycle, events, errors, template NPCs, state across a quick load
       aistates     - Lua AI states, callbacks and perception handlers (M11, mods/aistates): begin / loop / finish on real NPCs, walking, errors, a bitten NPC that flees; save + in-process load, then fresh-process loads (the states defined, the mod removed)
       ex_ai        - example: a follower and a sentry who warns the player, a guard who flees when hit (mods/example_ai)
       showcase     - the showcase mod (M12, mods/balance_example): balance of items/monsters/spells, new items (one with loose mesh and texture), a recipe, a persistent smith with a voiced dialogue and an iron-ore quest, an apprentice who appears afterwards (routine), a watchman (Lua AI); play + quick save/load, then a fresh-process load
@@ -63,7 +64,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'modmanager', 'options', 'modkit', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'behaviors', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'modmanager', 'options', 'modkit', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -197,6 +198,8 @@ $scenarios = [ordered]@{
     ex_routines       = @{ Est = 100; Title = 'example: a gatekeeper (day, evening, night) and a patrol'; Kind = 'result'; Mods = @('example_routines'); Limit = 300 }
     # Lua AI states (M11): "save" (new game: registry, refusals, a Lua state on real NPCs, errors in every callback kind, task callbacks, a damage handler that sends a bitten NPC running, the follower; quick save,
     # quick load in the same process), "load" (a fresh process resumes the saved state), "load_missing" (a fresh process whose mod defines no states: the engine drops the unknown state)
+    # behaviours (risen.behavior): persistent and template NPCs, cadence, params, near / far, dialogue, items, a kill, an error, session attachments; quick save + load (states resumed)
+    behaviors         = @{ Est = 120; Title = 'Behaviours: scripts attached to NPCs (lifecycle, events, errors, template NPCs, state across a load)'; Kind = 'result'; Mods = @('behaviors'); Limit = 300 }
     aistates          = @{ Est = 270; Title = 'Lua AI states and perception (M11: begin/loop/finish, walking, errors, damage; save, fresh-process load, removed mod)'; Kind = 'result'; Mods = @('aistates'); Limit = 400
                            Phases = @(
                                @{ Name = 'save'; Param = @('phase=save'); Start = 'new'; Keep = $false; Limit = 400 }
