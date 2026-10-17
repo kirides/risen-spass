@@ -240,6 +240,10 @@
               "text": {
                 "English": "I am Hob. I make knives and other useful things.",
                 "German": "Ich bin Hob. Ich mache Messer und andere nützliche Dinge."
+              },
+              "sound": {
+                "default": "hob_who.ogg",
+                "German": "hob_who_de.mp3"
               }
             }
           },
@@ -1001,6 +1005,17 @@
     "removals": [],
     "moves": []
   },
-  "assets": [],
+  "assets": [
+    {
+      "uid": "5f1e0c7a2b9d4e6f8a1b3c5d7e9f0a21",
+      "file": "audio/hob_who.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "5f1e0c7a2b9d4e6f8a1b3c5d7e9f0a22",
+      "file": "audio/hob_who_de.mp3",
+      "kind": "sound"
+    }
+  ],
   "editor": {}
 }

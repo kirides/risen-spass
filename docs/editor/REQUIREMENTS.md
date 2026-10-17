@@ -140,6 +140,7 @@ IDs are referenced by the stages (section 9). **M** = must for the stage that im
 |---|---|
 | AST-1 M | Built-in assets: every mesh/icon/actor picker lists the names of the game archives (DATA-4) with a preview where decoded (mesh in a small 3D preview, icon cell). |
 | AST-2 M | Custom compiled assets: add `._xmsh`, `._xmat`, `._ximg`, `._xmac`, ... files to the project; they are copied to `<mod>/assets/` on export and offered in the pickers. |
+| AST-5 M | Sounds: audio files (Ogg Vorbis, WAV, MP3) and compiled `._xsnd` in the project; the game's speech and effect sounds (`sounds.pak`, `speech_<language>.pak`) are listed by voice language; every sound can be **played in the editor** (a `._xsnd` is unpacked: its payload is the audio file, RE.md section 28). A dialogue line's sound is exported as `sound = "sounds/<file>"` (one file or one per language), game sounds unpacked into `sounds/`; SaySound's `SoundName` takes a game sound by its raw name. |
 | AST-3 S | Custom images: PNG/TGA/JPG -> `._ximg` (DDS A8R8G8B8 or DXT inside the GR01 container); icons -> an icon atlas + `.ximl` image list (`risen.assets.load_icons`). |
 | AST-4 B | Custom meshes from authoring formats (glTF, OBJ, FBX through assimp) -> `._xmsh` + `._xmat`. Needs a writer of the MS02 container that the engine accepts (verified in the game, section 10). |
 
@@ -157,7 +158,7 @@ IDs are referenced by the stages (section 9). **M** = must for the stage that im
 
 | ID | Requirement |
 |---|---|
-| NF-1 | C++20, CMake >= 3.25, vcpkg manifest (feature `modkit`): glfw3, imgui (docking, glfw and opengl3 bindings), imgui-node-editor, imguizmo, glad, nlohmann-json, stb, nativefiledialog-extended, zlib, luajit (+ sol2), assimp (only from E11). No Windows API outside `#ifdef _WIN32`. |
+| NF-1 | C++20, CMake >= 3.25, vcpkg manifest (feature `modkit`): glfw3, imgui (docking, glfw and opengl3 bindings), imgui-node-editor, imguizmo, glad, nlohmann-json, stb, nativefiledialog-extended, miniaudio (sound preview; Ogg Vorbis through stb_vorbis), zlib, luajit (+ sol2), assimp (only for AST-4). No Windows API outside `#ifdef _WIN32`. |
 | NF-2 | Builds on Windows (MSVC, the repository presets), Linux (GCC/Clang) and macOS (Apple Clang, OpenGL 3.3 core profile, forward compatible). On non-Windows hosts only the editor and its tests are built (the layer DLL is Windows-only). |
 | NF-3 | The game data is read only; the tool never writes into the game directory (the same guard as pack2mod). Paths of the game install are never stored in an exported mod. |
 | NF-4 | Startup with a cached index under 3 s; the first index of the game archives under 30 s; the world view loads `World` (608 layer files) progressively without blocking the UI (background thread + main-thread GPU upload). |
@@ -309,7 +310,7 @@ Each stage ends with a usable feature (or the base the next stage needs), is ver
 | **E8** Meshes and textures | `._xmsh`/`._xmat`/`._ximg` decoding, GPU cache, LOD, mesh preview in pickers | WLD-3, AST-1, DATA-7 | **done** (WLD-3, AST-1 mesh previews; 1665 of 1666 meshes decode, all 25921 entity meshes resolve; DATA-7 icon previews open: compiled_imagelists.bin is not decoded) |
 | **E9** Import | project.json import, sandboxed Lua data import, raw-Lua passthrough | IMP-1, IMP-2 | **done** (export -> import from the data files alone -> export gives identical files; unknown balance sections are kept and exported again) |
 | **E10** Placement | gizmo placement of NPCs, items in the world, chest contents, ground snapping, export of `data/world.lua`, live check | WLD-4..6 | **done** (click on the ground through the depth buffer, ImGuizmo moves, chest contents; scenario `modkit`: 46 checks, nothing doubled after a load) |
-| **E11** Custom assets | compiled asset files in the project, image -> `._ximg`, icons, (B) meshes via assimp | AST-2..4 | open |
+| **E11** Custom assets | compiled asset files in the project, sounds for dialogue lines with preview, image -> `._ximg`, icons, (B) meshes via assimp | AST-2..5 | AST-2, AST-5 **done** (Assets panel; the 3D views read project files first like the engine's name cache; sound picker over 77 000 game sounds with playback through miniaudio; scenario `modkit`: the layer compiled the line's Ogg and MP3 and the engine asked for the line's voice); AST-3, AST-4 open |
 | **E12** World edits (bonus) | layer API for transform/remove of entities (RE + live verification, types/risen.d.lua), static mesh placement, moving/removing existing entities | WLD-7, WLD-8 | open |
 
 Order rationale: E0-E2 give a usable tool with a real mod at the end of E2; E3-E6 add the other content kinds on the same export pipeline; the world (E7-E8) is independent

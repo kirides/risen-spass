@@ -19,6 +19,7 @@ return {
                         default = "I am Hob. I make knives and other useful things.",
                         de = "Ich bin Hob. Ich mache Messer und andere nützliche Dinge.",
                     },
+                    sound = { default = "sounds/hob_who.ogg", de = "sounds/hob_who_de.mp3" },
                 },
                 { command = "End" },
             },

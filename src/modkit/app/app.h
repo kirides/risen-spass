@@ -4,11 +4,13 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <mutex>
 #include <thread>
 #include <string>
 #include <vector>
 
+#include "core/assets.h"
 #include "core/gamedata.h"
 #include "core/history.h"
 #include "core/project.h"
@@ -23,6 +25,7 @@ namespace mk {
 namespace gfx {
 class ResourceCache;
 }
+class AudioPlayer;
 
 struct AppOptions {
     std::string project;     // open this project at start
@@ -84,6 +87,15 @@ public:
     std::shared_ptr<const World> world;
     // meshes and textures of the game for the 3D views (made with the game data; nullptr without)
     gfx::ResourceCache* resources();
+    // tells the 3D views about the project's asset files (every frame; `reload` reads files that changed on disk again)
+    void refresh_assets(bool reload = false);
+    // an asset file of the project on disk (relative paths are relative to the project file)
+    std::string asset_path(const AssetFile& a) const;
+    // a sound reference (core/assets.h: a project audio file or a game sound) read and unpacked; nullopt + `error` when it cannot be
+    std::optional<SoundData> load_sound(const std::string& ref, std::string& error) const;
+    // the sound preview: play / stop a reference (errors go to the status bar)
+    AudioPlayer& audio();
+    void toggle_sound(const std::string& ref);
 
     void touch() { history.touch(); }  // a panel changed `project`
     void status(const std::string& text);  // the status bar line
@@ -134,6 +146,9 @@ private:
     std::string focus_request_, pending_select_;
     std::vector<Problem> problems_;
     std::unique_ptr<gfx::ResourceCache> resources_;
+    std::unique_ptr<AudioPlayer> audio_;
+    std::string assets_sig_;
+    const gfx::ResourceCache* assets_res_ = nullptr;
     const GameData* resources_game_ = nullptr;
     double problems_time_ = -1;
     bool export_open_ = false;
@@ -158,5 +173,6 @@ bool save_screenshot(const std::string& path, int width, int height);
 std::string dialog_open_file(const char* filter_name, const char* filter_spec, const std::string& default_dir);
 std::string dialog_save_file(const char* filter_name, const char* filter_spec, const std::string& default_dir, const std::string& default_name);
 std::string dialog_pick_folder(const std::string& default_dir);
+std::vector<std::string> dialog_open_files(const char* filter_name, const char* filter_spec, const std::string& default_dir);
 
 }  // namespace mk

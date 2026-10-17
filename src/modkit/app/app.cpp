@@ -13,6 +13,7 @@
 
 #include <algorithm>
 
+#include "app/audio.h"
 #include "app/panels/panels.h"
 #include "app/render/resources.h"
 #include "core/export.h"
@@ -56,6 +57,26 @@ std::string dialog_save_file(const char* filter_name, const char* filter_spec, c
     return s;
 }
 
+std::vector<std::string> dialog_open_files(const char* filter_name, const char* filter_spec, const std::string& default_dir) {
+    const nfdpathset_t* set = nullptr;
+    nfdu8filteritem_t filter{filter_name, filter_spec};
+    const nfdresult_t r = NFD_OpenDialogMultipleU8(&set, filter_spec ? &filter : nullptr, filter_spec ? 1 : 0, default_dir.empty() ? nullptr : default_dir.c_str());
+    std::vector<std::string> out;
+    if (r == NFD_ERROR) log_error(std::string("file dialog: ") + NFD_GetError());
+    if (r != NFD_OKAY) return out;
+    nfdpathsetsize_t n = 0;
+    NFD_PathSet_GetCount(set, &n);
+    for (nfdpathsetsize_t i = 0; i < n; ++i) {
+        nfdu8char_t* p = nullptr;
+        if (NFD_PathSet_GetPathU8(set, i, &p) == NFD_OKAY) {
+            out.push_back(p);
+            NFD_PathSet_FreePathU8(p);
+        }
+    }
+    NFD_PathSet_Free(set);
+    return out;
+}
+
 std::string dialog_pick_folder(const std::string& default_dir) {
     nfdu8char_t* out = nullptr;
     const nfdresult_t r = NFD_PickFolderU8(&out, default_dir.empty() ? nullptr : default_dir.c_str());
@@ -78,6 +99,7 @@ App::App(AppOptions opts) : options(std::move(opts)) {
     panels_.push_back(make_dialogs_panel());
     panels_.push_back(make_quests_panel());
     panels_.push_back(make_world_panel());
+    panels_.push_back(make_assets_panel());
     panels_.push_back(make_problems_panel());
     panels_.push_back(make_log_panel());
     panels_.push_back(make_settings_panel());
@@ -163,6 +185,67 @@ gfx::ResourceCache* App::resources() {
     return resources_.get();
 }
 
+std::string App::asset_path(const AssetFile& a) const {
+    const fs::path f = u8(a.file);
+    if (f.is_absolute() || project_path.empty()) return u8str(f);
+    return u8str(u8(project_path).parent_path() / f);
+}
+
+std::optional<SoundData> App::load_sound(const std::string& ref, std::string& error) const {
+    try {
+        std::string bytes;
+        if (const AssetFile* a = find_asset(project, ref)) bytes = read_text(u8(asset_path(*a)));
+        else if (game && game->exists(ref)) bytes = game->read(ref);
+        else {
+            error = ref + " is neither an asset file of the project nor a sound of the game";
+            return std::nullopt;
+        }
+        return open_sound(bytes, error);
+    } catch (const std::exception& e) {
+        error = e.what();
+        return std::nullopt;
+    }
+}
+
+AudioPlayer& App::audio() {
+    if (!audio_) audio_ = std::make_unique<AudioPlayer>();
+    return *audio_;
+}
+
+void App::toggle_sound(const std::string& ref) {
+    AudioPlayer& a = audio();
+    if (a.current() == ref) {
+        a.stop();
+        return;
+    }
+    std::string error;
+    auto snd = load_sound(ref, error);
+    const std::string format = snd ? snd->format : std::string();
+    if (snd && a.play(ref, std::move(snd->audio), error)) {
+        status("playing " + ref + " (" + format + ", " + std::to_string(a.length()).substr(0, 4) + " s)");
+        return;
+    }
+    status("cannot play " + ref + ": " + error);
+    log_warn("cannot play " + ref + ": " + error);
+}
+
+void App::refresh_assets(bool reload) {
+    gfx::ResourceCache* res = resources();
+    if (!res) return;
+    std::unordered_map<std::string, std::string> files;
+    std::string sig;
+    for (auto& a : project.assets) {
+        const std::string path = asset_path(a);
+        files[p2m::lower(u8str(u8(a.file).filename()))] = path;
+        sig += path + "\n";
+    }
+    if (!reload && sig == assets_sig_ && res == assets_res_) return;
+    assets_sig_ = sig;
+    assets_res_ = res;
+    if (reload) res->set_loose({});  // everything counts as changed: read again
+    res->set_loose(std::move(files));
+}
+
 bool App::any_busy() const {
     bool busy = game_loading();
     for (auto& p : panels_) busy = busy || p->busy();
@@ -204,6 +287,7 @@ void App::draw_export_modal() {
         ExportOptions o;
         o.project_dir = project_path.empty() ? std::string() : u8str(u8(project_path).parent_path());
         o.game_data_dir = settings.data_dir;
+        o.game = game.get();
         const ExportResult r = export_mod(project, export_dir_, o);
         export_report_.clear();
         for (auto& e : r.errors) export_report_.push_back("error: " + e);
@@ -230,6 +314,7 @@ void App::draw_export_modal() {
 
 void App::project_replaced() {
     for (auto& p : panels_) p->on_project_changed(*this);
+    refresh_assets();
     update_title();
 }
 
@@ -359,7 +444,7 @@ void App::setup_default_layout(unsigned int dockspace_id) {
     ImGui::DockBuilderDockWindow(kPanelBrowser, left);
     ImGui::DockBuilderDockWindow(kPanelLog, bottom);
     ImGui::DockBuilderDockWindow("Problems", bottom);
-    for (const char* t : {"Items", "Recipes", "NPCs", "Dialogues", "Quests", "World", kPanelSettings}) ImGui::DockBuilderDockWindow(t, center);
+    for (const char* t : {"Items", "Recipes", "NPCs", "Dialogues", "Quests", "World", kPanelAssets, kPanelSettings}) ImGui::DockBuilderDockWindow(t, center);
     ImGui::DockBuilderFinish(dockspace_id);
 }
 
@@ -490,6 +575,7 @@ void App::draw_modals() {
 
 void App::draw_frame() {
     refresh_problems();
+    refresh_assets();  // cheap when nothing changed; follows undo, open, import
     handle_shortcuts();
     draw_menu();
     const ImGuiViewport* vp = ImGui::GetMainViewport();
@@ -591,12 +677,13 @@ int App::run() {
             const int step = shot_frames_ - 3;
             const size_t i = static_cast<size_t>(step / 4);
             if (i < options.clicks.size()) {
-                ImGuiIO& io = ImGui::GetIO();
+                ImGuiIO& cio = ImGui::GetIO();
                 const auto [cx, cy] = options.clicks[i];
+                // every step: the GLFW backend posts the real cursor position each frame while the window has the focus
+                cio.AddMousePosEvent(cx, cy);
                 switch (step % 4) {
-                    case 0: io.AddMousePosEvent(cx, cy); break;
-                    case 1: io.AddMouseButtonEvent(0, true); break;
-                    case 2: io.AddMouseButtonEvent(0, false); break;
+                    case 1: cio.AddMouseButtonEvent(0, true); break;
+                    case 2: cio.AddMouseButtonEvent(0, false); break;
                     default: break;
                 }
             }

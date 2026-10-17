@@ -3,13 +3,16 @@
 #include <luajit/lua.hpp>
 #include <toml++/toml.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <map>
 #include <set>
 #include <stdexcept>
 
+#include "core/assets.h"
 #include "core/graph.h"
 #include "core/paths.h"
+#include "pack2mod/util.h"
 
 namespace mk {
 
@@ -122,6 +125,16 @@ Text text_of(Ctx& c, const json& v) {
         }
     }
     return t;
+}
+
+// a line's sound ("sounds/x.ogg" or { default = ..., de = ... }) -> node data { default = "x.ogg", German = ... } (references by file name)
+json sound_json(const json& v) {
+    json o = json::object();
+    if (v.is_string()) o["default"] = p2m::bare_name(v.get<std::string>());
+    else if (v.is_object())
+        for (auto& [k, s] : v.items())
+            if (s.is_string()) o[k == "default" ? k : code_language(k)] = p2m::bare_name(s.get<std::string>());
+    return o;
 }
 
 json text_json(const Text& t) {
@@ -428,6 +441,7 @@ void import_dialogs(Ctx& c, const json& d) {
         size_t first_line = 0;
         if (!lines.empty() && lines[0].value("speaker", std::string()) == "player" && lines[0].contains("text")) {
             opt_node.data["text"] = text_json(text_of(c, lines[0]["text"]));
+            if (lines[0].contains("sound")) opt_node.data["sound"] = sound_json(lines[0]["sound"]);
             first_line = 1;
         }
         g.nodes.push_back(opt_node);
@@ -462,8 +476,9 @@ void import_dialogs(Ctx& c, const json& d) {
                     n.data["command"] = cmd;
                     json params = json::object();
                     for (auto& [k, v] : l.items())
-                        if (k != "command" && k != "text") params[k] = v;
+                        if (k != "command" && k != "text" && k != "sound") params[k] = v;
                     n.data["params"] = params;
+                    if (l.contains("sound")) n.data["sound"] = sound_json(l["sound"]);
                     if (l.contains("text")) n.data["text"] = text_json(text_of(c, l["text"]));
                 }
             } else if (l.contains("script")) {
@@ -484,6 +499,7 @@ void import_dialogs(Ctx& c, const json& d) {
                 n = make_node(GraphKind::Dialog, "line", lx, y);
                 n.data["speaker"] = l.value("speaker", std::string("npc"));
                 n.data["text"] = text_json(text_of(c, l.value("text", json())));
+                if (l.contains("sound")) n.data["sound"] = sound_json(l["sound"]);
             }
             g.nodes.push_back(n);
             add_link(GraphKind::Dialog, g, prev, prev_pin, n.uid, "in");
@@ -667,11 +683,16 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
         p.mod.languages = {"English"};
         for (auto& l : c.languages)
             if (l != "English") p.mod.languages.push_back(l);
-        // asset files stay where they are (the export copies them from there)
-        const fs::path ad = root / "assets";
-        if (fs::is_directory(ad, ec))
+        // asset files stay where they are (the export copies them from there): compiled resources in assets/, audio files in sounds/
+        for (const char* sub : {"assets", "sounds"}) {
+            const fs::path ad = root / sub;
+            if (!fs::is_directory(ad, ec)) continue;
+            std::vector<fs::path> files;
             for (auto it = fs::recursive_directory_iterator(ad, ec); !ec && it != fs::recursive_directory_iterator(); it.increment(ec))
-                if (it->is_regular_file()) p.assets.push_back({new_uid(), u8str(fs::absolute(it->path())), "other"});
+                if (it->is_regular_file()) files.push_back(it->path());
+            std::sort(files.begin(), files.end());
+            for (auto& f : files) p.assets.push_back({new_uid(), u8str(fs::absolute(f)), asset_kind(u8str(f.filename()))});
+        }
         if (fs::exists(root / "custom.lua", ec)) r.warnings.push_back("custom.lua is not imported: keep it in the mod folder when you export there again");
         r.ok = true;
     } catch (const std::exception& e) {

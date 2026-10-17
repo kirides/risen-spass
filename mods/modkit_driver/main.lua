@@ -29,8 +29,10 @@ T.plan {
     "placed NPC equipped his knife",
     "placed NPC routine post",
     "dialogue options exist",
+    "the voiced line has its sounds",
     "turn-in option has engine conditions",
     "offered options before the quest",
+    "the voiced line is spoken with its sound",
     "the work option starts the quest",
     "the quest log has the entry",
     "the turn-in is offered with the ore",
@@ -190,6 +192,11 @@ T.run(function()
         local missing = {}
         for _, n in ipairs(names) do if not risen.dialog.get(n) then missing[#missing + 1] = n end end
         T.expect("dialogue options exist", #missing == 0, table.concat(missing, ", "))
+        -- the line with a sound (an Ogg for every language, an MP3 for German): the layer compiled both under the line's text id
+        local voiced = risen.voice.get("MK_Hob_Who_2")
+        local vdef, vde = voiced and voiced.variants.default, voiced and voiced.variants.German
+        T.expect("the voiced line has its sounds", vdef ~= nil and vde ~= nil and vdef.duration_ms >= 290 and vdef.duration_ms <= 310 and vde.duration_ms > 0,
+                 ("default=%s German=%s"):format(tostring(vdef and vdef.duration_ms), tostring(vde and vde.duration_ms)))
         -- quest state and item amount are conditions the engine evaluates itself (no Lua condition behind them)
         local ore = risen.dialog.get("MK_Hob_Ore")
         T.eq("turn-in option has engine conditions", ore and ore:condition_count(), 2)
@@ -214,6 +221,11 @@ T.run(function()
         risen.item.take(player, "It_IronOre", 99)   -- the crafting check above left none, but be sure
         open_talk()
         T.eq("offered options before the quest", offered(), "MK_Hob_Island,MK_Hob_Who,MK_Hob_Work")
+        choose("MK_Hob_Who")
+        local last = risen.voice.last()
+        T.expect("the voiced line is spoken with its sound", last ~= nil and last.key == "MK_Hob_Who_2",
+                 last and (tostring(last.key) .. " " .. tostring(last.title)) or "the engine asked for no registered voice")
+        open_talk()   -- the option has no sub-options: it ended the conversation
         choose("MK_Hob_Work")
         T.expect("the work option starts the quest", risen.quest.is_running("Q_MK_Ore"))
         local q = risen.quest.get("Q_MK_Ore")

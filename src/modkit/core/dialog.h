@@ -37,5 +37,10 @@ std::string info_name(const Project& p, const GraphNode& option);
 std::string quest_action_script(const std::string& quest, const std::string& action);
 // a text per language for a dialogue line: { default = <first language>, de = ..., ... }
 json line_text(const Project& p, const json& text);
+// the sound of a line (node data "sound": { default = <reference>, <Language> = <reference> }, core/assets.h) as the layer takes it:
+// "sounds/x.ogg" or { default = "sounds/x.ogg", de = "sounds/y.mp3" }; null when none. Unusable references are appended to `errors`.
+json line_sound(const Project& p, const json& sound, std::vector<std::string>& errors);
+// every sound reference of the project's dialogues (sorted, unique)
+std::vector<std::string> dialog_sound_refs(const Project& p);
 
 }  // namespace mk

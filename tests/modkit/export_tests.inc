@@ -36,6 +36,8 @@ TEST(lua_writer_tables) {
 static Project load_showcase() {
     return load_project_file(std::string(MODKIT_SOURCE_DIR) + "/examples/modkit/showcase.rmk.json");
 }
+// the folder of the showcase project: its asset files (audio/) are relative to it
+static std::string showcase_dir() { return std::string(MODKIT_SOURCE_DIR) + "/examples/modkit"; }
 
 TEST(export_golden_showcase) {
     // mods/modkit_showcase is the committed export of examples/modkit/showcase.rmk.json (the live scenario `modkit` runs it):
@@ -93,6 +95,7 @@ TEST(export_writes_safely) {
     const fs::path root = temp_dir("export");
     const Project p = load_showcase();
     ExportOptions o;
+    o.project_dir = showcase_dir();
     o.game_data_dir = u8str(root / "game" / "data");
     fs::create_directories(root / "game" / "data");
     // inside the game data: refused
@@ -123,13 +126,13 @@ TEST(export_writes_safely) {
     // asset files are copied flat and stale ones removed
     Project q = p;
     write_text(root / "My_Mesh._xmsh", "GR01MS02");
-    q.assets.push_back({"a1", "My_Mesh._xmsh", "mesh"});
-    o.project_dir = u8str(root);
+    q.assets.push_back({"a1", u8str(root / "My_Mesh._xmsh"), "mesh"});  // an absolute path
     r = export_mod(q, u8str(out), o);
     CHECK(r.ok && fs::exists(out / "assets" / "My_Mesh._xmsh"));
     CHECK(read_text(out / "mod.toml").find("assets      = \"assets\"") != std::string::npos);
     r = export_mod(p, u8str(out), o);
     CHECK(r.ok && !fs::exists(out / "assets" / "My_Mesh._xmsh"));
+    CHECK(fs::exists(out / "sounds" / "hob_who.ogg") && read_text(out / "mod.toml").find("assets      = false") != std::string::npos);
 }
 
 TEST(validate_without_game_data) {

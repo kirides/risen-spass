@@ -34,6 +34,7 @@ TEST(import_round_trip) {
     const Project p = load_showcase();
     const fs::path dir = temp_dir("import") / "modkit_showcase";
     ExportOptions o;
+    o.project_dir = showcase_dir();
     CHECK(export_mod(p, u8str(dir), o).ok);
     const ImportResult via_project = import_mod(u8str(dir));
     CHECK(via_project.ok && via_project.from_project_file);

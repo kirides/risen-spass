@@ -25,6 +25,7 @@ struct ExportOptions {
     std::string project_dir;     // where the project file is: asset files are relative to it
     std::string game_data_dir;   // the export refuses targets inside it
     bool allow_foreign = false;  // write into a non-empty folder without modkit/project.json (never set by the UI)
+    const GameData* game = nullptr;  // the game sounds dialogue lines use are unpacked from it (an error names them when it is missing)
 };
 
 struct ExportResult {

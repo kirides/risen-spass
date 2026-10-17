@@ -76,6 +76,14 @@ public:
                 app.focus_panel(title());
                 return true;
             }
+        // a node: its dialogue, with the node selected
+        for (auto& d : app.project.dialogs)
+            if (d.graph.find(key)) {
+                sel_ = d.uid;
+                canvas_.select(d.uid, key);
+                app.focus_panel(title());
+                return true;
+            }
         return false;
     }
 
@@ -223,6 +231,23 @@ private:
         if (ch) app.touch();
     }
 
+    // "[sound: greet.ogg]" / "[sound: 3 variants]" for the canvas
+    static std::string sound_note(const json& d) {
+        const auto it = d.find("sound");
+        if (it == d.end() || !it->is_object() || it->empty()) return {};
+        if (it->size() == 1) return "\n[sound: " + shorten(it->begin()->get<std::string>(), 40) + "]";
+        return "\n[sound: " + std::to_string(it->size()) + " variants]";
+    }
+
+    // the "sound" of a node: edited on a copy, so a node without one gets no empty entry
+    static bool edit_sound(App& app, json& dd, const char* label) {
+        json s = dd.value("sound", json::object());
+        if (!ui::sound_rows(label, s, app)) return false;
+        if (s.empty()) dd.erase("sound");
+        else dd["sound"] = s;
+        return true;
+    }
+
     std::string summary(const Project& p, const Graph& g, const GraphNode& n) {
         const json& d = n.data;
         if (n.type == "option") {
@@ -230,15 +255,16 @@ private:
             const std::string type = d.value("type", std::string("Info"));
             if (type != "Info") s += "\n[" + type + "]";
             if (d.value("permanent", false)) s += "\n[permanent]";
+            s += sound_note(d);
             s += "\n" + info_name(p, n);
             return s;
         }
-        if (n.type == "line") return d.value("speaker", std::string("npc")) + ": " + shorten(first_text(p, d.value("text", json::object())));
+        if (n.type == "line") return d.value("speaker", std::string("npc")) + ": " + shorten(first_text(p, d.value("text", json::object()))) + sound_note(d);
         if (n.type == "command") {
             std::string s = d.value("command", std::string());
             if (d.contains("params") && d["params"].is_object())
                 for (auto& [k, v] : d["params"].items()) s += "\n" + k + " = " + (v.is_string() ? v.get<std::string>() : v.dump());
-            return s;
+            return s + sound_note(d);
         }
         if (n.type == "quest") return d.value("action", std::string()) + " " + d.value("quest", std::string());
         if (n.type == "log") return d.value("quest", std::string()) + ": " + shorten(first_text(p, d.value("text", json::object())), 60);
@@ -274,6 +300,7 @@ private:
         const auto& langs = app.project.mod.languages;
         if (n->type == "option") {
             ch |= json_text("Player says", dd["text"], langs, true);
+            ch |= edit_sound(app, dd, "Sound");
             ch |= json_combo("Type", dd, "type", info_types());
             ui::help("Info: offered in the list. Important: the NPC starts with it. Comment, News, Refuse, Parent: special kinds of the engine.");
             bool perm = dd.value("permanent", false);
@@ -325,6 +352,7 @@ private:
             }
             ch |= json_str("Other NPC", dd, "speaker", "or a unique name");
             ch |= json_text("Text", dd["text"], langs, true);
+            ch |= edit_sound(app, dd, "Sound");
         } else if (n->type == "command") {
             std::vector<std::string> names;
             for (auto& c : dialog_commands()) names.push_back(c.name);
@@ -354,6 +382,15 @@ private:
                             ps[par.name] = v;
                             ch = true;
                         }
+                    } else if (cmd == "SaySound" && par.name == "SoundName") {
+                        std::string v = ps.value(par.name, std::string());
+                        if (ui::sound_picker("SoundName", v, app, true)) {
+                            if (v.empty()) ps.erase(par.name);
+                            else ps[par.name] = v;
+                            ch = true;
+                        }
+                        ui::help("The raw name of a sound the engine knows (a game sound or a compiled ._xsnd of the project): played as it is, without "
+                                 "subtitle, in every voice language. Or leave it empty and give a custom sound below.");
                     } else if (par.type == "eCTemplateEntityProxy") {
                         std::string v = ps.value(par.name, std::string());
                         if (ui::template_picker(par.name.c_str(), v, app.game.get(), {TplKind::Item, TplKind::Recipe}, ui::project_item_names(app.project))) {
@@ -366,6 +403,7 @@ private:
                     }
                     ImGui::PopID();
                 }
+                if (cmd == "SaySound") ch |= edit_sound(app, dd, "Custom sound");
             }
         } else if (n->type == "quest") {
             std::vector<std::string> qs;

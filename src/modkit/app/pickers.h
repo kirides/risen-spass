@@ -18,4 +18,13 @@ bool asset_picker(const char* label, std::string& name, const GameData* game, co
 // a label for a template name: the project's label, else the game's English label, else ""
 std::string label_of(const App& app, const std::string& name);
 
+// a play / stop button for a sound reference (core/assets.h); `id` keeps buttons of the same reference apart
+bool sound_button(App& app, const std::string& ref, const char* id = "##play");
+// a sound reference: the project's audio files and compiled sounds first, then the game's sounds (speech by voice language, effects), each with
+// a play button. `raw_name`: the value is the raw name the engine plays ("X.wav", SaySound's SoundName) instead of "X._xsnd"; project audio files
+// are not offered then.
+bool sound_picker(const char* label, std::string& ref, App& app, bool raw_name = false, float width = 0);
+// the sound of a dialogue line: one row for every language plus one per language of the mod (node data "sound", core/dialog.h line_sound)
+bool sound_rows(const char* label, json& sound, App& app);
+
 }  // namespace mk::ui

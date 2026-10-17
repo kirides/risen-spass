@@ -6,6 +6,7 @@
 #include <set>
 
 #include "common/template_id.h"
+#include "core/assets.h"
 #include "core/catalog.h"
 #include "core/dialog.h"
 #include "core/quest.h"
@@ -344,6 +345,19 @@ void check_dialogs(Ctx& c) {
     for (auto& d : c.p.dialogs) {
         const char* A = "Dialogues";
         const std::string subj = d.name.empty() ? "(unnamed dialogue)" : d.name;
+        // sounds: a game sound must exist, a language must be one of the mod's
+        for (auto& n : d.graph.nodes) {
+            const auto s = n.data.find("sound");
+            if (s == n.data.end() || !s->is_object()) continue;
+            for (auto& [lang, v] : s->items()) {
+                if (!v.is_string() || v.get<std::string>().empty()) continue;
+                const std::string ref = v.get<std::string>();
+                if (is_compiled_sound(ref) && !find_asset(c.p, ref) && c.g && !c.g->exists(ref))
+                    c.add(Severity::Error, A, d.uid, subj + " (node)", "the game has no sound " + ref);
+                if (lang != "default" && std::find(c.p.mod.languages.begin(), c.p.mod.languages.end(), lang) == c.p.mod.languages.end())
+                    c.add(Severity::Warning, A, d.uid, subj + " (node)", "a sound for " + lang + ", which is not a language of the mod");
+            }
+        }
         std::vector<DialogIssue> issues;
         const json list = compile_dialog(c.p, d, issues);
         for (auto& i : issues) c.add(i.error ? Severity::Error : Severity::Warning, A, d.uid, subj + (i.node.empty() ? "" : " (node)"), i.message);
@@ -425,6 +439,21 @@ void check_world(Ctx& c) {
     }
 }
 
+void check_assets(Ctx& c) {
+    const char* A = "Assets";
+    std::map<std::string, int> names;
+    for (auto& a : c.p.assets) {
+        const std::string name = p2m::bare_name(a.file);
+        if (++names[p2m::lower(name)] == 2)
+            c.add(Severity::Error, A, a.uid, name, "two asset files are called " + name + " (the export puts them into one folder)");
+        const std::string kind = asset_kind(name);
+        if (kind == "other")
+            c.add(Severity::Warning, A, a.uid, name, "not a resource the engine loads (._xmsh, ._xmat, ._ximg, ._xmac, ._xmot, ._xsnd) and no audio file (.ogg, .wav, .mp3)");
+        else if (!is_raw_audio(name) && c.g && c.g->exists(name))
+            c.add(Severity::Warning, A, a.uid, name, "replaces the game's file of the same name everywhere it is used");
+    }
+}
+
 }  // namespace
 
 std::vector<Problem> validate(const Project& p, const GameData* game, const World* world) {
@@ -451,6 +480,7 @@ std::vector<Problem> validate(const Project& p, const GameData* game, const Worl
     check_quests(c);
     check_dialogs(c);
     check_world(c);
+    check_assets(c);
     return out;
 }
 

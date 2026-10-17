@@ -1,5 +1,10 @@
 #include "app/pickers.h"
 
+#include "app/audio.h"
+#include "app/widgets.h"
+#include "core/assets.h"
+#include "pack2mod/util.h"
+
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
@@ -136,6 +141,124 @@ bool asset_picker(const char* label, std::string& name, const GameData* game, co
         }
         ImGui::EndChild();
         ImGui::EndPopup();
+    }
+    ImGui::PopID();
+    return changed;
+}
+
+bool sound_button(App& app, const std::string& ref, const char* id) {
+    const bool on = !ref.empty() && app.audio().current() == ref;
+    ImGui::BeginDisabled(ref.empty());
+    const bool clicked = ImGui::SmallButton(((on ? std::string("Stop") : std::string("Play")) + id).c_str());
+    ImGui::EndDisabled();
+    if (clicked) app.toggle_sound(ref);
+    if (on && ImGui::IsItemHovered()) ImGui::SetTooltip("%.1f / %.1f s", app.audio().position(), app.audio().length());
+    return clicked;
+}
+
+bool sound_picker(const char* label, std::string& ref, App& app, bool raw_name, float width) {
+    // a raw name is played as the compiled file of the same stem
+    auto compiled_of = [&](const std::string& v) -> std::string {
+        if (!raw_name || is_compiled_sound(v)) return v;
+        const auto dot = v.rfind('.');
+        return (dot == std::string::npos ? v : v.substr(0, dot)) + "._xsnd";
+    };
+    bool changed = false;
+    ImGui::PushID(label);
+    const float play_w = ImGui::CalcTextSize("Stop").x + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetStyle().ItemInnerSpacing.x;
+    ImGui::SetNextItemWidth(width > 0 ? width : ImGui::CalcItemWidth() - ImGui::GetFrameHeight() - ImGui::GetStyle().ItemInnerSpacing.x - play_w);
+    changed |= ImGui::InputTextWithHint("##name", raw_name ? "X.wav" : "a sound", &ref);
+    ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+    static std::string filter;
+    static int group = 0;  // 0 all, 1.. a voice language, last = effects (no language)
+    if (ImGui::ArrowButton("##open", ImGuiDir_Down)) {
+        filter.clear();
+        ImGui::OpenPopup("##pick");
+    }
+    ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+    sound_button(app, compiled_of(ref));
+    visible_label(label);
+    if (ImGui::BeginPopup("##pick")) {
+        static const char* kGroups[] = {"all", "English", "German", "French", "Russian", "effects and other"};
+        if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+        ImGui::SetNextItemWidth(360);
+        ImGui::InputTextWithHint("##filter", "filter", &filter);
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(160);
+        ImGui::Combo("##group", &group, kGroups, IM_ARRAYSIZE(kGroups));
+        ImGui::BeginChild("##list", ImVec2(640, 380));
+        struct Row {
+            std::string value, play;  // what is stored, what is played
+            bool project;
+        };
+        std::vector<Row> list;
+        for (auto& a : app.project.assets) {
+            const std::string n = p2m::bare_name(a.file);
+            if (asset_kind(n) != "sound" || (raw_name && !is_compiled_sound(n)) || !icontains(n, filter)) continue;
+            list.push_back({raw_name ? sound_raw_name(n) : n, n, true});
+        }
+        if (app.game) {
+            for (auto& a : app.game->assets("_xsnd")) {
+                if (!icontains(a.name, filter)) continue;
+                if (group > 0) {
+                    const std::string lang = sound_language(a.name);
+                    if (group == IM_ARRAYSIZE(kGroups) - 1 ? !lang.empty() : lang != kGroups[group]) continue;
+                }
+                list.push_back({raw_name ? sound_raw_name(a.name) : a.name, a.name, false});
+            }
+        } else {
+            ImGui::TextDisabled("load the game data (Settings) to see the game's sounds");
+        }
+        ImGuiListClipper clip;
+        clip.Begin(static_cast<int>(list.size()));
+        while (clip.Step())
+            for (int i = clip.DisplayStart; i < clip.DisplayEnd; ++i) {
+                ImGui::PushID(i);
+                sound_button(app, list[i].play);
+                ImGui::SameLine();
+                if (list[i].project) {
+                    ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1.0f), "project");
+                    ImGui::SameLine();
+                }
+                if (ImGui::Selectable(list[i].value.c_str(), list[i].value == ref)) {
+                    ref = list[i].value;
+                    changed = true;
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::PopID();
+            }
+        ImGui::EndChild();
+        ImGui::TextDisabled("%zu sounds", list.size());
+        ImGui::EndPopup();
+    }
+    ImGui::PopID();
+    return changed;
+}
+
+bool sound_rows(const char* label, json& sound, App& app) {
+    if (!sound.is_object()) sound = json::object();
+    bool changed = false;
+    ImGui::PushID(label);
+    ImGui::TextUnformatted(label);
+    ImGui::SameLine();
+    help("Spoken audio for the line: an audio file of the project (Assets panel: Ogg Vorbis, WAV, MP3) or a sound of the game. 'every' plays in "
+         "every voice language; a language row replaces it for that voice language. The export writes the files into sounds/ of the mod.");
+    std::vector<std::string> rows = {"default"};
+    for (auto& l : app.project.mod.languages) rows.push_back(l);
+    for (auto& r : rows) {
+        ImGui::PushID(r.c_str());
+        std::string v = sound.value(r, std::string());
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextDisabled("%-8s", r == "default" ? "every" : r.c_str());
+        ImGui::SameLine(90);
+        ImGui::PushItemWidth(-FLT_MIN);
+        if (sound_picker("##snd", v, app)) {
+            if (v.empty()) sound.erase(r);
+            else sound[r] = v;
+            changed = true;
+        }
+        ImGui::PopItemWidth();
+        ImGui::PopID();
     }
     ImGui::PopID();
     return changed;

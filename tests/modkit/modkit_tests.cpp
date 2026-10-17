@@ -14,6 +14,8 @@
 #include <string>
 #include <vector>
 
+#include "common/sound_file.h"
+#include "core/assets.h"
 #include "core/catalog.h"
 #include "core/dialog.h"
 #include "core/export.h"
@@ -28,6 +30,7 @@
 #include "core/quest.h"
 #include "core/validate.h"
 #include "core/world.h"
+#include "pack2mod/util.h"
 
 #include <luajit/lua.hpp>
 
@@ -322,6 +325,7 @@ TEST(gamedata_real_archives) {
 #include "export_tests.inc"
 #include "graph_tests.inc"
 #include "import_tests.inc"
+#include "asset_tests.inc"
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);

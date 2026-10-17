@@ -56,6 +56,7 @@ int export_headless(const mk::AppOptions& opts, const std::string& out_dir) {
     ExportOptions o;
     o.project_dir = u8str(u8(opts.project).parent_path());
     o.game_data_dir = data_dir;
+    o.game = game.get();
     const ExportResult r = export_mod(p, out_dir, o);
     for (auto& e : r.errors) log_error(e);
     for (auto& w : r.written) log_info("written: " + w);

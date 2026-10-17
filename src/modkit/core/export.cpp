@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <set>
 
+#include "core/assets.h"
 #include "core/dialog.h"
+#include "core/gamedata.h"
 #include "core/quest.h"
 #include "core/log.h"
 #include "core/lua_writer.h"
@@ -390,7 +392,9 @@ std::map<std::string, std::string> render_mod(const Project& p) {
     toml += "api_version = 1\n";
     if (!m.load_after.empty()) toml += "load_after  = " + toml_list(m.load_after) + "\n";
     if (!m.requires_mods.empty()) toml += "requires    = " + toml_list(m.requires_mods) + "\n";
-    toml += p.assets.empty() ? "assets      = false\n" : "assets      = \"assets\"\n";
+    // the compiled resources are mounted from assets/ (audio files go to sounds/ and are compiled by the layer when a line uses them)
+    const bool resources = std::any_of(p.assets.begin(), p.assets.end(), [](const AssetFile& a) { return !is_raw_audio(a.file); });
+    toml += resources ? "assets      = \"assets\"\n" : "assets      = false\n";
     f["mod.toml"] = toml;
 
     f["main.lua"] = std::string("-- ") + m.name + " " + m.version + ": exported by risen-modkit. Generated: the next export replaces this file, data/, strings/ and modkit/;\n" +
@@ -497,14 +501,21 @@ ExportResult export_mod(const Project& p, const std::string& out_dir, const Expo
                 }
             }
         }
-        // asset files: copied flat into assets/, stale ones removed
-        std::set<std::string> assets;
+        // asset files: compiled resources copied flat into assets/ (mounted by the layer), audio files into sounds/ (the voiced lines name them);
+        // stale ones removed
+        std::set<std::string> produced;  // "assets/x", "sounds/y"
         const fs::path base = opts.project_dir.empty() ? fs::current_path() : u8(opts.project_dir);
+        auto put = [&](const std::string& rel, const std::string& content) {
+            produced.insert(rel);
+            if (write_text_if_changed(out / u8(rel), content)) r.written.push_back(rel);
+            else r.unchanged.push_back(rel);
+        };
         for (auto& a : p.assets) {
             const fs::path src = u8(a.file).is_absolute() ? u8(a.file) : base / u8(a.file);
             const std::string name = u8str(src.filename());
-            assets.insert(name);
-            const fs::path dst = out / "assets" / name;
+            const std::string rel = (is_raw_audio(name) ? "sounds/" : "assets/") + name;
+            produced.insert(rel);
+            const fs::path dst = out / u8(rel);
             if (!fs::exists(src, ec)) {
                 r.errors.push_back("asset file missing: " + u8str(src));
                 continue;
@@ -512,19 +523,46 @@ ExportResult export_mod(const Project& p, const std::string& out_dir, const Expo
             fs::create_directories(dst.parent_path(), ec);
             const bool same = fs::exists(dst, ec) && fs::file_size(dst, ec) == fs::file_size(src, ec) && read_text(dst) == read_text(src);
             if (same) {
-                r.unchanged.push_back("assets/" + name);
+                r.unchanged.push_back(rel);
             } else {
                 fs::copy_file(src, dst, fs::copy_options::overwrite_existing, ec);
                 if (ec) r.errors.push_back("cannot copy " + u8str(src) + ": " + ec.message());
-                else r.written.push_back("assets/" + name);
+                else r.written.push_back(rel);
             }
         }
-        if (fs::is_directory(out / "assets", ec)) {
-            for (auto it = fs::directory_iterator(out / "assets", ec); !ec && it != fs::directory_iterator(); it.increment(ec)) {
-                const std::string name = u8str(it->path().filename());
-                if (it->is_regular_file() && !assets.count(name)) {
+        // compiled sounds the lines use (the game's or the project's): the audio inside, as sounds/<name>.mp3 (core/assets.h)
+        for (const std::string& ref : dialog_sound_refs(p)) {
+            if (!is_compiled_sound(ref)) continue;
+            std::string bytes;
+            try {
+                if (const AssetFile* a = find_asset(p, ref)) {
+                    const fs::path src = u8(a->file).is_absolute() ? u8(a->file) : base / u8(a->file);
+                    bytes = read_text(src);
+                } else if (opts.game) {
+                    bytes = opts.game->read(ref);
+                } else {
+                    r.errors.push_back("the game sound " + ref + " needs the game data (Settings) to be exported");
+                    continue;
+                }
+            } catch (const std::exception& e) {
+                r.errors.push_back("sound " + ref + ": " + e.what());
+                continue;
+            }
+            std::string why;
+            const auto snd = open_sound(bytes, why);
+            if (!snd) {
+                r.errors.push_back("sound " + ref + ": " + why);
+                continue;
+            }
+            put(sound_export_path(ref), snd->audio);
+        }
+        for (const char* dir : {"assets", "sounds"}) {
+            if (!fs::is_directory(out / dir, ec)) continue;
+            for (auto it = fs::directory_iterator(out / dir, ec); !ec && it != fs::directory_iterator(); it.increment(ec)) {
+                const std::string rel = std::string(dir) + "/" + u8str(it->path().filename());
+                if (it->is_regular_file() && !produced.count(rel)) {
                     fs::remove(it->path(), ec);
-                    r.removed.push_back("assets/" + name);
+                    r.removed.push_back(rel);
                 }
             }
         }

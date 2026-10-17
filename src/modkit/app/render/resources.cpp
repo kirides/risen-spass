@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "core/log.h"
+#include "core/paths.h"
 
 namespace mk::gfx {
 
@@ -47,6 +48,50 @@ ResourceCache::~ResourceCache() {
     for (auto& [k, t] : textures_)
         if (t != white_) glDeleteTextures(1, &t);
     glDeleteTextures(1, &white_);
+}
+
+void ResourceCache::set_loose(std::unordered_map<std::string, std::string> files) {
+    std::vector<std::string> changed;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        for (auto& [k, v] : files)
+            if (!loose_.count(k) || loose_[k] != v) changed.push_back(k);
+        for (auto& [k, v] : loose_)
+            if (!files.count(k)) changed.push_back(k);
+        loose_ = std::move(files);
+    }
+    // a file that changed is read again the next time it is asked for
+    for (auto& k : changed) {
+        requested_.erase(k);
+        if (auto it = meshes_.find(k); it != meshes_.end()) {
+            glDeleteBuffers(1, &it->second->vbo);
+            glDeleteBuffers(1, &it->second->ibo);
+            glDeleteVertexArrays(1, &it->second->vao);
+            meshes_.erase(it);
+        }
+        if (auto it = textures_.find(k); it != textures_.end()) {
+            if (it->second != white_) glDeleteTextures(1, &it->second);
+            textures_.erase(it);
+        }
+    }
+}
+
+p2m::Bytes ResourceCache::read(const std::string& name) {
+    std::string path;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (auto it = loose_.find(key_of(name)); it != loose_.end()) path = it->second;
+    }
+    if (!path.empty()) return read_text(u8(path));
+    return game_->read(name);
+}
+
+bool ResourceCache::exists(const std::string& name) {
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (loose_.count(key_of(name))) return true;
+    }
+    return game_->exists(name);
 }
 
 size_t ResourceCache::pending() const {
@@ -99,17 +144,17 @@ void ResourceCache::worker() {
         d.name = job.name;
         try {
             if (job.is_mesh) {
-                d.mesh = std::make_unique<MeshData>(decode_mesh(game_->read(job.name)));
+                d.mesh = std::make_unique<MeshData>(decode_mesh(read(job.name)));
                 for (auto& s : d.mesh->submeshes) {
                     std::string tex;
                     try {
-                        if (!s.material.empty() && game_->exists(s.material)) tex = material_texture(game_->read(s.material));
+                        if (!s.material.empty() && exists(s.material)) tex = material_texture(read(s.material));
                     } catch (...) {
                     }
                     d.textures.push_back(tex);
                 }
             } else {
-                d.image = std::make_unique<ImageData>(decode_image(game_->read(job.name)));
+                d.image = std::make_unique<ImageData>(decode_image(read(job.name)));
             }
         } catch (const std::exception& e) {
             d.error = e.what();

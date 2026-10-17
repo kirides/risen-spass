@@ -12,6 +12,7 @@ find_package(imguizmo CONFIG REQUIRED)
 find_package(nfd CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_path(STB_INCLUDE_DIRS "stb_image.h" REQUIRED)
+find_path(MINIAUDIO_INCLUDE_DIRS "miniaudio.h" REQUIRED)
 
 # The generic Lua part of every exported mod is embedded (like pack2mod's main.lua).
 set(MK_EMBED_FILES
@@ -32,6 +33,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp.tmp" "${MK_EMBED_SRC
 execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp.tmp" "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp")
 
 add_library(modkit_core STATIC
+    core/assets.cpp
     core/catalog.cpp
     core/dialog.cpp
     core/export.cpp
@@ -65,6 +67,7 @@ endif()
 add_executable(risen-modkit
     app/main.cpp
     app/app.cpp
+    app/audio.cpp
     app/fonts.cpp
     app/screenshot.cpp
     app/editor_util.cpp
@@ -72,6 +75,7 @@ add_executable(risen-modkit
     app/pickers.cpp
     app/prop_editor.cpp
     app/widgets.cpp
+    app/panels/assets_panel.cpp
     app/panels/browser_panel.cpp
     app/panels/dialogs_panel.cpp
     app/panels/items_panel.cpp
@@ -88,9 +92,14 @@ add_executable(risen-modkit
     app/render/mesh_renderer.cpp
     app/render/resources.cpp
 )
-target_include_directories(risen-modkit PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" ${STB_INCLUDE_DIRS})
+target_include_directories(risen-modkit PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" ${STB_INCLUDE_DIRS} ${MINIAUDIO_INCLUDE_DIRS})
 target_link_libraries(risen-modkit PRIVATE
     modkit_core glfw glad::glad glm::glm imgui::imgui unofficial::imgui-node-editor::imgui-node-editor imguizmo::imguizmo nfd::nfd OpenGL::GL)
+if(NOT WIN32)
+    # miniaudio loads the audio backends at run time (ALSA, PulseAudio, Core Audio)
+    find_package(Threads REQUIRED)
+    target_link_libraries(risen-modkit PRIVATE Threads::Threads ${CMAKE_DL_LIBS} m)
+endif()
 if(WIN32)
     # a GUI application without a console window; main() stays the entry point
     set_target_properties(risen-modkit PROPERTIES WIN32_EXECUTABLE ON)

@@ -1,5 +1,7 @@
 #include "core/dialog.h"
 
+#include "core/assets.h"
+
 #include <algorithm>
 #include <map>
 #include <set>
@@ -52,6 +54,48 @@ std::string info_name(const Project& p, const GraphNode& option) {
 
 std::string quest_action_script(const std::string& quest, const std::string& action) { return "MK_" + quest + "_" + action; }
 
+json line_sound(const Project& p, const json& sound, std::vector<std::string>& errors) {
+    if (!sound.is_object()) return nullptr;
+    // a stable order: every language, then the mod's languages, then the rest by name (the output does not depend on how it was entered)
+    std::vector<std::string> order = {"default"};
+    for (auto& l : p.mod.languages) order.push_back(l);
+    std::vector<std::string> rest;
+    for (auto& [lang, v] : sound.items())
+        if (std::find(order.begin(), order.end(), lang) == order.end()) rest.push_back(lang);
+    std::sort(rest.begin(), rest.end());
+    order.insert(order.end(), rest.begin(), rest.end());
+    json o = json::object();
+    for (const std::string& lang : order) {
+        if (!sound.contains(lang)) continue;
+        const json& v = sound[lang];
+        if (!v.is_string() || v.get<std::string>().empty()) continue;
+        const std::string ref = v.get<std::string>();
+        if (!is_compiled_sound(ref)) {
+            if (!is_raw_audio(ref)) {
+                errors.push_back("the sound '" + ref + "' is no audio file (Ogg Vorbis, WAV, MP3) and no game sound (._xsnd)");
+                continue;
+            }
+            if (!find_asset(p, ref)) errors.push_back("the sound '" + ref + "' is not one of the project's asset files (Assets panel)");
+        }
+        o[lang == "default" ? std::string("default") : language_code(lang)] = sound_export_path(ref);
+    }
+    if (o.empty()) return nullptr;
+    if (o.size() == 1 && o.contains("default")) return o["default"];
+    return o;
+}
+
+std::vector<std::string> dialog_sound_refs(const Project& p) {
+    std::set<std::string> refs;
+    for (auto& d : p.dialogs)
+        for (auto& n : d.graph.nodes) {
+            const auto it = n.data.find("sound");
+            if (it == n.data.end() || !it->is_object()) continue;
+            for (auto& [lang, v] : it->items())
+                if (v.is_string() && !v.get<std::string>().empty()) refs.insert(v.get<std::string>());
+        }
+    return {refs.begin(), refs.end()};
+}
+
 json line_text(const Project& p, const json& text) {
     json o = json::object();
     const std::string first = text_first(p, text);
@@ -69,6 +113,15 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
     const Graph& g = d.graph;
     auto err = [&](const std::string& node, const std::string& msg) { issues.push_back({true, node, msg}); };
     auto warn = [&](const std::string& node, const std::string& msg) { issues.push_back({false, node, msg}); };
+    // the node's sound onto its exported line
+    auto add_sound = [&](const GraphNode& n, json& line) {
+        const auto it = n.data.find("sound");
+        if (it == n.data.end()) return;
+        std::vector<std::string> serr;
+        json s = line_sound(p, *it, serr);
+        for (auto& e : serr) err(n.uid, e);
+        if (!s.is_null()) line["sound"] = s;
+    };
 
     // options, parents first (the engine needs the parent info when it makes a child); otherwise in the order of the canvas (top to bottom)
     std::vector<const GraphNode*> options;
@@ -112,6 +165,7 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
         json first = line_text(p, o->data.value("text", json::object()));
         if (first.is_null()) err(o->uid, "the option has no text (what the player says)");
         lines.push_back(json::object({{"speaker", "player"}, {"listener", "npc"}, {"text", first.is_null() ? json("...") : first}}));
+        add_sound(*o, lines.back());
         // the sequence on "then"
         std::set<std::string> seen;
         bool ended = false;
@@ -130,6 +184,7 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
                 if (speaker.empty()) speaker = "npc";
                 const std::string listener = speaker == "player" ? "npc" : "player";
                 lines.push_back(json::object({{"speaker", speaker}, {"listener", listener}, {"text", t.is_null() ? json("...") : t}}));
+                add_sound(*cur, lines.back());
             } else if (cur->type == "command") {
                 const std::string cmd = dd.value("command", std::string());
                 const CommandDef* def = dialog_command(cmd);
@@ -154,6 +209,10 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
                     json t = line_text(p, dd["text"]);
                     if (!t.is_null()) l["text"] = t;
                 }
+                // a custom sound only means something for SaySound (the layer compiles it and sets SoundName)
+                if (cmd == "SaySound") add_sound(*cur, l);
+                else if (std::vector<std::string> ignored; dd.contains("sound") && !line_sound(p, dd["sound"], ignored).is_null())
+                    warn(cur->uid, "only Say lines and SaySound play a sound: the sound of this " + cmd + " is not exported");
                 lines.push_back(l);
                 if (cmd == "End") {
                     ended = true;

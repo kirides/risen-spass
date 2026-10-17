@@ -103,7 +103,8 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
     };
     auto cancelled = [&] { return cancel && cancel->load(); };
 
-    // ---- archives: per base name the .pak, then its volumes in number order (the engine's patch chain); speech and sound archives are not needed
+    // ---- archives: per base name the .pak, then its volumes in number order (the engine's patch chain); the speech and sound archives give the
+    //      sounds dialogue lines can use (only their directories are read)
     report(0.0f, "archives");
     for (const char* kind : {"common", "compiled"}) {
         const fs::path kd = root / kind;
@@ -118,7 +119,7 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
             const int n = volume_number(u8str(it->path().extension()));
             if (n == -2) continue;
             const std::string base = p2m::lower(u8str(it->path().stem()));
-            if (p2m::starts_with(base, "speech") || p2m::starts_with(base, "sounds") || p2m::ends_with(base, "_back")) continue;
+            if (p2m::ends_with(base, "_back")) continue;
             arcs.push_back({n, base, it->path()});
         }
         std::sort(arcs.begin(), arcs.end(), [](const Arc& a, const Arc& b) { return std::tie(a.number, a.base) < std::tie(b.number, b.base); });

@@ -45,6 +45,7 @@ Panels can be dragged, docked and tabbed; **Window > Reset layout** brings back 
 | **Dialogues** | conversations as node graphs (below) |
 | **Quests** | quests and their flow as node graphs (below) |
 | **World** | the game world in 3D (below) |
+| **Assets** | the project's own files: compiled resources and audio (below) |
 | **Problems** | what is wrong with the project (errors block the export, warnings do not); click a line to jump to the object |
 | **Log** | what the editor did, and problems reading the game data |
 | **Settings** | data directory, export folder, UI scale |
@@ -127,6 +128,23 @@ problem have a red border and the problems are listed under the properties and i
 
 The quest conditions and item amounts become conditions the engine checks itself; any, not, values of variables and guilds are one Lua condition
 behind them (`risen.cond`, see `docs/LUA_API.md`).
+
+**Voiced lines.** Options (the player's line), Lines and SaySound commands have a **Sound**: one row *every* (all voice languages) and one row per
+language of the mod (it replaces *every* for that voice language). The arrow opens the sound list: the project's audio files first, then the game's
+sounds (speech filtered by voice language, effects and music); **Play** previews a sound in the editor (also in the list and in the Assets panel).
+The export copies the files into `sounds\` of the mod (a game sound is unpacked from the game's container as an MP3) and the line gets
+`sound = "sounds/<file>"`; the layer compiles it and the line lasts as long as the audio (`docs/LUA_API.md` "Voice lines"). SaySound's
+**SoundName** plays a sound the engine already knows (a game sound, or a compiled `._xsnd` of the project) by its raw name, without subtitle.
+
+## Assets
+
+The **Assets** panel holds the project's own files: **Add files...** (several at once), **Remove**, **Reload** (after a file changed outside the editor).
+A file inside the project's folder is stored relative to it, so save the project first.
+
+* **Compiled resources** (`._xmsh`, `._xmat`, `._ximg`, `._xmac`, `._xmot`, `._xsnd`): exported into `assets\` and mounted by the layer; they
+  replace game files of the same name everywhere (the panel and the Problems panel say so). The world view, the mesh previews and the pickers use them
+  at once. The details show a mesh preview, the size of an image, the texture of a material, the length of a sound.
+* **Audio files** (Ogg Vorbis, WAV, MP3): exported into `sounds\` for voiced lines; the details show format, channels, rate and length, with Play.
 
 ## Quests
 
@@ -218,6 +236,8 @@ Command line: `risen-modkit --import <mod folder> --save project.rmk.json [--fro
   data\quests.lua       the quests (risen.quest.define)
   data\dialogs.lua      the dialogue options (risen.dialog.create, parents first) and the quest actions their lines call
   data\world.lua        items spawned at a position and items added to containers, once per savegame
+  assets\               the project's compiled resources (mounted by the layer: mod.toml assets = "assets")
+  sounds\               the audio of voiced lines (the project's files, game sounds unpacked)
   strings\all.csv       texts of shipped items you renamed (first language = fallback), strings\<Language>.csv for the others
   modkit\runtime.lua    the generic code, the same for every exported mod
   modkit\project.json   the editor project the mod was made from (File > Open it, or keep it for a later import)
@@ -245,6 +265,9 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 * NPCs, monsters and vegetation are boxes in the world view (actors and SpeedTrees are not decoded).
 * Placing buildings and other objects, and moving or removing what the world has, needs a layer extension (stage E12).
 * Icons are not previewed (the game's icon lists are not decoded yet).
+* Images and meshes in authoring formats (PNG, glTF, ...) cannot be added yet; only files already compiled for the engine (AST-3, AST-4).
+* Lip sync: a voiced line of the mod has no lip-sync motion (the face does not move); a data-only import turns game sounds the export unpacked into
+  project audio files (an import from `modkit\project.json` keeps them as game sounds).
 * A quest flow is one chain (no branches inside a quest); branch with dialogues and follow-up quests.
 * A dialogue cannot be played through inside the editor yet (DLG-5); test it in the game.
 * A template's shipped loot is not shown (the editor cannot read it offline yet).

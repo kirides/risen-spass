@@ -48,6 +48,8 @@ public:
     // main thread: uploads finished work, at most `budget_ms` milliseconds
     void update(double budget_ms);
     size_t loaded_meshes() const { return meshes_.size(); }
+    // the project's own resource files: lower-case bare name -> path on disk; they shadow the game's files of the same name
+    void set_loose(std::unordered_map<std::string, std::string> files);
     size_t pending() const;
     bool s3tc() const { return s3tc_; }
 
@@ -65,6 +67,8 @@ private:
         std::string error;
     };
     void worker();
+    p2m::Bytes read(const std::string& name);  // a loose file, else the archives (worker thread)
+    bool exists(const std::string& name);
     void upload_mesh(Done& d);
     void upload_texture(Done& d);
 
@@ -80,6 +84,7 @@ private:
     std::deque<Job> jobs_;
     std::deque<Done> done_;
     bool stop_ = false;
+    std::unordered_map<std::string, std::string> loose_;  // guarded by mu_
     std::thread thread_;
 };
 
