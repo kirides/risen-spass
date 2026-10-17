@@ -199,6 +199,8 @@ struct Project {
     WorldEdits world;
     std::vector<AssetFile> assets;
     json editor = json::object();  // editor-only state (notes, view settings); exported with project.json
+    // balance sections the editor has no panel for (spells, new_spells, npc_groups, ... of an imported mod): written into data/balance.lua as they are
+    json extra_balance = json::object();
 
     // lookups by name (nullptr when absent)
     ItemDef* item(const std::string& name);

@@ -9,6 +9,7 @@
 
 #include "app/app.h"
 #include "core/export.h"
+#include "core/import.h"
 #include "core/log.h"
 #include "core/paths.h"
 #include "core/validate.h"
@@ -17,7 +18,8 @@ namespace {
 
 constexpr const char* kUsage =
     "risen-modkit [project.rmk.json] [--data DIR] [--screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch]]\n"
-    "risen-modkit project.rmk.json --export DIR [--data DIR]\n";
+    "risen-modkit project.rmk.json --export DIR [--data DIR]\n"
+    "risen-modkit --import MODDIR --save project.rmk.json [--from-data]\n";
 
 int export_headless(const mk::AppOptions& opts, const std::string& out_dir) {
     using namespace mk;
@@ -64,9 +66,28 @@ int export_headless(const mk::AppOptions& opts, const std::string& out_dir) {
 
 }  // namespace
 
+int import_headless(const std::string& dir, const std::string& save, bool prefer_data) {
+    using namespace mk;
+    ImportResult r = import_mod(dir, prefer_data);
+    for (auto& w : r.warnings) log_warn(w);
+    if (!r.ok) {
+        log_error("import: " + r.error);
+        return 1;
+    }
+    try {
+        save_project_file(r.project, save);
+    } catch (const std::exception& e) {
+        log_error(e.what());
+        return 1;
+    }
+    log_info(std::string("imported ") + (r.from_project_file ? "from modkit/project.json" : "from the data files") + " into " + save);
+    return 0;
+}
+
 int main(int argc, char** argv) {
     mk::AppOptions opts;
-    std::string export_dir;
+    std::string export_dir, import_dir, save_path;
+    bool from_data = false;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         auto next = [&](const char* what) -> std::string {
@@ -83,6 +104,9 @@ int main(int argc, char** argv) {
         else if (a == "--select") opts.select = next("a name");
         else if (a == "--camera") opts.camera = next("x,y,z,yaw,pitch");
         else if (a == "--export") export_dir = next("a directory");
+        else if (a == "--import") import_dir = next("a mod folder");
+        else if (a == "--save") save_path = next("a project file");
+        else if (a == "--from-data") from_data = true;
         else if (a == "--verbose") mk::Log::get().set_echo_level(mk::Level::Debug);
         else if (a == "--size") {
             const std::string s = next("WxH");
@@ -102,6 +126,13 @@ int main(int argc, char** argv) {
     }
     mk::log_info("risen-modkit " MK_VERSION);
     if (!export_dir.empty()) return export_headless(opts, export_dir);
+    if (!import_dir.empty()) {
+        if (save_path.empty()) {
+            std::fprintf(stderr, "--import needs --save FILE\n");
+            return 2;
+        }
+        return import_headless(import_dir, save_path, from_data);
+    }
     mk::App app(std::move(opts));
     return app.run();
 }

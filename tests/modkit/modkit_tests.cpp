@@ -9,6 +9,7 @@
 #include <functional>
 #include <map>
 #include <regex>
+#include <sstream>
 #include <set>
 #include <string>
 #include <vector>
@@ -18,6 +19,7 @@
 #include "core/export.h"
 #include "core/gamedata.h"
 #include "core/history.h"
+#include "core/import.h"
 #include "core/lua_writer.h"
 #include "core/mesh.h"
 #include "core/log.h"
@@ -319,6 +321,7 @@ TEST(gamedata_real_archives) {
 
 #include "export_tests.inc"
 #include "graph_tests.inc"
+#include "import_tests.inc"
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);

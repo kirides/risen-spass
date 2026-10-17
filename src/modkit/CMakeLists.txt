@@ -2,6 +2,7 @@
 #   modkit_core   the project model, game data, validation, export / import (no GUI dependency; unit-tested by modkit_tests)
 #   risen-modkit  the GLFW + Dear ImGui application
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(tomlplusplus CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
@@ -37,6 +38,7 @@ add_library(modkit_core STATIC
     core/gamedata.cpp
     core/graph.cpp
     core/history.cpp
+    core/import.cpp
     core/log.cpp
     core/paths.cpp
     core/project.cpp
@@ -51,7 +53,8 @@ add_library(modkit_core STATIC
 target_include_directories(modkit_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/src")
 target_compile_features(modkit_core PUBLIC cxx_std_20)
 target_compile_definitions(modkit_core PUBLIC MK_VERSION="${PROJECT_VERSION}")
-target_link_libraries(modkit_core PUBLIC pack2mod_core nlohmann_json::nlohmann_json)
+# LuaJIT reads the data files of an exported mod back (core/import.cpp); toml++ its mod.toml
+target_link_libraries(modkit_core PUBLIC pack2mod_core nlohmann_json::nlohmann_json luajit::luajit tomlplusplus::tomlplusplus)
 if(MSVC)
     target_compile_options(modkit_core PUBLIC /W4 /permissive- /utf-8 /Zc:__cplusplus /EHsc /FS)
     target_compile_definitions(modkit_core PUBLIC _CRT_SECURE_NO_WARNINGS)
@@ -99,7 +102,7 @@ endif()
 if(SPASS_BUILD_TESTS)
     add_executable(modkit_tests "${CMAKE_SOURCE_DIR}/tests/modkit/modkit_tests.cpp")
     # LuaJIT compiles the runtime and the exported data files in the tests (the same LuaJIT the layer runs them with)
-    target_link_libraries(modkit_tests PRIVATE modkit_core luajit::luajit)
+    target_link_libraries(modkit_tests PRIVATE modkit_core)
     target_compile_definitions(modkit_tests PRIVATE MODKIT_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
     add_test(NAME modkit_tests COMMAND modkit_tests)
 endif()

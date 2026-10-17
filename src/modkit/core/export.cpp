@@ -263,6 +263,9 @@ json balance_spec(const Project& p) {
         for (const NpcTemplateDef* n : nnews) npcs[n->name] = npc_entry(*n, true);
         spec["new_npcs"] = npcs;
     }
+    // sections without a panel (kept from an imported mod), after the editor's own
+    for (auto& [k, v] : p.extra_balance.items())
+        if (!spec.contains(k)) spec[k] = v;
     return spec;
 }
 

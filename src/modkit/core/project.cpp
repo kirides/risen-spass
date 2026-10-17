@@ -504,6 +504,7 @@ json to_json(const Project& p) {
         assets.push_back(o);
     }
     j["assets"] = assets;
+    if (!p.extra_balance.empty()) j["extra_balance"] = p.extra_balance;
     j["editor"] = p.editor;
     return j;
 }
@@ -698,6 +699,7 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
         return a;
     });
     if (auto e = j.find("editor"); e != j.end() && e->is_object()) p.editor = *e;
+    if (auto e = j.find("extra_balance"); e != j.end() && e->is_object()) p.extra_balance = *e;
     return p;
 }
 

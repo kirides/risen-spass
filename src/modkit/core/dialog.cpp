@@ -136,11 +136,18 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
                 if (!def) err(cur->uid, "unknown dialogue command '" + cmd + "'");
                 json l = json::object({{"command", cmd}});
                 if (dd.contains("params") && dd["params"].is_object()) {
-                    for (auto& [k, v] : dd["params"].items()) {
-                        if (def && std::none_of(def->params.begin(), def->params.end(), [&](const CommandParam& cp) { return cp.name == k; }))
+                    const json& ps = dd["params"];
+                    // in the engine's parameter order (the output does not depend on the order they were entered or imported in)
+                    if (def)
+                        for (auto& cp : def->params)
+                            if (ps.contains(cp.name) && !(ps[cp.name].is_string() && ps[cp.name].get<std::string>().empty())) l[cp.name] = ps[cp.name];
+                    for (auto& [k, v] : ps.items()) {
+                        if (def && std::none_of(def->params.begin(), def->params.end(), [&](const CommandParam& cp) { return cp.name == k; })) {
                             err(cur->uid, cmd + " has no parameter '" + k + "'");
-                        if (v.is_string() && v.get<std::string>().empty()) continue;
-                        l[k] = v;
+                            l[k] = v;
+                        } else if (!def && !(v.is_string() && v.get<std::string>().empty())) {
+                            l[k] = v;
+                        }
                     }
                 }
                 if (dd.contains("text")) {

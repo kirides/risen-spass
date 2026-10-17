@@ -89,6 +89,7 @@ public:
         draw_list(app);
         ImGui::EndChild();
         ImGui::SameLine();
+        if (sel_.empty() && !app.project.quests.empty()) sel_ = app.project.quests.front().uid;
         QuestDef* q = find(app.project, sel_);
         if (!q) {
             ImGui::TextDisabled("Create a quest. Dialogues start, succeed or fail quests with their Quest node; a quest with a flow (Start -> objectives "

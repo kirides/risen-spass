@@ -15,6 +15,7 @@
 #include "app/panels/panels.h"
 #include "app/render/resources.h"
 #include "core/export.h"
+#include "core/import.h"
 #include "core/log.h"
 #include "core/paths.h"
 
@@ -272,6 +273,35 @@ void App::open_project(const std::string& path) {
     }
 }
 
+void App::import_mod_folder(const std::string& dir, bool prefer_data) {
+    auto act = [this, dir, prefer_data] {
+        ImportResult r = import_mod(dir, prefer_data);
+        import_report_.clear();
+        if (!r.ok) {
+            status("Import failed: " + r.error);
+            import_report_.push_back("error: " + r.error);
+        } else {
+            project = std::move(r.project);
+            project_path.clear();  // a new project: Save asks where
+            history.reset(project);
+            history.touch();
+            project_replaced();
+            import_report_.push_back(r.from_project_file ? "Read the project the mod was exported from (modkit/project.json)."
+                                                         : "Rebuilt the project from the mod's data files (the graphs were laid out anew).");
+            for (auto& w : r.warnings) import_report_.push_back(w);
+            status("Imported " + dir + ": save the project to keep it");
+        }
+        for (auto& l : import_report_) log_info("import: " + l);
+        import_open_ = true;
+    };
+    if (history.dirty()) {
+        after_discard_ = act;
+        ask_discard_ = true;
+    } else {
+        act();
+    }
+}
+
 void App::request_open() {
     const std::string dir = project_path.empty() ? std::string() : u8str(u8(project_path).parent_path());
     const std::string path = dialog_open_file("risen-modkit project", kProjectFilter, dir);
@@ -365,6 +395,17 @@ void App::draw_menu() {
         if (ImGui::MenuItem("Save as...", "Ctrl+Shift+S")) save_project(true);
         ImGui::Separator();
         if (ImGui::MenuItem("Export mod...", "Ctrl+E")) request_export();
+        if (ImGui::BeginMenu("Import mod")) {
+            if (ImGui::MenuItem("From its project (modkit/project.json)...")) {
+                const std::string d = dialog_pick_folder(settings.export_dir);
+                if (!d.empty()) defer([this, d] { import_mod_folder(d, false); });
+            }
+            if (ImGui::MenuItem("From its data files (after hand edits)...")) {
+                const std::string d = dialog_pick_folder(settings.export_dir);
+                if (!d.empty()) defer([this, d] { import_mod_folder(d, true); });
+            }
+            ImGui::EndMenu();
+        }
         ImGui::Separator();
         if (ImGui::MenuItem("Quit")) glfwSetWindowShouldClose(window_, 1);
         ImGui::EndMenu();
@@ -411,6 +452,16 @@ void App::draw_modals() {
     if (ask_discard_) {
         ImGui::OpenPopup("Unsaved changes");
         ask_discard_ = false;
+    }
+    if (import_open_) {
+        ImGui::OpenPopup("Import");
+        import_open_ = false;
+    }
+    ImGui::SetNextWindowSize(ImVec2(640, 0), ImGuiCond_Appearing);
+    if (ImGui::BeginPopupModal("Import", nullptr)) {
+        for (auto& l : import_report_) ImGui::TextWrapped("%s", l.c_str());
+        if (ImGui::Button("Close", ImVec2(120, 0))) ImGui::CloseCurrentPopup();
+        ImGui::EndPopup();
     }
     if (ImGui::BeginPopupModal("Unsaved changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextUnformatted("The project has unsaved changes.");

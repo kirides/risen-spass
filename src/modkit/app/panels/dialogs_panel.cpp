@@ -88,6 +88,7 @@ public:
         draw_list(app);
         ImGui::EndChild();
         ImGui::SameLine();
+        if (sel_.empty() && !app.project.dialogs.empty()) sel_ = app.project.dialogs.front().uid;
         DialogDef* d = find(app.project, sel_);
         if (!d) {
             ImGui::TextDisabled("Create a dialogue: a conversation of one NPC (the owner) with the player.");

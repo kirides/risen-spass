@@ -4,7 +4,7 @@
 world placements) in a desktop application and export an ordinary mod folder that the layer loads. The plan and the state of the stages are in
 [REQUIREMENTS.md](REQUIREMENTS.md); this guide describes what works now.
 
-Contents: [Build and start](#build-and-start) · [First start](#first-start) · [The window](#the-window) · [Items](#items) · [Recipes](#recipes) · [NPCs and monsters](#npcs-and-monsters) · [Dialogues](#dialogues) · [Quests](#quests) · [World](#world) · [Export](#export) ·
+Contents: [Build and start](#build-and-start) · [First start](#first-start) · [The window](#the-window) · [Items](#items) · [Recipes](#recipes) · [NPCs and monsters](#npcs-and-monsters) · [Dialogues](#dialogues) · [Quests](#quests) · [World](#world) · [Export](#export) · [Import](#import) ·
 [The exported mod](#the-exported-mod) · [Command line](#command-line) · [Limits](#limits)
 
 ## Build and start
@@ -181,6 +181,18 @@ The Browser and the item editor show a turning preview of a template's mesh (dra
 
 Start the game: the layer loads the mod like any other (it is listed in the Mods tab of the ESC menu). With `[mods] watch = true` in the layer's
 `config.toml`, a re-export while the game runs reloads the mod (texts and numbers of items; new templates need a restart).
+
+## Import
+
+**File > Import mod** opens an exported mod as a new project (save it to keep it):
+
+* **From its project**: the export put the editor's project into `modkit\project.json`; this reads it back exactly as it was.
+* **From its data files**: for a mod whose `data\*.lua`, `strings\*.csv` or `mod.toml` were edited by hand (or that has no `project.json`). The data
+  files are plain tables; the editor runs them in an empty Lua state (no libraries, a time limit) and turns them back into items, recipes, NPCs,
+  dialogues and quests. Dialogue and quest graphs get a new layout. Balance sections the editor has no panel for (spells, new spells, NPC groups) are
+  kept and written again by the next export; the report lists them. `custom.lua` stays in the mod folder (export into the same folder again).
+
+Command line: `risen-modkit --import <mod folder> --save project.rmk.json [--from-data]`.
 
 ## The exported mod
 

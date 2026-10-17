@@ -105,6 +105,7 @@ public:
     void open_project(const std::string& path);
     bool save_project(bool save_as);
     void request_open();  // file dialog
+    void import_mod_folder(const std::string& dir, bool prefer_data);  // File > Import mod
     void project_replaced();  // after the model was replaced (open, new, undo across structure, import)
 
 private:
@@ -137,6 +138,8 @@ private:
     bool export_open_ = false;
     std::string export_dir_;
     std::vector<std::string> export_report_;
+    std::vector<std::string> import_report_;
+    bool import_open_ = false;
     // game data loader
     void poll_loader();
     std::thread loader_;
