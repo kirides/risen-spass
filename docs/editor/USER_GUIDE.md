@@ -266,7 +266,7 @@ The Browser and the item editor show a turning preview of a template's mesh (dra
 Set the **game folder** (the Risen folder with `bin\Risen.exe` and the mod layer) in **Window > Settings > Play**, choose what the game does at start
 (**Game > Start with**: main menu, a new game, the last quick save) and press the green **Play** button or **F5**:
 
-* The project is validated (errors stop Play), exported into `<game folder>in\spass\mods\<id>` and Risen starts windowed (the setting *Windowed*
+* The project is validated (errors stop Play), exported into `<game folder>\bin\spass\mods\<id>` and Risen starts windowed (the setting *Windowed*
   sets `FullScreen="false"` in `data\ini\ConfigLocal.xml`; the first time a backup `ConfigLocal.xml.modkit-backup` is kept). The editor turns on the layer's
   file watcher (`[mods] watch = true` in `bin\spass\config.toml`) and, for "new game" / "quick save", adds the tiny helper mod `modkit_autostart`.
 * While that game is running, **Play** only exports again: the layer reloads the mod from the changed files, no restart (the status line says so).

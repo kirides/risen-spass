@@ -57,7 +57,7 @@ IDs are referenced by the stages (section 9). **M** = must for the stage that im
 | APP-3 M | Project new / open / save / save as (JSON, section 6), recent projects, unsaved-changes prompt, undo/redo for every edit (command stack over the project model). |
 | APP-4 M | Log panel (everything the tool does and every parse problem) and Problems panel (validation result, click to jump to the object). |
 | APP-5 M | Command line: `risen-modkit [project] [--data DIR]`; for automation `--export DIR` (no window), `--screenshot FILE --frames N --panel NAME` (render N frames, save the window as PNG, exit; the test loop's way to look at the UI). |
-| APP-7 S | **Play** (F5, the green button, menu Game): export into `<game folder>in\spass\mods\<id>` and start Risen windowed (main menu / new game / last quick save), or, when the game runs with the layer's file watcher on, let it hot-reload the mod. |
+| APP-7 S | **Play** (F5, the green button, menu Game): export into `<game folder>\bin\spass\mods\<id>` and start Risen windowed (main menu / new game / last quick save), or, when the game runs with the layer's file watcher on, let it hot-reload the mod. |
 | APP-8 S | **Game errors**: the editor tails `spass.log`, keeps the warnings/errors that carry `[<mod id>]` or name a project object (item, recipe, template, NPC, quest and its `MK_<quest>_<action>` scripts, a dialogue option's info name, behaviours) and lists them in the Problems panel; a click jumps to the object. They never block the export. |
 | APP-6 S | Native file dialogs (nativefiledialog-extended); fallback: ImGui path input when the platform has no dialog service. |
 
