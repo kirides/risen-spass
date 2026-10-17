@@ -12,7 +12,7 @@ local T = risen.test
 local phase = T.param("phase", "default")
 
 local PLAN_DEFAULT = {
-    "ground item: handled as item", "ground item: one stack more", "ground item: events (picked_up, added pickup, destroyed) exactly once", "ground item: the pick-up effect (material sound) started once", "ground item: the engine path starts the same effect", "effect.start: bad names and gone entities refused, an unknown name is harmless", "ground item: tutorial hint takeitem handled like the engine path", "ground item: no interaction state", "ground item: same events as the engine path",
+    "ground item: handled as item", "ground item: one stack more", "ground item: events (picked_up, added pickup, destroyed) exactly once", "ground item: the pick-up effect (material sound) started once", "ground item: the engine path starts the same effect", "ground item: rapid pick-ups make one sound, the next one after the gap", "effect.start: bad names and gone entities refused, an unknown name is harmless", "ground item: tutorial hint takeitem handled like the engine path", "ground item: no interaction state", "ground item: same events as the engine path",
     "engine path baseline: ZS_Interact states ran",
     "dead human: handled as corpse", "dead human: tutorial hint loot can be ended", "dead human: the club moved, fists and joint stayed", "dead human: same items as the engine's loot window", "dead human: inventory events, one pair per stack",
     "knocked-out human looted", "living human declined", "witness: a living human nearby does not stop the pick-up (assess mode, no watched area)", "monster corpse (wolf) looted", "monster corpse: trophy taken, fist stayed", "monster corpse: same items as the engine's loot window", "monster corpses of other species looted", "washed-up body (Beach_Seaman_Dead) looted", "washed-up body: the hero says his remark (GamestartLoot)", "washed-up body: same items as the engine's loot window", "trophies without skill: only the unconditional ones", "trophies without skill: nothing left on the carcasses", "trophies with the Trophy skill: fur taken", "trophies with skill and recipes: horns, claws, tusks, stings taken", "trophies: nothing lootable left on the carcasses", "trophies: same items as the engine's loot window (skill learned)", "door-like object declined", "empty chest declined",
@@ -193,6 +193,16 @@ local function default_phase()
     check("ground item: tutorial hint takeitem handled like the engine path", risen.hud.tutorial_stop("takeitem") == true and quick_tut == risen.hud.tutorial_done("takeitem"),
         ("before %s, after quick %s, after engine %s"):format(tostring(tut_take0), tostring(quick_tut), tostring(risen.hud.tutorial_done("takeitem"))))
     T.eq("ground item: same events as the engine path", inv_norm(mark, "PC_Hero"), quick_item_events)
+    -- holding the key: three apples in the same instant make one sound, a later one makes another (pickup_sound_gap)
+    local rapid = { (spawn_at("It_Apple", 150)), (spawn_at("It_Apple", 150)), (spawn_at("It_Apple", 150)) }
+    local fr0 = risen.effect.count("eff_item_apple_transfer")
+    for _, a in ipairs(rapid) do try(a) end
+    local fr1 = risen.effect.count("eff_item_apple_transfer")
+    local waited = os.clock()
+    T.wait_until(function() return os.clock() - waited > 0.8 end, 10, "the sound gap passes")
+    try((spawn_at("It_Apple", 150)))
+    local fr2 = risen.effect.count("eff_item_apple_transfer")
+    check("ground item: rapid pick-ups make one sound, the next one after the gap", fr1 == fr0 + 1 and fr2 == fr1 + 1, ("%d -> %d (three apples) -> %d (after the gap)"):format(fr0, fr1, fr2))
 
     local function chest(tpl, locked, items, ang)
         local c = spawn_at(tpl, 200, ang)

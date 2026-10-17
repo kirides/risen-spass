@@ -19,7 +19,7 @@ local DEFAULTS = {
     enabled = true,
     key = "SecondaryAction",
     modifier = "none",
-    items = true, corpses = true, chests = true, keys = true, print = true, pickup_sound = true,
+    items = true, corpses = true, chests = true, keys = true, print = true, pickup_sound = true, pickup_sound_gap = 600,
     hold_repeat = true, repeat_ms = 80,
     witness_mode = "assess", witness_veto = 1000, max_distance = 450,
 }
@@ -117,13 +117,23 @@ local function lootable_stacks(container)
     return n
 end
 
+-- The animated take plays one pick-up sound at a time (every take lasts ~1.3 s). Holding the key takes ~12 items a second and every sound plays to its end, so they would pile up
+-- into seconds of noise: after one sound the next waits `pickup_sound_gap` milliseconds (the items are still taken).
+local last_pickup_sound = -math.huge
+local function pickup_sound(player, item)
+    if not cfg.pickup_sound then return end
+    local now = os.clock()
+    if now - last_pickup_sound < cfg.pickup_sound_gap / 1000 then return end
+    local material = item:get_property("gCItem_PS", "EffectMaterial")
+    if material and material ~= "" and risen.effect.start("eff_item_" .. material .. "_transfer_01", player) then last_pickup_sound = now end
+end
+
 local function take_item(player, item)
     local tpl = item:template()
     local name = tpl and tpl:name() or item:name()
     local amount = item:item_amount() or 1
     -- the take animation's pick-up effect (Interact_Player_TakeItem starts it before the item is inserted): it plays the material's transfer sound, sfx_items_<material>_transfer_NN
-    local material = cfg.pickup_sound and item:get_property("gCItem_PS", "EffectMaterial")
-    if material and material ~= "" then risen.effect.start("eff_item_" .. material .. "_transfer_01", player) end
+    pickup_sound(player, item)
     local stack = risen.item.pick_up(player, item)
     if stack == nil then return false, "the engine refused the pick-up" end
     if cfg.print then risen.hud.item_log(name, amount) end
