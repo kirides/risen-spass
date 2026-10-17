@@ -350,27 +350,27 @@ end
 local function slider(min, max, step) return { type = "number", kind = "slider", min = min, max = max, step = step } end
 group("General",
     entry("enabled", "Quick loot", "Take what you look at with one key press, without walking over or any animation."),
-    entry("key", "Key", "The key that takes the target. The right mouse button does nothing in the game while no weapon is drawn. More key names (F-keys, Space, ...) can be set in config.toml.",
+    entry("key", "Key", "The key that takes the target. Other key names (F-keys, Space, ...) go into config.toml.",
         { type = "string", kind = "dropdown", values = KEYS }),
     entry("modifier", "Modifier key", "A key that has to be held with the key to take something (none = the key alone).",
         { type = "string", kind = "dropdown", values = { { value = "none", name = "none" }, { value = "shift", name = "Shift" }, { value = "ctrl", name = "Ctrl" }, { value = "alt", name = "Alt" } } }))
 group("What to take",
     entry("items", "Items on the ground", "Take items that lie on the ground."),
-    entry("corpses", "Dead and knocked-out", "Loot dead and knocked-out humans, the washed-up bodies of the beach and monster or animal carcasses."),
+    entry("corpses", "Dead and knocked-out", "Loot dead and knocked-out humans, the bodies of the beach and carcasses."),
     entry("chests", "Chests and cupboards", "Open chests, cupboards and sarcophagi."),
     entry("keys", "Open with a key", "A locked chest is opened with the matching key from the inventory (never lockpicked)."),
     entry("max_distance", "Reach (units)", "How close the target has to be.", slider(100, 1500, 50)))
 group("Feedback",
-    entry("print", "Item messages", "A line in the game log for every item taken from the ground (looted stacks are printed by the game itself)."),
-    entry("pickup_sound", "Pick-up sound", "The sound of the take animation for items from the ground (it depends on the item: apple, gold, wood, potion, ...)."),
-    entry("pickup_sound_gap", "Sound spacing (ms)", "After one pick-up sound the next waits this long, so holding the key does not pile the sounds up. 0 = a sound for every item.", slider(0, 2000, 100)))
+    entry("print", "Item messages", "A game log line for every item taken from the ground."),
+    entry("pickup_sound", "Pick-up sound", "The sound of the take animation for items from the ground (apple, gold, wood, ...)."),
+    entry("pickup_sound_gap", "Sound spacing (ms)", "After one pick-up sound the next waits this long, so holding the key does not pile them up. 0 = every item.", slider(0, 2000, 100)))
 group("Repeat",
     entry("hold_repeat", "Hold to repeat", "Hold the key to take everything in reach, one target after the other."),
     entry("repeat_ms", "Repeat interval (ms)", "The time between two targets while the key is held.", slider(20, 500, 20)))
 group("Witnesses",
-    entry("witness_mode", "Reaction of people", "What people do when you take an item or open a chest: assess = the game's own reaction (they see it, comment, threaten), veto = nothing is taken while a human who sees you is near, ignore = nobody reacts.",
+    entry("witness_mode", "Reaction of people", "assess = the game's own reaction (people who see you comment or threaten), veto = nothing is taken while someone sees you, ignore = nobody reacts.",
         { type = "string", kind = "dropdown", values = { { value = "assess", name = "assess (the game reacts)" }, { value = "veto", name = "veto (decline when seen)" }, { value = "ignore", name = "ignore" } } }),
-    entry("witness_veto", "Veto radius", "Reaction = veto only: the distance in game units within which a human who sees you stops quick loot. 0 = never.", slider(0, 3000, 100)))
+    entry("witness_veto", "Veto radius", "Veto only: how close a human who sees you has to be to stop quick loot. 0 = never.", slider(0, 3000, 100)))
 entries.title = "Quick Loot"
 entries.on_change = function(id, value)
     cfg[id] = value

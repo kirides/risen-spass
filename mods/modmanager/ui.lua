@@ -227,7 +227,7 @@ function UI:_build()
         make("spass_oval" .. i, src.button, { x = OPT.val_x, y = y, w = OPT.val_w, h = OPT.h, text = "", script = "Spass_ModMgr_OptNext" .. i, props = props })
         arrow("next", OPT.next_x)
     end
-    make("spass_ohint", src.label, { x = OPT.x, y = 489, w = 594, h = 48, text = "", props = { TextAlign = "eETextAlign_Left_Top", Singleline = "False", Font = "fnt_small" } })
+    make("spass_ohint", src.label, { x = OPT.x, y = 487, w = 594, h = 44, text = "", props = { TextAlign = "eETextAlign_Left_Top", Singleline = "False", Font = "fnt_small" } })
     button("spass_prev", ROW.x, 490, 120, 26, "< Prev", "Spass_ModMgr_Prev", ID.prev)
     button("spass_next", ROW.x + ROW.w - 120, 490, 120, 26, "Next >", "Spass_ModMgr_Next", ID.next)
     make("spass_pagelabel", src.label, { x = ROW.x + 124, y = 491, w = ROW.w - 248, h = 24, text = "", props = { TextAlign = "eETextAlign_Center_Middle" } })
