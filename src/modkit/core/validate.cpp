@@ -38,6 +38,7 @@ namespace {
 struct Ctx {
     const Project& p;
     const GameData* g;
+    const World* w;
     std::vector<Problem>& out;
     std::set<std::string> skills;
     std::set<std::string> new_templates;  // lower-case names the project creates
@@ -346,8 +347,11 @@ void check_dialogs(Ctx& c) {
         std::vector<DialogIssue> issues;
         const json list = compile_dialog(c.p, d, issues);
         for (auto& i : issues) c.add(i.error ? Severity::Error : Severity::Warning, A, d.uid, subj + (i.node.empty() ? "" : " (node)"), i.message);
-        if (!d.owner.empty() && !c.p.npc(d.owner))
-            c.add(Severity::Warning, A, d.uid, subj, "the owner '" + d.owner + "' is not a placed NPC of the project: it must be the unique name of an NPC in the world");
+        if (!d.owner.empty() && !c.p.npc(d.owner)) {
+            const WorldEntity* we = c.w ? c.w->by_name(d.owner) : nullptr;
+            if (!c.w) c.add(Severity::Warning, A, d.uid, subj, "the owner '" + d.owner + "' is not a placed NPC of the project: it must be the unique name of an NPC in the world");
+            else if (!we || !we->npc) c.add(Severity::Error, A, d.uid, subj, "no NPC called '" + d.owner + "' in the project or in the world " + c.w->name);
+        }
         bool any_option = false;
         for (auto& n : d.graph.nodes) any_option |= n.type == "option";
         if (!any_option) c.add(Severity::Warning, A, d.uid, subj, "the dialogue has no option");
@@ -385,9 +389,9 @@ void check_dialogs(Ctx& c) {
 
 }  // namespace
 
-std::vector<Problem> validate(const Project& p, const GameData* game) {
+std::vector<Problem> validate(const Project& p, const GameData* game, const World* world) {
     std::vector<Problem> out;
-    Ctx c{p, game, out, {}, {}, {}, {}};
+    Ctx c{p, game, world, out, {}, {}, {}, {}};
     for (auto& s : skill_names(game)) c.skills.insert(s);
     for (auto& i : p.items)
         if (i.mode == Mode::New) c.new_templates.insert(p2m::lower(i.name));

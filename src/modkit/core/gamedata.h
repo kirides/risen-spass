@@ -51,6 +51,9 @@ public:
     const std::string& data_dir() const { return data_dir_; }
     const std::vector<std::unique_ptr<TemplateInfo>>& templates() const { return templates_; }  // sorted by name (case-insensitive)
     const TemplateInfo* tpl(const std::string& name) const;  // case-insensitive
+    // the template a GUID reference names ("@" + 32 hex, as property values and world entities refer to templates), "" when unknown
+    std::string template_by_guid(const std::string& at_hex) const;
+    const std::unordered_map<std::string, std::string>& guid_names() const { return guid_names_; }
     // names of templates of one kind, sorted
     std::vector<std::string> names_of(TplKind k) const;
 
@@ -82,6 +85,7 @@ private:
     std::unordered_map<std::string, const p2m::LFile*> by_path_;  // lower-case "<archive base>/<path>" -> file (common layer)
     std::vector<std::unique_ptr<TemplateInfo>> templates_;
     std::unordered_map<std::string, TemplateInfo*> by_name_;  // lower-case name
+    std::unordered_map<std::string, std::string> guid_names_;  // "@hex" -> template name
     std::vector<std::string> languages_;
     std::unordered_map<std::string, std::vector<std::string>> texts_;  // id -> text per language (index into languages_)
     std::map<std::string, std::vector<AssetEntry>> assets_;

@@ -3,6 +3,7 @@
 #   risen-modkit  the GLFW + Dear ImGui application
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
 find_package(glad CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(unofficial-imgui-node-editor CONFIG REQUIRED)
@@ -43,6 +44,7 @@ add_library(modkit_core STATIC
     core/lua_writer.cpp
     core/settings.cpp
     core/validate.cpp
+    core/world.cpp
     "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp"
 )
 target_include_directories(modkit_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/src")
@@ -76,10 +78,12 @@ add_executable(risen-modkit
     app/panels/npcs_panel.cpp
     app/panels/project_panel.cpp
     app/panels/settings_panel.cpp
+    app/panels/world_panel.cpp
+    app/render/gl_util.cpp
 )
 target_include_directories(risen-modkit PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" ${STB_INCLUDE_DIRS})
 target_link_libraries(risen-modkit PRIVATE
-    modkit_core glfw glad::glad imgui::imgui unofficial::imgui-node-editor::imgui-node-editor imguizmo::imguizmo nfd::nfd OpenGL::GL)
+    modkit_core glfw glad::glad glm::glm imgui::imgui unofficial::imgui-node-editor::imgui-node-editor imguizmo::imguizmo nfd::nfd OpenGL::GL)
 if(WIN32)
     # a GUI application without a console window; main() stays the entry point
     set_target_properties(risen-modkit PROPERTIES WIN32_EXECUTABLE ON)

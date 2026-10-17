@@ -74,6 +74,7 @@ App::App(AppOptions opts) : options(std::move(opts)) {
     panels_.push_back(make_npcs_panel());
     panels_.push_back(make_dialogs_panel());
     panels_.push_back(make_quests_panel());
+    panels_.push_back(make_world_panel());
     panels_.push_back(make_problems_panel());
     panels_.push_back(make_log_panel());
     panels_.push_back(make_settings_panel());
@@ -150,11 +151,17 @@ void App::select_in(const std::string& panel_title, const std::string& uid_or_na
         }
 }
 
+bool App::any_busy() const {
+    bool busy = game_loading();
+    for (auto& p : panels_) busy = busy || p->busy();
+    return busy;
+}
+
 void App::refresh_problems() {
     const double now = glfwGetTime();
     if (problems_time_ >= 0 && now - problems_time_ < 0.5) return;
     problems_time_ = now;
-    problems_ = validate(project, game.get());
+    problems_ = validate(project, game.get(), world.get());
 }
 
 void App::draw_export_modal() {
@@ -444,7 +451,7 @@ void App::draw_frame() {
 
     for (auto& p : panels_) {
         if (!p->open) continue;
-        if (!focus_request_.empty() && focus_request_ == p->title()) {
+        if (!focus_request_.empty() && focus_request_ == p->title() && frame_ >= 2) {
             ImGui::SetNextWindowFocus();
             focus_request_.clear();
         }
@@ -529,7 +536,8 @@ int App::run() {
 
         ++frame_;
         // screenshots wait for the game data (a minute at most), then count their frames
-        if (!game_loading() || glfwGetTime() > 60) ++shot_frames_;
+        const bool busy = any_busy();
+        if (!busy || glfwGetTime() > 60) ++shot_frames_;
         if (!options.screenshot.empty() && shot_frames_ >= options.frames) {
             rc = save_screenshot(options.screenshot, w, h) ? 0 : 1;
             glfwSetWindowShouldClose(window_, 1);
@@ -538,7 +546,7 @@ int App::run() {
 
         // structural edits and file actions run between frames
         // --select: once the game data is there (or there is none to wait for)
-        if (!pending_select_.empty() && !game_loading()) {
+        if (!pending_select_.empty() && (!any_busy() || glfwGetTime() > 60)) {
             for (auto& p : panels_)
                 if (p->select(*this, pending_select_)) break;
             pending_select_.clear();

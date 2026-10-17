@@ -19,6 +19,7 @@
       "description": "risen-modkit, the cross-platform mod editor (docs/editor/REQUIREMENTS.md)",
       "dependencies": [
         "glfw3",
+        "glm",
         {
           "name": "glad",
           "features": [

@@ -14,6 +14,7 @@
 #include "core/project.h"
 #include "core/settings.h"
 #include "core/validate.h"
+#include "core/world.h"
 
 struct GLFWwindow;
 
@@ -49,6 +50,8 @@ public:
     virtual bool select(App&, const std::string&) { return false; }
     // called once after all panels exist (register template actions, ...)
     virtual void attach(App&) {}
+    // still loading something (screenshots wait for it)
+    virtual bool busy() const { return false; }
     bool open = true;
 };
 
@@ -71,6 +74,8 @@ public:
     bool game_loading() const { return loader_.joinable(); }
 
     std::vector<TemplateAction> template_actions;
+    // the loaded game world (the World panel loads it; placement and the pickers of NPC names use it)
+    std::shared_ptr<const World> world;
 
     void touch() { history.touch(); }  // a panel changed `project`
     void status(const std::string& text);  // the status bar line
@@ -102,6 +107,7 @@ private:
     void draw_modals();
     void draw_export_modal();
     void refresh_problems();
+    bool any_busy() const;
     void setup_default_layout(unsigned int dockspace_id);
     void apply_ui_scale();
     void handle_shortcuts();

@@ -7,6 +7,7 @@
 
 #include "core/gamedata.h"
 #include "core/project.h"
+#include "core/world.h"
 
 namespace mk {
 
@@ -20,7 +21,8 @@ struct Problem {
     std::string message;
 };
 
-std::vector<Problem> validate(const Project& p, const GameData* game);
+// `world` (optional): dialogue owners are looked up among its NPCs
+std::vector<Problem> validate(const Project& p, const GameData* game, const World* world = nullptr);
 size_t error_count(const std::vector<Problem>& v);
 
 // the rules of the layer (shared with the panels' inline hints)

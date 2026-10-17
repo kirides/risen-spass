@@ -190,12 +190,27 @@ private:
         std::vector<std::string> npcs;
         for (auto& n : app.project.npcs) npcs.push_back(n.name);
         ImGui::SetNextItemWidth(200);
-        if (ImGui::BeginCombo("##owner", d.owner.empty() ? "(owner)" : d.owner.c_str())) {
+        if (ImGui::BeginCombo("##owner", d.owner.empty() ? "(owner)" : d.owner.c_str(), ImGuiComboFlags_HeightLarge)) {
             for (auto& n : npcs)
                 if (ImGui::Selectable(n.c_str(), n == d.owner)) {
                     d.owner = n;
                     ch = true;
                 }
+            // the NPCs placed in the game world (their unique names)
+            if (app.world) {
+                ImGui::SeparatorText(("NPCs of " + app.world->name).c_str());
+                static std::string filter;
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                ImGui::InputTextWithHint("##of", "filter", &filter);
+                for (auto& e : app.world->entities) {
+                    if (!e.npc || e.kind != TplKind::Npc) continue;
+                    if (!filter.empty() && e.name.find(filter) == std::string::npos) continue;
+                    if (ImGui::Selectable((e.name + "##w" + e.guid).c_str(), e.name == d.owner)) {
+                        d.owner = e.name;
+                        ch = true;
+                    }
+                }
+            }
             ImGui::EndCombo();
         }
         ImGui::SameLine();

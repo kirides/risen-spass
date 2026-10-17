@@ -1586,3 +1586,21 @@ The standalone converter ([PACK2MOD.md](PACK2MOD.md), `src/pack2mod/`) re-implem
 * **Killing an NPC that has a routine** (`risen.npc.set_routine`, the crash of phase D): not reproduced in more than 20 variants (kill on the way, at the post, a corpse, a patroller, a day/night routine, the routine replaced / cleared before the kill, kill from far away after the player teleported, three kills in one frame, after a screenshot, with equipment, with and without the Extended Mod); the regression block `killing` of scenario `routines` (71 checks) keeps five of them. The layer was not changed.
 * **Wind.** The mod's `WeatherStates.g3ws` has the size of the game's and differs in the wind power of 8 weather states (`0x23e4`: 0.55 -> 0.30, `0x5328`: 0.65, `0x6228`: 0.70, ...: all become 0.30) and in a few bytes of garbage floats. Frame-to-frame screenshot differences (12 and 16 shots 0.2-0.25 s apart, same start scene, with and without the file) were dominated by lighting changes and the intro camera; the cleanest runs give a median difference of the foliage half of 2.7-3.2 with the game's wind and 2.5 with 0.3: a signal in the expected direction, not conclusive.
 
+
+## 49. Offline readings of risen-modkit: NPC numbers in templates, world layers (editor stages E4, E7) [static; checked against the engine's values]
+
+* **`gCSkills_PS` in a template file.** The set is not reflected (section 24), but the template stores it as one record after the u16 string index of
+  the name `gCSkills_PS`: `c9 00 <u32 0x90> c9 00 <u32 0> <u16 4>` and then the **34 int32 base values in `gESkill` order** (HitPoints, ManaPoints,
+  Level, Experience, LearnPoints, MaxHitPoints, MaxManaPoints, Strength, ...). `src/modkit/core/gamedata.cpp` decodes it for 416 of the 444 NPC and
+  monster templates; `modkit_tests --data` compares hit points, level, experience, Strength, Dexterity, Intelligence, ProtEdge, guild and species of
+  every row of NPC_PROPERTIES.md (105, generated from the engine by `mods/npcdump`): all equal. `gESpecies` by number (from the same comparison):
+  0 None, 1 Human, 2 Lizard, 3 Brontok, 5 Lurker, 6 Ashbeast, 7 Nautilus, 8 Dragonfly, 9 Mantis, 10 Scorpion, 11 Skeleton, 12 Swampmummy, 13 Rotworm,
+  14 Skeleton_Tame, 15 Gnome, 16 Boar, 17 Wolf, 18 Stingrat, 19 Vulture, 20 Thundertail, 21 Ogre, 23 Cow, 24 Pig, 25 Chicken; 4, 22, 26 are used by no
+  shipped NPC (inferred: Ghost, Ogre_Tame, Wolf_Tame). `gEGuild` 0..7 = None, Don, Dig, Grd, Cit, Inq, Mag, Pir.
+* **A world layer entity record** (`*.lrent`, extending section 47): `d6 00 <GUID16> 00 00 00 00 <u16 name index> <16 floats world matrix>` is followed by
+  `<6 floats world box min, max> <4 floats bounding sphere: radius, centre> <6 floats local box> 01 00 01 <GUID16 of the creator template> 00 00 00 00
+  d6 00 <16 floats local matrix>`. The matrix is row-major with the position in row 3 and the forward axis in row 2 (yaw = atan2(m[8], m[10])). The
+  creator GUID is one of the template's header GUIDs, so the template is known without the properties (Ingvar's entity names the template `Ingvar`).
+  Every layer starts with a root record `DRE` (identity, an empty box: `FLT_MAX` / `-FLT_MAX`) that holds the layer's own properties. The World has
+  317 layer files with 48347 entities (1.5 s to read all). The player's start point is the entity `SP_Start` of `_System/_StartPoints.lrent`
+  (-32103, 596, -4723); the other `SP_*` entities there are the travel points of the story.

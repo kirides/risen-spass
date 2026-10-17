@@ -23,6 +23,7 @@
 #include "core/project.h"
 #include "core/quest.h"
 #include "core/validate.h"
+#include "core/world.h"
 
 #include <luajit/lua.hpp>
 

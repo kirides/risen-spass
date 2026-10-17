@@ -16,6 +16,7 @@ std::unique_ptr<Panel> make_recipes_panel();
 std::unique_ptr<Panel> make_npcs_panel();
 std::unique_ptr<Panel> make_dialogs_panel();
 std::unique_ptr<Panel> make_quests_panel();
+std::unique_ptr<Panel> make_world_panel();
 std::unique_ptr<Panel> make_problems_panel();
 
 // window titles, used for the default docking layout
@@ -28,6 +29,7 @@ inline constexpr const char* kPanelRecipes = "Recipes";
 inline constexpr const char* kPanelNpcs = "NPCs";
 inline constexpr const char* kPanelDialogs = "Dialogues";
 inline constexpr const char* kPanelQuests = "Quests";
+inline constexpr const char* kPanelWorld = "World";
 inline constexpr const char* kPanelProblems = "Problems";
 
 }  // namespace mk

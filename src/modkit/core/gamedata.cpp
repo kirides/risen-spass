@@ -148,7 +148,7 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
     };
     std::vector<Parsed> parsed;
     parsed.reserve(tple_keys.size());
-    std::unordered_map<std::string, std::string> guid_names;
+    std::unordered_map<std::string, std::string>& guid_names = gd->guid_names_;
     size_t done = 0;
     for (const std::string& k : tple_keys) {
         if (cancelled()) return nullptr;
@@ -258,6 +258,11 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
     report(1.0f, "done");
     log_info("game data loaded in " + std::to_string(gd->load_seconds_).substr(0, 4) + " s");
     return gd;
+}
+
+std::string GameData::template_by_guid(const std::string& at_hex) const {
+    const auto it = guid_names_.find(p2m::lower(at_hex));
+    return it == guid_names_.end() ? std::string() : it->second;
 }
 
 const TemplateInfo* GameData::tpl(const std::string& name) const {

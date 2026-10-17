@@ -4,7 +4,7 @@
 world placements) in a desktop application and export an ordinary mod folder that the layer loads. The plan and the state of the stages are in
 [REQUIREMENTS.md](REQUIREMENTS.md); this guide describes what works now.
 
-Contents: [Build and start](#build-and-start) · [First start](#first-start) · [The window](#the-window) · [Items](#items) · [Recipes](#recipes) · [NPCs and monsters](#npcs-and-monsters) · [Dialogues](#dialogues) · [Quests](#quests) · [Export](#export) ·
+Contents: [Build and start](#build-and-start) · [First start](#first-start) · [The window](#the-window) · [Items](#items) · [Recipes](#recipes) · [NPCs and monsters](#npcs-and-monsters) · [Dialogues](#dialogues) · [Quests](#quests) · [World](#world) · [Export](#export) ·
 [The exported mod](#the-exported-mod) · [Command line](#command-line) · [Limits](#limits)
 
 ## Build and start
@@ -44,6 +44,7 @@ Panels can be dragged, docked and tabbed; **Window > Reset layout** brings back 
 | **NPCs** | NPC and monster templates, and placed NPCs (below) |
 | **Dialogues** | conversations as node graphs (below) |
 | **Quests** | quests and their flow as node graphs (below) |
+| **World** | the game world in 3D (below) |
 | **Problems** | what is wrong with the project (errors block the export, warnings do not); click a line to jump to the object |
 | **Log** | what the editor did, and problems reading the game data |
 | **Settings** | data directory, export folder, UI scale |
@@ -145,6 +146,25 @@ Log entries, rewards and the outcome happen the moment the flow reaches them; ob
 every savegame (a load rolls it back with the game), a reward is never paid twice, a quest with a flow is started once per savegame. A quest without a
 Start node is started, succeeded and failed by its dialogues alone (their Quest nodes). The inspector shows the exported flow.
 
+## World
+
+The World panel reads a game world from the archives (World, the test levels; the choice is remembered) in the background when the game data is there:
+every entity of every layer with its name, ID, template, position, facing and bounding box (about 48000 in the main world). The view starts at the
+player's start point.
+
+* **Move**: hold the right mouse button and look around, W A S D to move, Q / E down / up, Shift faster, the wheel changes the speed (without the right
+  button it moves forward and back). **Click** an entity to select it, **F** flies to the selection.
+* **Show**: the kinds of entities (the colour of a box is its kind: green NPCs, red monsters, yellow items, orange chests and other interactive objects,
+  grey objects; effects, navigation helpers and sounds are off at first), the huge boxes of the level meshes, and the layers by folder (the
+  navigation, sound and effect layers start hidden).
+* **Find** an entity by name or template; the list flies to the one you choose.
+* The **inspector** shows the selected entity: its template (*Template in Browser*), its ID (*Copy id*: what `risen.entity.by_id` takes), the position
+  (*Copy position*: `{ x, y, z }` for Lua or a placed NPC), the facing, the layer, the mesh, the inventory of chests and NPCs, and every property.
+* The project's placed NPCs with a world position are drawn as magenta boxes. Dialogue owners can be picked from the world's NPCs, and the Problems
+  panel then checks that the owner exists.
+
+Meshes and textures come with the next stage; until then everything is drawn as its bounding box.
+
 ## Export
 
 **File > Export mod...** writes the mod into a folder, normally `<Risen>\bin\spass\mods\<mod id>`. The export
@@ -190,7 +210,7 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 
 ## Limits
 
-* Items, recipes, NPCs, dialogues and quests so far; the world view follows (REQUIREMENTS.md section 9).
+* The world view draws boxes, not meshes, yet; placing things in it comes later (REQUIREMENTS.md section 9).
 * A quest flow is one chain (no branches inside a quest); branch with dialogues and follow-up quests.
 * A dialogue cannot be played through inside the editor yet (DLG-5); test it in the game.
 * A template's shipped loot is not shown (the editor cannot read it offline yet).

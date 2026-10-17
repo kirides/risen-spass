@@ -187,3 +187,56 @@ TEST(quest_compile) {
     const json q = quests_data(p);
     CHECK(q[1].contains("flow") && !q[0].contains("flow"));
 }
+
+TEST(world_load_real) {
+    auto g = game_data();
+    if (!g) {
+        std::printf("  (skipped: no --data)\n");
+        return;
+    }
+    auto w = load_world(*g, "World");
+    CHECK(w != nullptr);
+    if (!w) return;
+    std::map<TplKind, int> kinds;
+    size_t with_template = 0, with_mesh = 0, with_box = 0;
+    for (auto& e : w->entities) {
+        kinds[e.kind]++;
+        with_template += !e.template_name.empty();
+        with_mesh += !e.mesh.empty();
+        with_box += e.has_box();
+    }
+    std::printf("  %zu entities in %zu layers (%.2f s): %zu with a template, %zu with a mesh, %zu with a box\n", w->entities.size(), w->layers.size(),
+                w->load_seconds, with_template, with_mesh, with_box);
+    for (auto& [k, n] : kinds) std::printf("    %-12s %d\n", kind_name(k), n);
+    CHECK(w->layers.size() > 300);  // 317 layer files (the other half of the folder are .sec sector files)
+    CHECK(w->entities.size() > 10000);
+    // a placed NPC of the harbour: Ingvar, an NPC with a template and his position (the dump of Harbour_Town_NPC_01.lrent)
+    const WorldEntity* ing = w->by_name("Ingvar");
+    CHECK(ing != nullptr);
+    if (ing) {
+        CHECK(ing->npc);
+        CHECK(!ing->template_name.empty());
+        CHECK(std::fabs(ing->x() - -2240.164f) < 0.01f && std::fabs(ing->z() - -20187.301f) < 0.01f);
+        CHECK(ing->has_box());
+        std::printf("  Ingvar: template %s, guid %s, yaw %.1f, layer %s\n", ing->template_name.c_str(), ing->guid.c_str(), ing->yaw(),
+                    w->layers[ing->layer].name.c_str());
+        const auto props = entity_properties(*g, *w, *ing);
+        CHECK(std::any_of(props.begin(), props.end(), [](const p2m::Prop& p) { return p.pset == "gCNPC_PS"; }));
+    }
+    // the landscape mesh
+    const WorldEntity* land = w->by_name("Levelmesh_Landscape_01");
+    CHECK(land && land->mesh == "Levelmesh_Landscape_01._xmsh");
+    // containers with items
+    size_t chests = 0, items = 0;
+    for (auto& e : w->entities)
+        if (e.inventory && !e.npc && e.kind == TplKind::Interactive && chests < 20) {
+            const auto inv = entity_inventory(*g, *w, e);
+            if (!inv.empty()) {
+                ++chests;
+                items += inv.size();
+            }
+        }
+    std::printf("  %zu chests looked at hold %zu stacks\n", chests, items);
+    CHECK(chests > 0);
+    CHECK_EQ(guid_text("\x0c\x91\x5d\x31\x03\x1c\x45\x90\xb5\x19\x11\x32\x16\x97\x56\x3c"), std::string("315d910c-1c03-9045-b519-11321697563c"));
+}
