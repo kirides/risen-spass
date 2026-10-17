@@ -1,6 +1,7 @@
 #include "core/validate.h"
 
 #include <algorithm>
+#include <cmath>
 #include <map>
 #include <set>
 
@@ -17,6 +18,14 @@ std::string mod_id_problem(const std::string& id) {
 }
 
 std::string template_name_problem(const std::string& name) { return spass::templates::nameProblem(name); }
+
+std::string npc_name_problem(const std::string& name) {
+    if (name.empty()) return "the NPC needs a unique name";
+    if (name.size() > 63) return "the name is longer than 63 characters";
+    for (unsigned char c : name)
+        if (!(std::isalnum(c) && c < 0x80) && c != '_' && c != '-') return "the name may only contain letters, digits, _ and -";
+    return {};
+}
 
 size_t error_count(const std::vector<Problem>& v) {
     return static_cast<size_t>(std::count_if(v.begin(), v.end(), [](const Problem& p) { return p.severity == Severity::Error; }));
@@ -176,6 +185,120 @@ void check_recipes(Ctx& c) {
     }
 }
 
+bool npc_template_known(const Ctx& c, const std::string& name) {
+    for (auto& n : c.p.npc_templates)
+        if (n.mode == Mode::New && n.name == name) return true;
+    if (!c.g) return true;
+    const TemplateInfo* t = c.g->tpl(name);
+    return t && (t->kind == TplKind::Npc || t->kind == TplKind::Monster);
+}
+
+void check_choice(Ctx& c, const char* area, const std::string& uid, const std::string& subject, const std::optional<std::string>& v, const char* what,
+                  const std::vector<std::string>& names) {
+    if (v && std::find(names.begin(), names.end(), *v) == names.end()) c.add(Severity::Error, area, uid, subject, std::string(what) + ": unknown value '" + *v + "'");
+}
+
+void check_npc_templates(Ctx& c) {
+    std::map<std::string, int> seen;
+    std::set<std::string> npc_skills;
+    for (auto& s : npc_skill_names(c.g)) npc_skills.insert(s);
+    for (auto& n : c.p.npc_templates) {
+        const char* A = "NPCs";
+        const std::string subj = n.name.empty() ? "(unnamed NPC template)" : n.name;
+        if (++seen[p2m::lower(n.name)] == 2) c.add(Severity::Error, A, n.uid, subj, "the project has this NPC template twice");
+        const TemplateInfo* target = nullptr;
+        if (n.mode == Mode::New) {
+            if (const std::string why = template_name_problem(n.name); !why.empty()) c.add(Severity::Error, A, n.uid, subj, why);
+            if (c.g && c.g->tpl(n.name)) c.add(Severity::Error, A, n.uid, subj, "a game template with this name exists: choose a new, prefixed name");
+            if (n.base.empty()) c.add(Severity::Error, A, n.uid, subj, "a new NPC template needs a base NPC or monster to clone");
+            else if (c.g) {
+                target = c.g->tpl(n.base);
+                if (!target) c.add(Severity::Error, A, n.uid, subj, "the base '" + n.base + "' is no template of the game");
+                else if (target->kind != TplKind::Npc && target->kind != TplKind::Monster)
+                    c.add(Severity::Error, A, n.uid, subj, "the base '" + n.base + "' is no NPC or monster (" + kind_name(target->kind) + ")");
+                else if (target->multi) c.add(Severity::Error, A, n.uid, subj, "the base '" + n.base + "' is a multi template (cannot be cloned)");
+            }
+            if (n.label.empty()) c.add(Severity::Warning, A, n.uid, subj, "no label: the NPC shows the base's name");
+        } else if (n.name.empty()) {
+            c.add(Severity::Error, A, n.uid, subj, "choose the shipped NPC or monster to change");
+        } else if (c.g) {
+            target = c.g->tpl(n.name);
+            if (!target) c.add(Severity::Error, A, n.uid, subj, "no game template with this name");
+            else if (target->kind != TplKind::Npc && target->kind != TplKind::Monster)
+                c.add(Severity::Error, A, n.uid, subj, std::string("not an NPC or monster (") + kind_name(target->kind) + ")");
+        }
+        if (n.skills)
+            for (auto& [k, v] : *n.skills)
+                if (!npc_skills.empty() && !npc_skills.count(k)) c.add(Severity::Error, A, n.uid, subj, "skills: unknown or not settable skill '" + k + "'");
+        if (n.hp_max && *n.hp_max < 1) c.add(Severity::Error, A, n.uid, subj, "hit points must be 1 or more");
+        if (n.hp && n.hp_max && *n.hp > *n.hp_max) c.add(Severity::Error, A, n.uid, subj, "the hit points are above the maximum");
+        if (n.level && *n.level < 1) c.add(Severity::Error, A, n.uid, subj, "the level must be 1 or more");
+        if (n.level && n.xp) c.add(Severity::Warning, A, n.uid, subj, "level and xp both set: xp sets the level (a kill pays 10 * level)");
+        check_choice(c, A, n.uid, subj, n.guild, "guild", guild_names());
+        check_choice(c, A, n.uid, subj, n.species, "species", species_names());
+        check_choice(c, A, n.uid, subj, n.attitude, "attitude", attitude_names());
+        check_choice(c, A, n.uid, subj, n.bravery, "bravery", bravery_names());
+        check_choice(c, A, n.uid, subj, n.damage_calc, "damage calculation", damage_calc_names());
+        check_choice(c, A, n.uid, subj, n.damage_type, "damage type", damage_type_names());
+        if (n.loot)
+            for (auto& [item, amount] : *n.loot) {
+                if (!item_known(c, item)) c.add(Severity::Error, A, n.uid, subj, "loot '" + item + "' is no item of the game or the project");
+                if (amount < 0) c.add(Severity::Error, A, n.uid, subj, "loot '" + item + "': the amount must not be negative");
+            }
+        if (n.mesh && !n.mesh->empty() && !c.asset_known(*n.mesh))
+            c.add(Severity::Error, A, n.uid, subj, "the actor '" + *n.mesh + "' is neither in the game archives nor among the project's asset files");
+        check_properties(c, A, n.uid, subj, n.properties, target);
+    }
+}
+
+void check_routine_point(Ctx& c, const std::string& uid, const std::string& subj, const json& pt, const std::string& what) {
+    if (!pt.is_object()) {
+        c.add(Severity::Error, "NPCs", uid, subj, "routine " + what + ": not a point");
+        return;
+    }
+    for (const char* k : {"dx", "dy", "dz"})
+        if (!pt.contains(k) || !pt[k].is_number()) c.add(Severity::Error, "NPCs", uid, subj, "routine " + what + ": " + k + " is missing");
+}
+
+void check_placed_npcs(Ctx& c) {
+    std::map<std::string, int> seen;
+    for (auto& n : c.p.npcs) {
+        const char* A = "NPCs";
+        const std::string subj = n.name.empty() ? "(unnamed NPC)" : n.name;
+        if (const std::string why = npc_name_problem(n.name); !why.empty()) c.add(Severity::Error, A, n.uid, subj, why);
+        if (++seen[n.name] == 2) c.add(Severity::Error, A, n.uid, subj, "two placed NPCs have this name (names are global)");
+        if (n.template_name.empty()) c.add(Severity::Error, A, n.uid, subj, "choose the NPC's template");
+        else if (!npc_template_known(c, n.template_name))
+            c.add(Severity::Error, A, n.uid, subj, "the template '" + n.template_name + "' is no NPC or monster of the game or the project");
+        for (double x : n.position)
+            if (!std::isfinite(x) || std::fabs(x) > 1e7) c.add(Severity::Error, A, n.uid, subj, "the position is not a usable number");
+        if (!n.offset && n.position == Vec3{0, 0, 0}) c.add(Severity::Warning, A, n.uid, subj, "the position is 0, 0, 0: place the NPC (or use an offset from the player)");
+        if (n.level && *n.level < 1) c.add(Severity::Error, A, n.uid, subj, "the level must be 1 or more");
+        if (n.hp_max && *n.hp_max < 1) c.add(Severity::Error, A, n.uid, subj, "hit points must be 1 or more");
+        if (n.version < 1) c.add(Severity::Error, A, n.uid, subj, "the version must be 1 or more");
+        check_choice(c, A, n.uid, subj, n.guild, "guild", guild_names());
+        for (auto& i : n.items) {
+            if (i.item.empty()) c.add(Severity::Error, A, n.uid, subj, "an inventory entry has no item");
+            else if (!item_known(c, i.item)) c.add(Severity::Error, A, n.uid, subj, "inventory item '" + i.item + "' is no item of the game or the project");
+        }
+        if (!n.routine.is_null() && !n.routine.empty()) {
+            if (!n.routine.is_object()) {
+                c.add(Severity::Error, A, n.uid, subj, "the routine is not a table");
+            } else {
+                for (const char* k : {"at", "work", "relax", "sleep"})
+                    if (n.routine.contains(k)) check_routine_point(c, n.uid, subj, n.routine[k], k);
+                if (n.routine.contains("patrol")) {
+                    const json& pl = n.routine["patrol"];
+                    if (!pl.is_object() || !pl.contains("points") || !pl["points"].is_array() || pl["points"].size() < 2)
+                        c.add(Severity::Error, A, n.uid, subj, "a patrol needs at least two waypoints");
+                    else
+                        for (auto& pt : pl["points"]) check_routine_point(c, n.uid, subj, pt, "patrol");
+                }
+            }
+        }
+    }
+}
+
 }  // namespace
 
 std::vector<Problem> validate(const Project& p, const GameData* game) {
@@ -197,6 +320,8 @@ std::vector<Problem> validate(const Project& p, const GameData* game) {
     if (p.mod.languages.empty()) c.add(Severity::Error, "Mod", "", p.mod.id, "the mod needs at least one language");
     check_items(c);
     check_recipes(c);
+    check_npc_templates(c);
+    check_placed_npcs(c);
     return out;
 }
 

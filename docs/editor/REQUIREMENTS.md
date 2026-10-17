@@ -302,7 +302,7 @@ Each stage ends with a usable feature (or the base the next stage needs), is ver
 | **E1** Game data browser | archive set, template catalogue with kinds and groups, string labels, asset index, browser + property inspector, index cache | DATA-1..6 | **done** (2664 templates, 24213 strings in 7 languages, 19 archives in 0.7 s: the cache of DATA-6 is not needed) |
 | **E2** Items + export | item editor (shipped edits, new items, groups), export pipeline (runtime, balance data, mod.toml, project.json, custom.lua), validation, golden test, live scenario `modkit` (items) | ITEM-1..4, EXP-1..3 | **done** (scenario `modkit`: 12 checks pass in the game) |
 | **E3** Recipes | recipe editor (new, edits), station/ingredient pickers incl. project items, live check (craft) | REC-1..3 | **done** (REC-1, REC-2; REC-3 with E4/E5. Scenario `modkit`: the plan is given, crafting makes the new item) |
-| **E4** NPCs and monsters | NPC template editor, inventory/equipment/loot, placed NPCs with numeric positions and routines, live check | NPC-1..4, (NPC-5 with E5) | open |
+| **E4** NPCs and monsters | NPC template editor, inventory/equipment/loot, placed NPCs with numeric positions and routines, live check | NPC-1..4, (NPC-5 with E5) | **done** (NPC-1..4; offline NPC numbers from the decoded gCSkills_PS, checked against all 105 rows of NPC_PROPERTIES.md; scenario `modkit`: 25 checks) |
 | **E5** Dialogues | node editor framework, dialogue graph, condition builder, export to `risen.dialog.create`, validation, live check (options offered, branches) | DLG-1..4 (5, 6) | open |
 | **E6** Quests | quest graph (start, objectives, outcomes, chains), dialogue integration, runtime tracker, live check (fetch/kill/talk quest) | QST-1..4 | open |
 | **E7** World view | world/sector/layer loading, 3D view with boxes, camera, picking, inspector, layer toggles | WLD-1, WLD-2, WLD-9 | open |
@@ -331,3 +331,8 @@ of the content editors and needs format work; placement (E10) needs both; E11/E1
   `risen.debug.screenshot`, RE.md section 26).
 * **Icons.** `compiled_imagelists.bin` (`V001`) is not decoded yet; until it is, icon names come from the item templates (`gCItem_PS.IconImage`) and previews are skipped.
 * **Placed NPC names.** Dialogues of a *shipped* NPC need its unique entity name; the world layers provide it (the entity name of an NPC instance), the catalogue lists them.
+* **NPC numbers offline (solved in E4).** `gCSkills_PS` is not a reflected property set, but the template stores it as a fixed record (`c9 00 <u32 0x90> c9 00 <u32 0> <u16 4>`
+  and 34 int32 base values in `gESkill` order) after the set's name index; `core/gamedata.cpp` decodes it and the data test compares every NPC of
+  `docs/NPC_PROPERTIES.md` (hit points, level, experience, attributes, protection, guild, species). Species numbers 4, 22, 26 (Ghost, Ogre_Tame, Wolf_Tame) are
+  used by no shipped NPC and inferred; attitude, bravery and damage calculation names follow the layer's order (not cross-checked). A template's starting
+  inventory (`gCInventory_PS` stacks) is not decoded: the editor sets loot amounts without showing the shipped loot.

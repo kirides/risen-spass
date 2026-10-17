@@ -67,6 +67,7 @@ add_executable(risen-modkit
     app/panels/problems_panel.cpp
     app/panels/recipes_panel.cpp
     app/panels/log_panel.cpp
+    app/panels/npcs_panel.cpp
     app/panels/project_panel.cpp
     app/panels/settings_panel.cpp
 )

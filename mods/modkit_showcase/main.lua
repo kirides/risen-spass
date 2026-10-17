@@ -3,5 +3,6 @@
 local runtime = require("modkit.runtime")
 runtime.install({
     balance = require("data.balance"),
+    npcs = require("data.npcs"),
 })
 require("custom")

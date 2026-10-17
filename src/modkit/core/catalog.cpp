@@ -68,6 +68,92 @@ std::optional<RecipeStats> recipe_stats(const GameData& g, const TemplateInfo& t
     return r;
 }
 
+namespace {
+
+// gESpecies by number. Learned from the shipped templates against the engine's names (docs/NPC_PROPERTIES.md); 4, 22 and 26 are not used by
+// a shipped NPC and are inferred from the layer's name list (Ghost, Ogre_Tame, Wolf_Tame).
+const char* species_of(int64_t n) {
+    static const char* kNames[] = {"None",    "Human",         "Lizard", "Brontok",  "Ghost",       "Lurker",      "Ashbeast", "Nautilus", "Dragonfly",
+                                   "Mantis",  "Scorpion",      "Skeleton", "Swampmummy", "Rotworm", "Skeleton_Tame", "Gnome", "Boar",     "Wolf",
+                                   "Stingrat", "Vulture",      "Thundertail", "Ogre",  "Ogre_Tame",  "Cow",         "Pig",      "Chicken",  "Wolf_Tame"};
+    return n >= 0 && n < static_cast<int64_t>(std::size(kNames)) ? kNames[n] : "";
+}
+const char* by_index(const std::vector<std::string>& names, int64_t n) { return n >= 0 && n < static_cast<int64_t>(names.size()) ? names[n].c_str() : ""; }
+
+}  // namespace
+
+NpcStats npc_stats(const GameData& g, const TemplateInfo& t) {
+    NpcStats s;
+    const auto& sk = t.skills;
+    if (sk.size() == 34) {
+        s.hp = sk[0];
+        s.level = sk[2];
+        s.hp_max = sk[5];
+        s.mana_max = sk[6];
+        s.xp = std::max(50, 10 * sk[2]);
+        const auto names = skill_names(&g);
+        for (size_t i = 7; i < 34 && i < g.ctx().skills.size(); ++i)
+            if (sk[i] != 0 && !g.ctx().skills[i].empty()) s.skills[g.ctx().skills[i]] = sk[i];
+    }
+    auto num = [&](const char* key) -> std::optional<int64_t> {
+        const p2m::Val* v = t.get(key);
+        if (!v || !v->is_num()) return std::nullopt;
+        return static_cast<int64_t>(v->num());
+    };
+    if (auto v = num("gCNPC_PS.Guild")) s.guild = by_index(guild_names(), *v);
+    if (auto v = num("gCNPC_PS.Species")) s.species = species_of(*v);
+    // a kill pays 10 * level, at least 50; the small species Chicken and Nautilus exactly 10 * level (the GiveXP script)
+    if (s.level && (s.species == "Chicken" || s.species == "Nautilus")) s.xp = 10 * *s.level;
+    if (auto v = num("gCNPC_PS.AttitudeLock")) s.attitude = by_index(attitude_names(), *v);
+    if (auto v = num("gCNPC_PS.BraveryOverride")) s.bravery = by_index(bravery_names(), *v);
+    if (auto v = num("gCNPC_PS.DamageCalculationType")) s.damage_calc = by_index(damage_calc_names(), *v);
+    if (const p2m::Val* v = t.get("gCDamage_PS.DamageType")) {
+        if (const std::string* ty = t.props.type_of("gCDamage_PS.DamageType")) {
+            std::string e = g.enum_name(*ty, *v);
+            if (e.rfind("gEDamageType_", 0) == 0) s.damage_type = e.substr(13);
+        }
+    }
+    if (auto v = num("gCDamage_PS.DamageAmount")) s.damage = static_cast<int>(*v);
+    if (const p2m::Val* v = t.get("gCCombatSystem_PS.CombatSpecies"); v && v->is_str()) s.combat_species = v->s;
+    if (const p2m::Val* v = t.get("gCNPC_PS.Group"); v && v->is_str()) s.ai_group = v->s;
+    if (const p2m::Val* v = t.get("eCAnimation_PS.ResourceFilePath"); v && v->is_str()) s.mesh = v->s;
+    return s;
+}
+
+const std::vector<std::string>& guild_names() {
+    static const std::vector<std::string> v = {"None", "Don", "Dig", "Grd", "Cit", "Inq", "Mag", "Pir"};
+    return v;
+}
+const std::vector<std::string>& species_names() {
+    static const std::vector<std::string> v = {"None", "Ashbeast", "Boar", "Brontok", "Chicken", "Cow", "Dragonfly", "Ghost", "Gnome", "Human",
+                                               "Lizard", "Lurker", "Mantis", "Nautilus", "Ogre", "Ogre_Tame", "Pig", "Rotworm", "Scorpion", "Skeleton",
+                                               "Skeleton_Tame", "Stingrat", "Swampmummy", "Thundertail", "Vulture", "Wolf", "Wolf_Tame"};
+    return v;
+}
+const std::vector<std::string>& attitude_names() {
+    static const std::vector<std::string> v = {"None", "Neutral", "Friendly", "Angry", "Hostile"};
+    return v;
+}
+const std::vector<std::string>& bravery_names() {
+    static const std::vector<std::string> v = {"None", "Brave", "Coward"};
+    return v;
+}
+const std::vector<std::string>& damage_calc_names() {
+    static const std::vector<std::string> v = {"Normal", "Monster", "Immortal"};
+    return v;
+}
+const std::vector<std::string>& damage_type_names() {
+    static const std::vector<std::string> v = {"None", "Blunt", "Edge", "Fire", "Ice", "Magic", "Physics", "Point"};
+    return v;
+}
+std::vector<std::string> npc_skill_names(const GameData* g) {
+    std::vector<std::string> v;
+    for (auto& s : skill_names(g))
+        if (s != "HitPoints" && s != "ManaPoints" && s != "Level" && s != "Experience" && s != "LearnPoints" && s != "MaxHitPoints" && s != "MaxManaPoints")
+            v.push_back(s);
+    return v;
+}
+
 const std::vector<std::string>& recipe_stations() {
     static const std::vector<std::string> v = {"alchemy", "anvil", "coolweapon", "cooking", "forge", "frying", "goldsmith", "grindstone", "scroll"};
     return v;

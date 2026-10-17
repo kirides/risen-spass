@@ -29,6 +29,7 @@ struct TemplateInfo {
     std::vector<std::string> sets;  // property sets in file order
     std::string mesh, icon;         // eCMesh_PS.MeshFileName / gCItem_PS.IconImage (empty when none)
     bool multi = false;             // a multi template (refused as a clone base)
+    std::vector<int> skills;        // NPCs: the 34 base values of gCSkills_PS (gESkill order), empty when not found
 
     const p2m::Val* get(const std::string& key) const { return props.get(key); }
     bool has_set(const std::string& set) const;

@@ -111,8 +111,84 @@
       }
     }
   ],
-  "npc_templates": [],
-  "npcs": [],
+  "npc_templates": [
+    {
+      "uid": "6b1f0e2a9c4d4e5f8a7b6c5d4e3f2a40",
+      "mode": "new",
+      "name": "MK_Hob_T",
+      "base": "Peasant_1_01",
+      "label": {
+        "English": "Hob the Tinkerer",
+        "German": "Hob der Tüftler"
+      },
+      "hp_max": 300,
+      "level": 5,
+      "guild": "Cit",
+      "loot": {
+        "It_Apple": 2
+      }
+    },
+    {
+      "uid": "6b1f0e2a9c4d4e5f8a7b6c5d4e3f2a41",
+      "mode": "new",
+      "name": "MK_Dire_Wolf",
+      "base": "Wolf",
+      "label": {
+        "English": "Dire Wolf",
+        "German": "Schreckenswolf"
+      },
+      "hp_max": 500,
+      "level": 10,
+      "damage_mult": 1.5
+    },
+    {
+      "uid": "6b1f0e2a9c4d4e5f8a7b6c5d4e3f2a42",
+      "mode": "edit",
+      "name": "Boar",
+      "hp_max": 222,
+      "skills": {
+        "Strength": 33
+      }
+    }
+  ],
+  "npcs": [
+    {
+      "uid": "6b1f0e2a9c4d4e5f8a7b6c5d4e3f2a50",
+      "name": "MK_Hob",
+      "template": "MK_Hob_T",
+      "position": [
+        150.0,
+        20.0,
+        150.0
+      ],
+      "offset": true,
+      "label": {
+        "English": "Hob",
+        "German": "Hob"
+      },
+      "peaceful": true,
+      "items": [
+        [
+          "MK_Hob_Knife",
+          1,
+          true
+        ],
+        [
+          "It_Apple",
+          3
+        ]
+      ],
+      "routine": {
+        "at": {
+          "dx": 100,
+          "dy": 0,
+          "dz": 0,
+          "kind": "guard",
+          "yaw": 90
+        }
+      }
+    }
+  ],
   "dialogs": [],
   "quests": [],
   "world": {

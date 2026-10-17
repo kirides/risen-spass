@@ -408,6 +408,7 @@ json to_json(const Project& p) {
         o["name"] = x.name;
         o["template"] = x.template_name;
         o["position"] = vec3(x.position);
+        if (x.offset) o["offset"] = true;
         put(o, "yaw", x.yaw);
         put_text(o, "label", x.label);
         o["peaceful"] = x.peaceful;
@@ -617,6 +618,7 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
         r.get(e, "name", x.name);
         r.get(e, "template", x.template_name);
         get_vec3(r, e, "position", x.position);
+        r.get(e, "offset", x.offset);
         r.get(e, "yaw", x.yaw);
         r.get(e, "label", x.label);
         r.get(e, "peaceful", x.peaceful);

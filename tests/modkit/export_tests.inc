@@ -211,3 +211,96 @@ TEST(recipes_export_and_validate) {
         CHECK(has("result 'No_Such_Item'"));
     }
 }
+
+TEST(gamedata_npc_skills) {
+    // the decoded gCSkills_PS and enum names against docs/NPC_PROPERTIES.md (generated from the engine's own values by mods/npcdump)
+    auto g = game_data();
+    if (!g) {
+        std::printf("  (skipped: no --data)\n");
+        return;
+    }
+    const std::string doc = read_text(fs::path(MODKIT_SOURCE_DIR) / "docs" / "NPC_PROPERTIES.md");
+    static const std::regex row(R"(\| `([^`]+)` \| (\d+) \| (\d+) \| (\d+) \| (\d+) \| (\d+) \| (\d+) \| (-?\d+) \| [^|]+\| (\w+) \| (\w+) \|)");
+    int rows = 0, found = 0, wrong = 0;
+    for (auto it = std::sregex_iterator(doc.begin(), doc.end(), row); it != std::sregex_iterator(); ++it) {
+        const std::smatch& m = *it;
+        ++rows;
+        const TemplateInfo* t = g->tpl(m[1].str());
+        if (!t || t->skills.size() != 34) continue;
+        ++found;
+        const NpcStats s = npc_stats(*g, *t);
+        auto sk = [&](const char* n) { return s.skills.count(n) ? s.skills.at(n) : 0; };
+        const bool ok = s.hp_max == std::stoi(m[2].str()) && s.level == std::stoi(m[3].str()) && s.xp == std::stoi(m[4].str()) &&
+                        sk("Strength") == std::stoi(m[5].str()) && sk("Dexterity") == std::stoi(m[6].str()) && sk("Intelligence") == std::stoi(m[7].str()) &&
+                        sk("ProtEdge") == std::stoi(m[8].str()) && s.guild == m[9].str() && s.species == m[10].str();
+        if (!ok && ++wrong <= 5) std::printf("  %s differs from the table\n", m[1].str().c_str());
+    }
+    std::printf("  %d table rows, %d templates with skills, %d differ\n", rows, found, wrong);
+    CHECK(rows > 90);
+    CHECK(found > 90);
+    CHECK_EQ(wrong, 0);
+    size_t npcs = 0, with = 0;
+    for (auto& t : g->templates())
+        if (t->kind == TplKind::Npc || t->kind == TplKind::Monster) {
+            ++npcs;
+            with += t->skills.size() == 34;
+        }
+    std::printf("  %zu of %zu NPC/monster templates have decoded skills\n", with, npcs);
+    CHECK(with * 10 >= npcs * 9);
+}
+
+TEST(npcs_export_and_validate) {
+    Project p = load_showcase();
+    const json b = balance_spec(p);
+    CHECK_EQ(b["new_npcs"]["MK_Hob_T"]["base"].get<std::string>(), std::string("Peasant_1_01"));
+    CHECK_EQ(b["new_npcs"]["MK_Hob_T"]["loot"]["It_Apple"].get<int>(), 2);
+    CHECK_EQ(b["npcs"]["Boar"]["skills"]["Strength"].get<int>(), 33);
+    const json n = npcs_data(p);
+    CHECK_EQ(n.size(), size_t(1));
+    CHECK(n[0].contains("offset") && !n[0].contains("position"));
+    CHECK_EQ(n[0]["equip"][0].get<std::string>(), std::string("MK_Hob_Knife"));
+    CHECK_EQ(n[0]["items"][1][1].get<int>(), 3);
+    const auto files = render_mod(p);
+    CHECK(files.at("strings/all.csv").find("FO_MK_Hob;\"Hob\"") != std::string::npos);  // the label goes into the string tables, per language
+    CHECK(files.at("main.lua").find("require(\"data.npcs\")") != std::string::npos);
+    // absolute positions
+    p.npcs[0].offset = false;
+    p.npcs[0].position = {1200, 50, -3400};
+    CHECK_EQ(npcs_data(p)[0]["position"][2].get<double>(), -3400.0);
+    // validation
+    PlacedNpc bad;
+    bad.uid = "bad";
+    bad.name = "Bad Name!";
+    bad.template_name = "";
+    bad.items = {{"", 1, false}};
+    bad.routine = json::object({{"patrol", json::object({{"points", json::array({json::object({{"dx", 1}})})}})}});
+    p.npcs.push_back(bad);
+    NpcTemplateDef badt;
+    badt.uid = "badt";
+    badt.name = "MK_Bad_T";
+    badt.base = "";
+    badt.guild = "Pirates";
+    badt.skills = IntMap{{"HitPoints", 5}};
+    badt.hp = 10;
+    badt.hp_max = 5;
+    p.npc_templates.push_back(badt);
+    const auto v = validate(p, nullptr);
+    auto has = [&](const std::string& uid, const std::string& part) {
+        return std::any_of(v.begin(), v.end(), [&](const Problem& x) { return x.uid == uid && x.message.find(part) != std::string::npos; });
+    };
+    CHECK(has("bad", "letters, digits, _ and -"));
+    CHECK(has("bad", "choose the NPC's template"));
+    CHECK(has("bad", "an inventory entry has no item"));
+    CHECK(has("bad", "a patrol needs at least two waypoints"));
+    CHECK(has("badt", "needs a base"));
+    CHECK(has("badt", "guild: unknown value 'Pirates'"));
+    CHECK(has("badt", "not settable skill 'HitPoints'"));
+    CHECK(has("badt", "above the maximum"));
+    if (auto g = game_data()) {
+        p.npc_templates.back().base = "It_Apple";
+        p.npcs.back().template_name = "Wolf";  // a monster may be placed
+        const auto v2 = validate(p, g.get());
+        CHECK(std::any_of(v2.begin(), v2.end(), [&](const Problem& x) { return x.uid == "badt" && x.message.find("is no NPC or monster") != std::string::npos; }));
+        CHECK(!std::any_of(v2.begin(), v2.end(), [&](const Problem& x) { return x.uid == "bad" && x.message.find("template") != std::string::npos; }));
+    }
+}

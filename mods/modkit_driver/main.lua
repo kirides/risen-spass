@@ -20,7 +20,18 @@ T.plan {
     "the skill requirement holds",
     "the recipe crafts the new item",
     "changed recipe skill",
+    "new NPC template numbers",
+    "new monster numbers",
+    "changed monster numbers",
+    "placed NPC made",
+    "placed NPC template, guild, label",
+    "placed NPC inventory",
+    "placed NPC equipped his knife",
+    "placed NPC routine post",
 }
+
+local npc_ready = {}
+risen.on("modkit.npc_ready", function(id, name, reason) if id == "modkit_showcase" then npc_ready[name] = reason end end)
 
 local applied = {}   -- when -> report
 risen.on("modkit.applied", function(id, when, report)
@@ -78,5 +89,32 @@ T.run(function()
     risen.recipe.craft_raw(player, "MK_Recipe_Hob_Knife", 1)   -- what a station does once the check passed
     T.eq("the recipe crafts the new item", { risen.item.count(player, "MK_Hob_Knife") - before, risen.item.count(player, "It_IronOre") }, { 1, 0 })
     T.eq("changed recipe skill", ((risen.recipe.info("It_1H_Steel_Hot") or {}).skills or {}).Smith, 1)
+
+    -- NPC templates and a placed NPC
+    local hob_t = risen.npc.stats("MK_Hob_T") or {}
+    T.eq("new NPC template numbers", { hob_t.hp_max, hob_t.level, hob_t.guild }, { 300, 5, "Cit" })
+    local dire = risen.npc.stats("MK_Dire_Wolf") or {}
+    T.eq("new monster numbers", { dire.hp_max, dire.level, dire.species }, { 500, 10, "Wolf" })
+    local boar = risen.npc.stats("Boar") or {}
+    T.eq("changed monster numbers", { boar.hp_max, (boar.skills or {}).Strength }, { 222, 33 })
+    T.wait_until(function() return npc_ready.MK_Hob ~= nil end, 30, "MK_Hob ready")
+    local hob = risen.entity.get("MK_Hob")
+    T.expect("placed NPC made", hob ~= nil and npc_ready.MK_Hob == "spawned", tostring(npc_ready.MK_Hob))
+    if hob then
+        local st = risen.npc.stats(hob) or {}
+        T.eq("placed NPC template, guild, label", { st.template, st.guild, risen.loc.get("FO_MK_Hob") }, { "MK_Hob_T", "Cit", "Hob" })
+        T.eq("placed NPC inventory", { risen.item.count(hob, "MK_Hob_Knife"), risen.item.count(hob, "It_Apple") >= 3 }, { 1, true })
+        T.sleep(30)
+        -- item events of NPCs are dropped until the world is ready (the NPC is made before), so look into his equip slots
+        local slot
+        for s = 0, 20 do
+            if risen.spell.equipped(hob, s) == "MK_Hob_Knife" then slot = s end
+        end
+        T.expect("placed NPC equipped his knife", slot ~= nil, "slot " .. tostring(slot))
+        -- the post: a guard freepoint about 100 units from his home (`created` counts the points of the calling mod only)
+        local r = risen.npc.get_routine(hob) or {}
+        local d = r.work and r.work:distance_to(hob)
+        T.expect("placed NPC routine post", r.work ~= nil and d ~= nil and d < 400, ("work=%s distance=%s"):format(tostring(r.work), tostring(d)))
+    end
     T.finish()
 end, "modkit")

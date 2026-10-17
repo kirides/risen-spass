@@ -211,7 +211,87 @@ json balance_spec(const Project& p) {
         }
         spec["new_recipes"] = recipes;
     }
+
+    std::vector<const NpcTemplateDef*> nedits, nnews;
+    for (auto& n : p.npc_templates) (n.mode == Mode::Edit ? nedits : nnews).push_back(&n);
+    auto nby_name = [](const NpcTemplateDef* a, const NpcTemplateDef* b) { return a->name < b->name; };
+    std::sort(nedits.begin(), nedits.end(), nby_name);
+    std::sort(nnews.begin(), nnews.end(), nby_name);
+    auto npc_entry = [&](const NpcTemplateDef& n, bool fresh) {
+        json e = json::object();
+        if (fresh) {
+            e["base"] = n.base;
+            if (json t = text_value(n.label, p.mod.languages); !t.is_null()) e["name"] = t;
+            put(e, "mesh", n.mesh);
+        }
+        put(e, "hp_max", n.hp_max);
+        put(e, "hp", n.hp);
+        put(e, "hp_mult", n.hp_mult);
+        put(e, "mana_max", n.mana_max);
+        put(e, "mana", n.mana);
+        put(e, "mana_mult", n.mana_mult);
+        put(e, "level", n.level);
+        put(e, "level_add", n.level_add);
+        put(e, "level_mult", n.level_mult);
+        put(e, "xp", n.xp);
+        put(e, "damage", n.damage);
+        put(e, "damage_mult", n.damage_mult);
+        put(e, "damage_type", n.damage_type);
+        if (n.skills) e["skills"] = int_map(*n.skills);
+        put(e, "guild", n.guild);
+        put(e, "species", n.species);
+        put(e, "attitude", n.attitude);
+        put(e, "bravery", n.bravery);
+        put(e, "damage_calc", n.damage_calc);
+        put(e, "combat_species", n.combat_species);
+        put(e, "ai_group", n.ai_group);
+        if (n.loot) e["loot"] = int_map(*n.loot);
+        PropEdits props = n.properties;
+        if (!fresh && n.mesh) props["eCAnimation_PS"]["ResourceFilePath"] = *n.mesh;
+        if (json pj = props_json(props); !pj.empty()) e["properties"] = pj;
+        return e;
+    };
+    if (!nedits.empty()) {
+        json npcs = json::object();
+        for (const NpcTemplateDef* n : nedits) npcs[n->name] = npc_entry(*n, false);
+        spec["npcs"] = npcs;
+    }
+    if (!nnews.empty()) {
+        json npcs = json::object();
+        for (const NpcTemplateDef* n : nnews) npcs[n->name] = npc_entry(*n, true);
+        spec["new_npcs"] = npcs;
+    }
     return spec;
+}
+
+json npcs_data(const Project& p) {
+    json list = json::array();
+    for (auto& n : p.npcs) {
+        json e = json::object();
+        e["name"] = n.name;
+        e["template"] = n.template_name;
+        e[n.offset ? "offset" : "position"] = json::array({n.position[0], n.position[1], n.position[2]});
+        e["peaceful"] = n.peaceful;
+        put(e, "guild", n.guild);
+        put(e, "level", n.level);
+        put(e, "hp_max", n.hp_max);
+        if (!n.items.empty()) {
+            json items = json::array(), equip = json::array();
+            for (auto& i : n.items) {
+                items.push_back(json::array({i.item, i.amount}));
+                if (i.equip) equip.push_back(i.item);
+            }
+            e["items"] = items;
+            if (!equip.empty()) e["equip"] = equip;
+        }
+        if (!n.routine.is_null() && !n.routine.empty()) e["routine"] = n.routine;
+        if (n.respawn) e["respawn"] = true;
+        if (n.version != 1) e["version"] = n.version;
+        if (!n.appear_when.is_null()) e["appear_when"] = n.appear_when;
+        if (!n.leave_when.is_null()) e["leave_when"] = n.leave_when;
+        list.push_back(e);
+    }
+    return list;
 }
 
 namespace {
@@ -229,6 +309,11 @@ std::map<std::string, Text> string_rows(const Project& p) {
         if (!r.label.empty()) rows["FO_" + r.name] = r.label;
         if (!r.description.empty()) rows["ITEMDESC_" + r.name] = r.description;
     }
+    for (auto& n : p.npc_templates)
+        if (n.mode == Mode::Edit && !n.label.empty()) rows["FO_" + n.name] = n.label;
+    // a placed NPC's label is the text of FO_<unique name> (risen.npc.persistent's `label` sets one text for every language)
+    for (auto& n : p.npcs)
+        if (!n.label.empty()) rows["FO_" + n.name] = n.label;
     return rows;
 }
 
@@ -259,11 +344,13 @@ std::map<std::string, std::string> render_mod(const Project& p) {
                     "local runtime = require(\"modkit.runtime\")\n"
                     "runtime.install({\n"
                     "    balance = require(\"data.balance\"),\n"
+                    "    npcs = require(\"data.npcs\"),\n"
                     "})\n"
                     "require(\"custom\")\n";
 
     f["data/balance.lua"] = data_file("Items, item groups, recipes, NPC and monster templates: a BalanceSpec for risen.balance.install (types/risen.d.lua).",
                                       balance_spec(p));
+    f["data/npcs.lua"] = data_file("Placed NPCs: risen.npc.persistent declarations (spawned in a new game, restored after a load, never twice).", npcs_data(p));
     f["modkit/runtime.lua"] = runtime_lua();
     f["modkit/project.json"] = dump_project(p);
 

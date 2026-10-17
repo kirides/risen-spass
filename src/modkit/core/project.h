@@ -103,6 +103,7 @@ struct PlacedNpc {
     std::string name;      // the unique entity name (FO_<name> is its label)
     std::string template_name;
     Vec3 position{0, 0, 0};
+    bool offset = false;     // position is {dx, dy, dz} from the player when the NPC is first made in a savegame (no world position needed)
     std::optional<double> yaw;
     Text label;
     bool peaceful = true;

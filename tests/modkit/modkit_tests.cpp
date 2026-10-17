@@ -8,9 +8,11 @@
 #include <filesystem>
 #include <functional>
 #include <map>
+#include <regex>
 #include <string>
 #include <vector>
 
+#include "core/catalog.h"
 #include "core/export.h"
 #include "core/gamedata.h"
 #include "core/history.h"

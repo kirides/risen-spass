@@ -27,6 +27,25 @@ struct RecipeStats {
 };
 std::optional<RecipeStats> recipe_stats(const GameData& g, const TemplateInfo& t);
 
+struct NpcStats {
+    std::optional<int> hp_max, hp, mana_max, level, xp, damage;
+    IntMap skills;  // attributes, protection, combat and magic skills (non-zero values; HitPoints, Level, ... are the fields above)
+    std::string guild, species, attitude, bravery, damage_calc, damage_type;  // the layer's short names ("Grd", "Wolf", ...)
+    std::string combat_species, ai_group;
+    std::string mesh;  // the actor (eCAnimation_PS.ResourceFilePath)
+};
+NpcStats npc_stats(const GameData& g, const TemplateInfo& t);
+
+// the layer's names of the NPC enums (src/game/npc_balance_lua.h)
+const std::vector<std::string>& guild_names();
+const std::vector<std::string>& species_names();
+const std::vector<std::string>& attitude_names();
+const std::vector<std::string>& bravery_names();
+const std::vector<std::string>& damage_calc_names();
+const std::vector<std::string>& damage_type_names();
+// the skills a balance spec may set on an NPC (`skills = {...}`): everything but the point pools and the level, which have their own settings
+std::vector<std::string> npc_skill_names(const GameData* g);
+
 // the layer's station names and the engine's gECraft numbers (src/game/lua_recipe.cpp)
 const std::vector<std::string>& recipe_stations();
 

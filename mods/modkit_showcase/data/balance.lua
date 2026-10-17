@@ -33,4 +33,22 @@ return {
             learn = true,
         },
     },
+    npcs = { Boar = { hp_max = 222, skills = { Strength = 33 } } },
+    new_npcs = {
+        MK_Dire_Wolf = {
+            base = "Wolf",
+            name = { English = "Dire Wolf", German = "Schreckenswolf" },
+            hp_max = 500,
+            level = 10,
+            damage_mult = 1.5,
+        },
+        MK_Hob_T = {
+            base = "Peasant_1_01",
+            name = { English = "Hob the Tinkerer", German = "Hob der Tüftler" },
+            hp_max = 300,
+            level = 5,
+            guild = "Cit",
+            loot = { It_Apple = 2 },
+        },
+    },
 }

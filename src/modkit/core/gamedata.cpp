@@ -60,6 +60,28 @@ std::string archive_path(const p2m::LFile& f) {
     return base + "/" + f.e->path;
 }
 
+// gCSkills_PS is not reflected (docs/NPC_PROPERTIES.md): the template stores the set as `c9 00 <u32 0x90> c9 00 <u32 0> <u16 4>` and then the
+// 34 int32 base values in gESkill order. The record follows the u16 string index of the set's name. Verified against the engine's values of every
+// NPC (modkit_tests --data: gamedata_npc_skills).
+std::vector<int> decode_skills(const p2m::Bytes& b, const std::vector<std::string>& strings) {
+    static const std::string head("\xc9\x00\x90\x00\x00\x00\xc9\x00\x00\x00\x00\x00\x04\x00", 14);
+    int idx = -1;
+    for (size_t i = 0; i < strings.size(); ++i)
+        if (strings[i] == "gCSkills_PS") idx = static_cast<int>(i);
+    if (idx < 0) return {};
+    const char lo = static_cast<char>(idx & 0xff), hi = static_cast<char>((idx >> 8) & 0xff);
+    for (size_t p = b.find(head); p != std::string::npos; p = b.find(head, p + 1)) {
+        bool named = false;
+        for (size_t k = p >= 12 ? p - 12 : 0; k + 1 < p; ++k)
+            if (b[k] == lo && b[k + 1] == hi) named = true;
+        if (!named || p + head.size() + 34 * 4 > b.size()) continue;
+        std::vector<int> v(34);
+        for (size_t i = 0; i < 34; ++i) v[i] = static_cast<int>(p2m::rd32(b, p + head.size() + 4 * i));
+        return v;
+    }
+    return {};
+}
+
 std::string language_of_column(const std::string& col) {
     // "English_Text" -> "English"
     const auto u = col.find('_');
@@ -119,7 +141,12 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
     for (const std::string& k : gd->common_.order)
         if (p2m::ends_with(k, ".tple")) tple_keys.push_back(k);
     std::sort(tple_keys.begin(), tple_keys.end());
-    std::vector<std::pair<p2m::Template, const p2m::LFile*>> parsed;
+    struct Parsed {
+        p2m::Template t;
+        const p2m::LFile* lf;
+        std::vector<int> skills;
+    };
+    std::vector<Parsed> parsed;
     parsed.reserve(tple_keys.size());
     std::unordered_map<std::string, std::string> guid_names;
     size_t done = 0;
@@ -128,15 +155,19 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
         if (++done % 100 == 0) report(0.05f + 0.75f * static_cast<float>(done) / static_cast<float>(tple_keys.size()), "templates");
         const p2m::LFile& lf = gd->common_.files.at(k);
         try {
-            p2m::Template t = p2m::parse_template(lf.read());
+            const p2m::Bytes raw = lf.read();
+            p2m::Template t = p2m::parse_template(raw);
             for (const std::string& g : t.guids) guid_names[g] = t.base_name();
-            parsed.emplace_back(std::move(t), &lf);
+            std::vector<int> skills;
+            if (raw.find("gCNPC_PS") != std::string::npos) skills = decode_skills(raw, t.strings);
+            parsed.push_back({std::move(t), &lf, std::move(skills)});
         } catch (const std::exception& e) {
             log_warn("template " + lf.e->path + " skipped: " + e.what());
         }
     }
-    for (auto& [t, lf] : parsed) {
+    for (auto& [t, lf, skills] : parsed) {
         auto info = std::make_unique<TemplateInfo>();
+        info->skills = std::move(skills);
         info->name = t.base_name();
         info->file = t.file_name();
         const std::string& path = lf->e->path;

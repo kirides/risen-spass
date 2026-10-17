@@ -4,7 +4,7 @@
 world placements) in a desktop application and export an ordinary mod folder that the layer loads. The plan and the state of the stages are in
 [REQUIREMENTS.md](REQUIREMENTS.md); this guide describes what works now.
 
-Contents: [Build and start](#build-and-start) · [First start](#first-start) · [The window](#the-window) · [Items](#items) · [Recipes](#recipes) · [Export](#export) ·
+Contents: [Build and start](#build-and-start) · [First start](#first-start) · [The window](#the-window) · [Items](#items) · [Recipes](#recipes) · [NPCs and monsters](#npcs-and-monsters) · [Export](#export) ·
 [The exported mod](#the-exported-mod) · [Command line](#command-line) · [Limits](#limits)
 
 ## Build and start
@@ -41,6 +41,7 @@ Panels can be dragged, docked and tabbed; **Window > Reset layout** brings back 
 | **Browser** | every template of the game by group (Items, NPC, Monster, Objects, ...), search by name or label, filter by kind; the inspector shows every property of the selected template. Buttons for the editors: **New item based on this**, **Change this item** |
 | **Items** | your new items, changes of shipped items and item groups (below) |
 | **Recipes** | new crafting recipes and changes of shipped ones (below) |
+| **NPCs** | NPC and monster templates, and placed NPCs (below) |
 | **Problems** | what is wrong with the project (errors block the export, warnings do not); click a line to jump to the object |
 | **Log** | what the editor did, and problems reading the game data |
 | **Settings** | data directory, export folder, UI scale |
@@ -78,6 +79,25 @@ plans of its kind.
   see `docs/RECIPE_PROPERTIES.md`).
 * The Browser offers **New recipe for this item** on an item and **Change this recipe** on a recipe.
 
+## NPCs and monsters
+
+Two kinds of objects:
+
+* **Templates** are kinds of NPCs and monsters. A **new template** is a clone of a base (a peasant, a wolf, ...) with its own name, label and
+  numbers; a **change** of a shipped template rewrites it (new spawns at once, the ones already in the world at the next session start). The shipped
+  values are shown in brackets: hit points, level, experience for a kill (10 x level, at least 50: setting it sets the level), mana, the skills
+  (attributes 0..200, protection, combat skills 0..10), guild, species, attitude, bravery, damage calculation, combat species, AI group, the actor of a
+  monster. Factors (hit points, damage) are computed from the shipped values. **Loot** sets target amounts of items the template carries (reaches NPCs
+  made afterwards). A human clone looks like its base: heads and body parts are separate items.
+* **Placed NPCs** are persons in the world: a **unique name** (letters, digits, `_`, `-`: dialogues name their owner by it, savegames know the NPC by
+  it), a template (shipped or one of yours), a label per language, **where** (an absolute position, or an offset from the player when the NPC is first
+  made in a savegame: handy until the World view can place him), peaceful (a citizen nobody attacks) or a guild, level and hit points, an
+  **inventory** (tick *equip* for what he wears or holds when he is made) and a **routine**: one post, a day / evening / night point, or a patrol;
+  points are relative to his home and have a kind (guard, lookat, sleep, ...) and a facing. *Version* replaces the NPC in existing savegames when
+  raised; *respawn* brings a dead one back at the next start.
+
+The export declares every placed NPC with `risen.npc.persistent`: made in a new game, found again after a load, never made twice.
+
 ## Export
 
 **File > Export mod...** writes the mod into a folder, normally `<Risen>\bin\spass\mods\<mod id>`. The export
@@ -97,14 +117,16 @@ Start the game: the layer loads the mod like any other (it is listed in the Mods
   mod.toml              generated from the Mod panel
   main.lua              generated: requires the runtime, installs the data, then requires custom.lua
   custom.lua            yours: created once, never overwritten
-  data\balance.lua      items and recipes as a risen.balance.install spec (readable, plain data)
+  data\balance.lua      items, recipes, NPC and monster templates as a risen.balance.install spec (readable, plain data)
+  data\npcs.lua         the placed NPCs (risen.npc.persistent declarations)
   strings\all.csv       texts of shipped items you renamed (first language = fallback), strings\<Language>.csv for the others
   modkit\runtime.lua    the generic code, the same for every exported mod
   modkit\project.json   the editor project the mod was made from (File > Open it, or keep it for a later import)
 ```
 
 The runtime applies the data with the layer's savegame-safe calls (`risen.balance.install`: on the first tick and on every session start) and emits
-the event `modkit.applied` (`mod id, when, report`) after every application, so other mods and tests can react.
+the event `modkit.applied` (`mod id, when, report`) after every application, and `modkit.npc_ready` (`mod id, NPC name, reason`) whenever a
+placed NPC is in the world, so other mods and tests can react.
 
 ## Command line
 
@@ -117,6 +139,7 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 
 ## Limits
 
-* Items and recipes so far; NPCs, dialogues, quests and the world view follow (REQUIREMENTS.md section 9).
+* Items, recipes and NPCs so far; dialogues, quests and the world view follow (REQUIREMENTS.md section 9).
+* A template's shipped loot is not shown (the editor cannot read it offline yet).
 * Icons are offered from the shipped items' icons; a preview of meshes and icons comes with stage E8.
 * Linux and macOS builds are part of the CMake setup but were not built yet (no such host in the development setup).

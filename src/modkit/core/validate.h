@@ -26,5 +26,6 @@ size_t error_count(const std::vector<Problem>& v);
 // the rules of the layer (shared with the panels' inline hints)
 std::string mod_id_problem(const std::string& id);
 std::string template_name_problem(const std::string& name);  // risen.template.name_problem
+std::string npc_name_problem(const std::string& name);       // a unique entity name of risen.npc.persistent: letters, digits, _ and -
 
 }  // namespace mk
