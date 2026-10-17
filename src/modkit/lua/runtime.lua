@@ -20,7 +20,7 @@
 --   "modkit.quest_started" (mod id, quest), "modkit.objective" (mod id, quest, step), "modkit.quest_done" (mod id, quest, result) for quest flows
 --   "modkit.world_spawned" (mod id, key, entity), "modkit.container_filled" (mod id, key, container), "modkit.world_removed" (mod id, key, entity id),
 --   "modkit.world_moved" (mod id, key, entity) for the world edits
-local M = { VERSION = 7 }
+local M = { VERSION = 8 }
 
 local unpack = table.unpack or unpack
 local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
@@ -121,37 +121,61 @@ local function advance(q)
     if not f or not s or s.done then return end
     while true do
         local st = f.steps[s.step]
-        if not st then
+        if not st or st.kind == "stop" then   -- the end of a path without an Outcome
             s.done = true
             set_qstate(q, s)
             return
         end
-        if st.kind == "objective" then
+        if st.kind == "race" then
+            -- an Either / or: every path's first objective is waited for at once; the first one done decides the path (the others are dropped)
             if not s.entered then
-                s.entered, s.n, s.talked = true, 0, false
+                s.entered, s.gates = true, {}
+                for _, idx in ipairs(st.paths) do s.gates[tostring(idx)] = { n = 0, talked = false } end
                 set_qstate(q, s)
-                if st.log then risen.quest.add_log(q, st.log) end
+                for _, idx in ipairs(st.paths) do
+                    local gate = f.steps[idx]
+                    if gate and gate.log then risen.quest.add_log(q, gate.log) end
+                end
             end
-            if not objective_done(st, s) then return end
-            risen.emit("modkit.objective", MOD_ID, q, s.step)
-        end
-        s.step, s.entered = s.step + 1, false
-        if st.kind == "outcome" then
-            s.done, s.result = true, st.result
-        end
-        set_qstate(q, s)   -- first the state, then the effects
-        if st.kind == "log" then
-            risen.quest.add_log(q, st.text)
-        elseif st.kind == "reward" then
-            give_reward(st)
-        elseif st.kind == "outcome" then
-            if st.log then risen.quest.add_log(q, st.log) end
-            if st.result == "success" then risen.quest.succeed(q)
-            elseif st.result == "fail" then risen.quest.fail(q)
-            else risen.quest.close(q) end
-            risen.emit("modkit.quest_done", MOD_ID, q, st.result)
-            if st.next_quest then M.start_quest(st.next_quest) end
-            return
+            local taken
+            for _, idx in ipairs(st.paths) do
+                if objective_done(f.steps[idx], s.gates[tostring(idx)] or {}) then
+                    taken = idx
+                    break
+                end
+            end
+            if not taken then return end
+            risen.emit("modkit.objective", MOD_ID, q, taken)
+            s.step, s.entered, s.gates = taken + 1, false, nil   -- on behind the deciding objective
+            set_qstate(q, s)
+        else
+            if st.kind == "objective" then
+                if not s.entered then
+                    s.entered, s.n, s.talked = true, 0, false
+                    set_qstate(q, s)
+                    if st.log then risen.quest.add_log(q, st.log) end
+                end
+                if not objective_done(st, s) then return end
+                risen.emit("modkit.objective", MOD_ID, q, s.step)
+            end
+            s.step, s.entered = s.step + 1, false
+            if st.kind == "outcome" then
+                s.done, s.result = true, st.result
+            end
+            set_qstate(q, s)   -- first the state, then the effects
+            if st.kind == "log" then
+                risen.quest.add_log(q, st.text)
+            elseif st.kind == "reward" then
+                give_reward(st)
+            elseif st.kind == "outcome" then
+                if st.log then risen.quest.add_log(q, st.log) end
+                if st.result == "success" then risen.quest.succeed(q)
+                elseif st.result == "fail" then risen.quest.fail(q)
+                else risen.quest.close(q) end
+                risen.emit("modkit.quest_done", MOD_ID, q, st.result)
+                if st.next_quest then M.start_quest(st.next_quest) end
+                return
+            end
         end
     end
 end
@@ -168,14 +192,28 @@ function M.start_quest(q)
     advance(q)
 end
 
+-- every running flow (what changed while the world was loading is looked at again)
 local function each_running(fn)
     for q, f in pairs(flows) do
         local s = qstate(q)
-        if s and not s.done then
-            local st = f.steps[s.step]
-            if st then fn(q, f, s, st) end
-        end
+        if s and not s.done and f.steps[s.step] then fn(q, f, s) end
     end
+end
+
+-- every objective the running flows wait for: fn(quest, objective step, its state, the flow's state). An objective step keeps its progress in the
+-- flow's state, the paths of an Either / or each in their own table (s.gates), all saved with it
+local function each_objective(fn)
+    each_running(function(q, f, s)
+        local st = f.steps[s.step]
+        if st.kind == "objective" then
+            fn(q, st, s, s)
+        elseif st.kind == "race" and s.gates then
+            for _, idx in ipairs(st.paths) do
+                local g = s.gates[tostring(idx)]
+                if g then fn(q, f.steps[idx], g, s) end
+            end
+        end
+    end)
 end
 
 local function triggers(kind, match)
@@ -188,7 +226,7 @@ local function install_flow_events()
     risen.on("inventory.changed", function(owner, template, delta)
         if not (owner and owner:is_player()) then return end
         if delta > 0 then triggers("item", function(t) return t.item == template end) end
-        each_running(function(q, _, _, st)
+        each_objective(function(q, st)
             if st.objective == "items" and st.item == template then advance(q) end
         end)
     end)
@@ -198,18 +236,18 @@ local function install_flow_events()
         local tname = tpl and tpl:name()
         local function hit(target) return target == name or target == tname end
         triggers("kill", function(t) return hit(t.target) end)
-        each_running(function(q, _, s, st)
+        each_objective(function(q, st, state, s)
             if st.objective == "kill" and s.entered and hit(st.target) then
-                s.n = (s.n or 0) + 1
+                state.n = (state.n or 0) + 1
                 set_qstate(q, s)
                 advance(q)
             end
         end)
     end)
     risen.on("info.finished", function(info)
-        each_running(function(q, _, s, st)
+        each_objective(function(q, st, state, s)
             if st.objective == "talk" and s.entered and st.info == info then
-                s.talked = true
+                state.talked = true
                 set_qstate(q, s)
                 advance(q)
             end
@@ -217,13 +255,13 @@ local function install_flow_events()
     end)
     risen.on("gamevar.changed", function(name, value)
         triggers("var", function(t) return t.name == name and value ~= nil and value >= (t.value or 1) end)
-        each_running(function(q, _, _, st)
+        each_objective(function(q, st)
             if st.objective == "var" and st.name == name then advance(q) end
         end)
     end)
     risen.on("quest.status_changed", function(quest, status)
         triggers("quest", function(t) return t.quest == quest and tostring(status):find(t.status or "Success", 1, true) ~= nil end)
-        each_running(function(q, _, _, st)
+        each_objective(function(q, st)
             if st.objective == "quest" and st.quest == quest then advance(q) end
         end)
     end)

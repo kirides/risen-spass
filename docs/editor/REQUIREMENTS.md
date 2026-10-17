@@ -61,6 +61,7 @@ IDs are referenced by the stages (section 9). **M** = must for the stage that im
 | APP-8 S | **Game errors**: the editor tails `spass.log`, keeps the warnings/errors that carry `[<mod id>]` or name a project object (item, recipe, template, NPC, quest and its `MK_<quest>_<action>` scripts, a dialogue option's info name, behaviours) and lists them in the Problems panel; a click jumps to the object. They never block the export. |
 | SPELL-1 S | Spells panel: changes of the shipped spells and new spells (`spells`, `new_spells`). |
 | NPC-6 S | NPC groups panel: selector (group path, Lua pattern, names) with the list of what it matches, relative changes (`npc_groups`). |
+| QST-5 S | Quest branches: an Either / or node whose paths each start with an Objective; the first one completed decides the path. |
 | APP-6 S | Native file dialogs (nativefiledialog-extended); fallback: ImGui path input when the platform has no dialog service. |
 
 ### 3.2 Game data (stage E1)
@@ -285,6 +286,11 @@ The Quest node gives `risen.quest.define{ name, title, type, xp }`. Start trigge
 `data/quests.lua`; the runtime registers one handler per event kind and advances every running quest's objectives (the tracker of `mods/example_quest_tracker`, generalised:
 several objectives per quest, all must be done, in order or in any order).
 
+**Branches (E18).** The Either / or node (`branch`) has one output with several links; each linked node must be an Objective (the gate of a path) and the paths are ordered top
+to bottom by their position on the canvas. The flow is exported as one flat list of steps: the branch is a `race` step `{ kind = "race", paths = { 2, 5 } }` (1-based indexes of
+each path's first step, the path's own steps follow right after the race step) and a path that does not end in an Outcome is closed by `{ kind = "stop" }`, so the runtime
+never runs on into the next path. Paths do not join (a node reached twice is an error). The runtime (`modkit/runtime.lua` version 8) keeps one counter table per gate in
+the quest's state (`s.gates["<step>"] = { n, talked }`), looks at all gates on every event, and the first gate whose objective is done sets `s.step` to the step after it.
 ## 8. Testing and verification
 
 1. **Unit tests** (`modkit_tests`, runs in CI without game data): project JSON round trip, undo/redo, validation rules, Lua writer determinism, export of the example
@@ -326,7 +332,9 @@ Each stage ends with a usable feature (or the base the next stage needs), is ver
 
 | **E17** Spells and NPC groups | the Spells panel (`spells`, `new_spells`) and the NPC groups panel (`npc_groups`): model, project JSON, export, import from the data files (no raw data any more), validation, `core/spells.*`, example `examples/modkit/spells.rmk.json` | SPELL-1, NPC-6 | **done** (unit tests `spells_*`, `npc_groups_*`, `lua_patterns_*`; live: the exported example was installed by the layer, "applied 8 of 8 entries", and a wrong setting was refused with the layer's own message) |
 
-Planned next (the roadmap of 2026-10-17, one stage each, in this order): **E18** branches inside a quest; **E19** actors (`._xmac`) in the World view and glTF/OBJ to `._xmsh` (AST-4); **E20** command palette (Ctrl+P) and wizards (fetch quest, trader NPC, new weapon + recipe).
+| **E18** Quest branches | the Either / or node: `race` / `stop` steps, runtime version 8, import from data files rebuilds the branches | QST-5 | **done** (unit tests `quest_branch_*` incl. a run of the generated runtime against a stand-in API: both ways announced, progress per path, the first objective decides, a reward once, a load rolls back; live: the linear showcase flows still pass, 60/60 of scenario `modkit`) |
+
+Planned next (the roadmap of 2026-10-17, one stage each, in this order): **E19** actors (`._xmac`) in the World view and glTF/OBJ to `._xmsh` (AST-4); **E20** command palette (Ctrl+P) and wizards (fetch quest, trader NPC, new weapon + recipe).
 
 Order rationale: E0-E2 give a usable tool with a real mod at the end of E2; E3-E6 add the other content kinds on the same export pipeline; the world (E7-E8) is independent
 of the content editors and needs format work; placement (E10) needs both; E11/E12 need engine-side work and verification.

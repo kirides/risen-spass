@@ -363,6 +363,8 @@ T.run(function()
         risen.world.quick_load()
         T.wait_event("session.start", 120, function(m) return m == "load" end)
         T.sleep(120)
+        -- the engine restores the inventory some time after session.start (a fast machine gets past 120 frames before that): wait for the old wallet
+        pcall(T.wait_until, function() return (wallet()) == gold0 end, 30, "the load restores the wallet")
         local g2 = wallet()
         T.eq("a load rolls the quest back to one kill", { risen.quest.is_running("Q_MK_Wolves"), g2 }, { true, gold0 })
         kill_wolf()

@@ -1,5 +1,7 @@
 #include "core/quest.h"
 
+#include <algorithm>
+#include <functional>
 #include <set>
 
 namespace mk {
@@ -80,17 +82,12 @@ json compile_quest(const Project& p, const QuestDef& q, std::vector<DialogIssue>
     }
     out["trigger"] = trig;
 
+    // The flow is a flat list of steps; a Branch becomes a `race` step that names the first step (the deciding objective) of each of its paths, the
+    // path's own steps follow right after it, and a path without an Outcome ends with a `stop` step (so the runtime never runs into the next path).
     json steps = json::array();
     std::set<std::string> seen;
-    bool ended = false;
-    auto nx = links_from(g, s.uid, "next");
-    const GraphNode* cur = nx.empty() ? nullptr : g.find(nx.front()->to_node);
-    if (!cur) err(s.uid, "the Start node leads nowhere");
-    while (cur) {
-        if (!seen.insert(cur->uid).second) {
-            err(cur->uid, "the quest's flow runs in a circle");
-            break;
-        }
+    bool any_outcome = false;
+    auto make_step = [&](const GraphNode* cur, bool& ended) -> json {
         const json& d = cur->data;
         json st = json::object();
         st["kind"] = cur->type;
@@ -148,15 +145,54 @@ json compile_quest(const Project& p, const QuestDef& q, std::vector<DialogIssue>
                 if (!p.quest(str(d, "next_quest"))) err(cur->uid, "the follow-up quest '" + str(d, "next_quest") + "' is not in the project");
             }
             ended = true;
+            any_outcome = true;
         } else {
             err(cur->uid, "a " + cur->type + " node cannot be part of a quest's flow");
         }
-        steps.push_back(st);
-        if (ended) break;
-        auto n2 = links_from(g, cur->uid, "next");
-        cur = n2.empty() ? nullptr : g.find(n2.front()->to_node);
+        return st;
+    };
+    // appends the chain that begins at `cur`; returns whether it ended in an Outcome (or in a Branch, which ends every path itself)
+    std::function<bool(const GraphNode*)> walk = [&](const GraphNode* cur) -> bool {
+        while (cur) {
+            if (!seen.insert(cur->uid).second) {
+                err(cur->uid, "the quest's flow runs in a circle, or two paths lead to the same node (the paths of an Either / or do not join)");
+                return true;
+            }
+            if (cur->type == "branch") {
+                std::vector<const GraphNode*> targets;
+                for (auto* l : links_from(g, cur->uid, "next"))
+                    if (const GraphNode* t = g.find(l->to_node)) targets.push_back(t);
+                std::stable_sort(targets.begin(), targets.end(), [](const GraphNode* a, const GraphNode* b) { return a->y < b->y; });  // top to bottom
+                if (targets.size() < 2) err(cur->uid, "an Either / or needs at least two paths (link each path's first Objective to its output)");
+                const size_t race = steps.size();
+                steps.push_back(json::object({{"kind", "race"}}));
+                json paths = json::array();
+                for (const GraphNode* t : targets) {
+                    if (t->type != "objective") {
+                        err(t->uid, "each path of an Either / or has to begin with an Objective: it is what decides the path");
+                        continue;
+                    }
+                    paths.push_back(static_cast<int>(steps.size()) + 1);  // 1-based, like the runtime's step numbers
+                    if (!walk(t)) steps.push_back(json::object({{"kind", "stop"}}));
+                }
+                steps[race]["paths"] = paths;
+                return true;
+            }
+            bool ended = false;
+            steps.push_back(make_step(cur, ended));
+            if (ended) return true;
+            auto n2 = links_from(g, cur->uid, "next");
+            cur = n2.empty() ? nullptr : g.find(n2.front()->to_node);
+        }
+        return false;
+    };
+    {
+        auto nx = links_from(g, s.uid, "next");
+        const GraphNode* first = nx.empty() ? nullptr : g.find(nx.front()->to_node);
+        if (!first) err(s.uid, "the Start node leads nowhere");
+        walk(first);
     }
-    if (!ended) warn(s.uid, "the flow has no Outcome: the quest is only ended by a dialogue");
+    if (!any_outcome) warn(s.uid, "the flow has no Outcome: the quest is only ended by a dialogue");
     out["steps"] = steps;
     return out;
 }

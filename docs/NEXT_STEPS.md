@@ -211,7 +211,8 @@ a visual verification path (screen capture of the D3D9 window is black: hook `Pr
   PowerShell; `ex_voice` "explicit ogg file" saw the line still speaking; `recipes` timed out walking to the station. Open: the fast fail of `options`,
   and a fresh PowerShell per scenario child after a crash.
 * Scenario `modkit` failed once under three parallel games (2026-10-17): "a load rolls the quest back to one kill" saw the state before the quick load; alone it passes
-  (60/60). The check reads the wallet 120 frames after `session.start` of the load: probably too early under load.
+  (60/60). The check reads the wallet 120 frames after `session.start` of the load: probably too early under load. On the fast development machine it failed every time (2026-10-18, old and new runtime alike: the
+  engine restores the inventory later than 120 frames after `session.start`); the driver now waits (up to 30 s) until the wallet is the saved one, 60/60 again.
 * Hardening crashed once (2026-10-17) in the engine (`SharedBase.dll+0x62f50`, a null read under `Script_Game.dll` / `Game.dll` frames, nothing of the layer on the stack) right after
   fuzzing `Entity:set_state` with wrong arguments; the rerun passed (13/13). Probably a fuzzed AI state the engine runs a frame later: open.
 * Steam may relaunch the real install (RE.md §13): `run-windowed.ps1` sets `SteamAppId`; document the same safeguard for modders who launch a copied install.

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <functional>
 #include <set>
 #include <stdexcept>
 
@@ -616,31 +617,55 @@ void import_quests(Ctx& c, const json& list) {
             for (auto& [k, v] : t.items())
                 if (k != "kind") s.data[k == "target" ? "target" : k] = v;
             q.graph.nodes.push_back(s);
-            std::string prev = s.uid;
-            for (auto& st : f.value("steps", json::array())) {
-                x += 300;
-                const std::string kind = st.value("kind", std::string());
-                GraphNode n = make_node(GraphKind::Quest, kind == "objective" || kind == "log" || kind == "reward" || kind == "outcome" ? kind : "log", x, 0);
-                n.data = json::object();
-                if (kind == "objective") {
-                    n.data["kind"] = st.value("objective", std::string("items"));
-                    for (auto& [k, v] : st.items())
-                        if (k != "kind" && k != "objective" && k != "log") n.data[k] = v;
-                    if (st.contains("log")) n.data["text"] = text_json(text_of(c, st["log"]));
-                } else if (kind == "log") {
-                    n.data["text"] = text_json(text_of(c, st.value("text", json())));
-                } else if (kind == "reward") {
-                    for (auto& [k, v] : st.items())
-                        if (k != "kind") n.data[k] = v;
-                } else if (kind == "outcome") {
-                    n.data["result"] = st.value("result", std::string("success"));
-                    if (st.contains("log")) n.data["text"] = text_json(text_of(c, st["log"]));
-                    if (st.contains("next_quest")) n.data["next_quest"] = st["next_quest"];
+            // the flat step list back into a graph: a `race` step becomes an Either / or node whose paths run on below each other, a `stop` ends a path
+            const json steps = f.value("steps", json::array());
+            std::function<double(size_t, const std::string&, const std::string&, double, double)> chain = [&](size_t i, const std::string& prev, const std::string& prev_pin, double x,
+                                                                                                               double y) -> double {
+                std::string from = prev, pin = prev_pin;
+                double ymax = y;
+                for (; i >= 1 && i <= steps.size(); ++i) {
+                    const json& st = steps[i - 1];
+                    const std::string kind = st.value("kind", std::string());
+                    if (kind == "stop") break;
+                    x += 300;
+                    if (kind == "race") {
+                        GraphNode b = make_node(GraphKind::Quest, "branch", x, y);
+                        q.graph.nodes.push_back(b);
+                        add_link(GraphKind::Quest, q.graph, from, pin, b.uid, "in");
+                        double py = y;
+                        for (auto& pi : st.value("paths", json::array())) {
+                            if (!pi.is_number()) continue;
+                            ymax = std::max(ymax, chain(static_cast<size_t>(pi.get<double>()), b.uid, "next", x, py));
+                            py = ymax + 220;
+                        }
+                        return ymax;
+                    }
+                    GraphNode n = make_node(GraphKind::Quest, kind == "objective" || kind == "log" || kind == "reward" || kind == "outcome" ? kind : "log", x, y);
+                    n.data = json::object();
+                    if (kind == "objective") {
+                        n.data["kind"] = st.value("objective", std::string("items"));
+                        for (auto& [k, v] : st.items())
+                            if (k != "kind" && k != "objective" && k != "log") n.data[k] = v;
+                        if (st.contains("log")) n.data["text"] = text_json(text_of(c, st["log"]));
+                    } else if (kind == "log") {
+                        n.data["text"] = text_json(text_of(c, st.value("text", json())));
+                    } else if (kind == "reward") {
+                        for (auto& [k, v] : st.items())
+                            if (k != "kind") n.data[k] = v;
+                    } else if (kind == "outcome") {
+                        n.data["result"] = st.value("result", std::string("success"));
+                        if (st.contains("log")) n.data["text"] = text_json(text_of(c, st["log"]));
+                        if (st.contains("next_quest")) n.data["next_quest"] = st["next_quest"];
+                    }
+                    q.graph.nodes.push_back(n);
+                    add_link(GraphKind::Quest, q.graph, from, pin, n.uid, "in");
+                    from = n.uid;
+                    pin = "next";
+                    if (kind == "outcome") break;  // an Outcome ends its path: the next step in the list belongs to another one
                 }
-                q.graph.nodes.push_back(n);
-                add_link(GraphKind::Quest, q.graph, prev, "next", n.uid, "in");
-                prev = n.uid;
-            }
+                return ymax;
+            };
+            chain(1, s.uid, "next", x, 0);
         }
         c.p.quests.push_back(q);
     }

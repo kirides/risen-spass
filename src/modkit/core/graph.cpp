@@ -58,6 +58,11 @@ std::vector<NodeTypeDef> quest_types() {
          {{"in", "", true, PinKind::Flow, true}, {"next", "", false, PinKind::Flow, false}}},
         {"reward", "Reward", "Gives experience, items or gold, sets a game variable.", 0xff8a6a2a,
          {{"in", "", true, PinKind::Flow, true}, {"next", "", false, PinKind::Flow, false}}},
+        {"branch", "Either / or",
+         "Several ways to go on. Link each way's first Objective to the output: the quest waits for all of them at once, the first one the player completes "
+         "decides the path (the others are dropped) and the flow continues behind it. Paths do not join: each ends with its own Outcome.",
+         0xff7a5a9a,
+         {{"in", "", true, PinKind::Flow, true}, {"next", "paths", false, PinKind::Flow, true}}},
         {"outcome", "Outcome", "Ends the quest: success, failure or cancelled; may start a follow-up quest.", 0xffa53a3a,
          {{"in", "", true, PinKind::Flow, true}}},
         {"comment", "Comment", "A note on the canvas; not exported.", 0xff404040, {}},

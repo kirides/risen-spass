@@ -235,6 +235,7 @@ private:
             if (!s("next_quest").empty()) out += "\nthen " + s("next_quest");
             return out;
         }
+        if (n.type == "branch") return "the first objective done decides";
         if (n.type == "comment") return s("text");
         return {};
     }
@@ -246,7 +247,8 @@ private:
             ImGui::Spacing();
             ImGui::TextWrapped("The flow starts at Start and walks the chain: an Objective waits until the player did it, a Log entry and a Reward "
                                "happen at once, an Outcome ends the quest (success, failure, cancelled) and may start a follow-up quest. A quest without "
-                               "a Start is ended by its dialogues alone.");
+                               "a Start is ended by its dialogues alone. An Either / or lets the player choose by doing: link the first Objective of each way "
+                               "to its output, the first one completed decides the path.");
             if (!flow.is_null()) {
                 ImGui::SeparatorText("Exported as");
                 std::string lua = lua_value(flow, 0, 60);

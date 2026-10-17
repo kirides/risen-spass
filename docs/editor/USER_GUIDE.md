@@ -229,9 +229,15 @@ notification). Its **flow** is a chain on the canvas:
 | **Log entry** | a line in the quest log |
 | **Reward** | experience (through the game's own GiveXP), gold, items, a game variable |
 | **Outcome** | success, failure or cancelled, a log line, and a follow-up quest to start |
+| **Either / or** | several ways to go on: link the first Objective of each way to its output. The quest waits for all of them at once, the first one the player completes decides the path (the others are dropped) and the flow goes on behind it |
 
 Quests of the game count too: a Start or Objective of kind `quest` and every quest condition take any quest id of the game (the picker lists them
 with their titles), e.g. start your quest when the player solved `Ash_Defeat` of the original game.
+
+An **Either / or** makes a branching quest: the objectives its paths start with are announced together (each one's log text), and what the player does first picks the way:
+kill the bandits or bring the ransom, with a different reward and a different outcome behind each. The paths run top to bottom as they lie on the canvas, they do not join
+(every path ends with its own Outcome; a path without one just ends the flow) and an Either / or may sit inside a path (a decision after a decision). The progress of each
+path is saved with the game.
 
 Log entries, rewards and the outcome happen the moment the flow reaches them; objectives hold it until the player did them. The progress is part of
 every savegame (a load rolls it back with the game), a reward is never paid twice, a quest with a flow is started once per savegame. A quest without a
@@ -382,7 +388,7 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 * A picture replaces a game texture only where the engine has not loaded it yet when the mod is mounted (at start: always).
 * Lip sync: a voiced line of the mod has no lip-sync motion (the face does not move); a data-only import turns game sounds the export unpacked into
   project audio files (an import from `modkit\project.json` keeps them as game sounds).
-* A quest flow is one chain (no branches inside a quest); branch with dialogues and follow-up quests.
+* A quest flow branches only by *doing* (Either / or: the first objective completed decides); the paths do not join, and a branch cannot be chosen by a condition (use dialogues for that).
 * The Conversation panel follows the layer's documented rules for dialogue options, it does not run the engine: commands other than End, Give, Say, quest and game-event commands are only listed; test the finished mod with Play.
 * Shipped loot is read from the template files: stacks naming an item no template of the game has (six in the whole game) are skipped like the engine does; the worn items (armour, helmet) are listed but not editable.
 * Icons are offered from the shipped items' icons.
