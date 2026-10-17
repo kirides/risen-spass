@@ -330,48 +330,47 @@ end)
 -- choice in <spass>\options\quickloot.toml, which risen.config reads at the next start on top of config.toml. Free key names go into config.toml (a value that is not in the
 -- list stays in force and is shown as it is).
 -- ---------------------------------------------------------------------------------------------------------------------------------------------
-local function entry(id, name, description, extra)
-    local e = { id = id, name = name, description = description, value = cfg[id], default = DEFAULTS[id] }
+-- Every text is a string id ("@..."): strings/all.csv (English, for every language) and strings/German.csv, looked up by the options page in the text language.
+local function entry(id, extra)
+    local e = { id = id, name = "@SPASS_QL_" .. id, description = "@SPASS_QL_" .. id .. "_desc", value = cfg[id], default = DEFAULTS[id] }
     for k, v in pairs(extra or {}) do e[k] = v end
     return e
 end
+local function choice(prefix, value) return { value = value, name = "@SPASS_QL_" .. prefix .. "_" .. value } end
 local KEYS = {
-    { value = "SecondaryAction", name = "Right mouse button" }, { value = "PrimaryAction", name = "Left mouse button" }, { value = "Selection", name = "Use key" },
-    { value = "MButton", name = "Middle mouse button" }, { value = "XButton1", name = "Mouse side button 1" }, { value = "XButton2", name = "Mouse side button 2" },
+    choice("key", "SecondaryAction"), choice("key", "PrimaryAction"), choice("key", "Selection"),
+    choice("key", "MButton"), choice("key", "XButton1"), choice("key", "XButton2"),
     "V", "G", "X", "C", "Z", "Y", "B", "N", "H", "J", "K", "L",
 }
 local entries = {}
 local function group(name, ...)   -- the entries of one heading on the page (like the headings of the game's own Settings pages)
     for _, e in ipairs({ ... }) do
-        e.group = name
+        e.group = "@SPASS_QL_group_" .. name
         entries[#entries + 1] = e
     end
 end
 local function slider(min, max, step) return { type = "number", kind = "slider", min = min, max = max, step = step } end
-group("General",
-    entry("enabled", "Quick loot", "Take what you look at with one key press, without walking over or any animation."),
-    entry("key", "Key", "The key that takes the target. Other key names (F-keys, Space, ...) go into config.toml.",
-        { type = "string", kind = "dropdown", values = KEYS }),
-    entry("modifier", "Modifier key", "A key that has to be held with the key to take something (none = the key alone).",
-        { type = "string", kind = "dropdown", values = { { value = "none", name = "none" }, { value = "shift", name = "Shift" }, { value = "ctrl", name = "Ctrl" }, { value = "alt", name = "Alt" } } }))
-group("What to take",
-    entry("items", "Items on the ground", "Take items that lie on the ground."),
-    entry("corpses", "Dead and knocked-out", "Loot dead and knocked-out humans, the bodies of the beach and carcasses."),
-    entry("chests", "Chests and cupboards", "Open chests, cupboards and sarcophagi."),
-    entry("keys", "Open with a key", "A locked chest is opened with the matching key from the inventory (never lockpicked)."),
-    entry("max_distance", "Reach (units)", "How close the target has to be.", slider(100, 1500, 50)))
-group("Feedback",
-    entry("print", "Item messages", "A game log line for every item taken from the ground."),
-    entry("pickup_sound", "Pick-up sound", "The sound of the take animation for items from the ground (apple, gold, wood, ...)."),
-    entry("pickup_sound_gap", "Sound spacing (ms)", "After one pick-up sound the next waits this long, so holding the key does not pile them up. 0 = every item.", slider(0, 2000, 100)))
-group("Repeat",
-    entry("hold_repeat", "Hold to repeat", "Hold the key to take everything in reach, one target after the other."),
-    entry("repeat_ms", "Repeat interval (ms)", "The time between two targets while the key is held.", slider(20, 500, 20)))
-group("Witnesses",
-    entry("witness_mode", "Reaction of people", "assess = the game's own reaction (people who see you comment or threaten), veto = nothing is taken while someone sees you, ignore = nobody reacts.",
-        { type = "string", kind = "dropdown", values = { { value = "assess", name = "assess (the game reacts)" }, { value = "veto", name = "veto (decline when seen)" }, { value = "ignore", name = "ignore" } } }),
-    entry("witness_veto", "Veto radius", "Veto only: how close a human who sees you has to be to stop quick loot. 0 = never.", slider(0, 3000, 100)))
-entries.title = "Quick Loot"
+group("general",
+    entry("enabled"),
+    entry("key", { type = "string", kind = "dropdown", values = KEYS }),
+    entry("modifier", { type = "string", kind = "dropdown", values = { choice("mod", "none"), choice("mod", "shift"), choice("mod", "ctrl"), choice("mod", "alt") } }))
+group("take",
+    entry("items"),
+    entry("corpses"),
+    entry("chests"),
+    entry("keys"),
+    entry("max_distance", slider(100, 1500, 50)))
+group("feedback",
+    entry("print"),
+    entry("pickup_sound"),
+    entry("pickup_sound_gap", slider(0, 2000, 100)))
+group("repeat",
+    entry("hold_repeat"),
+    entry("repeat_ms", slider(20, 500, 20)))
+group("witnesses",
+    entry("witness_mode", { type = "string", kind = "dropdown", values = { choice("mode", "assess"), choice("mode", "veto"), choice("mode", "ignore") } }),
+    entry("witness_veto", slider(0, 3000, 100)))
+entries.title = "@SPASS_QL_title"
 entries.on_change = function(id, value)
     cfg[id] = value
     if id == "key" or id == "modifier" then apply_key()

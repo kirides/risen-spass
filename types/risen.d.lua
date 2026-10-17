@@ -3779,22 +3779,22 @@ function saveApi.clear() end
 ---One option of a mod, as the mod declares it for `risen.options.define`. The layer checks it and keeps the value in `value` of the very table the mod passed in.
 ---@class OptionEntry
 ---@field id string The option's key (letters, digits, `_`, `-`); by convention the key of `config.toml`, so the stored choice and the file agree.
----@field name? string The label in the menu (default: `id`).
+---@field name? string The label in the menu (default: `id`). Like every text of an entry it may be a **string id**: `"@MY_Key_Name"` is looked up (`risen.loc.get`, your `strings/*.csv`) in the text language each time the menu lists the options, so the page follows a language switch; a missing string shows its id; `"@@..."` is a literal text that starts with `@`.
 ---@field group? string A heading above this option in the menu (like "Display" on the game's Graphics page); entries with the same `group` should follow each other, the heading appears where the group changes.
 ---@field type? "boolean"|"number"|"string" Default: the type of `value`.
 ---@field kind? "toggle"|"dropdown"|"slider"|"text" `toggle` (boolean; also `checkbox`, `switch`), `dropdown` (`values`; also `drop-down`, `select`), `slider` (a number between `min` and `max` in steps; also `number`, `range`) or `text`. Default: `values` -> dropdown, boolean -> toggle, number with `min` and `max` -> slider, else text (shown, not editable in the menu).
 ---@field value? boolean|number|string The current value (from `risen.config`). The layer writes every change back into this field.
 ---@field default? boolean|number|string What "Default value" returns to (default: the first `value`).
----@field values? any[]|table<any, string> For a drop-down: a list of values, a list of `{ value = v, name = "Label" }`, or a table `value -> label` (shown sorted by label). A `value` outside the list stays in force (and is shown as is) until the player picks another.
+---@field values? any[]|table<any, string> For a drop-down (the labels may be string ids): a list of values, a list of `{ value = v, name = "Label" }`, or a table `value -> label` (shown sorted by label). A `value` outside the list stays in force (and is shown as is) until the player picks another.
 ---@field min? number Slider: smallest value.
 ---@field max? number Slider: largest value.
 ---@field step? number Slider: size of a step (default 1).
----@field description? string Help text shown next to the option.
+---@field description? string Help text shown under the rows when the option is selected (a string id like `name`).
 ---@field restart? boolean The mod can only apply a change at the next start of the game (the menu says so).
 
 ---What `risen.options.define` takes: the entries as the list part of the table (or as `entries = {...}`) and the callbacks.
 ---@class OptionsSpec
----@field title? string Heading of the options page (default: the mod's name).
+---@field title? string Heading of the options page (default: the mod's name); may be a string id.
 ---@field entries? OptionEntry[] The entries (instead of the list part).
 ---@field on_change? fun(id: string, value: boolean|number|string, old: boolean|number|string) Called after the value of option `id` changed in the menu (or through `risen.options.set`); apply the new value here. An error is logged and shown in the menu.
 ---@field save? fun() Called after `on_change` when the mod stores its options itself. Without it the layer keeps the changed values in `<spass>\options\<mod>.toml`, which `risen.config` and `define` read at the next start on top of `config.toml`.
@@ -3809,7 +3809,7 @@ function saveApi.clear() end
 ---@field kind "toggle"|"dropdown"|"slider"|"text"
 ---@field value boolean|number|string
 ---@field default boolean|number|string
----@field text string The value as the menu shows it (`on`/`off`, the label of a drop-down choice, a number).
+---@field text string The value as the menu shows it (`on`/`off` as the strings `SPASS_Opt_On` / `SPASS_Opt_Off` of the text language, the label of a drop-down choice, a number). Names, descriptions, groups and labels are already resolved in the text language.
 ---@field default_text string
 ---@field changed boolean The value differs from the default.
 ---@field description string

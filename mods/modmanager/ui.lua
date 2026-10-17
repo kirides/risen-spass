@@ -471,7 +471,7 @@ function UI:render(snap)
         local prev, val, nxt = W["spass_oprev" .. i], W["spass_oval" .. i], W["spass_onext" .. i]
         local knob, amount = W["spass_oknob" .. i], W["spass_oamount" .. i]
         local control = r ~= nil and not r.heading
-        local slider = control and r.kind == "slider"
+        local slider = r ~= nil and control and r.kind == "slider"
         for _, w in ipairs({ prev, val, nxt }) do
             w:set_visible(control)
         end
@@ -502,6 +502,8 @@ function UI:render(snap)
     end
     W.spass_prev:set_visible(snap.pages > 1)
     W.spass_next:set_visible(snap.pages > 1)
+    set_text(W.spass_prev, snap.prev_label or "< Prev")
+    set_text(W.spass_next, snap.next_label or "Next >")
     W.spass_summary:set_visible(not options)
     W.spass_version:set_visible(not options)
     set_text(W.spass_summary, snap.summary)

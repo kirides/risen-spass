@@ -4,7 +4,9 @@
 #include <windows.h>
 #include <dbghelp.h>
 
+#include <algorithm>
 #include <array>
+#include <map>
 #include <cmath>
 #include <cstring>
 #include <sstream>
@@ -519,6 +521,7 @@ TEST(balance_install_reports_each_application_to_on_applied) {
 #include "modmanager_tests.inc"
 #include "options_tests.inc"
 #include "options_model_tests.inc"
+#include "options_text_tests.inc"
 #include "crash_tests.inc"
 #include "pack2mod_tests.inc"
 

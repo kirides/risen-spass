@@ -7,6 +7,7 @@ local model, ui
 local attempts, frames = 0, 0
 
 local dirty = false
+local language   -- the text language of the last look (Settings > Game options > Text language > Apply changes it while the game runs)
 
 local function draw()
     dirty = false
@@ -85,6 +86,15 @@ end
 -- language rebuilds the menu pages) and put the tabs back when they are gone.
 risen.on("ui.frame", function()
     frames = frames + 1
+    -- the texts of the options come from the strings of the text language: read them again when it changes (the engine rebuilds the menu pages then, see below)
+    if frames % 30 == 0 then
+        local now = risen.loc.language()
+        if language ~= nil and now ~= language and model then
+            model:refresh()
+            dirty = true
+        end
+        language = now
+    end
     if dirty then
         draw()
     end
@@ -125,6 +135,7 @@ end)
 model = Model.new({
     mods = risen.mods,
     options = risen.options,
+    text = function(id) return risen.loc.get(id) end,   -- the strings of the page (strings/*.csv of this mod, in the text language)
     version = risen.version,
     self_id = mod.id,
     log = function(text, tone) risen.log[tone == "info" and "info" or "warn"]("modmanager: " .. text) end,

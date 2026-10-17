@@ -32,7 +32,7 @@ The normal use key keeps doing the game's full interaction (walk, animation, loo
 **In the game:** ESC > **Mods** > Quick Loot > **Options (15)**: every option below (but the free key names) is a row with a toggle, drop-down or slider, and a change **applies at once**, no restart
 (the key and modifier are worked out again, `enabled = false` leaves the mod loaded but idle, ...). The menu stores what differs from the defaults in `<Risen>\bin\spass\options\quickloot.toml`;
 the mod reads that file on top of `config.toml` at the next start (delete it to go back to `config.toml`). The key list of the menu offers the three actions and a few keys; any other key name
-(`F7`, `Space`, ...) is set in `config.toml` and then shown as it is. How the page and the declaration work: [LUA_API.md](LUA_API.md) "Options menu", scenario `options`.
+(`F7`, `Space`, ...) is set in `config.toml` and then shown as it is. How the page and the declaration work: [LUA_API.md](LUA_API.md) "Options menu", scenario `options`. The texts of the page are in `strings/all.csv` (English) and `strings/German.csv` and follow the game's text language (Settings > Game options > Text language > Apply, no restart).
 
 The file `config.toml` (the defaults, edited by hand):
 

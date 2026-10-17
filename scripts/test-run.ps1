@@ -59,6 +59,9 @@ param(
     [string]$WindowSize = '1600x900',
     # voice language the game speaks (ConfigUser.xml <Language VoiceLanguage>): English (default), German, French, Russian; the spoken-line scenarios use it
     [string]$VoiceLanguage = '',
+    # text language the game starts with (ConfigUser.xml <Language SubtitleLanguage>, what Settings > Game options > Text language + Apply writes): English by default, so a scenario that switched it
+    # never leaks into the next run
+    [string]$TextLanguage = 'English',
     [switch]$WaitForResult,
     [int]$StallSeconds = 90,
     [int]$DeadlineSeconds = -1,
@@ -239,6 +242,8 @@ try {
             if ($VoiceLanguage -notmatch '^[A-Za-z]+$') { throw "-VoiceLanguage must be a language name such as German, not '$VoiceLanguage'" }
             $new = [regex]::Replace($new, '</Controls>', "</Controls>`n`t`t<Language VoiceLanguage=`"$VoiceLanguage`"></Language>", 1)
         }
+        if ($TextLanguage -notmatch '^[A-Za-z]+$') { throw "-TextLanguage must be a language name such as German, not '$TextLanguage'" }
+        $new = [regex]::Replace($new, '(SubtitleLanguage=")[^"]*(")', "`${1}$TextLanguage`$2")
         if ($new -ne $xml) { [System.IO.File]::WriteAllText($cfgUserPath, $new) }
     }
     # Isolate the game's %LOCALAPPDATA% (savegames, ConfigUser.xml, screenshots) inside the test copy.

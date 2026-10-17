@@ -9,6 +9,68 @@ local M = {}
 M.__index = M
 
 M.ROWS = 12
+
+-- The texts of the options page. The ids are `SPASS_ModMgr_<key>` in mods/modmanager/strings/*.csv (risen.loc, so the page follows the text language); what stands here is
+-- the English fallback (a host without a `text` function, a missing string) and what the unit tests expect.
+local TEXT = {
+    options_button = "Options (%d)",
+    options_button_none = "Options",
+    title = "Options: %s",
+    summary_one = "%d option, %d changed",
+    summary_many = "%d options, %d changed",
+    prev = "< Prev",
+    next = "Next >",
+    no_options = "This mod has no options.",
+    at_max = "%s is at its maximum.",
+    at_min = "%s is at its minimum.",
+    free_text = "%s is free text: change it in the mod's config.toml.",
+    name_reason = "%s: %s",
+    reset_failed = "Could not reset: %s",
+    reset_error = "Reset %d option(s), but: %s",
+    reset_none = "Everything is at its default already.",
+    reset_done = "Reset %d option(s) to their defaults.",
+    no_change = "%s: no change.",
+    changed_error = "%s changed, but: %s",
+    changed_restart = "%s: %s. Applies at the next start of the game.",
+    changed = "%s: %s",
+    opt_switch_off = "Switch off",
+    opt_switch_on = "Switch on",
+    opt_next = "Next value >",
+    opt_increase = "Increase >",
+    opt_prev = "< Previous value",
+    opt_decrease = "< Decrease",
+    opt_default = "Default value",
+    opt_all_defaults = "All defaults",
+    opt_back = "Back to the mods",
+    hint_default = "Default: %s.",
+    hint_default_range = "Default: %s (%s to %s, step %s).",
+    hint_text = "Free text: change it in config.toml.",
+    hint_custom = "The current value is not in the list.",
+    hint_restart = "Applies at the next start of the game.",
+}
+M.TEXT = TEXT
+
+---The text `key` of the options page in the text language (`format` arguments fill its %s / %d).
+function M:_t(key, ...)
+    local fallback = TEXT[key] or key
+    local text
+    if self.host.text then
+        local ok, got = pcall(self.host.text, "SPASS_ModMgr_" .. key)
+        if ok and type(got) == "string" and got ~= "" then
+            text = got
+        end
+    end
+    if select("#", ...) == 0 then
+        return text or fallback
+    end
+    if text then
+        local ok, out = pcall(string.format, text, ...)
+        if ok then
+            return out
+        end
+    end
+    return fallback:format(...)
+end
 M.OPTION_ROWS = 10   -- rows of the options page (one setting per row, like the game's own Settings pages)
 
 local function join(list, sep)
@@ -70,7 +132,7 @@ end
 local STATE_TAG = { loaded = "", failed = "failed", skipped = "skipped", disabled = "off", unloaded = "unloaded" }
 
 ---@param host { mods: table, version: string }
----@param opts? { rows?: integer }
+---@param opts? { rows?: integer, option_rows?: integer }
 function M.new(host, opts)
     local self = setmetatable({}, M)
     self.host = host
@@ -223,7 +285,7 @@ function M:open_options()
     self.message = nil
     local item = self:_opt_item()
     if not item then
-        self:_say("This mod has no options.", "info")
+        self:_say(self:_t("no_options"), "info")
         return false
     end
     self.view = "options"
@@ -615,14 +677,15 @@ function M:_say_change(id, report)
     self:refresh()
     local e = self:_opt_entry(id)
     local label = e and e.name or id
+    local shown = e and e.text or tostring(report.value)
     if not report.changed then
-        self:_say(label .. ": no change.", "info")
+        self:_say(self:_t("no_change", label), "info")
     elseif report.error then
-        self:_say(label .. " changed, but: " .. report.error, "error")
+        self:_say(self:_t("changed_error", label, report.error), "error")
     elseif report.restart then
-        self:_say(("%s: %s. Applies at the next start of the game."):format(label, e and e.text or tostring(report.value)), "warn")
+        self:_say(self:_t("changed_restart", label, shown), "warn")
     else
-        self:_say(("%s: %s"):format(label, e and e.text or tostring(report.value)), "info")
+        self:_say(self:_t("changed", label, shown), "info")
     end
     return not report.error
 end
@@ -635,21 +698,21 @@ function M:option_step(dir)
     end
     self.prompt = nil
     if e.kind == "text" then
-        self:_say(e.name .. " is free text: change it in the mod's config.toml.", "info")
+        self:_say(self:_t("free_text", e.name), "info")
         return false
     end
     if e.kind == "slider" and type(e.value) == "number" then
         if dir > 0 and e.value >= e.max then
-            self:_say(e.name .. " is at its maximum.", "info")
+            self:_say(self:_t("at_max", e.name), "info")
             return false
         elseif dir < 0 and e.value <= e.min then
-            self:_say(e.name .. " is at its minimum.", "info")
+            self:_say(self:_t("at_min", e.name), "info")
             return false
         end
     end
     local ok, report = safe(self.host.options.step, self.selected, e.id, dir)
     if not ok then
-        self:_say(e.name .. ": " .. tostring(report or "refused"), "error")
+        self:_say(self:_t("name_reason", e.name, tostring(report or "refused")), "error")
         return false
     end
     return self:_say_change(e.id, report)
@@ -664,7 +727,7 @@ function M:option_default()
     self.prompt = nil
     local ok, report = safe(self.host.options.reset, self.selected, e.id)
     if not ok then
-        self:_say(e.name .. ": " .. tostring(report or "refused"), "error")
+        self:_say(self:_t("name_reason", e.name, tostring(report or "refused")), "error")
         return false
     end
     return self:_say_change(e.id, report)
@@ -678,7 +741,7 @@ function M:option_defaults_all()
     self.prompt = nil
     local ok, report = safe(self.host.options.reset, self.selected)
     if not ok then
-        self:_say("Could not reset: " .. tostring(report or "refused"), "error")
+        self:_say(self:_t("reset_failed", tostring(report or "refused")), "error")
         return false
     end
     self:refresh()
@@ -686,10 +749,10 @@ function M:option_defaults_all()
     local done = type(report) == "table" and report or {}
     local n = done.count or 0
     if done.error then
-        self:_say(("Reset %d option(s), but: %s"):format(n, done.error), "error")
+        self:_say(self:_t("reset_error", n, done.error), "error")
         return false
     end
-    self:_say(n == 0 and "Everything is at its default already." or ("Reset %d option(s) to their defaults."):format(n), "info")
+    self:_say(n == 0 and self:_t("reset_none") or self:_t("reset_done", n), "info")
     return true
 end
 
@@ -847,29 +910,29 @@ local function option_detail(e)
 end
 
 -- the one paragraph under the rows: what the selected option is for, its default and when it applies
-local function option_hint(e)
+local function option_hint(self, e)
     local parts = {}
     if e.description and e.description ~= "" then
         parts[#parts + 1] = e.description
     end
-    local tail = "Default: " .. e.default_text .. "."
+    local tail = self:_t("hint_default", e.default_text)
     if e.kind == "slider" then
-        tail = ("Default: %s (%s to %s, step %s)."):format(e.default_text, tostring(e.min), tostring(e.max), tostring(e.step))
+        tail = self:_t("hint_default_range", e.default_text, tostring(e.min), tostring(e.max), tostring(e.step))
     elseif e.kind == "text" then
-        tail = tail .. " Free text: change it in config.toml."
+        tail = tail .. " " .. self:_t("hint_text")
     end
     parts[#parts + 1] = tail
     if e.custom then
-        parts[#parts + 1] = "The current value is not in the list."
+        parts[#parts + 1] = self:_t("hint_custom")
     end
     if e.restart then
-        parts[#parts + 1] = "Applies at the next start of the game."
+        parts[#parts + 1] = self:_t("hint_restart")
     end
     return table.concat(parts, " ")
 end
 
-local NEXT_LABEL = { dropdown = "Next value >", slider = "Increase >" }
-local PREV_LABEL = { dropdown = "< Previous value", slider = "< Decrease" }
+local NEXT_LABEL = { dropdown = "opt_next", slider = "opt_increase" }
+local PREV_LABEL = { dropdown = "opt_prev", slider = "opt_decrease" }
 
 -- the snapshot of the options of the selected mod
 function M:_options_snapshot()
@@ -907,8 +970,10 @@ function M:_options_snapshot()
     local mod = self.entries[self.selected]
     local snap = {
         view = "options",
-        title = clip("Options: " .. (item.title or (mod and mod.name ~= "" and mod.name) or item.mod), 30),
-        summary = ("%d %s, %d changed"):format(#entries, plural(#entries, "option", "options"), changed),
+        title = clip(self:_t("title", item.title or (mod and mod.name ~= "" and mod.name) or item.mod), 30),
+        summary = self:_t(#entries == 1 and "summary_one" or "summary_many", #entries, changed),
+        prev_label = self:_t("prev"),
+        next_label = self:_t("next"),
         version = self.host.version,
         rows = rows,
         page = self.opt_page,
@@ -921,16 +986,16 @@ function M:_options_snapshot()
     local free = e == nil or e.kind == "text"
     snap.detail_title = e and clip(e.name, 27) or ""
     snap.detail = e and option_detail(e) or {}
-    snap.hint = e and option_hint(e) or ""
+    snap.hint = e and option_hint(self, e) or ""
     local slider = e ~= nil and e.kind == "slider" and type(e.value) == "number"
     local toggle = e ~= nil and e.kind == "toggle"
     snap.buttons = {
-        toggle = { label = toggle and (e.value and "Switch off" or "Switch on") or (e and NEXT_LABEL[e.kind]) or "Next value >", enabled = not free and not (slider and e.value >= e.max) },
-        reload = { label = (e and PREV_LABEL[e.kind]) or "< Previous value", enabled = not free and not toggle and not (slider and e.value <= e.min) },
-        up = { label = "Default value", enabled = e ~= nil and e.changed == true },
-        down = { label = "All defaults", enabled = changed > 0 },
-        reset = { label = "Back to the mods", enabled = true },
-        options = { label = "Options", enabled = false },
+        toggle = { label = self:_t(toggle and (e.value and "opt_switch_off" or "opt_switch_on") or (e and NEXT_LABEL[e.kind]) or "opt_next"), enabled = not free and not (slider and e.value >= e.max) },
+        reload = { label = self:_t((e and PREV_LABEL[e.kind]) or "opt_prev"), enabled = not free and not toggle and not (slider and e.value <= e.min) },
+        up = { label = self:_t("opt_default"), enabled = e ~= nil and e.changed == true },
+        down = { label = self:_t("opt_all_defaults"), enabled = changed > 0 },
+        reset = { label = self:_t("opt_back"), enabled = true },
+        options = { label = self:_t("options_button_none"), enabled = false },
     }
     return snap
 end
@@ -999,11 +1064,11 @@ function M:snapshot()
             up = { label = up_ok == false and "Move up (blocked)" or "Move up", enabled = up_ok ~= nil, why = up_why, blocked = up_ok == false },
             down = { label = down_ok == false and "Move down (blocked)" or "Move down", enabled = down_ok ~= nil, why = down_why, blocked = down_ok == false },
             reset = { label = "Default order", enabled = #self.custom_order > 0 or self.order_changed },
-            options = { label = "Options", enabled = false },
+            options = { label = self:_t("options_button_none"), enabled = false },
         }
         local n = self:option_count(e.id)
         if n > 0 then
-            snap.buttons.options = { label = ("Options (%d)"):format(n), enabled = true }
+            snap.buttons.options = { label = self:_t("options_button", n), enabled = true }
         end
     else
         snap.detail_title = "No mods installed"
@@ -1014,9 +1079,11 @@ function M:snapshot()
             up = { label = "Move up", enabled = false },
             down = { label = "Move down", enabled = false },
             reset = { label = "Default order", enabled = false },
-            options = { label = "Options", enabled = false },
+            options = { label = self:_t("options_button_none"), enabled = false },
         }
     end
+    snap.prev_label = self:_t("prev")
+    snap.next_label = self:_t("next")
     return snap
 end
 

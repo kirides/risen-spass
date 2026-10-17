@@ -284,6 +284,7 @@ $scenarios = [ordered]@{
                            Phases = @(
                                @{ Name = 'main'; Param = @('phase=main'); Start = 'new'; Keep = $false; Limit = 300; Unsafe = $true }
                                @{ Name = 'restart'; Param = @('phase=restart'); Start = 'new'; Keep = $false; Limit = 200; Unsafe = $true; KeepModsToml = $true }
+                               @{ Name = 'language'; Param = @('phase=language'); Start = 'new'; Keep = $false; Limit = 200; Unsafe = $true }
                            ) }
     # one process per phase: "save" crafts at the anvil (twice) and saves, "load" crafts again in a fresh process, "load_missing" runs without the mod's content, "load_again" has it again
     ex_recipe         = @{ Est = 250; Title = 'example: a new smithing recipe (save, load, missing, again)'; Kind = 'result'; Mods = @('example_recipe'); Limit = 300

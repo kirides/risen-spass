@@ -4,6 +4,8 @@
 --   main     new game: Mods tab > Quick Loot > Options; toggle, drop-down, slider, pages, default, all defaults, back; a change is live (quickloot declines while it is switched off)
 --            and kept in <spass>\options\quickloot.toml; a reload of the mod keeps the choices
 --   restart  a fresh process that keeps spass\options: the choices of the menu are in force without touching config.toml
+--   language the text language is switched in the game's own Settings page (Game options > Text language, Apply): the options page shows the German strings, then the English
+--            ones again (test-run.ps1 starts every run with English)
 local T = risen.test
 T.reset("options")
 local phase = T.param("phase", "main")
@@ -255,8 +257,97 @@ local function restart()
     T.expect("only the other choice is stored now", (function() local s = store() or "" return s:find("repeat_ms", 1, true) and not s:find("key", 1, true) end)(), store())
 end
 
+-- ---- phase language --------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- the text language through the real Settings page: the spin button of the "Text language" row until it shows `name`, then Apply (the engine rebuilds the menu pages)
+local function apply_text_language(name)
+    risen.gui.close_menu()
+    T.sleep(10)
+    T.expect("the Game options page opens", risen.gui.open(22))
+    T.sleep(30)
+    local p = risen.gui.page(22)
+    local val, nxt
+    for _, c in ipairs(p:children()) do
+        if c:class() == "gCSpinButton" and (c:get("OnSpin") or ""):find("Language_Text", 1, true) then val = c end
+    end
+    local _, vy = val:position()
+    for _, c in ipairs(p:children()) do
+        local _, cy = c:position()
+        if c:class() == "gCSpinButton" and cy == vy and (c:get("SpinType") or ""):find("Next", 1, true) then nxt = c end
+    end
+    local tries = 0
+    while val:text() ~= name and tries < 16 do
+        click(nxt, 3)
+        tries = tries + 1
+    end
+    T.expect("the text language spin button shows " .. name, val:text() == name, val:text())
+    for _, c in ipairs(p:children()) do
+        if c:class() == "eCScriptRadioButton" and c:get("OnClick") == "OnClick_ApplyLanguage" then click(c, 4) end
+    end
+end
+
+local function language()
+    T.section("English at the start")
+    T.wait_event("session.start", 180, function(m) return m == "new" end)
+    T.wait_event("world.ready", 180)
+    T.sleep(60)
+    wait_page_built()
+    T.eq("the text language", risen.loc.language(), "English")
+    enter_options()
+    T.eq("English texts", { text("spass_title"), text("spass_row1"), text("spass_row3"), text("spass_oval3"), text("spass_oval2"), text("spass_up"), text("spass_down"), text("spass_reset"), text("spass_prev") },
+        { "Options: Quick Loot", "General", "Key", "Right mouse button", "on", "Default value", "All defaults", "Back to the mods", "< Prev" })
+
+    T.section("Settings > Text language > German > Apply")
+    local old_ui = state().ui
+    apply_text_language("Deutsch")
+    T.wait_until(function() return risen.loc.language() == "German" end, 20, "the engine switched to German")
+    T.wait_until(function() return state().ui ~= nil and state().ui ~= old_ui and state().ui:valid() end, 20, "the Mods page was built again after the menu pages were rebuilt")
+    T.sleep(30)
+    local options = risen.options.list("quickloot")[1].entries
+    T.eq("the registry resolves the strings of the new language", { options[1].name, options[2].text, options[1].text, options[1].group }, { "Quick Loot", "Rechte Maustaste", "an", "Allgemein" })
+
+    T.section("the options page in German")
+    open_menu_with_escape()
+    open_mods_page()
+    select_mod("quickloot")
+    T.eq("the button counts the options", text("spass_options"), "Optionen (15)")
+    click_named("spass_options", 6)
+    settle()
+    T.eq("the heading and the rows", { text("spass_title"), text("spass_row1"), text("spass_row2"), text("spass_oval2"), text("spass_row3"), text("spass_oval3"), text("spass_row5") },
+        { "Optionen: Quick Loot", "Allgemein", "Quick Loot", "an", "Taste", "Rechte Maustaste", "Was genommen wird" })
+    T.eq("the buttons", { text("spass_up"), text("spass_down"), text("spass_reset"), text("spass_prev"), text("spass_next") },
+        { "Standardwert", "Alle Standardwerte", "Zurück zu den Mods", "< Vorige", "Nächste >" })
+    T.eq("the page label with the summary", text("spass_pagelabel"), "1 / 2    15 Optionen, 0 geändert")
+    T.expect("the description is German", text("spass_ohint"):find("Nimmt, was du ansiehst", 1, true) ~= nil and text("spass_ohint"):find("Standard: an.", 1, true) ~= nil, text("spass_ohint"))
+    step("key", 1)
+    T.wait_until(function() return value("key") == "PrimaryAction" end, 10, "next key")
+    T.eq("a changed value and the message are German", { text("spass_oval3"), text("spass_note") }, { "Linke Maustaste", "Taste: Linke Maustaste" })
+    T.expect("the German page is still amber for a changed option", snapshot().rows[3].tone == "warn")
+    shot("opt_page_german")
+    click_named("spass_up", 8)   -- Standardwert
+    T.wait_until(function() return value("key") == "SecondaryAction" end, 10, "back at the default")
+    T.eq("the message after the reset", text("spass_note"), "Taste: Rechte Maustaste")
+    step("key", 1)
+    T.wait_until(function() return value("key") == "PrimaryAction" end, 10, "changed again")
+    click_named("spass_down", 8)   -- Alle Standardwerte
+    T.wait_until(function() return value("key") == "SecondaryAction" end, 10, "everything at its default")
+    T.eq("the message of all defaults", text("spass_note"), "1 Option(en) auf den Standardwert zurückgesetzt.")
+
+    T.section("and back to English")
+    old_ui = state().ui
+    apply_text_language("English")
+    T.wait_until(function() return risen.loc.language() == "English" end, 20, "the engine switched back to English")
+    T.wait_until(function() return state().ui ~= nil and state().ui ~= old_ui and state().ui:valid() end, 20, "the Mods page was built again")
+    T.sleep(30)
+    open_menu_with_escape()
+    open_mods_page()
+    select_mod("quickloot")
+    T.eq("the English button again", text("spass_options"), "Options (15)")
+end
+
 if phase == "main" then
     T.run(main, "options")
+elseif phase == "language" then
+    T.run(language, "options")
 else
     T.run(restart, "options")
 end

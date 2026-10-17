@@ -59,6 +59,26 @@ local function finite(v)
     return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge
 end
 
+-- A text that starts with "@" is a string id (strings/*.csv of the mod, risen.loc): it is looked up when the options are listed, so the menu follows the text language.
+-- "@@..." is a literal text that starts with "@". A missing string shows its id.
+local function resolve(s)
+    if type(s) ~= "string" then return s end
+    if s:sub(1, 2) == "@@" then return s:sub(2) end
+    if s:sub(1, 1) == "@" and #s > 1 then
+        local id = s:sub(2)
+        local ok, text = pcall(function() return risen.loc and risen.loc.get(id) end)
+        if ok and type(text) == "string" and text ~= "" then return text end
+        return id
+    end
+    return s
+end
+
+local function lookup(id, fallback)
+    local ok, text = pcall(function() return risen.loc and risen.loc.get(id) end)
+    if ok and type(text) == "string" and text ~= "" then return text end
+    return fallback
+end
+
 local function show(v)
     if type(v) == "boolean" then return v and "on" or "off" end
     if type(v) == "number" then
@@ -78,7 +98,7 @@ local function normalize_values(values, vtype)
         if seen[v] then return nil, "value " .. show(v) .. " is listed twice" end
         if #out >= MAX_VALUES then return nil, "at most " .. MAX_VALUES .. " values" end
         seen[v] = true
-        out[#out + 1] = { value = v, name = one_line(name ~= nil and name or show(v)):sub(1, 60) }
+        out[#out + 1] = { value = v, name = one_line(name ~= nil and name or show(v)):sub(1, 200) }
         return true
     end
     local n = 0
@@ -144,11 +164,15 @@ local function build_entry(raw, n)
     end
     local function bad(why) return nil, ("option '%s': %s"):format(id, why) end
     local ty = raw.type
-    if ty == nil then ty = type(raw.value ~= nil and raw.value or raw.default) end
+    if ty == nil then   -- (not `value ~= nil and value or default`: a false value would fall through to the default)
+        local sample = raw.value
+        if sample == nil then sample = raw.default end
+        ty = type(sample)
+    end
     if not TYPES[ty] then return bad("type must be \"boolean\", \"number\" or \"string\"") end
-    local e = { id = id, type = ty, raw = raw, description = raw.description ~= nil and tostring(raw.description):sub(1, 600) or "", restart = raw.restart == true }
-    e.name = one_line(raw.name ~= nil and raw.name or id):sub(1, 60)
-    if raw.group ~= nil then e.group = one_line(raw.group):sub(1, 40) end
+    local e = { id = id, type = ty, raw = raw, description = raw.description ~= nil and tostring(raw.description):sub(1, 700) or "", restart = raw.restart == true }
+    e.name = one_line(raw.name ~= nil and raw.name or id):sub(1, 200)
+    if raw.group ~= nil then e.group = one_line(raw.group):sub(1, 200) end
     if raw.values ~= nil then
         local list, why = normalize_values(raw.values, ty)
         if not list then return bad(why) end
@@ -207,7 +231,7 @@ function risen.options.define(spec)
     for _, f in ipairs({ "on_change", "save" }) do
         if spec[f] ~= nil and type(spec[f]) ~= "function" then return nil, f .. " must be a function" end
     end
-    local r = { mod = mod, title = spec.title ~= nil and one_line(spec.title):sub(1, 60) or nil, spec = spec, entries = entries, by_id = by_id }
+    local r = { mod = mod, title = spec.title ~= nil and one_line(spec.title):sub(1, 200) or nil, spec = spec, entries = entries, by_id = by_id }
     -- the player's choices of an earlier run (the layer's own store; a mod with its own `save` keeps its values itself)
     if not spec.save then
         local stored = native.read(mod)
@@ -303,21 +327,27 @@ function risen.options.reset(mod, id)
     return true, last
 end
 
+-- the value as the menu shows it: a boolean as on / off in the text language (strings SPASS_Opt_On / SPASS_Opt_Off), the rest as show()
+local function value_text(v)
+    if type(v) == "boolean" then return lookup(v and "SPASS_Opt_On" or "SPASS_Opt_Off", v and "on" or "off") end
+    return show(v)
+end
+
 local function view(e)
     local out = {
-        id = e.id, name = e.name, group = e.group, type = e.type, kind = e.kind, value = e.value, default = e.default, description = e.description,
-        restart = e.restart, changed = e.value ~= e.default, text = show(e.value), default_text = show(e.default),
+        id = e.id, name = resolve(e.name):sub(1, 60), group = e.group and resolve(e.group):sub(1, 40) or nil, type = e.type, kind = e.kind, value = e.value, default = e.default,
+        description = resolve(e.description):sub(1, 600), restart = e.restart, changed = e.value ~= e.default, text = value_text(e.value), default_text = value_text(e.default),
         min = e.min, max = e.max, step = e.step,
     }
     if e.choices then
         out.values = {}
-        for i, c in ipairs(e.choices) do out.values[i] = { value = c.value, name = c.name } end
+        for i, c in ipairs(e.choices) do out.values[i] = { value = c.value, name = resolve(c.name):sub(1, 60) } end
         local at = choice_index(e, e.value)
         out.index = at
         out.custom = at == nil
-        out.text = at and e.choices[at].name or show(e.value)
+        out.text = at and out.values[at].name or value_text(e.value)
         local d = choice_index(e, e.default)
-        out.default_text = d and e.choices[d].name or show(e.default)
+        out.default_text = d and out.values[d].name or value_text(e.default)
     end
     return out
 end
@@ -332,7 +362,7 @@ function risen.options.list(only)
     table.sort(mods)
     for _, mod in ipairs(mods) do
         local r = registry[mod]
-        local item = { mod = mod, title = r.title, own_save = r.spec.save ~= nil, entries = {} }
+        local item = { mod = mod, title = r.title and resolve(r.title):sub(1, 60) or nil, own_save = r.spec.save ~= nil, entries = {} }
         for i, e in ipairs(r.entries) do item.entries[i] = view(e) end
         out[#out + 1] = item
     end
