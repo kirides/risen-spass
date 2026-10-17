@@ -26,12 +26,14 @@ public:
     size_t size() const;
     void clear();
     void set_echo(bool on) { echo_ = on; }  // stderr mirror (on by default; the tests switch it off)
+    void set_echo_level(Level l) { echo_level_ = l; }  // the lowest level mirrored to stderr (Info by default, --verbose: Debug)
 
 private:
     mutable std::mutex mu_;
     std::vector<LogLine> lines_;
     size_t dropped_ = 0;  // lines removed at the front (the log keeps the last 20000)
     bool echo_ = true;
+    Level echo_level_ = Level::Info;
 };
 
 void log_debug(std::string text);

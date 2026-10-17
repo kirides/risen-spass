@@ -18,7 +18,7 @@ Log& Log::get() {
 void Log::add(Level level, std::string text) {
     const double t = std::chrono::duration<double>(std::chrono::steady_clock::now() - kStart).count();
     std::lock_guard<std::mutex> lock(mu_);
-    if (echo_) {
+    if (echo_ && level >= echo_level_) {
         static const char* kNames[] = {"debug", "info", "warn", "error"};
         std::fprintf(stderr, "[%8.3f] [%s] %s\n", t, kNames[static_cast<int>(level)], text.c_str());
     }

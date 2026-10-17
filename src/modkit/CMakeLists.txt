@@ -30,12 +30,16 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp.tmp" "${MK_EMBED_SRC
 execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp.tmp" "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp")
 
 add_library(modkit_core STATIC
+    core/catalog.cpp
+    core/export.cpp
     core/gamedata.cpp
     core/history.cpp
     core/log.cpp
     core/paths.cpp
     core/project.cpp
+    core/lua_writer.cpp
     core/settings.cpp
+    core/validate.cpp
     "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp"
 )
 target_include_directories(modkit_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/src")
@@ -55,8 +59,11 @@ add_executable(risen-modkit
     app/fonts.cpp
     app/screenshot.cpp
     app/pickers.cpp
+    app/prop_editor.cpp
     app/widgets.cpp
     app/panels/browser_panel.cpp
+    app/panels/items_panel.cpp
+    app/panels/problems_panel.cpp
     app/panels/log_panel.cpp
     app/panels/project_panel.cpp
     app/panels/settings_panel.cpp

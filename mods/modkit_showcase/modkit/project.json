@@ -1,0 +1,93 @@
+{
+  "format": "risen-modkit-project",
+  "format_version": 1,
+  "mod": {
+    "id": "modkit_showcase",
+    "name": "risen-modkit showcase",
+    "version": "1.0.0",
+    "author": "risen-spass",
+    "description": "The example project of risen-modkit (examples/modkit/showcase.rmk.json), exported. Verified by the scenario modkit (mods/modkit_driver).",
+    "languages": [
+      "English",
+      "German"
+    ]
+  },
+  "items": [
+    {
+      "uid": "6b1f0e2a9c4d4e5f8a7b6c5d4e3f2a10",
+      "mode": "new",
+      "name": "MK_Hob_Knife",
+      "base": "It_1H_Machete",
+      "label": {
+        "English": "Hob's Knife",
+        "German": "Hobs Messer"
+      },
+      "description": {
+        "English": "Hob made it himself.",
+        "German": "Hob hat es selbst gemacht."
+      },
+      "value": 250,
+      "damage": 20,
+      "requires": {
+        "Strength": 12
+      }
+    },
+    {
+      "uid": "6b1f0e2a9c4d4e5f8a7b6c5d4e3f2a11",
+      "mode": "new",
+      "name": "MK_Strong_Potion",
+      "base": "It_Po_Health_01",
+      "label": {
+        "English": "Strong Healing Draught",
+        "German": "Starker Heiltrank"
+      },
+      "value": 120,
+      "modifies": {
+        "HitPoints": 120
+      }
+    },
+    {
+      "uid": "6b1f0e2a9c4d4e5f8a7b6c5d4e3f2a12",
+      "mode": "edit",
+      "name": "It_1H_Sword_Rusty",
+      "label": {
+        "English": "Very rusty sword",
+        "German": "Sehr rostiges Schwert"
+      },
+      "value": 7,
+      "damage": 9
+    },
+    {
+      "uid": "6b1f0e2a9c4d4e5f8a7b6c5d4e3f2a13",
+      "mode": "edit",
+      "name": "It_Apple",
+      "value": 3,
+      "properties": {
+        "gCItem_PS": {
+          "SortValue": 77
+        }
+      }
+    }
+  ],
+  "item_groups": [
+    {
+      "uid": "6b1f0e2a9c4d4e5f8a7b6c5d4e3f2a20",
+      "group": "Items/Plants",
+      "value_mult": 2.0
+    }
+  ],
+  "recipes": [],
+  "npc_templates": [],
+  "npcs": [],
+  "dialogs": [],
+  "quests": [],
+  "world": {
+    "world": "World",
+    "spawns": [],
+    "containers": [],
+    "removals": [],
+    "moves": []
+  },
+  "assets": [],
+  "editor": {}
+}

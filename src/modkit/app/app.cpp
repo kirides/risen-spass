@@ -7,11 +7,13 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_internal.h>
+#include <imgui_stdlib.h>
 #include <nfd.h>
 
 #include <algorithm>
 
 #include "app/panels/panels.h"
+#include "core/export.h"
 #include "core/log.h"
 #include "core/paths.h"
 
@@ -67,8 +69,11 @@ App::App(AppOptions opts) : options(std::move(opts)) {
     if (!options.data_dir.empty()) settings.data_dir = options.data_dir;
     panels_.push_back(make_project_panel());
     panels_.push_back(make_browser_panel());
+    panels_.push_back(make_items_panel());
+    panels_.push_back(make_problems_panel());
     panels_.push_back(make_log_panel());
     panels_.push_back(make_settings_panel());
+    for (auto& p : panels_) p->attach(*this);
     history.reset(project);
 }
 
@@ -131,6 +136,74 @@ void App::status(const std::string& text) {
 }
 
 void App::focus_panel(const char* title) { focus_request_ = title; }
+
+void App::select_in(const std::string& panel_title, const std::string& uid_or_name) {
+    for (auto& p : panels_)
+        if (panel_title == p->title()) {
+            p->open = true;
+            if (!uid_or_name.empty()) p->select(*this, uid_or_name);
+            focus_panel(p->title());
+        }
+}
+
+void App::refresh_problems() {
+    const double now = glfwGetTime();
+    if (problems_time_ >= 0 && now - problems_time_ < 0.5) return;
+    problems_time_ = now;
+    problems_ = validate(project, game.get());
+}
+
+void App::draw_export_modal() {
+    if (export_open_) {
+        ImGui::OpenPopup("Export mod");
+        export_open_ = false;
+        export_report_.clear();
+        if (export_dir_.empty() || u8str(u8(export_dir_).filename()) != project.mod.id)
+            export_dir_ = settings.export_dir.empty() ? std::string() : u8str(u8(settings.export_dir) / u8(project.mod.id));
+    }
+    ImGui::SetNextWindowSize(ImVec2(720, 0), ImGuiCond_Appearing);
+    if (!ImGui::BeginPopupModal("Export mod", nullptr)) return;
+    ImGui::TextWrapped("The mod is written into this folder (normally <Risen>\\bin\\spass\\mods\\<id>). The export only writes into an empty folder or one it wrote before.");
+    ImGui::SetNextItemWidth(-90);
+    ImGui::InputText("##dir", &export_dir_);
+    ImGui::SameLine();
+    if (ImGui::Button("Browse")) {
+        const std::string d = dialog_pick_folder(export_dir_.empty() ? settings.export_dir : export_dir_);
+        if (!d.empty()) export_dir_ = d;
+    }
+    problems_time_ = -1;
+    refresh_problems();
+    const size_t errors = error_count(problems_);
+    if (errors) ImGui::TextColored(ImVec4(1, 0.45f, 0.4f, 1), "%zu errors: see the Problems panel. The export is refused until they are fixed.", errors);
+    else if (!problems_.empty()) ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), "%zu warnings (see Problems)", problems_.size());
+    ImGui::BeginDisabled(errors > 0 || export_dir_.empty());
+    if (ImGui::Button("Export", ImVec2(120, 0))) {
+        ExportOptions o;
+        o.project_dir = project_path.empty() ? std::string() : u8str(u8(project_path).parent_path());
+        o.game_data_dir = settings.data_dir;
+        const ExportResult r = export_mod(project, export_dir_, o);
+        export_report_.clear();
+        for (auto& e : r.errors) export_report_.push_back("error: " + e);
+        for (auto& w : r.written) export_report_.push_back("written: " + w);
+        for (auto& w : r.removed) export_report_.push_back("removed: " + w);
+        if (r.ok) {
+            export_report_.insert(export_report_.begin(), std::to_string(r.written.size()) + " files written, " + std::to_string(r.unchanged.size()) + " unchanged");
+            status("Exported to " + export_dir_);
+        } else {
+            status("Export failed: " + r.errors.front());
+        }
+        for (auto& l : export_report_) log_info("export: " + l);
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Close", ImVec2(120, 0))) ImGui::CloseCurrentPopup();
+    if (!export_report_.empty()) {
+        ImGui::BeginChild("##report", ImVec2(0, 200), ImGuiChildFlags_Borders);
+        for (auto& l : export_report_) ImGui::TextUnformatted(l.c_str());
+        ImGui::EndChild();
+    }
+    ImGui::EndPopup();
+}
 
 void App::project_replaced() {
     for (auto& p : panels_) p->on_project_changed(*this);
@@ -253,6 +326,7 @@ void App::handle_shortcuts() {
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_S, false)) save_project(io.KeyShift);
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_O, false)) request_open();
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_N, false)) new_project();
+    if (ctrl && ImGui::IsKeyPressed(ImGuiKey_E, false)) request_export();
 }
 
 void App::draw_menu() {
@@ -268,6 +342,8 @@ void App::draw_menu() {
         ImGui::Separator();
         if (ImGui::MenuItem("Save", "Ctrl+S")) save_project(false);
         if (ImGui::MenuItem("Save as...", "Ctrl+Shift+S")) save_project(true);
+        ImGui::Separator();
+        if (ImGui::MenuItem("Export mod...", "Ctrl+E")) request_export();
         ImGui::Separator();
         if (ImGui::MenuItem("Quit")) glfwSetWindowShouldClose(window_, 1);
         ImGui::EndMenu();
@@ -340,6 +416,7 @@ void App::draw_modals() {
 }
 
 void App::draw_frame() {
+    refresh_problems();
     handle_shortcuts();
     draw_menu();
     const ImGuiViewport* vp = ImGui::GetMainViewport();
@@ -371,6 +448,7 @@ void App::draw_frame() {
     }
     draw_status_bar();
     draw_modals();
+    draw_export_modal();
 }
 
 int App::run() {

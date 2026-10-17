@@ -1,0 +1,7 @@
+id          = "modkit_driver"
+name        = "risen-modkit showcase driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Development aid: checks the exported risen-modkit showcase (mods/modkit_showcase, made from examples/modkit/showcase.rmk.json) in a running game as the risen.test scenario 'modkit'."
+main        = "main.lua"
+requires    = ["modkit_showcase"]

@@ -13,6 +13,7 @@
 #include "core/history.h"
 #include "core/project.h"
 #include "core/settings.h"
+#include "core/validate.h"
 
 struct GLFWwindow;
 
@@ -44,8 +45,10 @@ public:
     virtual void draw(App& app) = 0;
     // called when another project was loaded (drop cached selections)
     virtual void on_project_changed(App&) {}
-    // select an object by name (command line --select, Problems panel jumps)
+    // select an object by name or uid (command line --select, Problems panel jumps)
     virtual bool select(App&, const std::string&) { return false; }
+    // called once after all panels exist (register template actions, ...)
+    virtual void attach(App&) {}
     bool open = true;
 };
 
@@ -78,6 +81,11 @@ public:
         return nullptr;
     }
     void focus_panel(const char* title);
+    // select an object in the panel with this title (Problems panel)
+    void select_in(const std::string& panel_title, const std::string& uid_or_name);
+    // the validation result of the current project (refreshed twice a second)
+    const std::vector<Problem>& problems() const { return problems_; }
+    void request_export() { export_open_ = true; }
     void defer(std::function<void()> fn) { deferred_.push_back(std::move(fn)); }  // run after the frame (structural edits)
 
     // project file actions (with the unsaved-changes prompt where needed)
@@ -92,6 +100,8 @@ private:
     void draw_menu();
     void draw_status_bar();
     void draw_modals();
+    void draw_export_modal();
+    void refresh_problems();
     void setup_default_layout(unsigned int dockspace_id);
     void apply_ui_scale();
     void handle_shortcuts();
@@ -107,6 +117,11 @@ private:
     std::string title_shown_;
     int frame_ = 0, shot_frames_ = 0;
     std::string focus_request_, pending_select_;
+    std::vector<Problem> problems_;
+    double problems_time_ = -1;
+    bool export_open_ = false;
+    std::string export_dir_;
+    std::vector<std::string> export_report_;
     // game data loader
     void poll_loader();
     std::thread loader_;

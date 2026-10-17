@@ -11,11 +11,14 @@
 #include <string>
 #include <vector>
 
+#include "core/export.h"
 #include "core/gamedata.h"
 #include "core/history.h"
+#include "core/lua_writer.h"
 #include "core/log.h"
 #include "core/paths.h"
 #include "core/project.h"
+#include "core/validate.h"
 
 namespace fs = std::filesystem;
 
@@ -304,6 +307,8 @@ TEST(gamedata_real_archives) {
     for (auto& [k, n] : kinds) std::printf("  %-12s %d\n", kind_name(k), n);
     std::printf("  loaded in %.2f s\n", g->load_seconds());
 }
+
+#include "export_tests.inc"
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
