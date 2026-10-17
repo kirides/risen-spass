@@ -32,6 +32,7 @@ engine's lifecycle, and exposes it to Lua with a sandbox per mod.
 | Events | session/world/save/load lifecycle, quest status changes, inventory changes, kills, spawns, dialogue start/finish, game variables, key presses: no polling |
 | State | `risen.save`: per-mod data stored with every savegame; entity handles that survive loads and refuse to dereference deleted entities |
 | Texts | `risen.loc` overlay and `strings/*.csv` files per mod and language |
+| Mod conversion | **`risen-pack2mod`** turns the `.pNN` / `.pak` archives of a 32-bit-era mod into a mod for this layer: loose assets, only-the-differences Lua data for items, new items, recipes, dialogue rewards and world edits, strings, the combat table, and a report of what it could not convert ([docs/PACK2MOD.md](docs/PACK2MOD.md)); you run it on your own copy, the output is never redistributed |
 | Scripts | define or override the game's native scripts from Lua |
 | Mod manager | a **Mods** tab in the game's own ESC menu: every mod with version and state (failures in red with the reason), switch on / off with the dependencies asked and enforced, reload, load order with a default order, a warning before a mod that left NPCs in your game is switched off; built from the game's own widgets ([docs/MODDING_GUIDE.md](docs/MODDING_GUIDE.md) 4.22) |
 | Tooling | editor completion and type checks (LuaLS `types/risen.d.lua`), a test framework that plays your mod in an isolated windowed game and reports in a minute (`risen.test`), virtual file system access, template list ([docs/TEMPLATES.md](docs/TEMPLATES.md)) |
@@ -40,7 +41,7 @@ engine's lifecycle, and exposes it to Lua with a sandbox per mod.
 **Start here:** the [modding guide](docs/MODDING_GUIDE.md) (install, mod layout, the event model, recipes by goal, limits). The finished showcase mod [`mods/balance_example`](mods/balance_example/README.md) combines most of it; a real distributable mod is
 [Quick Loot](docs/QUICKLOOT.md) (right mouse button takes what you look at).
 
-Reference: [Lua API](docs/LUA_API.md) · [examples](docs/EXAMPLES.md) · [entity templates](docs/TEMPLATES.md) · [item properties](docs/ITEM_PROPERTIES.md) · [NPC properties](docs/NPC_PROPERTIES.md) · [spells](docs/SPELL_PROPERTIES.md) · [recipes](docs/RECIPE_PROPERTIES.md) · [engine notes](docs/RE.md) ·
+Reference: [Lua API](docs/LUA_API.md) · [examples](docs/EXAMPLES.md) · [entity templates](docs/TEMPLATES.md) · [item properties](docs/ITEM_PROPERTIES.md) · [NPC properties](docs/NPC_PROPERTIES.md) · [spells](docs/SPELL_PROPERTIES.md) · [recipes](docs/RECIPE_PROPERTIES.md) · [converting archive mods](docs/PACK2MOD.md) · [engine notes](docs/RE.md) ·
 [developer guide](docs/DEVELOPMENT.md) · [roadmap](docs/NEXT_STEPS.md). Small mods: `mods/fetchquest` (a complete, savegame-safe quest), `mods/example_*` (sixteen verified patterns), `mods/stringsdemo`, `mods/_template`.
 
 ## Install

@@ -226,9 +226,11 @@ A game that dies used to leave "exited, no result" and a log that just stops. No
 
 ## Risen Extended: generated mod and milestone snapshots (M19)
 
-The re-implementation of the Risen Extended Mod ([EXTENDED_MOD_ANALYSIS.md](EXTENDED_MOD_ANALYSIS.md)) is **generated** from the user's own copy of the mod and never committed (`mods/risen_extended/` is git-ignored, the generated folder also holds a `.gitignore` and a `NOTICE.txt`).
+The re-implementation of the Risen Extended Mod ([EXTENDED_MOD_ANALYSIS.md](EXTENDED_MOD_ANALYSIS.md)) is **generated** from the user's own copy of the mod (since snapshot `04-cpp` by the C++ converter `risen-pack2mod`, [PACK2MOD.md](PACK2MOD.md); the Python generator `tools/extmod_gen.py` is its test oracle and produces the same files) and never committed (`mods/risen_extended/` is git-ignored, the generated folder also holds a `.gitignore` and a `NOTICE.txt`).
 
 ```powershell
+.\build\RelWithDebInfo\risen-pack2mod.exe B:\TMP\Risen_Extended_Mod --baseline B:\DevDrive\risen-test\data --out mods\risen_extended --profile tools\pack2mod\profiles\risen_extended.json   # the C++ converter (7 s, docs/PACK2MOD.md); then copy tools\extmod_templates\check.lua and play.lua into the mod (test files)
+.\scripts\pack2mod-golden.ps1 [-Combat changelog|shipped|off]                                                                                  # C++ tool vs the Python oracle below: identical but two explained differences
 python -I tools/extmod_gen.py --mod B:\TMP\Risen_Extended_Mod --baseline B:\DevDrive\risen-test\data --out mods\risen_extended   # ~15 s, deterministic; --no-assets skips the 108 MB copy
 python -I tools/extmod_enums.py --log <spass.log of mods/itemdump> --baseline B:\DevDrive\risen-test\data                         # engine enum names (gEItemHoldType_...) -> tools/extmod_enums.json
 python -I tools/test_extmod_gen.py                                                                                                # data-free self-test of the generator helpers

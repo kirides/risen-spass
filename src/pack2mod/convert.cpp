@@ -65,7 +65,7 @@ void load_profile(Ctx& ctx, const std::string& path) {
         if (const LVal* o = st->get("only_rows"))
             for (const auto& [tab, v] : o->fields)
                 for (const std::string& id : str_list(&v)) p.string_only_rows[tab].insert(id);
-        for (const std::string& t : str_list(st->get("changed_with_combat"))) p.string_changed_with_combat.insert(t);
+        for (const std::string& t : str_list(st->get("changed_with_changelog_combat"))) p.string_changed_with_combat.insert(t);
         for (const std::string& t : str_list(st->get("changed_all"))) p.string_changed_all.insert(t);
     }
     if (const LVal* g = j.get("asset_groups"))
@@ -330,16 +330,23 @@ int run_convert(const Options& o, std::ostream& log, Counts* counts_out) {
     log << "templates: " << d.van.size() << " in the game, " << d.mod.size() << " in the mod\n";
     {
         // a mod template that copies the GUID of a game template (copy and paste without a new id): references by GUID are ambiguous
+        // a real GUID is a version 4 random GUID (the scanner for "db 00 <16 bytes>" also hits stray bytes)
+        auto plausible = [](const std::string& at_hex) {
+            if (at_hex.size() != 33) return false;
+            auto byte = [&](size_t i) { return std::stoi(at_hex.substr(1 + 2 * i, 2), nullptr, 16); };
+            return (byte(7) >> 4) == 4 && (byte(8) & 0xC0) == 0x80;
+        };
         std::unordered_map<std::string, std::string> game_guid;
         for (const std::string& n : d.van_order)
-            for (const std::string& g : d.van[n].guids) game_guid.emplace(g, n);
+            for (const std::string& g : d.van[n].guids)
+                if (plausible(g)) game_guid.emplace(g, n);
         std::string list;
         int count = 0;
         for (const std::string& n : d.mod_sorted()) {
             if (d.van.count(n)) continue;
-            const auto& gs = d.mod[n].guids;
-            for (size_t k = 0; k < gs.size() && k < 2; ++k) {  // the template's own GUID and its entity GUID
-                const auto it = game_guid.find(gs[k]);
+            for (const std::string& g : d.mod[n].guids) {
+                if (!plausible(g)) continue;
+                const auto it = game_guid.find(g);
                 if (it != game_guid.end() && it->second != n) {
                     if (++count <= 8) list += (list.empty() ? "" : ", ") + n + " = " + it->second;
                     break;
@@ -347,8 +354,10 @@ int run_convert(const Options& o, std::ostream& log, Counts* counts_out) {
             }
         }
         if (count)
-            ctx.notes.push_back(std::to_string(count) + " new template(s) carry the GUID of a game template (" + list + (count > 8 ? ", ..." : "") +
-                                "): a reference by GUID is ambiguous; recipe ingredients resolve to the mod's template, placements in world layers to the game's one");
+            ctx.notes.push_back(std::to_string(count) + " new template(s) take over the GUID of a game template, i.e. the mod renamed or replaced it (" + list +
+                                (count > 8 ? ", ..." : "") +
+                                "): whatever the game's world places or references by that GUID is the new template in the mod. Recipe ingredients resolve to the mod's template; "
+                                "placements in world layers are compared with the game's names, so they stay the game's template (the rename is not applied to placed entities)");
     }
 
     // ---- stages
@@ -388,7 +397,7 @@ int run_convert(const Options& o, std::ostream& log, Counts* counts_out) {
     }
     // (recipes_new is in the order of the sorted template names, like the oracle)
 
-    const bool with_combat = o.combat != "off";
+    const bool with_combat = o.combat == "changelog";  // the profile ties some string tables to the changelog combat table
     StringsResult str = gen_strings(ctx, d, wanted, with_combat, o.strings_all);
 
     const std::string out_s = path_u8(out_dir);

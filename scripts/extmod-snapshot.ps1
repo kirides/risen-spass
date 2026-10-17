@@ -6,7 +6,7 @@
 .DESCRIPTION
     B:\DevDrive\extmod-milestones\<Name>\
         bin\sentry.dll          the layer as built right now (build\RelWithDebInfo)
-        mods\risen_extended\    the generated mod (tools\extmod_gen.py output of mods\risen_extended, incl. the loose assets)
+        mods\risen_extended\    the generated mod (risen-pack2mod output, or tools\extmod_gen.py output, in mods\risen_extended, incl. the loose assets)
         mods\modmanager\        the in-game Mods page
         mods\quickloot\         optional quick loot (-NoQuickLoot leaves it out)
         README.md               what is in it, what is known broken / missing, the changelog checklist, how to start
@@ -38,7 +38,7 @@ $repo = Split-Path -Parent $PSScriptRoot
 if ($Name -notmatch '^(\d\d)-[a-z0-9_-]+$') { throw "-Name must look like 01-data (two digits, a dash, lower-case words)" }
 $num = $Matches[1]
 $src = Join-Path $repo 'mods\risen_extended'
-if (-not (Test-Path (Join-Path $src 'manifest.json'))) { throw "no generated mod at ${src}: run tools\extmod_gen.py first" }
+if (-not (Test-Path (Join-Path $src 'manifest.json'))) { throw "no generated mod at ${src}: run risen-pack2mod (docs/PACK2MOD.md) first" }
 $dll = Join-Path $repo 'build\RelWithDebInfo\sentry.dll'
 if (-not (Test-Path $dll)) { throw "no ${dll}: build the layer first" }
 $dest = Join-Path $Root $Name

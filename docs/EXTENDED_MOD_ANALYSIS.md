@@ -190,3 +190,7 @@ Three trader entries of the mod name templates that do not exist and are mapped 
 | Gold | Misc category: shows in the inventory with its coin icon, picked up, a chest accepts it |
 | Gaps | hud2: 4 real rows applied (the other 167 differences are classic-vs-Enhanced noise); wind: the loose `WeatherStates.g3ws` is read by the engine; two broken smithing chains repaired (Dark Wind hot -> dull, obsidian staff dull consumes itself and makes the Slicer staff); Gothic easter eggs found (Dexter's ring, Rod's boots); Uriziel placed by nothing in the archives; guildless armors = the Crawler / Heavy Guard armors sold in chapters 3 / 4 |
 | Switches | `config.lua` run-time groups, `scripts/extmod-features.ps1` for the file groups (combat table variants p01 / p02 / off, wind, caves, vegetation, skins) |
+
+### Phase E: the C++ converter (M18, snapshot `04-cpp`)
+
+`risen-pack2mod` ([PACK2MOD.md](PACK2MOD.md)) now does what `tools/extmod_gen.py` did, for any mod, and also derives the world data (teacher limits, container items, NPC equipment) and the chapter numbers from the archives instead of the research file. Its output is identical to the Python generator's except two explained differences in `data/world.lua` (a second chest with the same name that the name-keyed research overlooked; Karakos' axe: the mod's `It_Axe_Ogreaxe` is a rename of the game's `It_Axe_Ogre` by GUID, which the tool does not apply to placed entities). The scenarios `extmod` (32 checks) and `extplay` (13) pass on the C++ output unchanged.

@@ -1,0 +1,32 @@
+{
+  "_about": "Knowledge about the German 'Risen Extended Mod' for risen-pack2mod (docs/PACK2MOD.md, 'Profiles'). Facts about the mod's own mistakes and about which of its differences are real changes; no content of the mod. Used by scripts/pack2mod-golden.ps1 and for the generated mods/risen_extended.",
+  "id": "risen_extended",
+  "name": "Risen Extended (generated)",
+  "recipe_fixes": {
+    "result": {
+      "It_2H_Dark_Wind_Hot": ["It_2H_Dark_Wind_Dull", "the anvil step skips the missing 'shaped' stage and makes the dull blade"],
+      "It_Staff_Obsidian_Dull": ["It_Staff_Slicer", "the grindstone makes the shipped staff whose mesh the dull stage already shows (It_Wpn_Staff_Slicer_Dull)"]
+    },
+    "ingredient": {
+      "It_Staff_Obsidian_Dull": "It_Staff_Obsidian_Dull"
+    }
+  },
+  "strings": {
+    "only_rows": {
+      "hud2.tab": ["HUD2_Button_RegionMap", "HUD2_Button_WorlMap", "HUD2_Btn_LogInfoMap", "HUD2_Recipe_WriteScroll"]
+    },
+    "changed_with_changelog_combat": ["skills.tab"]
+  },
+  "asset_groups": {
+    "caves": { "about": "darker caves and dungeons (18 lightmap textures)", "prefix": ["Levelmesh_"] },
+    "vegetation": { "about": "the vegetation update (herbs, SpeedTree atlas, swamp, props)", "prefix": ["Nat_", "ST_", "Arch_"] },
+    "skins": {
+      "about": "armor, head, helmet and monster skins, lizard and female actors, GUI icon sheet",
+      "prefix": ["Ani_", "GUI_"],
+      "exclude_prefix": ["Ani_Hero_Armor_Guard_Heavy", "Ani_Hero_Armor_Crawler"]
+    },
+    "weapon_meshes": { "about": "meshes, materials, textures of the weapons, shields and helmets (needed by the new items)", "prefix": ["It_", "ItWpn_", "Item_"] }
+  },
+  "combat_about": "the melee system: combat table (variants/combat_p01.bin = changelog, combat_p02.bin = shipped)",
+  "weather_group": { "name": "wind", "about": "wind strength 0.3 (WeatherStates.g3ws)" }
+}

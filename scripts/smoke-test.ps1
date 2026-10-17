@@ -34,7 +34,7 @@
       quickloot_react - quick loot and the NPCs (M5e, mods/quickloot): the engine's theft assessment on the quick path against the animated path in a watched area (items, chests, cupboards, sarcophagi, corpses, out of sight / range, dropped items); witness_mode ignore in a second run
       ex_ignore_theft - example: NPCs that ignore thefts while a game variable is set (risen.ai.perceive("theft") answers 0), animated and quick path (mods/example_ignore_theft)
       extplay      - the generated mod's play checks: a conversation runs added GiveXP / RunScript commands, Sam teaches past the game's cap and refuses at it, the melee table's styles (risen.npc.combat_style), a fight with a two-hander; skipped when the generated mod is absent
-      extmod       - the generated Risen Extended mod (mods/risen_extended, tools/extmod_gen.py; docs/EXTENDED_MOD_ANALYSIS.md): applied entries, the archive numbers in the engine, new items spawn / equip, recipes craft, monster actors, loose assets, save + load in a second process; skipped when the generated mod is absent
+      extmod       - the generated Risen Extended mod (mods/risen_extended, made by risen-pack2mod or tools/extmod_gen.py; docs/EXTENDED_MOD_ANALYSIS.md): applied entries, the archive numbers in the engine, new items spawn / equip, recipes craft, monster actors, loose assets, save + load in a second process; skipped when the generated mod is absent
       hardening    - every public function and method called with ~1.6 million wrong-typed / hostile argument combinations (mods/hardening): the game must survive and keep ticking
 
 .DESCRIPTION
@@ -327,7 +327,7 @@ if ($List) {
 $selected = if ($Scenario -contains 'all') { @($scenarios.Keys) } else { @($scenarios.Keys | Where-Object { $Scenario -contains $_ }) }
 # scenarios that need a private, generated mod (Requires = a file below the repository): skipped when it is absent (not a failure unless asked for by name)
 $absent = @($selected | Where-Object { $scenarios[$_].Requires -and -not (Test-Path (Join-Path (Split-Path -Parent $here) $scenarios[$_].Requires)) })
-foreach ($n in $absent) { Write-Host "== ${n}: SKIPPED, the generated mod ($($scenarios[$n].Requires)) is absent (python tools\extmod_gen.py makes it)" -ForegroundColor Yellow }
+foreach ($n in $absent) { Write-Host "== ${n}: SKIPPED, the generated mod ($($scenarios[$n].Requires)) is absent (risen-pack2mod or python tools\extmod_gen.py makes it, docs/PACK2MOD.md)" -ForegroundColor Yellow }
 if ($absent.Count -gt 0 -and $Scenario -notcontains 'all') { throw "scenario(s) $($absent -join ', ') need the generated mod (tools\extmod_gen.py)" }
 $selected = @($selected | Where-Object { $absent -notcontains $_ })
 $rows = @()

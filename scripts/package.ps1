@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Run after `cmake --build build --config RelWithDebInfo` (and the unit tests). The zip contains everything a player or
-    modder needs; install it with:
+    modder needs (also risen-pack2mod.exe, the converter for mods that ship .pNN/.pak archives: docs\PACK2MOD.md); install it with:
         .\install.ps1 -GameDir 'C:\...\Risen' [-WithExamples]      # -WithExamples installs the small mods of mods\ (hello, fetchquest, quickloot, ...); examples\ is for reading and copying
     Nothing in the game directory except bin\sentry.dll is touched (the original is kept as sentry_orig.dll);
     `[ -enabled = false ]` in bin\spass\config.toml switches the whole layer off without uninstalling.
@@ -32,10 +32,16 @@ Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $stage | Out-Null
 
 Copy-Item $dll (Join-Path $stage 'sentry.dll')
+# the converter for archive mods (docs/PACK2MOD.md) goes next to the layer, with its profiles
+$p2m = Join-Path $repo "build\$Config\risen-pack2mod.exe"
+if (-not (Test-Path $p2m)) { throw "Build first: $p2m does not exist" }
+Copy-Item $p2m (Join-Path $stage 'risen-pack2mod.exe')
+New-Item -ItemType Directory -Force (Join-Path $stage 'pack2mod-profiles') | Out-Null
+Copy-Item (Join-Path $repo 'tools\pack2mod\profiles\*.json') (Join-Path $stage 'pack2mod-profiles')
 Copy-Item (Join-Path $repo 'scripts\install.ps1'), (Join-Path $repo 'scripts\uninstall.ps1') $stage
 Copy-Item (Join-Path $repo 'types') $stage -Recurse
 New-Item -ItemType Directory -Force (Join-Path $stage 'docs') | Out-Null
-foreach ($d in 'MODDING_GUIDE.md', 'LUA_API.md', 'EXAMPLES.md', 'QUICKLOOT.md', 'TEMPLATES.md', 'ITEM_PROPERTIES.md', 'NPC_PROPERTIES.md', 'SPELL_PROPERTIES.md', 'RECIPE_PROPERTIES.md', 'PROPERTIES.md', 'SYMBOLS.md', 'DEVELOPMENT.md', 'RE.md') {
+foreach ($d in 'MODDING_GUIDE.md', 'LUA_API.md', 'EXAMPLES.md', 'QUICKLOOT.md', 'TEMPLATES.md', 'ITEM_PROPERTIES.md', 'NPC_PROPERTIES.md', 'SPELL_PROPERTIES.md', 'RECIPE_PROPERTIES.md', 'PACK2MOD.md', 'PROPERTIES.md', 'SYMBOLS.md', 'DEVELOPMENT.md', 'RE.md') {
     Copy-Item (Join-Path $repo "docs\$d") (Join-Path $stage 'docs') -ErrorAction SilentlyContinue
 }
 Copy-Item (Join-Path $repo 'README.md') $stage
