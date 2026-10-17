@@ -16,6 +16,9 @@ concurrency:
 env:
   LUALS_VERSION: '3.19.2'   # pinned: a new LuaLS release may add diagnostics; keep in step with the local one
 
+# Jobs: gate -> (lua | layer | modkit, in parallel) -> release (nightly only).
+# The two Windows jobs build with a compiler cache (.github/actions/windows-build): after the first run only the files
+# whose source or headers changed are compiled.
 jobs:
   # Decides whether to build and whether to publish the nightly release. A scheduled run is skipped when the nightly
   # tag already points at the current commit; a manual run on the default branch always rebuilds and republishes.
@@ -48,13 +51,13 @@ jobs:
           echo "build=$build" >> "$GITHUB_OUTPUT"
           echo "release=$release" >> "$GITHUB_OUTPUT"
 
-  # The Lua side needs no compiler: it runs next to the Windows build and reports even when the build fails
+  # The Lua side needs no compiler
   lua:
     needs: gate
     if: needs.gate.outputs.build == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The Lua API description must match the bindings
       - name: API definitions are in sync
@@ -68,117 +71,105 @@ jobs:
           cd mods
           "$RUNNER_TEMP/luals/bin/lua-language-server" --check . --configpath .luarc.json --checklevel Warning
 
-  windows:
+  # The layer: sentry.dll, risen-pack2mod.exe, the unit tests; risen-spass.zip and the full release package
+  layer:
     needs: gate
     if: needs.gate.outputs.build == 'true'
     runs-on: windows-latest
-    env:
-      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\.vcpkg-cache
     steps:
-      - uses: actions/checkout@v4
-
-      # vcpkg binary packages (spdlog, minhook, sol2, tomlplusplus, luajit, the modkit libraries; ~5 minutes to build
-      # from source) are cached between runs. Restore and save are separate steps so the cache is stored right after
-      # vcpkg installed the packages, even when a later step fails (actions/cache only saves after a green job).
-      - name: Prepare the vcpkg binary cache
-        shell: pwsh
-        run: New-Item -ItemType Directory -Force $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
-      - name: Restore the vcpkg binary cache
-        id: vcpkg-cache
-        uses: actions/cache/restore@v4
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/windows-build
         with:
-          path: .vcpkg-cache
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'CMakePresets.json') }}
-          # an older cache still has every package whose ABI did not change
-          restore-keys: vcpkg-${{ runner.os }}-
-
-      # Sets up the VS developer environment, including VCPKG_ROOT -> the vcpkg bundled with Visual Studio
-      # (manifest mode only: it resolves the ports through "builtin-baseline" in vcpkg.json).
-      - uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      - name: Ensure Ninja is available
-        shell: pwsh
-        run: |
-          if (-not (Get-Command ninja -ErrorAction SilentlyContinue)) { python -m pip install --quiet ninja }
-          ninja --version
-
-      # The "ninja" preset is meant for a Visual Studio developer shell (this is the same command sequence used locally).
-      - name: Configure
-        run: cmake --preset ninja
-
-      - name: Save the vcpkg binary cache
-        if: steps.vcpkg-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: .vcpkg-cache
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'CMakePresets.json') }}
-
+          name: layer
+          configure-args: -DVCPKG_MANIFEST_FEATURES=   # without the modkit feature: no editor libraries to install
       - name: Build
         run: cmake --build build-ninja --config RelWithDebInfo
       - name: Unit tests (no game needed)
         run: build-ninja\RelWithDebInfo\spass_tests.exe
-      - name: Unit tests of risen-modkit
-        run: build-ninja\src\modkit\RelWithDebInfo\modkit_tests.exe
 
       - name: Package
         shell: pwsh
         run: |
-          # package.ps1 expects the Visual Studio layout (build\RelWithDebInfo); the Ninja preset writes build-ninja\RelWithDebInfo
-          New-Item -ItemType Directory -Force build\RelWithDebInfo | Out-Null
-          Copy-Item build-ninja\RelWithDebInfo\sentry.dll, build-ninja\RelWithDebInfo\risen-pack2mod.exe build\RelWithDebInfo\
-          .\scripts\package.ps1
-      - uses: actions/upload-artifact@v4
-        with:
-          name: risen-spass
-          path: dist/*.zip
-
-      # Nightly: two flat zips
-      #   risen-spass.zip                       sentry.dll, mods\modmanager\*, mods\quickloot\*
-      #   risen-spass-tools-windows-x64.zip     risen-pack2mod.exe, risen-modkit.exe
-      - name: Package the nightly
-        if: needs.gate.outputs.release == 'true'
-        shell: pwsh
-        run: |
           $ErrorActionPreference = 'Stop'
           $bin = 'build-ninja\RelWithDebInfo'
-          $out = New-Item -ItemType Directory -Force nightly
-          $layer = New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\nightly-layer"
+          # risen-spass.zip: sentry.dll, mods\modmanager\*, mods\quickloot\*
+          $layer = New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\layer"
           Copy-Item "$bin\sentry.dll" $layer
           New-Item -ItemType Directory -Force "$layer\mods" | Out-Null
           Copy-Item mods\modmanager, mods\quickloot "$layer\mods" -Recurse
-          Compress-Archive -Path "$layer\*" -DestinationPath "$out\risen-spass.zip" -Force
-          $tools = New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\nightly-tools"
-          Copy-Item "$bin\risen-pack2mod.exe", 'build-ninja\src\modkit\RelWithDebInfo\risen-modkit.exe' $tools
-          Compress-Archive -Path "$tools\*" -DestinationPath "$out\risen-spass-tools-windows-x64.zip" -Force
-          Get-ChildItem $out | Format-Table Name, Length
-      - name: Upload the nightly zips
-        if: needs.gate.outputs.release == 'true'
-        uses: actions/upload-artifact@v4
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path "$layer\*" -DestinationPath dist\risen-spass.zip -Force
+          # the full package (install scripts, docs, example mods, Lua definitions): package.ps1 expects the Visual Studio layout
+          New-Item -ItemType Directory -Force build\RelWithDebInfo | Out-Null
+          Copy-Item "$bin\sentry.dll", "$bin\risen-pack2mod.exe" build\RelWithDebInfo\
+          .\scripts\package.ps1 -Out dist\full
+          Get-ChildItem dist -Recurse -Filter *.zip | Format-Table Name, Length
+          "FULL_ZIP=$((Get-ChildItem dist\full -Filter *.zip | Select-Object -First 1).FullName)" >> $env:GITHUB_ENV
+      - name: Upload risen-spass.zip
+        uses: actions/upload-artifact@v7
         with:
-          name: nightly
-          path: nightly/*.zip
-          retention-days: 3
+          path: dist/risen-spass.zip
+          archive: false
+      - name: Upload the full package
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ env.FULL_ZIP }}
+          archive: false
 
-  # Publishes only when the build, the unit tests and the Lua checks all passed. The release is recreated so the
+  # The editor: risen-modkit.exe (+ risen-pack2mod.exe for the tools zip), the editor's unit tests
+  modkit:
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/windows-build
+        with:
+          name: modkit
+      - name: Build
+        run: cmake --build build-ninja --config RelWithDebInfo --target risen-modkit modkit_tests risen-pack2mod
+      - name: Unit tests of risen-modkit
+        run: build-ninja\src\modkit\RelWithDebInfo\modkit_tests.exe
+
+      # risen-spass-tools-windows-x64.zip: risen-pack2mod.exe, risen-modkit.exe
+      - name: Package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tools = New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\tools"
+          Copy-Item build-ninja\RelWithDebInfo\risen-pack2mod.exe, build-ninja\src\modkit\RelWithDebInfo\risen-modkit.exe $tools
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path "$tools\*" -DestinationPath dist\risen-spass-tools-windows-x64.zip -Force
+          Get-ChildItem dist | Format-Table Name, Length
+      - name: Upload risen-spass-tools-windows-x64.zip
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist/risen-spass-tools-windows-x64.zip
+          archive: false
+
+  # Publishes only when the builds, the unit tests and the Lua checks all passed. The release is recreated so the
   # "nightly" tag moves to this commit.
   release:
-    needs: [gate, lua, windows]
+    needs: [gate, lua, layer, modkit]
     if: needs.gate.outputs.release == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
-          name: nightly
+          name: risen-spass.zip
+          path: nightly
+      - uses: actions/download-artifact@v8
+        with:
+          name: risen-spass-tools-windows-x64.zip
           path: nightly
       - name: Publish the nightly release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          ls -l nightly
           gh release delete nightly --yes --cleanup-tag 2>/dev/null || true
           notes="Automated build of ${GITHUB_SHA} ($(date -u '+%Y-%m-%d %H:%M') UTC).
 

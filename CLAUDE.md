@@ -36,6 +36,10 @@ Build speed: each library has a precompiled header (`target_precompile_headers`:
 std; `-DSPASS_PCH=OFF` to check that a file includes what it uses), so every file sees those headers first. Keep
 `<windows.h>` out of the PCH (its macros such as `near` break unrelated files). `WIN32_LEAN_AND_MEAN`/`NOMINMAX` are global,
 debug info is `/Z7`, and the Visual Studio generator gets `/MP`. Vcpkg's port versions are pinned by `builtin-baseline` in `vcpkg.json`.
+CI (`.github/workflows/build.yml`, setup in `.github/actions/windows-build`) builds the layer and modkit in two parallel jobs
+with ccache and `-DSPASS_PCH=OFF`, because ccache cannot cache files that use MSVC PCH. If you use ccache locally with this
+machine's German `cl.exe`, set `CCACHE_MSVC_DEP_PREFIX='Hinweis: Einlesen der Datei:'`: without it ccache records no headers
+and serves stale objects after a header change (`VSLANG` is ignored here).
 
 ## Unit tests (no game needed)
 

@@ -1,0 +1,73 @@
+name: Windows build setup
+description: >
+  Visual Studio x64 developer environment, the vcpkg binary cache, the ccache compiler cache and `cmake --preset ninja`.
+  Each job passes its own `name`, so the layer and the modkit job keep separate caches.
+
+inputs:
+  name:
+    description: Cache name of the job (layer, modkit)
+    required: true
+  configure-args:
+    description: Extra arguments for `cmake --preset ninja`
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    # vcpkg binary packages (~3-5 minutes to build from source). Restore and save are separate steps so the cache is
+    # stored right after vcpkg installed the packages, even when a later step fails.
+    - name: Restore the vcpkg binary cache
+      id: vcpkg-cache
+      uses: actions/cache/restore@v6
+      with:
+        path: .vcpkg-cache
+        key: vcpkg-${{ runner.os }}-${{ inputs.name }}-${{ hashFiles('vcpkg.json', 'CMakePresets.json') }}
+        restore-keys: |
+          vcpkg-${{ runner.os }}-${{ inputs.name }}-
+          vcpkg-${{ runner.os }}-
+
+    # Compiled objects of earlier runs: only the files whose source, headers or flags changed are compiled again.
+    # ccache cannot cache files that use MSVC precompiled headers, so CI configures with SPASS_PCH=OFF (a cold
+    # cache costs ~20 % more than a PCH build, a warm one a few seconds). It needs /Z7 debug info (CMakeLists.txt),
+    # and depend mode reads the headers from /showIncludes (the runner's cl.exe is English: "Note: including file:").
+    - name: Restore the compiler cache
+      uses: hendrikmuhs/ccache-action@v1.2.24
+      with:
+        key: ccache-${{ inputs.name }}
+        max-size: 1G
+        evict-old-files: job
+
+    # After the caches (so ccache, added to PATH by its action, is part of the PATH exported here): the developer
+    # environment of vcvars64.bat, exported to the following steps (cl.exe, link.exe, the Windows SDK,
+    # Ninja and CMake from Visual Studio, VCPKG_ROOT -> the vcpkg bundled with Visual Studio, which resolves the ports
+    # through "builtin-baseline" in vcpkg.json).
+    - name: Visual Studio developer environment
+      shell: pwsh
+      run: |
+        $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        if (-not $vs) { throw 'no Visual Studio with the x64 C++ tools found' }
+        $before = @{}
+        Get-ChildItem env: | ForEach-Object { $before[$_.Name] = $_.Value }
+        cmd /c "`"$vs\VC\Auxiliary\Build\vcvars64.bat`" >nul && set" | ForEach-Object {
+            if ($_ -match '^([^=]+)=(.*)$' -and $before[$Matches[1]] -ne $Matches[2]) { "$($Matches[1])=$($Matches[2])" >> $env:GITHUB_ENV }
+        }
+        if (-not (Test-Path "$vs\VC\vcpkg\vcpkg.exe")) { throw "no vcpkg in $vs\VC\vcpkg" }
+        "VCPKG_ROOT=$vs\VC\vcpkg" >> $env:GITHUB_ENV
+        "VCPKG_DEFAULT_BINARY_CACHE=$env:GITHUB_WORKSPACE\.vcpkg-cache" >> $env:GITHUB_ENV
+        New-Item -ItemType Directory -Force "$env:GITHUB_WORKSPACE\.vcpkg-cache" | Out-Null
+        "CCACHE_DEPEND=true" >> $env:GITHUB_ENV   # ccache: headers from /showIncludes, no extra preprocessor run on a miss
+
+    - name: Configure
+      shell: pwsh
+      run: |
+        Write-Host "cl: $((Get-Command cl).Source)  ninja $(ninja --version)  $(ccache --version | Select-Object -First 1)"
+        cmake --preset ninja -DSPASS_PCH=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=ccache ${{ inputs.configure-args }}
+
+    - name: Save the vcpkg binary cache
+      if: steps.vcpkg-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: .vcpkg-cache
+        key: vcpkg-${{ runner.os }}-${{ inputs.name }}-${{ hashFiles('vcpkg.json', 'CMakePresets.json') }}
