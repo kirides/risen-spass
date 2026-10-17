@@ -403,6 +403,17 @@
     X(input_current_event, L"Script.dll", "?GetCurrentActionEvent@Input@@QEBAAEBUgSAction@@XZ", const void* (*)(const void* input), false) \
     X(input_object, L"Script.dll", "input", unsigned char*, false) \
     X(gui2_object, L"Script.dll", "gui2", unsigned char*, false) \
+    X(snd_gui_play, L"Engine.dll", "?PlaySoundA@eCGuiWindow2@@QEBA_NAEBVbCString@@@Z", bool (*)(const void* self, const void* name), false) \
+    X(snd_play2d_named, L"Engine.dll", "?Play2D@eCSoundResource2@@SA_NAEBVbCString@@W4eEAudioChannelGroup@@MPEAVeCAudioChannel@@@Z", bool (*)(const void* name, int group, float volume, void* channel), false) \
+    X(snd_play3d_named, L"Engine.dll", "?Play3D@eCSoundResource2@@SA_NAEBVbCString@@AEBUSPlay3D@1@@Z", bool (*)(const void* name, const void* play), false) \
+    X(snd_get_sound, L"Engine.dll", "?GetSound@eCResource2@@SAPEAVeCSoundResource2@@AEBVbCString@@@Z", void* (*)(const void* name), false) \
+    X(fx_ps_start, L"Script.dll", "?StartEffect@PSEffect@@QEAA_NAEBVbCString@@_N@Z", bool (*)(void* self, const void* name, bool flag), false) \
+    X(fx_start_e1, L"Script.dll", "?StartEffect@EffectSystem@@SA?AVEffect@@AEBVbCString@@AEBVEntity@@1@Z", void* (*)(void* ret, const void* name, const void* a, const void* b), false) \
+    X(fx_start_e, L"Script.dll", "?StartEffect@EffectSystem@@SA?AVEffect@@AEBVbCString@@AEBVEntity@@@Z", void* (*)(void* ret, const void* name, const void* a, const void* b), false) \
+    X(fx_start_m, L"Script.dll", "?StartEffect@EffectSystem@@SA?AVEffect@@AEBVbCString@@AEBVbCMatrix@@@Z", void* (*)(void* ret, const void* name, const void* a, const void* b), false) \
+    X(fx_start_me, L"Script.dll", "?StartEffect@EffectSystem@@SA?AVEffect@@AEBVbCString@@AEBVbCMatrix@@AEBVEntity@@@Z", void* (*)(void* ret, const void* name, const void* a, const void* b), false) \
+    X(fx_start_v, L"Script.dll", "?StartEffect@EffectSystem@@SA?AVEffect@@AEBVbCString@@AEBVbCVector@@@Z", void* (*)(void* ret, const void* name, const void* a, const void* b), false) \
+    X(fx_start_ve, L"Script.dll", "?StartEffect@EffectSystem@@SA?AVEffect@@AEBVbCString@@AEBVbCVector@@AEBVEntity@@@Z", void* (*)(void* ret, const void* name, const void* a, const void* b), false) \
     X(tutorial_object, L"Script.dll", "tutorial", void*, false) \
     X(tut_stop_event, L"Script.dll", "?StopEvent@Tutorial@@QEAAXVbCString@@_N@Z", void (*)(void* self, void* byValueName, bool completed), false) \
     X(tut_is_completed, L"Script.dll", "?IsCompleted@Tutorial@@QEBA_NVbCString@@@Z", bool (*)(const void* self, void* byValueName), false) \

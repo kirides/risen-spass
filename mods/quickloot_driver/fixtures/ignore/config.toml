@@ -1,1 +1,2 @@
 witness_mode = "ignore"
+pickup_sound = false

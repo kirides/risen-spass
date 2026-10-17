@@ -49,6 +49,7 @@ int detourScriptAdminPostInit(void* self) {
     installInventoryScriptHooks();
     installInputHooks();  // the key script: the input.action event
     installHudTrace();    // the `hud` trace channel
+    installSoundTrace();  // the `sound` trace channel
     hooks::enableAll();
     onGameReady();
     return result;

@@ -480,6 +480,7 @@ The default map binds the left mouse button to `PrimaryAction` (the game's use k
 an item held in the left hand), the middle one to `WeaponMode` (draw/sheathe). `input.action` runs for **every** action event including the analog mouse-look ones: filter by `ev.action` first.
 A consumed `pressed` should be followed by consuming the matching `held` and `released` events of that press.
 
+**Effects** (`risen.effect`): `risen.effect.start(name, entity)` starts an effect of the engine's effect system on the entity (`eff_item_<EffectMaterial>_transfer_01` is the item pick-up effect that plays `sfx_items_<material>_transfer_NN`), `risen.effect.count(prefix)` counts the `eff_*` effects the engine started (a test aid).
 **HUD** (`risen.hud`): `risen.hud.log(text [, type])` prints a line into the game log, `risen.hud.item_log("It_Apple" | entity [, amount])` an item line (icon, name, amount),
 `risen.hud.tutorial_stop(name)` ends a tutorial hint the way the game's take (`"takeitem"`) and corpse loot (`"loot"`) scripts do, `risen.hud.tutorial_done(name)` asks whether it is completed,
 `risen.hud.state()` -> `{ browsing, game, loot, mode, pages }` (`loot` = the loot window is open; `browsing` is true in this test copy, which makes the game's own use key ignore the press).

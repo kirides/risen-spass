@@ -1,3 +1,4 @@
+#include <map>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -125,7 +126,87 @@ void detourPrintItem(void* gui, void* item, int amount) {
     g_printItem.original(gui, item, amount);
 }
 
+Hook<bool (*)(const void*, const void*)> g_guiSound;
+Hook<bool (*)(const void*, int, float, void*)> g_play2d;
+Hook<bool (*)(const void*, const void*)> g_play3d;
+using EffectFn = void* (*)(void*, const void*, const void*, const void*);
+Hook<EffectFn> g_effect[6];
+
+bool detourGuiSound(const void* window, const void* name) {
+    SPASS_TRACE(trace::Channel::Sound, "gui sound '{}'", bstr(name));
+    return g_guiSound.original(window, name);
+}
+bool detourPlay2d(const void* name, int group, float volume, void* channel) {
+    SPASS_TRACE(trace::Channel::Sound, "play2d '{}' group {} volume {}", bstr(name), group, volume);
+    return g_play2d.original(name, group, volume, channel);
+}
+bool detourPlay3d(const void* name, const void* play) {
+    SPASS_TRACE(trace::Channel::Sound, "play3d '{}'", bstr(name));
+    return g_play3d.original(name, play);
+}
+Hook<void* (*)(const void*)> g_getSound;
+Hook<bool (*)(void*, const void*, bool)> g_psEffect;
+void* detourGetSound(const void* name) {
+    SPASS_TRACE(trace::Channel::Sound, "sound resource '{}'", bstr(name));
+    return g_getSound.original(name);
+}
+bool detourPsEffect(void* self, const void* name, bool flag) {
+    SPASS_TRACE(trace::Channel::Sound, "effect (PSEffect) '{}' flag {}", bstr(name), flag);
+    return g_psEffect.original(self, name, flag);
+}
+std::mutex g_effectMutex;
+std::map<std::string, int> g_effectStarts;  // names starting with "eff_" -> how often the engine started them (risen.effect.count)
+
+template <int N>
+void* detourEffect(void* ret, const void* name, const void* a, const void* b) {
+    guarded([&] {
+        const std::string n = bstr(name);
+        if (n.compare(0, 4, "eff_") == 0) {
+            std::lock_guard lock(g_effectMutex);
+            ++g_effectStarts[n];
+        }
+    });
+    if (trace::enabled(trace::Channel::Sound)) {
+        std::string target;
+        if (N == 1 && a != nullptr) {  // (name, Entity const&): the Entity is a one-pointer holder
+            guarded([&] { target = nameOfEntity(*static_cast<void* const*>(a)); });
+        }
+        SPASS_TRACE(trace::Channel::Sound, "effect '{}' (overload {}){}", bstr(name), N, target.empty() ? std::string() : " on " + target);
+    }
+    return g_effect[N].original(ret, name, a, b);  // two-parameter overloads ignore the extra register arguments
+}
+
 }  // namespace
+
+int effectStartCount(const std::string& prefix) {
+    std::lock_guard lock(g_effectMutex);
+    int n = 0;
+    for (const auto& [name, count] : g_effectStarts) {
+        if (name.compare(0, prefix.size(), prefix) == 0) {
+            n += count;
+        }
+    }
+    return n;
+}
+
+// The effect hooks are always on (they count the "eff_*" effects for risen.effect.count); the sound hooks only with the `sound` trace channel.
+void installSoundTrace() {
+    const Symbols& s = sym();
+    g_effect[0].install("EffectSystem::StartEffect#0", s.fx_start_e1, &detourEffect<0>);
+    g_effect[1].install("EffectSystem::StartEffect#1", s.fx_start_e, &detourEffect<1>);
+    g_effect[2].install("EffectSystem::StartEffect#2", s.fx_start_m, &detourEffect<2>);
+    g_effect[3].install("EffectSystem::StartEffect#3", s.fx_start_me, &detourEffect<3>);
+    g_effect[4].install("EffectSystem::StartEffect#4", s.fx_start_v, &detourEffect<4>);
+    g_effect[5].install("EffectSystem::StartEffect#5", s.fx_start_ve, &detourEffect<5>);
+    if (!trace::enabled(trace::Channel::Sound)) {
+        return;
+    }
+    g_guiSound.install("eCGuiWindow2::PlaySoundA", s.snd_gui_play, &detourGuiSound);
+    g_play2d.install("eCSoundResource2::Play2D(name)", s.snd_play2d_named, &detourPlay2d);
+    g_play3d.install("eCSoundResource2::Play3D(name)", s.snd_play3d_named, &detourPlay3d);
+    g_getSound.install("eCResource2::GetSound", s.snd_get_sound, &detourGetSound);
+    g_psEffect.install("PSEffect::StartEffect", s.fx_ps_start, &detourPsEffect);
+}
 
 void installCallTrace(const std::string& scriptFilter) {
     if (!trace::enabled(trace::Channel::Calls)) {

@@ -1,7 +1,7 @@
 -- Quick Loot (standalone): take what you look at with one key press, without walking over, kneeling, the loot window or any animation.
 -- Needs nothing but the mod layer. See README.md and docs/QUICKLOOT.md. Options: config.toml (risen.config).
 --
---   items on the ground   risen.item.pick_up  (the engine's own InsertStack, what Interact_Player_TakeItem calls)
+--   items on the ground   risen.item.pick_up  (the engine's own InsertStack, what Interact_Player_TakeItem calls) and the pick-up effect with the material's sound (`pickup_sound`)
 --   dead / knocked-out    the engine's script AutoLoot (the animation-less loot of the game: only what the loot filter InvFilter_Loot lets through)
 --   chests, cupboards,    the same AutoLoot; a locked chest is opened with the key of the inventory first (Status := Unlocked, what the `Unlock` script does)
 --   sarcophagi
@@ -19,7 +19,7 @@ local DEFAULTS = {
     enabled = true,
     key = "SecondaryAction",
     modifier = "none",
-    items = true, corpses = true, chests = true, keys = true, print = true,
+    items = true, corpses = true, chests = true, keys = true, print = true, pickup_sound = true,
     hold_repeat = true, repeat_ms = 80,
     witness_mode = "assess", witness_veto = 1000, max_distance = 450,
 }
@@ -121,6 +121,9 @@ local function take_item(player, item)
     local tpl = item:template()
     local name = tpl and tpl:name() or item:name()
     local amount = item:item_amount() or 1
+    -- the take animation's pick-up effect (Interact_Player_TakeItem starts it before the item is inserted): it plays the material's transfer sound, sfx_items_<material>_transfer_NN
+    local material = cfg.pickup_sound and item:get_property("gCItem_PS", "EffectMaterial")
+    if material and material ~= "" then risen.effect.start("eff_item_" .. material .. "_transfer_01", player) end
     local stack = risen.item.pick_up(player, item)
     if stack == nil then return false, "the engine refused the pick-up" end
     if cfg.print then risen.hud.item_log(name, amount) end

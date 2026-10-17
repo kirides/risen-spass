@@ -12,7 +12,7 @@ local T = risen.test
 local phase = T.param("phase", "default")
 
 local PLAN_DEFAULT = {
-    "ground item: handled as item", "ground item: one stack more", "ground item: events (picked_up, added pickup, destroyed) exactly once", "ground item: tutorial hint takeitem handled like the engine path", "ground item: no interaction state", "ground item: same events as the engine path",
+    "ground item: handled as item", "ground item: one stack more", "ground item: events (picked_up, added pickup, destroyed) exactly once", "ground item: the pick-up effect (material sound) started once", "ground item: the engine path starts the same effect", "effect.start: bad names and gone entities refused, an unknown name is harmless", "ground item: tutorial hint takeitem handled like the engine path", "ground item: no interaction state", "ground item: same events as the engine path",
     "engine path baseline: ZS_Interact states ran",
     "dead human: handled as corpse", "dead human: tutorial hint loot can be ended", "dead human: the club moved, fists and joint stayed", "dead human: same items as the engine's loot window", "dead human: inventory events, one pair per stack",
     "knocked-out human looted", "living human declined", "witness: a living human nearby does not stop the pick-up (assess mode, no watched area)", "monster corpse (wolf) looted", "monster corpse: trophy taken, fist stayed", "monster corpse: same items as the engine's loot window", "monster corpses of other species looted", "washed-up body (Beach_Seaman_Dead) looted", "washed-up body: the hero says his remark (GamestartLoot)", "washed-up body: same items as the engine's loot window", "trophies without skill: only the unconditional ones", "trophies without skill: nothing left on the carcasses", "trophies with the Trophy skill: fur taken", "trophies with skill and recipes: horns, claws, tusks, stings taken", "trophies: nothing lootable left on the carcasses", "trophies: same items as the engine's loot window (skill learned)", "door-like object declined", "empty chest declined",
@@ -42,7 +42,7 @@ local PLAN_REACT = {
     "dropped item: no theft", "declined chest alarms nobody",
 }
 local PLAN_IGNORE = {
-    "ignore: item taken in sight of a witness in a watched area", "ignore: nobody was asked and nobody reacted", "ignore: chest taken, nobody asked",
+    "ignore: item taken in sight of a witness in a watched area", "ignore: nobody was asked and nobody reacted", "ignore: chest taken, nobody asked", "ignore: pickup_sound = false starts no pick-up effect",
 }
 local PLANS = { config = PLAN_CONFIG, react = PLAN_REACT, ignore = PLAN_IGNORE }
 T.plan(PLANS[phase] or PLAN_DEFAULT)
@@ -158,11 +158,14 @@ local function default_phase()
     local tut_take0, tut_loot0 = risen.hud.tutorial_done("takeitem"), risen.hud.tutorial_done("loot")
     local apple = spawn_at("It_Apple", 150)
     local before = risen.item.count(p, "It_Apple")
+    local fx0 = risen.effect.count("eff_item_apple_transfer")
     local mark = #rec
     interact_frames = 0
     local r = try(apple)
     T.sleep(40)
     check("ground item: handled as item", r.handled and r.kind == "item", tostring(r.reason))
+    local fx1 = risen.effect.count("eff_item_apple_transfer")
+    check("ground item: the pick-up effect (material sound) started once", fx1 == fx0 + 1, ("apple transfer effects %d -> %d"):format(fx0, fx1))
     T.eq("ground item: one stack more", risen.item.count(p, "It_Apple"), before + 1)
     check("ground item: events (picked_up, added pickup, destroyed) exactly once",
         count_ev(mark, "^item%.picked_up%(PC_Hero,It_Apple") == 1 and count_ev(mark, "^inventory%.added%(PC_Hero,It_Apple,1,%d+,pickup") == 1 and count_ev(mark, "^entity%.destroyed%(It_Apple") == 1,
@@ -177,6 +180,16 @@ local function default_phase()
     interact_frames = 0
     engine_interaction(apple2, false)
     check("engine path baseline: ZS_Interact states ran", interact_frames > 10, "frames: " .. interact_frames)
+    local fx2 = risen.effect.count("eff_item_apple_transfer")
+    check("ground item: the engine path starts the same effect", fx2 == fx1 + 1, ("%d -> %d"):format(fx1, fx2))
+    local bad1 = risen.effect.start("bad name!", p)
+    local bad2 = risen.effect.start("", p)
+    local bad3 = risen.effect.start(("x"):rep(200), p)
+    local ok_unknown = risen.effect.start("eff_does_not_exist_01", p)
+    local gone = risen.entity.spawn("It_Apple", px + 400, py + 20, pz); T.sleep(3); gone:kill(); T.sleep(3)
+    local bad4 = risen.effect.start("eff_item_apple_transfer_01", gone)
+    check("effect.start: bad names and gone entities refused, an unknown name is harmless", bad1 == nil and bad2 == nil and bad3 == nil and bad4 == nil and ok_unknown == true,
+        ("bad %s %s %s gone %s unknown %s"):format(tostring(bad1), tostring(bad2), tostring(bad3), tostring(bad4), tostring(ok_unknown)))
     check("ground item: tutorial hint takeitem handled like the engine path", risen.hud.tutorial_stop("takeitem") == true and quick_tut == risen.hud.tutorial_done("takeitem"),
         ("before %s, after quick %s, after engine %s"):format(tostring(tut_take0), tostring(quick_tut), tostring(risen.hud.tutorial_done("takeitem"))))
     T.eq("ground item: same events as the engine path", inv_norm(mark, "PC_Hero"), quick_item_events)
@@ -805,8 +818,10 @@ local function ignore_phase()
     local a = put("It_Apple", 0, 100)
     local apples = risen.item.count(p, "It_Apple")
     local mark = #rec
+    local fx_a = risen.effect.count("eff_item_apple_transfer")
     local r = try(a)
     T.sleep(60)
+    check("ignore: pickup_sound = false starts no pick-up effect", r.handled and risen.effect.count("eff_item_apple_transfer") == fx_a, ("%d -> %d"):format(fx_a, risen.effect.count("eff_item_apple_transfer")))
     check("ignore: item taken in sight of a witness in a watched area", r.handled and r.assessed == nil and risen.item.count(p, "It_Apple") == apples + 1, tostring(r.reason))
     check("ignore: nobody was asked and nobody reacted", #theft_calls(mark) == 0 and not reacted(snap(w)), describe(snap(w)) .. " calls " .. #theft_calls(mark))
     local c = rchest("Object_Interact_Animated_Chest_Poor", false, 120)

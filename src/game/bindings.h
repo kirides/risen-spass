@@ -61,6 +61,8 @@ void bindHud(sol::state_view lua, sol::table risen);
 // The `calls` and `hud` trace channels (call_trace.cpp): installCallTrace needs Engine.dll/Game.dll, installHudTrace Script.dll (after PostInitialize).
 void installCallTrace(const std::string& scriptFilter);
 void installHudTrace();
+int effectStartCount(const std::string& prefix);  // call_trace.cpp: how often the engine started effects whose name starts with `prefix` ("eff_*" only)
+void installSoundTrace();  // the `sound` trace channel (Engine.dll + Script.dll)
 
 // risen.vfs.* (lua_vfs.cpp): the engine's virtual file system, including packed archives.
 void bindVfs(sol::state_view lua, sol::table risen);

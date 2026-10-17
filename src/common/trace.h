@@ -28,11 +28,12 @@ namespace spass::trace {
 //             comma separated substrings of `[debug] trace_scripts` (nothing is logged without that list); used to compare engine paths
 //   ai        the AI bridge (lua_ai.cpp): Lua AI states begin / finish, starts, perception handlers, callbacks
 //   hud       every line the engine prints to the HUD game log / item log (text, type, item, amount)
+//   sound     every sound the engine starts by name: GUI window sounds (button clicks), effects (EffectSystem::StartEffect: item sparkles, unlock...), named 2D/3D sounds
 //   combat    the damage hooks (lua_combat.cpp): every hit a handler saw, with the damage before and after, cancelled hits, handler errors
 // A mod may use any other name (risen.trace("mymod", ...)).
-enum class Channel : unsigned { Events, Template, Balance, Save, Spawn, Script, Lua, Test, Voice, Calls, Hud, Ai, Combat, Count };
+enum class Channel : unsigned { Events, Template, Balance, Save, Spawn, Script, Lua, Test, Voice, Calls, Hud, Ai, Combat, Sound, Count };
 
-constexpr const char* kChannelNames[] = {"events", "template", "balance", "save", "spawn", "script", "lua", "test", "voice", "calls", "hud", "ai", "combat"};
+constexpr const char* kChannelNames[] = {"events", "template", "balance", "save", "spawn", "script", "lua", "test", "voice", "calls", "hud", "ai", "combat", "sound"};
 static_assert(sizeof(kChannelNames) / sizeof(kChannelNames[0]) == static_cast<std::size_t>(Channel::Count));
 
 // Result of parsing "template,save, mymod" (separators: comma, semicolon, whitespace). "all" and "*" select everything.

@@ -1987,6 +1987,24 @@ function inputApi.simulate(name, down) end
 ---@field value number Amount of an analog event, 1 for keys.
 ---@field duration number Seconds the key had been held / released.
 
+---Effects of the engine's effect system (particles, light and the sounds an effect plays).
+---@class RisenEffectApi
+local effectApi = {}
+
+---Starts an effect on an entity (`EffectSystem::StartEffect(name, Entity)`). The effect names are the game's (`eff_item_apple_transfer_01` = the item pick-up effect: it plays
+---`sfx_items_<material>_transfer_NN`; `eff_item_<gCItem_PS.EffectMaterial>_transfer_01` for any item). An unknown name starts nothing and is not an error.
+---@param name string 1..96 characters of letters, digits, `_`, `.`, `-`.
+---@param target Entity
+---@return true|nil ok
+---@return string|nil reason
+function effectApi.start(name, target) end
+
+---How often the engine started effects whose name begins with `prefix` since the process started (only `eff_*` effects are counted, also the game's own; every overload of
+---`EffectSystem::StartEffect`). A test aid: `risen.effect.count("eff_item_apple")` rises by one with every apple picked up.
+---@param prefix string
+---@return integer
+function effectApi.count(prefix) end
+
 ---The HUD: the engine's on-screen game log and item log (what quest, level and loot messages use).
 ---@class RisenHudApi
 local hudApi = {}
@@ -4584,6 +4602,7 @@ function logApi.error(...) end
 ---@field interact RisenInteractApi
 ---@field input RisenInputApi
 ---@field hud RisenHudApi
+---@field effect RisenEffectApi
 ---@field gui RisenGuiApi
 ---@field quest RisenQuestApi
 ---@field dialog RisenDialogApi

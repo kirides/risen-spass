@@ -12,6 +12,7 @@ corpses     = true          # dead and knocked-out humans
 chests      = true          # chests, cupboards, sarcophagi
 keys        = true          # locked chests are opened with the key from the inventory (never lockpicked)
 print       = true          # HUD line for picked-up ground items (looted stacks are printed by the game itself)
+pickup_sound = true         # the sound of the take animation for ground items: the pick-up effect with the item material's transfer sound (apple, gold, wood, potion...)
 
 hold_repeat = true          # hold the key to take everything in reach, one target per repeat_ms
 repeat_ms   = 80

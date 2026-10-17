@@ -107,6 +107,36 @@ void bindHud(sol::state_view lua, sol::table risen) {
         return sol::make_object(L, done);
     });
 
+    // risen.effect.start(name, entity) -> true | nil, reason: starts an effect (EffectSystem::StartEffect(name, Entity): particles and the sounds the effect plays, e.g. the item
+    // pick-up effect "eff_item_<EffectMaterial>_transfer_01") on the entity. risen.effect.count(prefix) -> how often the engine started effects whose name begins with prefix
+    // ("eff_*" effects since the process started, also the game's own).
+    sol::table effect = lua.create_table();
+    risen["effect"] = effect;
+    effect.set_function("start", [fail, ok](sol::this_state ts, const std::string& name, const LuaEntity& target) -> Two {
+        sol::state_view L(ts);
+        const Symbols& s = sym();
+        if (s.fx_start_e == nullptr) {
+            return fail(L, "engine function EffectSystem::StartEffect is unavailable");
+        }
+        if (name.empty() || name.size() > 96 || name.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-") != std::string::npos) {
+            return fail(L, "the effect name must be 1..96 characters of letters, digits, _ . -");
+        }
+        void* entity = ptr(target);
+        if (entity == nullptr) {
+            return fail(L, "entity is gone");
+        }
+        if (!guarded([&] {
+                const BString n(name);
+                EntityHolder holder{entity};
+                alignas(8) unsigned char result[16] = {};  // the returned `Effect` is a plain pointer wrapper without a destructor
+                s.fx_start_e(result, n.get(), &holder, nullptr);
+            })) {
+            return fail(L, "the engine raised an exception");
+        }
+        return ok(L);
+    });
+    effect.set_function("count", [](const std::string& prefix) { return effectStartCount(prefix); });
+
     hud.set_function("state", [](sol::this_state ts) -> sol::object {
         sol::state_view L(ts);
         const Symbols& s = sym();
