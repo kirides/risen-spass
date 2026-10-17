@@ -20,6 +20,10 @@ struct GLFWwindow;
 
 namespace mk {
 
+namespace gfx {
+class ResourceCache;
+}
+
 struct AppOptions {
     std::string project;     // open this project at start
     std::string data_dir;    // overrides the setting
@@ -28,6 +32,7 @@ struct AppOptions {
     std::string panel;       // focus this panel (screenshots)
     int width = 1600, height = 900;
     std::string select;      // select an object by name in its panel (screenshots)
+    std::string camera;      // the World view's camera: "x,y,z,yaw,pitch" in game coordinates and degrees (screenshots)
 };
 
 class App;
@@ -76,6 +81,8 @@ public:
     std::vector<TemplateAction> template_actions;
     // the loaded game world (the World panel loads it; placement and the pickers of NPC names use it)
     std::shared_ptr<const World> world;
+    // meshes and textures of the game for the 3D views (made with the game data; nullptr without)
+    gfx::ResourceCache* resources();
 
     void touch() { history.touch(); }  // a panel changed `project`
     void status(const std::string& text);  // the status bar line
@@ -124,6 +131,8 @@ private:
     int frame_ = 0, shot_frames_ = 0;
     std::string focus_request_, pending_select_;
     std::vector<Problem> problems_;
+    std::unique_ptr<gfx::ResourceCache> resources_;
+    const GameData* resources_game_ = nullptr;
     double problems_time_ = -1;
     bool export_open_ = false;
     std::string export_dir_;

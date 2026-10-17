@@ -9,6 +9,7 @@
 #include <functional>
 #include <map>
 #include <regex>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -18,6 +19,7 @@
 #include "core/gamedata.h"
 #include "core/history.h"
 #include "core/lua_writer.h"
+#include "core/mesh.h"
 #include "core/log.h"
 #include "core/paths.h"
 #include "core/project.h"

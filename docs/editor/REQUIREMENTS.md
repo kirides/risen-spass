@@ -306,7 +306,7 @@ Each stage ends with a usable feature (or the base the next stage needs), is ver
 | **E5** Dialogues | node editor framework, dialogue graph, condition builder, export to `risen.dialog.create`, validation, live check (options offered, branches) | DLG-1..4 (5, 6) | **done** (DLG-1..4 and DLG-6's comments; DLG-5 preview open. Scenario `modkit`: 33 checks, the conversation is played like a player) |
 | **E6** Quests | quest graph (start, objectives, outcomes, chains), dialogue integration, runtime tracker, live check (fetch/kill/talk quest) | QST-1..4 | **done** (scenario `modkit`: 42 checks: a quest started by another's success, kills counted, rewards paid once, a quick load rolls the progress back, a quest started with the game) |
 | **E7** World view | world/sector/layer loading, 3D view with boxes, camera, picking, inspector, layer toggles | WLD-1, WLD-2, WLD-9 | **done** (48347 entities of 317 layers in 1.5 s; boxes by kind, fly camera, picking, inspector with properties and inventory; RE.md section 49) |
-| **E8** Meshes and textures | `._xmsh`/`._xmat`/`._ximg` decoding, GPU cache, LOD, mesh preview in pickers | WLD-3, AST-1, DATA-7 | open |
+| **E8** Meshes and textures | `._xmsh`/`._xmat`/`._ximg` decoding, GPU cache, LOD, mesh preview in pickers | WLD-3, AST-1, DATA-7 | **done** (WLD-3, AST-1 mesh previews; 1665 of 1666 meshes decode, all 25921 entity meshes resolve; DATA-7 icon previews open: compiled_imagelists.bin is not decoded) |
 | **E9** Import | project.json import, sandboxed Lua data import, raw-Lua passthrough | IMP-1, IMP-2 | open |
 | **E10** Placement | gizmo placement of NPCs, items in the world, chest contents, ground snapping, export of `data/world.lua`, live check | WLD-4..6 | open |
 | **E11** Custom assets | compiled asset files in the project, image -> `._ximg`, icons, (B) meshes via assimp | AST-2..4 | open |
@@ -317,9 +317,11 @@ of the content editors and needs format work; placement (E10) needs both; E11/E1
 
 ## 10. Risks and open questions
 
-* **Mesh format (E8).** `._xmsh` is a GR01 container (`MS02`) with a property schema (`eCMeshResource2`: `SubMeshes` with `MaterialName`, `FirstIndex`, `IndexCount`,
-  `FirstVertex`, `VertexCount`, `Boundary`) followed by vertex streams; a small file shows position+normal+colour vertices (28 bytes) and 32-bit indices. Larger meshes have
-  more stream kinds (UVs, tangents). Decoded from the files themselves; a stream kind that is not understood falls back to the bounding box.
+* **Mesh format (E8, solved).** `._xmsh` is a GR01 container (`MS02`): a property schema (`eCMeshResource2`: `SubMeshes` with `MaterialName`, `FirstIndex`,
+  `IndexCount`, `FirstVertex`, `VertexCount`, `Boundary`), then a D3D9 vertex declaration, a header (vertex data size, stride, index data size, index format
+  101/102), the interleaved vertices (position, normal, tangent, two colours, one or two UV sets: 28 to 68 bytes) and absolute indices (RE.md section 49).
+  1665 of 1666 meshes decode (the SpeedTree billboard has FLOAT4 positions); level meshes name their mesh by a virtual path (`#G3:/data/raw/...`): the
+  bare name is what resolves.
 * **Textures.** `._ximg` holds a DDS (RE.md section 26); DXT via `GL_EXT_texture_compression_s3tc` where present (all desktop drivers including macOS), else a CPU decode.
 * **World size.** `World` has ~600 layer files with thousands of entities and large level meshes: progressive loading, culling, a distance limit for mesh drawing.
 * **Rotation of spawned entities, removal and moving of world entities (E12).** The layer has `risen.entity.spawn(template, x, y, z)` (no rotation) and no

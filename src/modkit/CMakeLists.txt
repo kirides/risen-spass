@@ -42,6 +42,7 @@ add_library(modkit_core STATIC
     core/project.cpp
     core/quest.cpp
     core/lua_writer.cpp
+    core/mesh.cpp
     core/settings.cpp
     core/validate.cpp
     core/world.cpp
@@ -80,6 +81,9 @@ add_executable(risen-modkit
     app/panels/settings_panel.cpp
     app/panels/world_panel.cpp
     app/render/gl_util.cpp
+    app/render/mesh_preview.cpp
+    app/render/mesh_renderer.cpp
+    app/render/resources.cpp
 )
 target_include_directories(risen-modkit PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" ${STB_INCLUDE_DIRS})
 target_link_libraries(risen-modkit PRIVATE

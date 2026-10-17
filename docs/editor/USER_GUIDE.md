@@ -163,7 +163,12 @@ player's start point.
 * The project's placed NPCs with a world position are drawn as magenta boxes. Dialogue owners can be picked from the world's NPCs, and the Problems
   panel then checks that the owner exists.
 
-Meshes and textures come with the next stage; until then everything is drawn as its bounding box.
+**Meshes and textures**: the level meshes (landscape, towns, dungeons) are always drawn, other meshes within the *mesh distance*; they load in the
+background (the count is under Draw). Entities without a mesh the editor can read (NPCs and monsters: they are animated actors; vegetation, lights,
+helpers) are drawn as boxes; *Boxes of entities with a mesh* and *Boxes of objects without a mesh* show more boxes. Large textures are loaded at 1024
+pixels at most.
+
+The Browser and the item editor show a turning preview of a template's mesh (drag to turn it).
 
 ## Export
 
@@ -210,7 +215,8 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 
 ## Limits
 
-* The world view draws boxes, not meshes, yet; placing things in it comes later (REQUIREMENTS.md section 9).
+* NPCs, monsters and vegetation are boxes in the world view (actors and SpeedTrees are not decoded); placing things in it comes later (REQUIREMENTS.md section 9).
+* Icons are not previewed (the game's icon lists are not decoded yet).
 * A quest flow is one chain (no branches inside a quest); branch with dialogues and follow-up quests.
 * A dialogue cannot be played through inside the editor yet (DLG-5); test it in the game.
 * A template's shipped loot is not shown (the editor cannot read it offline yet).

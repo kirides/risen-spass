@@ -240,3 +240,100 @@ TEST(world_load_real) {
     CHECK(chests > 0);
     CHECK_EQ(guid_text("\x0c\x91\x5d\x31\x03\x1c\x45\x90\xb5\x19\x11\x32\x16\x97\x56\x3c"), std::string("315d910c-1c03-9045-b519-11321697563c"));
 }
+
+TEST(mesh_decode_real) {
+    auto g = game_data();
+    if (!g) {
+        std::printf("  (skipped: no --data)\n");
+        return;
+    }
+    size_t ok = 0, bad = 0, box_bad = 0;
+    std::set<std::string> materials;
+    std::string first_bad;
+    for (auto& a : g->assets("_xmsh")) {
+        try {
+            const MeshData m = decode_mesh(g->read(a.name));
+            float mn[3] = {1e30f, 1e30f, 1e30f}, mx[3] = {-1e30f, -1e30f, -1e30f};
+            for (uint32_t i = 0; i < m.vertex_count; ++i)
+                for (int k = 0; k < 3; ++k) {
+                    float f;
+                    std::memcpy(&f, m.vertices.data() + static_cast<size_t>(i) * m.stride + m.pos + 4 * k, 4);
+                    mn[k] = std::min(mn[k], f);
+                    mx[k] = std::max(mx[k], f);
+                }
+            float err = 0;
+            for (int k = 0; k < 3; ++k) err = std::max({err, std::fabs(mn[k] - m.box_min[k]), std::fabs(mx[k] - m.box_max[k])});
+            if (err > 1.0f) ++box_bad;
+            // indices are absolute and inside the vertex buffer
+            uint32_t maxi = 0;
+            for (uint32_t i = 0; i < m.index_count; ++i) {
+                uint32_t v = 0;
+                std::memcpy(&v, m.indices.data() + static_cast<size_t>(i) * (m.index32 ? 4 : 2), m.index32 ? 4 : 2);
+                maxi = std::max(maxi, v);
+            }
+            if (m.index_count && maxi >= m.vertex_count) ++box_bad;
+            for (auto& s : m.submeshes) materials.insert(s.material);
+            ++ok;
+        } catch (const std::exception& e) {
+            if (first_bad.empty()) first_bad = a.name + ": " + e.what();
+            ++bad;
+        }
+    }
+    std::printf("  meshes: %zu decoded, %zu refused (%s), %zu with positions outside their box; %zu materials named\n", ok, bad, first_bad.c_str(), box_bad,
+                materials.size());
+    CHECK(ok > 1600);
+    CHECK(bad <= 2);
+    CHECK_EQ(box_bad, size_t(0));
+    // materials -> textures -> images
+    size_t mat_ok = 0, tex_found = 0, img_ok = 0, img_tried = 0;
+    std::map<int, int> formats;
+    for (auto& name : materials) {
+        if (!g->exists(name)) continue;
+        const std::string tex = material_texture(g->read(name));
+        if (tex.empty()) continue;
+        ++mat_ok;
+        if (!g->exists(tex)) continue;
+        ++tex_found;
+        if (img_tried >= 150) continue;
+        ++img_tried;
+        try {
+            const ImageData img = decode_image(g->read(tex));
+            formats[img.format]++;
+            if (!img.levels.empty() && img.levels[0].width == img.width) ++img_ok;
+        } catch (const std::exception& e) {
+            std::printf("  image %s: %s\n", tex.c_str(), e.what());
+        }
+    }
+    std::printf("  materials with a texture: %zu, textures found: %zu, images decoded: %zu of %zu\n", mat_ok, tex_found, img_ok, img_tried);
+    CHECK(mat_ok > materials.size() / 2);
+    CHECK(tex_found > mat_ok * 8 / 10);
+    CHECK(img_ok == img_tried);
+    // the CPU fallback of a DXT image
+    const ImageData sword = decode_image(g->read("ItWpn_SwordBlades_01_Diffuse_01._ximg"));
+    CHECK(sword.format == ImageData::DXT1 && sword.width == 1024 && sword.levels.size() == 11);
+    uint32_t w = 0, h = 0;
+    const std::string rgba = decompress_rgba(sword, 3, &w, &h);
+    CHECK(w == 128 && h == 128 && rgba.size() == 128u * 128u * 4u);
+}
+
+TEST(world_meshes_resolve) {
+    // every mesh a world entity names is found in the archives by its bare name (level meshes name virtual paths)
+    auto g = game_data();
+    if (!g) {
+        std::printf("  (skipped: no --data)\n");
+        return;
+    }
+    auto w = load_world(*g, "World");
+    size_t with = 0, found = 0;
+    std::string missing;
+    for (auto& e : w->entities) {
+        if (e.mesh.empty()) continue;
+        ++with;
+        if (g->exists(compiled_name(e.mesh))) ++found;
+        else if (missing.empty()) missing = e.name + ": " + e.mesh;
+    }
+    std::printf("  %zu of %zu entity meshes found (first missing: %s)\n", found, with, missing.c_str());
+    CHECK(found * 100 >= with * 99);
+    const WorldEntity* harbour = w->by_name("Harbour_01_L01");
+    CHECK(harbour && harbour->mesh == "Harbour_01_L01._xmsh");
+}

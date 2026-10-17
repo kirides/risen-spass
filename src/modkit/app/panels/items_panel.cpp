@@ -9,6 +9,7 @@
 #include "app/editor_util.h"
 #include "app/pickers.h"
 #include "app/prop_editor.h"
+#include "app/render/mesh_preview.h"
 #include "app/widgets.h"
 #include "core/catalog.h"
 #include "core/validate.h"
@@ -266,6 +267,8 @@ private:
             ImGui::EndDisabled();
         }
         ch |= ui::opt_int("Material switch", it.material, hint_int(shipped.material).c_str(), shipped.material.value_or(0));
+        preview_.draw(app, it.mesh ? *it.mesh : shipped.mesh, ImVec2(260, 180));
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Drag to turn");
 
         ui::section("Other properties");
         ImGui::TextDisabled("Any property of the template by name (see docs/ITEM_PROPERTIES.md).");
@@ -303,6 +306,7 @@ private:
 
     std::string sel_, filter_;
     std::vector<std::string> icons_;
+    MeshPreview preview_;
 };
 
 }  // namespace

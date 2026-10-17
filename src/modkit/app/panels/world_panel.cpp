@@ -14,6 +14,9 @@
 
 #include "app/panels/panels.h"
 #include "app/render/gl_util.h"
+#include "app/render/mesh_renderer.h"
+#include "app/render/resources.h"
+#include "core/catalog.h"
 #include "app/widgets.h"
 #include "core/log.h"
 
@@ -85,7 +88,7 @@ std::string val_text(const p2m::Val& v) {
 class WorldPanel : public Panel {
 public:
     const char* title() const override { return kPanelWorld; }
-    bool busy() const override { return loading_.valid(); }
+    bool busy() const override { return loading_.valid() || (res_ && res_->pending() > 0); }
 
     void on_project_changed(App& app) override {
         overlay_dirty_ = true;
@@ -162,6 +165,10 @@ private:
         world_ = loading_.get();
         app.world = world_;
         if (!world_) return;
+        res_ = app.resources();
+        mesh_names_.assign(world_->entities.size(), std::string());
+        for (size_t i = 0; i < world_->entities.size(); ++i)
+            if (!world_->entities[i].mesh.empty()) mesh_names_[i] = compiled_name(world_->entities[i].mesh);
         layer_on_.assign(world_->layers.size(), 1);
         // the system, navigation and sound layers are hidden at first: they are mostly helpers
         for (size_t i = 0; i < world_->layers.size(); ++i) {
@@ -185,6 +192,13 @@ private:
                     break;
                 }
         if (start) fly_to(*start);
+        // --camera x,y,z,yaw,pitch (game coordinates, degrees; yaw 0 = +z)
+        float c[5] = {0, 0, 0, 0, 0};
+        if (!app.options.camera.empty() && std::sscanf(app.options.camera.c_str(), "%f,%f,%f,%f,%f", &c[0], &c[1], &c[2], &c[3], &c[4]) == 5) {
+            cam_.pos = to_gl(c[0], c[1], c[2]);
+            cam_.yaw = glm::radians(c[3]);
+            cam_.pitch = glm::radians(c[4]);
+        }
         app.status("World " + world_->name + ": " + std::to_string(world_->entities.size()) + " entities");
     }
 
@@ -244,6 +258,14 @@ private:
             ImGui::PopID();
         }
         ch |= ImGui::Checkbox("Level meshes (huge boxes)", &show_level_);
+        ImGui::SeparatorText("Draw");
+        ch |= ImGui::Checkbox("Meshes and textures", &draw_meshes_);
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::SliderFloat("##dist", &draw_distance_, 2000, 40000, "mesh distance %.0f");
+        ch |= ImGui::Checkbox("Boxes of entities with a mesh", &boxes_for_meshes_);
+        ch |= ImGui::Checkbox("Boxes of objects without a mesh", &boxes_plain_objects_);
+        ui::help("Mostly the vegetation (SpeedTree), lights and helpers: the editor has no meshes for them.");
+        if (res_) ImGui::TextDisabled("%zu meshes loaded, %zu waiting%s", res_->loaded_meshes(), res_->pending(), res_->s3tc() ? "" : ", CPU textures");
         ImGui::SeparatorText("Layers");
         if (ImGui::SmallButton("all")) {
             std::fill(layer_on_.begin(), layer_on_.end(), 1);
@@ -294,8 +316,12 @@ private:
 
     void rebuild_boxes() {
         boxes_.clear();
-        for (auto& e : world_->entities) {
+        for (size_t i = 0; i < world_->entities.size(); ++i) {
+            const WorldEntity& e = world_->entities[i];
             if (!visible(e)) continue;
+            // with meshes on, a box only for what has no mesh (or a mesh the editor cannot read)
+            if (draw_meshes_ && !boxes_for_meshes_ && !mesh_names_[i].empty() && !(res_ && res_->failed(mesh_names_[i]))) continue;
+            if (draw_meshes_ && !boxes_plain_objects_ && e.kind == TplKind::Object && mesh_names_[i].empty()) continue;
             const uint32_t c = kind_color(e.kind);
             if (e.has_box()) {
                 const glm::vec3 a = to_gl(e.box_min[0], e.box_min[1], e.box_max[2]);
@@ -344,7 +370,7 @@ private:
     void fly_to(const WorldEntity& e) {
         float size = 300;
         if (e.has_box()) size = std::max({e.box_max[0] - e.box_min[0], e.box_max[1] - e.box_min[1], e.box_max[2] - e.box_min[2], 200.0f});
-        cam_.look_at(to_gl(e.x(), e.y() + 100, e.z()), std::min(size * 2.5f, 20000.0f) + 400);
+        cam_.look_at(to_gl(e.x(), e.y() + 100, e.z()), std::clamp(size * 2.5f, 900.0f, 20000.0f));
     }
 
     void draw_view(App& app) {
@@ -388,6 +414,7 @@ private:
         glClearColor(0.10f, 0.11f, 0.13f, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         const glm::mat4 vp = cam_.proj(aspect) * cam_.view();
+        if (draw_meshes_ && res_) draw_meshes(vp);
         boxes_.draw(vp);
         glDisable(GL_DEPTH_TEST);
         overlay_.draw(vp);
@@ -397,8 +424,41 @@ private:
         // camera position in game coordinates
         const glm::vec3 gp = gfx::from_gl(cam_.pos);
         char buf[96];
-        std::snprintf(buf, sizeof buf, "camera %.0f %.0f %.0f   speed %.0f", gp.x, gp.y, gp.z, cam_.speed);
+        std::snprintf(buf, sizeof buf, "camera %.0f %.0f %.0f   speed %.0f   %zu meshes drawn", gp.x, gp.y, gp.z, cam_.speed, drawn_);
         ImGui::GetWindowDrawList()->AddText(ImVec2(origin.x + 8, origin.y + h - 22), IM_COL32(200, 200, 200, 255), buf);
+    }
+
+    void draw_meshes(const glm::mat4& vp) {
+        res_->update(6.0);
+        const gfx::Frustum fr(vp);
+        const glm::vec3 cam_game = gfx::from_gl(cam_.pos);
+        const float d2 = draw_distance_ * draw_distance_;
+        mesh_r_.begin(vp, glm::vec3(0.35f, -1.0f, 0.25f));
+        drawn_ = 0;
+        size_t failed_before = failed_seen_;
+        for (size_t i = 0; i < world_->entities.size(); ++i) {
+            if (mesh_names_[i].empty()) continue;
+            const WorldEntity& e = world_->entities[i];
+            if (!layer_on_[e.layer] || !kinds_[static_cast<int>(e.kind)]) continue;
+            const bool level = is_level_mesh(e);
+            if (!level) {
+                const float dx = e.x() - cam_game.x, dy = e.y() - cam_game.y, dz = e.z() - cam_game.z;
+                if (dx * dx + dy * dy + dz * dz > d2) continue;
+            }
+            if (e.has_box() && !fr.sees(to_gl(e.box_min[0], e.box_min[1], e.box_max[2]), to_gl(e.box_max[0], e.box_max[1], e.box_min[2]))) continue;
+            const gfx::GpuMesh* m = res_->mesh(mesh_names_[i]);
+            if (!m) {
+                if (res_->failed(mesh_names_[i])) ++failed_seen_;
+                continue;
+            }
+            const glm::vec4 tint = i == selected_ ? glm::vec4(1.4f, 1.3f, 0.9f, 1) : glm::vec4(1);
+            mesh_r_.draw(*m, gfx::entity_model(e.matrix.data()), *res_, tint);
+            ++drawn_;
+        }
+        mesh_r_.end();
+        // meshes that turned out unreadable get their box back
+        if (failed_seen_ != failed_before) boxes_dirty_ = true;
+        failed_seen_ = 0;
     }
 
     void pick_at(float u, float v, float aspect) {
@@ -507,6 +567,12 @@ private:
     std::vector<char> layer_on_;
     bool kinds_[kTplKindCount] = {true, true, true, true, true, true, false, false, false, false};
     bool show_level_ = false;
+    bool draw_meshes_ = true, boxes_for_meshes_ = false, boxes_plain_objects_ = false;
+    float draw_distance_ = 9000;
+    gfx::ResourceCache* res_ = nullptr;  // App::resources()
+    gfx::MeshRenderer mesh_r_;
+    std::vector<std::string> mesh_names_;  // per entity: the compiled mesh name ("" = none)
+    size_t drawn_ = 0, failed_seen_ = 0;
     bool boxes_dirty_ = true, overlay_dirty_ = true;
     gfx::LineBatch boxes_, overlay_;
     gfx::RenderTarget rt_;

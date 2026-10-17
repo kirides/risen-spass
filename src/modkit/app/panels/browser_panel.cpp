@@ -7,6 +7,7 @@
 #include <map>
 
 #include "app/panels/panels.h"
+#include "app/render/mesh_preview.h"
 #include "app/widgets.h"
 
 namespace mk {
@@ -180,6 +181,7 @@ private:
         if (!t->icon.empty()) ImGui::TextDisabled("icon %s", t->icon.c_str());
         const std::string desc = g.text("ITEMDESC_" + t->name);
         if (!desc.empty() && desc != "-") ImGui::TextWrapped("%s", desc.c_str());
+        if (!t->mesh.empty()) preview_.draw(app, t->mesh, ImVec2(std::min(ImGui::GetContentRegionAvail().x, 300.0f), 160));
         // actions of the editors
         bool first = true;
         for (auto& a : app.template_actions) {
@@ -218,6 +220,7 @@ private:
     const GameData* game_ = nullptr;
     Node root_;
     const TemplateInfo* selected_ = nullptr;
+    MeshPreview preview_;
     std::string selected_name_, filter_, prop_filter_;
     int kind_filter_ = -1;
 };

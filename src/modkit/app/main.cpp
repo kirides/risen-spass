@@ -16,7 +16,7 @@
 namespace {
 
 constexpr const char* kUsage =
-    "risen-modkit [project.rmk.json] [--data DIR] [--screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH]]\n"
+    "risen-modkit [project.rmk.json] [--data DIR] [--screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch]]\n"
     "risen-modkit project.rmk.json --export DIR [--data DIR]\n";
 
 int export_headless(const mk::AppOptions& opts, const std::string& out_dir) {
@@ -81,6 +81,7 @@ int main(int argc, char** argv) {
         else if (a == "--frames") opts.frames = std::max(2, std::atoi(next("a number").c_str()));
         else if (a == "--panel") opts.panel = next("a panel title");
         else if (a == "--select") opts.select = next("a name");
+        else if (a == "--camera") opts.camera = next("x,y,z,yaw,pitch");
         else if (a == "--export") export_dir = next("a directory");
         else if (a == "--verbose") mk::Log::get().set_echo_level(mk::Level::Debug);
         else if (a == "--size") {

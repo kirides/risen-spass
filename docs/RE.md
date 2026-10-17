@@ -1604,3 +1604,13 @@ The standalone converter ([PACK2MOD.md](PACK2MOD.md), `src/pack2mod/`) re-implem
   Every layer starts with a root record `DRE` (identity, an empty box: `FLT_MAX` / `-FLT_MAX`) that holds the layer's own properties. The World has
   317 layer files with 48347 entities (1.5 s to read all). The player's start point is the entity `SP_Start` of `_System/_StartPoints.lrent`
   (-32103, 596, -4723); the other `SP_*` entities there are the travel points of the story.
+* **A mesh file `._xmsh`** (GR01 / MS02; the header, section 26): after the property stream (`eCMeshResource2`: `SubMeshes[]` with `MaterialName`, `Extends`,
+  `FirstIndex`, `IndexCount`, `FirstVertex`, `VertexCount`; `LightmapName`; `Boundary`) the payload at the header's offset holds a **D3D9 vertex declaration**
+  (`D3DVERTEXELEMENT9` records up to `D3DDECL_END` = `ff 00 00 00 11 00 00 00`; stream 0 is the vertex buffer, a stream-3 FLOAT1 element follows in most
+  files), then a header with the vertex data size, the stride, the index data size and the index format (`D3DFMT_INDEX32` = 102, `INDEX16` = 101)
+  followed by `u32 1`, the interleaved vertices, the indices (absolute: a sub-mesh's indices lie in its `FirstVertex` range) and one byte `01`. Layouts
+  seen: position + normal + colour (28 bytes), + tangent + two colours + UV (52), + a second UV (60), + a third (68). 1665 of the 1666 meshes decode
+  with every position inside `Boundary`; `SpeedTreeBillboardMesh_World._xmsh` has FLOAT4 positions. **Materials** (`._xmat`, GR01 / SM01) name their
+  images in `eCColorSrcSampler.ImageFilePath` (`bCImageResourceString`, the raw `.tga` name; the diffuse map first); **images** (`._ximg`, IM04) hold a DDS at
+  offset 265: DXT1, DXT3, DXT5, a few A8R8G8B8, L8 and A8. Level mesh entities name their mesh by a virtual path (`#G3:/data/raw/meshes/World//X._xmsh`);
+  the resource is found by the bare name like every other (section 26).

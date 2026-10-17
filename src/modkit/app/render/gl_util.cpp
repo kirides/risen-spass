@@ -186,7 +186,7 @@ void FlyCamera::ray(float u, float v, float aspect, glm::vec3& origin, glm::vec3
 
 void FlyCamera::look_at(const glm::vec3& target, float distance) {
     // keep the heading, look down a little, stand back
-    pitch = -0.45f;
+    pitch = -0.35f;
     pos = target - forward() * distance;
 }
 

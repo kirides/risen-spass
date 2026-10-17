@@ -13,6 +13,7 @@
 #include <algorithm>
 
 #include "app/panels/panels.h"
+#include "app/render/resources.h"
 #include "core/export.h"
 #include "core/log.h"
 #include "core/paths.h"
@@ -149,6 +150,15 @@ void App::select_in(const std::string& panel_title, const std::string& uid_or_na
             if (!uid_or_name.empty()) p->select(*this, uid_or_name);
             focus_panel(p->title());
         }
+}
+
+gfx::ResourceCache* App::resources() {
+    if (!game) return nullptr;
+    if (!resources_ || resources_game_ != game.get()) {
+        resources_ = std::make_unique<gfx::ResourceCache>(game);
+        resources_game_ = game.get();
+    }
+    return resources_.get();
 }
 
 bool App::any_busy() const {
@@ -566,6 +576,8 @@ int App::run() {
         }
     }
     settings.save();
+    resources_.reset();  // GL objects go before the context
+    panels_.clear();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();

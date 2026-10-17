@@ -147,14 +147,15 @@ std::shared_ptr<World> load_world(const GameData& g, const std::string& world, c
             if (pr.off < e.start || pr.off >= e.end) continue;
             if (pr.pset == "gCNPC_PS") e.npc = true;
             else if (pr.pset == "gCInventory_PS") e.inventory = true;
-            else if (pr.pset == "eCMesh_PS" && pr.name == "MeshFileName" && pr.value.is_str() && !pr.value.s.empty()) e.mesh = pr.value.s;
+            // level meshes name a virtual path ("#G3:/data/raw/meshes/World//Harbour_01_L01._xmsh"): resources are found by the bare name (RE.md section 26)
+            else if (pr.pset == "eCMesh_PS" && pr.name == "MeshFileName" && pr.value.is_str() && !pr.value.s.empty()) e.mesh = p2m::bare_name(pr.value.s);
         }
         for (size_t i = L.first; i < w->entities.size(); ++i) {
             WorldEntity& e = w->entities[i];
             const TemplateInfo* tpl = e.template_name.empty() ? nullptr : g.tpl(e.template_name);
             if (tpl) {
                 e.kind = tpl->kind;
-                if (e.mesh.empty()) e.mesh = tpl->mesh;
+                if (e.mesh.empty()) e.mesh = p2m::bare_name(tpl->mesh);
             } else {
                 e.kind = e.npc ? TplKind::Npc : !e.mesh.empty() ? TplKind::Object : e.inventory ? TplKind::Interactive : TplKind::Other;
             }
