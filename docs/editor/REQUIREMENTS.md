@@ -320,7 +320,9 @@ Each stage ends with a usable feature (or the base the next stage needs), is ver
 
 | **E15** Icon previews | `compiled_imagelists.bin` decoded (`core/imagelist.*`, RE.md section 51), icons drawn from the atlas in the item lists, pickers, Browser, recipes and the icon combo | DATA-7 | **done** (768 images in 7 collections; 479 of 503 item icons resolve, the rest are the engine's own gaps; unit tests `imagelist_*`; screenshots checked; project pictures used as an icon are not previewed) |
 
-Planned next (the roadmap of 2026-10-17, one stage each, in this order): **E16** a template's starting inventory (`gCInventory_PS`), shown in the Loot editor; **E17** Spells and NPC-groups panels; **E18** branches inside a quest; **E19** actors (`._xmac`) in the World view and glTF/OBJ to `._xmsh` (AST-4); **E20** command palette (Ctrl+P) and wizards (fetch quest, trader NPC, new weapon + recipe).
+| **E16** Shipped loot | a template's starting inventory decoded (`core/tpl_inventory.*`, RE.md section 52); the NPC panel shows what the template carries and what it wears, "Start from the shipped loot" | NPC-3 | **done** (359 of 361 NPC and monster templates readable, all equal to the engine's `template_inventory`; unit tests `inventory_*`; screenshot checked) |
+
+Planned next (the roadmap of 2026-10-17, one stage each, in this order): **E17** Spells and NPC-groups panels; **E18** branches inside a quest; **E19** actors (`._xmac`) in the World view and glTF/OBJ to `._xmsh` (AST-4); **E20** command palette (Ctrl+P) and wizards (fetch quest, trader NPC, new weapon + recipe).
 
 Order rationale: E0-E2 give a usable tool with a real mod at the end of E2; E3-E6 add the other content kinds on the same export pipeline; the world (E7-E8) is independent
 of the content editors and needs format work; placement (E10) needs both; E11/E12 need engine-side work and verification.
@@ -346,4 +348,4 @@ of the content editors and needs format work; placement (E10) needs both; E11/E1
   and 34 int32 base values in `gESkill` order) after the set's name index; `core/gamedata.cpp` decodes it and the data test compares every NPC of
   `docs/NPC_PROPERTIES.md` (hit points, level, experience, attributes, protection, guild, species). Species numbers 4, 22, 26 (Ghost, Ogre_Tame, Wolf_Tame) are
   used by no shipped NPC and inferred; attitude, bravery and damage calculation names follow the layer's order (not cross-checked). A template's starting
-  inventory (`gCInventory_PS` stacks) is not decoded: the editor sets loot amounts without showing the shipped loot.
+  inventory (`gCInventory_PS` stacks) is decoded since E16 (RE.md section 52) and checked against the engine's answer for every NPC and monster template.

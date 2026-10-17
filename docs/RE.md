@@ -1678,3 +1678,22 @@ image       eCGuiImage2            { ImageName "IC_It_Apple", RectOnTexture bCRe
 `IMC_Icons` holds the item icons (40 x 40 cells of `GUI_IconSets01`, 1024 x 1024), the other collections one image list per picture (`img_*.png` for the achievements). The whole file is 768 images in 7 collections;
 the texture of a list is the compiled `<name>._ximg` of its `TextureName`. 479 of the 503 item templates that name an icon resolve (the others: the engine's `icon_missing` placeholder and `IC_It_Torch_Burning`,
 which no list has). `core/imagelist.*` is the reader (`GameData::images()`), `modkit_tests` `imagelist_matches_game` checks the counts, `IC_It_Apple` (40 x 40) and that every resolved texture exists.
+
+## 52. The starting inventory of an NPC template, offline (editor stage E16) [static; every NPC and monster template checked against the engine]
+
+`gCInventory_PS` is not reflected (section 24): its stacks are not properties of the set but objects that follow the set's two flags. In the template file the set is an ordinary object (header `01 00 01 01 00 01 <u16 class string> 01 00 00 <u16 0xd4>`,
+body `u16 v0, u32 size, u16 v1, u32 nprops` with `GeneratedPlunder` and `GeneratedTrade`, two bools), and the object's own data goes on right after the properties (the body's size covers all of it):
+
+```
+u16 0xd4, u16 2, u8 1, u32 nStacks
+nStacks x stack      body (u16 v0 = 0xc9, u32 size, u16 v1, u32 7, 7 properties, 2 trailing bytes included in size):
+                       Amount int, Selection int, SelectLimit int, QuickSlot int (-1 = none), Type enum gEStackType, EquipSlot enum gEEquipSlot,
+                       Template eCTemplateEntityProxy (23 bytes: 02 00 01 <16 byte entity GUID> 00 00 00 00)
+u16 3, u32 nWorn
+nWorn x ( u32 slot, body with one property Template )     the second list: what the NPC wears (slot 11 = armour, 12 = helmet; 10 also occurs)
+```
+
+The Template reference is the entity GUID of an item template (`GameData::template_by_guid`). The first list is what `risen.npc.template_inventory(name)` returns (every stack, `Amount` as the amount); the second list is not part of it (it is
+the clothing the engine puts on the NPC). `Type` is 0 for 83 of 88 stacks of the game and 1 for five quest weapons (`sh`'s `It_BS_TitanSword`), `EquipSlot` 0 everywhere. **Verified against the engine:** `mods/npcdump` logged
+`risen.npc.template_inventory` of all NPC and monster templates in the game (82 stacks of 67 templates, the table is `tests/modkit/inventory_tests.inc`); the offline reading gives the same set of (item, amount) pairs for all 359 readable
+templates (2 are not: they are test templates without the record). Six stacks name an item no template of the game has (`Skeleton_SitDead`, `Gnome_Paul_01`, ...): the engine skips them, so does the editor. `core/tpl_inventory.*`.

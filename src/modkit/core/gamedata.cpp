@@ -147,6 +147,7 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
         p2m::Template t;
         const p2m::LFile* lf;
         std::vector<int> skills;
+        RawInventory inv;
     };
     std::vector<Parsed> parsed;
     parsed.reserve(tple_keys.size());
@@ -161,15 +162,38 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
             p2m::Template t = p2m::parse_template(raw);
             for (const std::string& g : t.guids) guid_names[g] = t.base_name();
             std::vector<int> skills;
-            if (raw.find("gCNPC_PS") != std::string::npos) skills = decode_skills(raw, t.strings);
-            parsed.push_back({std::move(t), &lf, std::move(skills)});
+            RawInventory inv;
+            if (raw.find("gCNPC_PS") != std::string::npos) {
+                skills = decode_skills(raw, t.strings);
+                inv = decode_inventory(raw, t.strings);
+            }
+            parsed.push_back({std::move(t), &lf, std::move(skills), std::move(inv)});
         } catch (const std::exception& e) {
             log_warn("template " + lf.e->path + " skipped: " + e.what());
         }
     }
-    for (auto& [t, lf, skills] : parsed) {
+    for (auto& [t, lf, skills, inv] : parsed) {
         auto info = std::make_unique<TemplateInfo>();
         info->skills = std::move(skills);
+        info->inventory_known = inv.found;
+        auto item_name = [&](const std::string& guid, bool& resolved) {
+            auto g = guid_names.find(guid);
+            resolved = g != guid_names.end();
+            return resolved ? g->second : guid;
+        };
+        for (auto& s : inv.stacks) {
+            TemplateInfo::Stack st;
+            st.item = item_name(s.guid, st.resolved);
+            st.amount = s.amount;
+            st.type = s.type;
+            st.equip_slot = s.equip_slot;
+            info->inventory.push_back(std::move(st));
+        }
+        for (auto& w : inv.worn) {
+            bool ok = false;
+            const std::string n = item_name(w.guid, ok);
+            if (ok) info->worn.push_back({w.slot, n});
+        }
         info->name = t.base_name();
         info->file = t.file_name();
         const std::string& path = lf->e->path;

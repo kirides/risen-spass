@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "core/imagelist.h"
+#include "core/tpl_inventory.h"
 #include "pack2mod/internal.h"
 
 namespace mk {
@@ -38,6 +39,16 @@ struct TemplateInfo {
     std::string mesh, icon;         // eCMesh_PS.MeshFileName / gCItem_PS.IconImage (empty when none)
     bool multi = false;             // a multi template (refused as a clone base)
     std::vector<int> skills;        // NPCs: the 34 base values of gCSkills_PS (gESkill order), empty when not found
+    // NPCs: what the template carries (gCInventory_PS stacks, RE.md section 52); `item` is the template name, or the entity GUID ("@...") of an item no
+    // template of the game has (the engine skips such a stack too)
+    struct Stack {
+        std::string item;
+        bool resolved = true;
+        int amount = 1, type = 0, equip_slot = 0;
+    };
+    std::vector<Stack> inventory;
+    std::vector<std::pair<int, std::string>> worn;  // NPCs: equipment slot -> item template (armour, helmet), the record's second list
+    bool inventory_known = false;                    // the record was read (an empty `inventory` then means "carries nothing")
 
     const p2m::Val* get(const std::string& key) const { return props.get(key); }
     bool has_set(const std::string& set) const;

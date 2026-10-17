@@ -54,6 +54,7 @@ add_library(modkit_core STATIC
     core/lua_writer.cpp
     core/mesh.cpp
     core/settings.cpp
+    core/tpl_inventory.cpp
     core/validate.cpp
     core/world.cpp
     "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp"

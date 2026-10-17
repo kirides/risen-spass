@@ -101,7 +101,7 @@ Two kinds of objects:
   numbers; a **change** of a shipped template rewrites it (new spawns at once, the ones already in the world at the next session start). The shipped
   values are shown in brackets: hit points, level, experience for a kill (10 x level, at least 50: setting it sets the level), mana, the skills
   (attributes 0..200, protection, combat skills 0..10), guild, species, attitude, bravery, damage calculation, combat species, AI group, the actor of a
-  monster. Factors (hit points, damage) are computed from the shipped values. **Loot** sets target amounts of items the template carries (reaches NPCs
+  monster. Factors (hit points, damage) are computed from the shipped values. **Loot** shows what the template carries as shipped (and what it wears) and sets target amounts of items the template carries ("Start from the shipped loot" copies the shipped stacks into the list; 0 removes one) (reaches NPCs
   made afterwards). A human clone looks like its base: heads and body parts are separate items.
 * **Placed NPCs** are persons in the world: a **unique name** (letters, digits, `_`, `-`: dialogues name their owner by it, savegames know the NPC by
   it), a template (shipped or one of yours), a label per language, **where** (an absolute position, or an offset from the player when the NPC is first
@@ -360,6 +360,6 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
   project audio files (an import from `modkit\project.json` keeps them as game sounds).
 * A quest flow is one chain (no branches inside a quest); branch with dialogues and follow-up quests.
 * The Conversation panel follows the layer's documented rules for dialogue options, it does not run the engine: commands other than End, Give, Say, quest and game-event commands are only listed; test the finished mod with Play.
-* A template's shipped loot is not shown (the editor cannot read it offline yet).
+* Shipped loot is read from the template files: stacks naming an item no template of the game has (six in the whole game) are skipped like the engine does; the worn items (armour, helmet) are listed but not editable.
 * Icons are offered from the shipped items' icons.
 * Linux and macOS builds are part of the CMake setup but were not built yet (no such host in the development setup).

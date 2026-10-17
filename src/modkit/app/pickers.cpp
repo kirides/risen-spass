@@ -92,7 +92,7 @@ bool template_picker(const char* label, std::string& name, const GameData* game,
                 ImGui::CloseCurrentPopup();
             }
             if (!lbl.empty()) {
-                ImGui::SameLine(items ? 330 : 300);
+                ImGui::SameLine(items ? 330.0f : 300.0f);
                 ImGui::TextDisabled("%s", lbl.c_str());
             }
         };

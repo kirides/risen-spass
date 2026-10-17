@@ -7,6 +7,7 @@
 
 #include "app/dragdrop.h"
 #include "app/editor_util.h"
+#include "app/icons.h"
 #include "app/panels/panels.h"
 #include "app/pickers.h"
 #include "app/prop_editor.h"
@@ -360,6 +361,30 @@ private:
         }
 
         ui::section("Loot");
+        // what the template carries as shipped (the base's for a new template), read from the game's files
+        std::map<std::string, int> shipped_loot;
+        if (target && target->inventory_known) {
+            for (auto& st : target->inventory)
+                if (st.resolved) shipped_loot[st.item] += st.amount;
+            if (shipped_loot.empty()) {
+                ImGui::TextDisabled("Shipped: carries nothing.");
+            } else {
+                ImGui::TextDisabled("Shipped:");
+                for (auto& [item, amount] : shipped_loot) {
+                    ImGui::SameLine();
+                    ui::item_icon(item, ImGui::GetFrameHeight());
+                    ImGui::SameLine(0, 2);
+                    ImGui::TextDisabled("%dx %s", amount, item.c_str());
+                }
+            }
+            if (!target->worn.empty()) {
+                std::string worn;
+                for (auto& [slot, item] : target->worn) worn += (worn.empty() ? "" : ", ") + item;
+                ImGui::TextDisabled("Wears: %s", worn.c_str());
+            }
+        } else if (target) {
+            ImGui::TextDisabled("Shipped: not readable for this template.");
+        }
         bool loot_on = n.loot.has_value();
         if (ImGui::Checkbox("Set loot amounts", &loot_on)) {
             if (loot_on) n.loot = IntMap{};
@@ -368,6 +393,14 @@ private:
         }
         ui::help("Target amounts the template carries ({ It_Apple = 3 }; 0 removes). Reaches NPCs spawned afterwards, not existing ones.");
         if (n.loot) {
+            if (!shipped_loot.empty() && ImGui::SmallButton("Start from the shipped loot")) {
+                IntMap m = *n.loot;
+                for (auto& [item, amount] : shipped_loot) m[item] = amount;
+                n.loot = m;
+                ch = true;
+            }
+            ImGui::SameLine();
+            ui::hint("an amount of 0 takes the item away, an item the template does not carry is added");
             std::vector<Ingredient> rows;
             for (auto& [k, v] : *n.loot) rows.push_back({k, v});
             if (ui::ingredient_list("loot", rows, app, ui::project_item_names(app.project), 64)) {
