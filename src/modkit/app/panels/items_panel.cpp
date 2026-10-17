@@ -8,6 +8,7 @@
 #include "app/panels/panels.h"
 #include "app/dragdrop.h"
 #include "app/editor_util.h"
+#include "app/icons.h"
 #include "app/pickers.h"
 #include "app/prop_editor.h"
 #include "app/render/mesh_preview.h"
@@ -141,6 +142,8 @@ private:
             const std::string lbl = ui::label_of(app, i.name);
             if (!filter_.empty() && i.name.find(filter_) == std::string::npos && lbl.find(filter_) == std::string::npos) continue;
             ImGui::PushID(i.uid.c_str());
+            ui::item_icon(i.name, 20.0f);
+            ImGui::SameLine();
             if (ImGui::Selectable(i.name.empty() ? "(unnamed)" : i.name.c_str(), sel_ == i.uid)) sel_ = i.uid;
             ui::drag_source(i.name, TplKind::Item, false, i.mode == Mode::New, lbl);
             if (ImGui::BeginPopupContextItem()) {
@@ -257,6 +260,8 @@ private:
             ImGui::SameLine();
             ImGui::BeginDisabled(!it.icon);
             std::string ic = it.icon ? *it.icon : shipped.icon;
+            ui::icon(ic, 32.0f);
+            ImGui::SameLine();
             if (ImGui::BeginCombo("Icon", ic.c_str(), ImGuiComboFlags_HeightLarge)) {
                 // the project's pictures first: they become cells of the mod's icon atlas
                 for (auto& a : app.project.assets) {
@@ -269,11 +274,14 @@ private:
                 }
                 if (g) {
                     if (icons_.empty()) icons_ = known_icons(*g);
-                    for (auto& n : icons_)
+                    for (auto& n : icons_) {
+                        ui::icon(n, 20.0f);
+                        ImGui::SameLine();
                         if (ImGui::Selectable(n.c_str(), n == ic)) {
                             it.icon = n;
                             ch = true;
                         }
+                    }
                 }
                 ImGui::EndCombo();
             }

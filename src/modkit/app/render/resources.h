@@ -45,6 +45,8 @@ public:
     bool failed(const std::string& name) const;
     // the texture of an image name, a white texture until it is ready or when it cannot be read
     GLuint texture(const std::string& name);
+    // the size of the picture the texture was made from (not of the level that was uploaded); false until it is ready
+    bool texture_size(const std::string& name, int& width, int& height) const;
     // main thread: uploads finished work, at most `budget_ms` milliseconds
     void update(double budget_ms);
     size_t loaded_meshes() const { return meshes_.size(); }
@@ -75,6 +77,7 @@ private:
     std::shared_ptr<const GameData> game_;
     std::unordered_map<std::string, std::unique_ptr<GpuMesh>> meshes_;  // lower-case name
     std::unordered_map<std::string, GLuint> textures_;
+    std::unordered_map<std::string, std::pair<int, int>> texture_sizes_;
     std::unordered_map<std::string, bool> requested_;  // lower-case name -> failed
     GLuint white_ = 0;
     bool s3tc_ = false;

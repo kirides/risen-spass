@@ -14,6 +14,7 @@
 #include <algorithm>
 
 #include "app/audio.h"
+#include "app/icons.h"
 #include "app/panels/panels.h"
 #include "app/render/resources.h"
 #include "core/export.h"
@@ -677,6 +678,7 @@ void App::draw_modals() {
 void App::draw_frame() {
     refresh_problems();
     poll_game_log();
+    ui::set_icon_source(resources(), game.get(), &project);
     refresh_assets();  // cheap when nothing changed; follows undo, open, import
     handle_shortcuts();
     draw_menu();

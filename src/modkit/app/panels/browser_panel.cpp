@@ -10,6 +10,7 @@
 
 #include "app/dragdrop.h"
 #include "app/editor_util.h"
+#include "app/icons.h"
 #include "app/panels/panels.h"
 #include "app/pickers.h"
 #include "app/render/mesh_preview.h"
@@ -166,6 +167,10 @@ private:
         }
     }
     void row(const GameData& g, const TemplateInfo& t) {
+        if (t.kind == TplKind::Item) {
+            ui::icon(t.icon, 20.0f);
+            ImGui::SameLine();
+        }
         if (ImGui::Selectable(t.name.c_str(), selected_ == &t && sel_mod_.empty())) {
             selected_ = &t;
             selected_name_ = t.name;
@@ -275,7 +280,11 @@ private:
         }
         ImGui::TextDisabled("%s   %s   %s.tple", kind_name(t->kind), t->group.c_str(), t->file.c_str());
         if (!t->mesh.empty()) ImGui::TextDisabled("mesh %s", t->mesh.c_str());
-        if (!t->icon.empty()) ImGui::TextDisabled("icon %s", t->icon.c_str());
+        if (!t->icon.empty()) {
+            ui::icon(t->icon, 48.0f);
+            ImGui::SameLine();
+            ImGui::TextDisabled("icon %s", t->icon.c_str());
+        }
         const std::string desc = g.text("ITEMDESC_" + t->name);
         if (!desc.empty() && desc != "-") ImGui::TextWrapped("%s", desc.c_str());
         if (!t->mesh.empty()) preview_.draw(app, t->mesh, ImVec2(std::min(ImGui::GetContentRegionAvail().x, 300.0f), 160));

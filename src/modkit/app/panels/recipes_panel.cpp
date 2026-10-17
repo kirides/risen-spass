@@ -7,6 +7,7 @@
 
 #include "app/dragdrop.h"
 #include "app/editor_util.h"
+#include "app/icons.h"
 #include "app/panels/panels.h"
 #include "app/pickers.h"
 #include "app/prop_editor.h"
@@ -115,6 +116,8 @@ private:
         std::string remove;
         for (auto& r : p.recipes) {
             ImGui::PushID(r.uid.c_str());
+            ui::item_icon(r.result.value_or(r.name), 20.0f);
+            ImGui::SameLine();
             if (ImGui::Selectable(r.name.empty() ? "(unnamed)" : r.name.c_str(), sel_ == r.uid)) sel_ = r.uid;
             ui::drag_source(r.name, TplKind::Recipe, false, r.mode == Mode::New, ui::label_of(app, r.name));
             if (ImGui::BeginPopupContextItem()) {

@@ -44,6 +44,7 @@ add_library(modkit_core STATIC
     core/graph.cpp
     core/history.cpp
     core/image.cpp
+    core/imagelist.cpp
     core/import.cpp
     core/log.cpp
     core/paths.cpp
@@ -82,6 +83,7 @@ add_executable(risen-modkit
     app/app.cpp
     app/audio.cpp
     app/fonts.cpp
+    app/icons.cpp
     app/screenshot.cpp
     app/dragdrop.cpp
     app/os_open.cpp

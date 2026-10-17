@@ -127,6 +127,14 @@ bool ResourceCache::failed(const std::string& name) const {
     return it != requested_.end() && it->second;
 }
 
+bool ResourceCache::texture_size(const std::string& name, int& width, int& height) const {
+    auto it = texture_sizes_.find(key_of(name));
+    if (it == texture_sizes_.end()) return false;
+    width = it->second.first;
+    height = it->second.second;
+    return true;
+}
+
 GLuint ResourceCache::texture(const std::string& name) {
     if (name.empty()) return white_;
     const std::string k = key_of(name);
@@ -267,6 +275,7 @@ void ResourceCache::upload_texture(Done& d) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     textures_[key_of(d.name)] = t;
+    texture_sizes_[key_of(d.name)] = {static_cast<int>(img.width), static_cast<int>(img.height)};
 }
 
 }  // namespace mk::gfx

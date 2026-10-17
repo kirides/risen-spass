@@ -24,6 +24,7 @@
 #include "core/gamedata.h"
 #include "core/history.h"
 #include "core/image.h"
+#include "core/imagelist.h"
 #include "core/import.h"
 #include "core/lua_writer.h"
 #include "core/mesh.h"
@@ -332,6 +333,7 @@ TEST(gamedata_real_archives) {
 #include "image_tests.inc"
 #include "behavior_tests.inc"
 #include "play_tests.inc"
+#include "imagelist_tests.inc"
 #include "dialog_sim_tests.inc"
 
 int main(int argc, char** argv) {

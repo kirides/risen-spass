@@ -273,6 +273,18 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
     std::sort(gd->quests_.begin(), gd->quests_.end(), [](const GameQuest& a, const GameQuest& b) { return p2m::lower(a.name) < p2m::lower(b.name); });
     log_info("game data: " + std::to_string(gd->quests_.size()) + " quests");
 
+    // ---- the shipped icons (compiled_imagelists.bin, docs/RE.md section 51): image name -> rectangle of a texture
+    for (const std::string& k : gd->compiled_.order) {
+        if (!p2m::ends_with(p2m::lower(k), "compiled_imagelists.bin")) continue;
+        try {
+            gd->images_ = ImageCatalog::parse(gd->compiled_.files.at(k).read());
+            log_info("game data: " + std::to_string(gd->images_.all().size()) + " GUI images in " + std::to_string(gd->images_.collections()) + " collections");
+        } catch (const std::exception& e) {
+            log_warn(std::string("compiled_imagelists.bin skipped: ") + e.what());
+        }
+        break;
+    }
+
     report(0.9f, "resources");
     for (const p2m::Layered* layer : {&gd->common_, &gd->compiled_}) {
         for (const std::string& k : layer->order) {

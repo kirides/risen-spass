@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "core/imagelist.h"
 #include "pack2mod/internal.h"
 
 namespace mk {
@@ -77,6 +78,8 @@ public:
     // the game's own quests, sorted by name (empty when compiled_quests.bin is missing or unreadable)
     const std::vector<GameQuest>& quests() const { return quests_; }
     const GameQuest* quest(const std::string& name) const;  // case-insensitive
+    // the shipped GUI images (compiled_imagelists.bin): icon name -> rectangle of a texture; empty when the file is missing or unreadable
+    const ImageCatalog& images() const { return images_; }
     // world projects: names of the folders below common/projects that hold a .wrl
     const std::vector<std::string>& worlds() const { return worlds_; }
     // files of the common layer by "<archive base>/<path inside>", e.g. "projects/World/World.wrl" (case-insensitive), sorted
@@ -101,6 +104,7 @@ private:
     std::map<std::string, std::vector<AssetEntry>> assets_;
     std::vector<std::string> worlds_;
     std::vector<GameQuest> quests_;
+    ImageCatalog images_;
     p2m::Ctx ctx_;
     double load_seconds_ = 0;
 };

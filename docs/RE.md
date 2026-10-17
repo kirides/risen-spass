@@ -1659,3 +1659,22 @@ Engine.dll, Game.dll of the 64-bit Enhanced build; dumps in `B:\DevDrive\risen-g
   `?CreateDynamicEntity@gCWorld@@QEAAPEAVeCDynamicEntity@@XZ` + `?SetMeshVisual@eCDynamicEntity@@QEAA?AW4bEResult@@AEBVbCString@@_N@Z` (a mesh entity
   without a template: killed on load unless its creator template resolves, section 32). Flags of `eCEntity +0x28`: `0x2` rendering, `0x4` enabled,
   `0x8` killed, `0x10` in processing range, `0x20` cached in, `0x80` picking, `0x3c00` insert type, `0x80000` save-relevant, `0x100000` temporary.
+
+## 51. compiled_imagelists.bin: the shipped icons offline (editor stage E15) [static; checked against every item template]
+
+`data/compiled/library.pak` -> `compiled_imagelists.bin` (89 KB) is the engine's `eCDocArchive` `V001` in the `GENOMFLE` container (section 43): `u32 0x31303056`, `u8 flag`, `u32 7` collections, per collection a head
+(`u32 filetime_lo, u32 filetime_hi, u16 string index` of `IMC_Icons.ximc`, `IMC_Maps`, `IMC_Elements`, `IMC_X360`, `IMC_OLD`, `IMC_GUI`, `IMC_Achievements`), then the collections in the same order. Every object has the
+record shape of `compiled_combatspecies.bin` (`tools/g3cs.py read_accessor`: `u16 ver, u8 1, u16, u8, u16 class string, u16, u8, u16`, then `u16 v0, u32 size, u16 v1, u32 nprops` and the property records
+`u16 name, u16 type, u16 0x1e, u32 size, payload`); the object ends exactly `size` bytes after its size field, which is what the reader jumps to.
+
+```
+collection  eCGuiImageCollection2  { ImageCollectionName bCString, ImageSize bCPoint }  then  u32 nLists, nLists x list, 2 trailing bytes
+list        eCGuiImageList2        { ImageSize bCPoint, TextureName bCString "GUI_IconSets01.dds" }  then  u16 ver, u32 nImages, nImages x image
+image       eCGuiImage2            { ImageName "IC_It_Apple", RectOnTexture bCRect (4 x i32: left, top, right, bottom), BlendMode enum eEImageBlend }  + 2 trailing bytes
+            eCGuiSplitImage2       { FrameIndent bCRect, DrawStyle enum, ImageName, RectOnTexture, BlendMode }      (127: frames, buttons)
+            eCGuiLayeredImage2     { BackgroundImage, OverlayImage, two eEImageLayerBlend, ImageName, RectOnTexture, BlendMode }   (1)
+```
+
+`IMC_Icons` holds the item icons (40 x 40 cells of `GUI_IconSets01`, 1024 x 1024), the other collections one image list per picture (`img_*.png` for the achievements). The whole file is 768 images in 7 collections;
+the texture of a list is the compiled `<name>._ximg` of its `TextureName`. 479 of the 503 item templates that name an icon resolve (the others: the engine's `icon_missing` placeholder and `IC_It_Torch_Burning`,
+which no list has). `core/imagelist.*` is the reader (`GameData::images()`), `modkit_tests` `imagelist_matches_game` checks the counts, `IC_It_Apple` (40 x 40) and that every resolved texture exists.

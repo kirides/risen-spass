@@ -352,7 +352,7 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 * NPCs, monsters and vegetation are boxes in the world view (actors and SpeedTrees are not decoded).
 * A spawned object's collision was not checked; level meshes (the landscape, houses that are part of a level mesh) cannot be moved or removed, only
   entities.
-* Icons are not previewed (the game's icon lists are not decoded yet).
+* Icon previews show the game's own icons; a picture of the project used as an item's icon is not previewed (only its name).
 * Meshes in authoring formats (glTF, OBJ, FBX) cannot be added yet; only `._xmsh` files compiled for the engine (AST-4). A new texture on a new mesh
   needs a material that names it (the editor does not write materials).
 * A picture replaces a game texture only where the engine has not loaded it yet when the mod is mounted (at start: always).
@@ -361,5 +361,5 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 * A quest flow is one chain (no branches inside a quest); branch with dialogues and follow-up quests.
 * The Conversation panel follows the layer's documented rules for dialogue options, it does not run the engine: commands other than End, Give, Say, quest and game-event commands are only listed; test the finished mod with Play.
 * A template's shipped loot is not shown (the editor cannot read it offline yet).
-* Icons are offered from the shipped items' icons; a preview of meshes and icons comes with stage E8.
+* Icons are offered from the shipped items' icons.
 * Linux and macOS builds are part of the CMake setup but were not built yet (no such host in the development setup).

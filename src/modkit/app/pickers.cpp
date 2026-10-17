@@ -2,6 +2,7 @@
 
 #include "app/audio.h"
 #include "app/dragdrop.h"
+#include "app/icons.h"
 #include "app/widgets.h"
 #include "core/assets.h"
 #include "pack2mod/util.h"
@@ -49,7 +50,15 @@ bool template_picker(const char* label, std::string& name, const GameData* game,
     ImGui::PushID(label);
     const bool known = name.empty() || !game || game->tpl(name) || std::find(extra.begin(), extra.end(), name) != extra.end();
     if (!known) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.65f, 0.3f, 1));
-    ImGui::SetNextItemWidth(width > 0 ? width : ImGui::CalcItemWidth() - ImGui::GetFrameHeight() - ImGui::GetStyle().ItemInnerSpacing.x);
+    const bool items = std::find(kinds.begin(), kinds.end(), TplKind::Item) != kinds.end();
+    float icon_w = 0;
+    if (items) {  // the picked item's icon in front of the field
+        const float s = ImGui::GetFrameHeight();
+        item_icon(name, s);
+        ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+        icon_w = s + ImGui::GetStyle().ItemInnerSpacing.x;
+    }
+    ImGui::SetNextItemWidth((width > 0 ? width : ImGui::CalcItemWidth() - ImGui::GetFrameHeight() - ImGui::GetStyle().ItemInnerSpacing.x) - icon_w);
     changed |= ImGui::InputText("##name", &name);
     if (!known) {
         ImGui::PopStyleColor();
@@ -73,13 +82,17 @@ bool template_picker(const char* label, std::string& name, const GameData* game,
         ImGui::BeginChild("##list", ImVec2(520, 360));
         auto row = [&](const std::string& n, const std::string& lbl, const char* tag) {
             if (!icontains(n, filter) && !icontains(lbl, filter)) return;
+            if (items) {
+                item_icon(n, 20.0f);
+                ImGui::SameLine();
+            }
             if (ImGui::Selectable((n + "##" + tag).c_str(), n == name, ImGuiSelectableFlags_None)) {
                 name = n;
                 changed = true;
                 ImGui::CloseCurrentPopup();
             }
             if (!lbl.empty()) {
-                ImGui::SameLine(300);
+                ImGui::SameLine(items ? 330 : 300);
                 ImGui::TextDisabled("%s", lbl.c_str());
             }
         };
