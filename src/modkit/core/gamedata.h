@@ -19,6 +19,13 @@ enum class TplKind { Item, Recipe, Npc, Monster, Interactive, Object, Effect, Na
 const char* kind_name(TplKind k);
 constexpr int kTplKindCount = 10;
 
+// a quest of the game (compiled_quests.bin): its id, as risen.quest and quest.status_changed name it, and the text id of its title (quests.tab)
+struct GameQuest {
+    std::string name;      // "Rufo_GoToDruidHut"
+    std::string title_id;  // "QUEST_FILLERX2_2008-09-02_10-50-38_00" ("" for a silent quest without a log topic)
+    bool silent = false;
+};
+
 struct TemplateInfo {
     std::string name;   // the entity name the engine knows (RE.md section 48)
     std::string file;   // the file name without .tple
@@ -67,6 +74,9 @@ public:
     // the newest version of a file by its bare name (case-insensitive); throws p2m::Error when missing or damaged
     p2m::Bytes read(const std::string& bare_name) const;
     bool exists(const std::string& bare_name) const;
+    // the game's own quests, sorted by name (empty when compiled_quests.bin is missing or unreadable)
+    const std::vector<GameQuest>& quests() const { return quests_; }
+    const GameQuest* quest(const std::string& name) const;  // case-insensitive
     // world projects: names of the folders below common/projects that hold a .wrl
     const std::vector<std::string>& worlds() const { return worlds_; }
     // files of the common layer by "<archive base>/<path inside>", e.g. "projects/World/World.wrl" (case-insensitive), sorted
@@ -90,6 +100,7 @@ private:
     std::unordered_map<std::string, std::vector<std::string>> texts_;  // id -> text per language (index into languages_)
     std::map<std::string, std::vector<AssetEntry>> assets_;
     std::vector<std::string> worlds_;
+    std::vector<GameQuest> quests_;
     p2m::Ctx ctx_;
     double load_seconds_ = 0;
 };

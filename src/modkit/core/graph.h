@@ -54,6 +54,10 @@ GraphNode make_node(GraphKind k, const std::string& type, double x, double y);
 // Condition data (section 7.2 of REQUIREMENTS.md) of a condition sub-graph ending in the given node: ["quest", "Q", "Running"], ["all", [...]], ...
 // Problems are appended to `errors`; null when the node is no condition.
 json compile_condition(const Graph& g, const std::string& node_uid, std::vector<std::string>& errors, int depth = 0);
+// one condition from its kind and named arguments ({ quest, status }, { item, count, holder }, ...: the dialogue editor's node data): ["quest", "Q", "Success"]
+json leaf_condition(const std::string& kind, const json& args, std::vector<std::string>& errors);
+// the other way: kind and named arguments of a one-condition array; false for all / any / not and unknown kinds
+bool leaf_args(const json& c, std::string& kind, json& args);
 // the condition on an input pin: several links are "all"; null when nothing is linked
 json condition_on(const Graph& g, const std::string& node_uid, const std::string& pin, std::vector<std::string>& errors);
 // a one-line text of condition data for the canvas ("quest Q_X is Running and has 3 It_IronOre")

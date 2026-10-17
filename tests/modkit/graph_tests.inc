@@ -346,3 +346,42 @@ TEST(world_meshes_resolve) {
             ++shown;
         }
 }
+
+TEST(leaf_conditions_round_trip) {
+    std::vector<std::string> errs;
+    const json q = leaf_condition("quest", json{{"quest", "Rufo_GoToDruidHut"}, {"status", "Success"}}, errs);
+    CHECK(errs.empty());
+    CHECK_EQ(q.dump(), json::array({"quest", "Rufo_GoToDruidHut", "Success"}).dump());
+    std::string kind;
+    json args;
+    CHECK(leaf_args(q, kind, args));
+    CHECK_EQ(kind, std::string("quest"));
+    CHECK_EQ(args.value("status", std::string()), std::string("Success"));
+    // optional arguments: trailing ones left out, a gap kept as null and read back as absent
+    const json it = leaf_condition("item", json{{"item", "It_Apple"}, {"holder", "Hob"}}, errs);
+    CHECK_EQ(it.dump(), json::array({"item", "It_Apple", nullptr, "Hob"}).dump());
+    CHECK(leaf_args(it, kind, args));
+    CHECK(!args.contains("count") && args.value("holder", std::string()) == "Hob");
+    const json sk = leaf_condition("skill", json{{"skill", "Strength"}, {"value", 30}}, errs);
+    CHECK(leaf_args(sk, kind, args) && args.value("value", 0) == 30);
+    // every kind survives the way there and back
+    for (const char* k : {"quest", "item", "var", "event", "skill", "guild", "dead", "alive"}) {
+        json a = json::object();
+        if (std::string(k) == "quest") a["quest"] = "Q";
+        else if (std::string(k) == "item") a["item"] = "It_Apple";
+        else if (std::string(k) == "var" || std::string(k) == "event") a["name"] = "V";
+        else if (std::string(k) == "skill") a["skill"] = "Strength";
+        else if (std::string(k) == "guild") a["guild"] = "Grd";
+        else a["who"] = "Hob";
+        std::vector<std::string> e;
+        const json c = leaf_condition(k, a, e);
+        std::string k2;
+        json a2;
+        CHECK(e.empty() && leaf_args(c, k2, a2) && k2 == k);
+        CHECK_EQ(leaf_condition(k2, a2, e).dump(), c.dump());
+    }
+    CHECK(!leaf_args(json::array({"all", json::array()}), kind, args));
+    CHECK(!leaf_args(json::array({"bogus", 1}), kind, args));
+    errs.clear();
+    CHECK(leaf_condition("quest", json::object(), errs).is_array() && !errs.empty());  // an empty quest is reported
+}

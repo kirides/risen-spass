@@ -183,6 +183,34 @@ TEST(validate_with_game_data) {
     CHECK(has("gEItemUseType: unknown value"));
 }
 
+TEST(gamedata_quests_and_conditions_on_them) {
+    auto g = game_data();
+    if (!g) {
+        std::printf("  (skipped: no --data)\n");
+        return;
+    }
+    // compiled_quests.bin: 370 quests with their title ids in quests.tab
+    CHECK(g->quests().size() > 300);
+    const GameQuest* rufo = g->quest("rufo_gotodruidhut");  // case-insensitive
+    CHECK(rufo != nullptr && rufo->name == "Rufo_GoToDruidHut" && rufo->silent);
+    const GameQuest* salty = g->quest("Salty_SellShop");
+    CHECK(salty != nullptr && !salty->title_id.empty() && !g->text(salty->title_id).empty());
+    size_t titled = 0;
+    for (auto& q : g->quests()) titled += !q.title_id.empty() && !g->text(q.title_id).empty();
+    CHECK(titled > 300);
+    // a placed NPC that appears after a quest of the game: no warning; an unknown quest: a warning
+    Project p = load_showcase();
+    p.npcs[0].appear_when = json::array({"quest", "Rufo_GoToDruidHut", "Success"});
+    p.npcs[0].leave_when = json::array({"all", json::array({json::array({"quest", "No_Such_Quest_X", "Success"}), json::array({"item", "It_Apple", 2})})});
+    const auto v = validate(p, g.get());
+    auto has = [&](const std::string& part) {
+        return std::any_of(v.begin(), v.end(), [&](const Problem& x) { return x.message.find(part) != std::string::npos; });
+    };
+    CHECK(!has("'Rufo_GoToDruidHut'"));
+    CHECK(has("'No_Such_Quest_X', no quest of the project or the game"));
+    CHECK(error_count(v) == 0);
+}
+
 TEST(recipes_export_and_validate) {
     Project p = load_showcase();
     const json b = balance_spec(p);

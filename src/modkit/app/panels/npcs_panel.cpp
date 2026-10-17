@@ -419,6 +419,13 @@ private:
         ch |= ui::inventory_list("inv", n.items, app, ui::project_item_names(app.project), true);
         ui::section("Routine");
         ch |= routine_editor(n.routine);
+        ui::section("Appears when");
+        ch |= ui::condition_list("appear", n.appear_when, app, "from the start of a game");
+        ui::help("He comes into the world only once this holds, e.g. after a quest of the game was solved (quest Rufo_GoToDruidHut is Success): enemies "
+                 "that ambush the player afterwards, a messenger, a new trader. Nothing of him exists before; checked again after every load.");
+        ui::section("Leaves when");
+        ch |= ui::condition_list("leave", n.leave_when, app, "never");
+        ui::help("He is removed from the world once this holds (a quest is over, a variable is set).");
         ui::section("Lifetime");
         ch |= ImGui::Checkbox("Respawn when dead (at the next start or load)", &n.respawn);
         ImGui::SetNextItemWidth(120);

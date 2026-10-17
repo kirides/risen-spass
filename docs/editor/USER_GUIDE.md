@@ -108,8 +108,13 @@ Two kinds of objects:
   **inventory** (tick *equip* for what he wears or holds when he is made) and a **routine**: one post, a day / evening / night point, or a patrol;
   points are relative to his home and have a kind (guard, lookat, sleep, ...) and a facing. *Version* replaces the NPC in existing savegames when
   raised; *respawn* brings a dead one back at the next start.
+* **Appears when / Leaves when** (placed NPCs): conditions -- a quest has a status, the player holds items, a game variable or event, a skill, a
+  guild, an NPC dead or alive -- all or any of a list. *Appears when* keeps him out of the world until it holds (enemies that ambush the player after
+  a quest, a messenger, a new trader), *Leaves when* removes him. The **quest picker** lists your quests and **every quest of the game** (370, with
+  their titles, filter by id or title): `Rufo_GoToDruidHut is Success` spawns him once the player solved Rufo's quest of the original game.
 
-The export declares every placed NPC with `risen.npc.persistent`: made in a new game, found again after a load, never made twice.
+The export declares every placed NPC with `risen.npc.persistent` (with conditions: `risen.spawn.when`): made in a new game (or when the condition
+first holds), found again after a load, never made twice.
 
 ## Dialogues
 
@@ -174,6 +179,9 @@ notification). Its **flow** is a chain on the canvas:
 | **Log entry** | a line in the quest log |
 | **Reward** | experience (through the game's own GiveXP), gold, items, a game variable |
 | **Outcome** | success, failure or cancelled, a log line, and a follow-up quest to start |
+
+Quests of the game count too: a Start or Objective of kind `quest` and every quest condition take any quest id of the game (the picker lists them
+with their titles), e.g. start your quest when the player solved `Ash_Defeat` of the original game.
 
 Log entries, rewards and the outcome happen the moment the flow reaches them; objectives hold it until the player did them. The progress is part of
 every savegame (a load rolls it back with the game), a reward is never paid twice, a quest with a flow is started once per savegame. A quest without a

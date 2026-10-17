@@ -270,6 +270,31 @@ void check_routine_point(Ctx& c, const std::string& uid, const std::string& subj
         if (!pt.contains(k) || !pt[k].is_number()) c.add(Severity::Error, "NPCs", uid, subj, "routine " + what + ": " + k + " is missing");
 }
 
+// the quests and items a condition (exported form, core/graph.h) names: a quest of the project or of the game, an item of either
+void check_condition(Ctx& c, const char* A, const std::string& uid, const std::string& subj, const json& cond) {
+    std::vector<const json*> todo{&cond};
+    while (!todo.empty()) {
+        const json& w = *todo.back();
+        todo.pop_back();
+        if (!w.is_array() || w.empty()) continue;
+        const std::string k = w[0].is_string() ? w[0].get<std::string>() : "";
+        if (k == "all" || k == "any") {
+            if (w.size() > 1)
+                for (auto& x : w[1]) todo.push_back(&x);
+        } else if (k == "not") {
+            if (w.size() > 1) todo.push_back(&w[1]);
+        } else if (k == "quest" && w.size() > 1 && w[1].is_string() && !c.p.quest(w[1].get<std::string>())) {
+            const std::string q = w[1].get<std::string>();
+            if (!c.g || c.g->quests().empty())
+                c.add(Severity::Warning, A, uid, subj, "a condition names the quest '" + q + "' that is not in the project: it must be a quest of the game");
+            else if (!c.g->quest(q))
+                c.add(Severity::Warning, A, uid, subj, "a condition names the quest '" + q + "', no quest of the project or the game (a quest another mod makes?)");
+        } else if (k == "item" && w.size() > 1 && w[1].is_string() && !item_known(c, w[1].get<std::string>())) {
+            c.add(Severity::Error, A, uid, subj, "a condition names '" + w[1].get<std::string>() + "', no item of the game or the project");
+        }
+    }
+}
+
 void check_placed_npcs(Ctx& c) {
     std::map<std::string, int> seen;
     for (auto& n : c.p.npcs) {
@@ -287,6 +312,8 @@ void check_placed_npcs(Ctx& c) {
         if (n.hp_max && *n.hp_max < 1) c.add(Severity::Error, A, n.uid, subj, "hit points must be 1 or more");
         if (n.version < 1) c.add(Severity::Error, A, n.uid, subj, "the version must be 1 or more");
         check_choice(c, A, n.uid, subj, n.guild, "guild", guild_names());
+        if (!n.appear_when.is_null()) check_condition(c, A, n.uid, subj, n.appear_when);
+        if (!n.leave_when.is_null()) check_condition(c, A, n.uid, subj, n.leave_when);
         for (auto& i : n.items) {
             if (i.item.empty()) c.add(Severity::Error, A, n.uid, subj, "an inventory entry has no item");
             else if (!item_known(c, i.item)) c.add(Severity::Error, A, n.uid, subj, "inventory item '" + i.item + "' is no item of the game or the project");
@@ -381,24 +408,7 @@ void check_dialogs(Ctx& c) {
             auto [it, fresh] = infos.emplace(name, subj);
             if (!fresh) c.add(Severity::Error, A, d.uid, subj, "the option name '" + name + "' is used twice (also in " + it->second + ")");
             // quest conditions must name a quest that exists when the option is made (else the engine shows a blocking message box)
-            std::vector<const json*> todo;
-            if (info.contains("when")) todo.push_back(&info["when"]);
-            while (!todo.empty()) {
-                const json& w = *todo.back();
-                todo.pop_back();
-                if (!w.is_array() || w.empty()) continue;
-                const std::string k = w[0].is_string() ? w[0].get<std::string>() : "";
-                if (k == "all" || k == "any") {
-                    if (w.size() > 1)
-                        for (auto& x : w[1]) todo.push_back(&x);
-                } else if (k == "not") {
-                    if (w.size() > 1) todo.push_back(&w[1]);
-                } else if (k == "quest" && w.size() > 1 && w[1].is_string() && !c.p.quest(w[1].get<std::string>())) {
-                    c.add(Severity::Warning, A, d.uid, subj, "a condition names the quest '" + w[1].get<std::string>() + "' that is not in the project: it must be a quest of the game");
-                } else if (k == "item" && w.size() > 1 && w[1].is_string() && !item_known(c, w[1].get<std::string>())) {
-                    c.add(Severity::Error, A, d.uid, subj, "a condition names '" + w[1].get<std::string>() + "', no item of the game or the project");
-                }
-            }
+            if (info.contains("when")) check_condition(c, A, d.uid, subj, info["when"]);
             for (auto& l : info["lines"]) {
                 if (l.contains("command") && l["command"] == "Give" && l.contains("Item") && l["Item"].is_string() && !item_known(c, l["Item"].get<std::string>()))
                     c.add(Severity::Error, A, d.uid, subj, "Give names '" + l["Item"].get<std::string>() + "', no item of the game or the project");

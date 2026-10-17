@@ -1,6 +1,7 @@
 #include "core/graph.h"
 
 #include <algorithm>
+#include <map>
 #include <set>
 
 namespace mk {
@@ -211,37 +212,7 @@ std::string arg_str(const json& a, const char* k) { return a.contains(k) && a[k]
 
 }  // namespace
 
-json compile_condition(const Graph& g, const std::string& node_uid, std::vector<std::string>& errors, int depth) {
-    const GraphNode* n = g.find(node_uid);
-    if (!n) return nullptr;
-    if (depth > 32) {
-        errors.push_back("conditions nested too deep");
-        return nullptr;
-    }
-    if (n->type == "all" || n->type == "any") {
-        json list = json::array();
-        for (auto* l : links_into(g, n->uid, "in")) {
-            json c = compile_condition(g, l->from_node, errors, depth + 1);
-            if (!c.is_null()) list.push_back(c);
-        }
-        if (list.empty()) {
-            errors.push_back(std::string("an '") + (n->type == "all" ? "All of" : "Any of") + "' node has no conditions linked");
-            return nullptr;
-        }
-        return json::array({n->type, list});
-    }
-    if (n->type == "not") {
-        auto in = links_into(g, n->uid, "in");
-        if (in.empty()) {
-            errors.push_back("a 'Not' node has no condition linked");
-            return nullptr;
-        }
-        json c = compile_condition(g, in.front()->from_node, errors, depth + 1);
-        return c.is_null() ? json(nullptr) : json::array({"not", c});
-    }
-    if (n->type != "cond") return nullptr;
-    const std::string kind = n->data.value("kind", std::string());
-    const json a = n->data.value("args", json::object());
+json leaf_condition(const std::string& kind, const json& a, std::vector<std::string>& errors) {
     // risen.cond.<kind>(args...) in the order of its parameters; trailing optional arguments are left out
     json c = json::array({kind});
     auto need = [&](const char* k) {
@@ -283,6 +254,52 @@ json compile_condition(const Graph& g, const std::string& node_uid, std::vector<
     return c;
 }
 
+bool leaf_args(const json& c, std::string& kind, json& args) {
+    if (!c.is_array() || c.empty() || !c[0].is_string()) return false;
+    static const std::map<std::string, std::vector<const char*>> kParams = {
+        {"quest", {"quest", "status"}}, {"item", {"item", "count", "holder"}}, {"var", {"name", "value", "op"}}, {"event", {"name"}},
+        {"skill", {"skill", "value", "op", "who"}}, {"guild", {"guild", "who"}}, {"dead", {"who"}}, {"alive", {"who"}}};
+    kind = c[0].get<std::string>();
+    auto it = kParams.find(kind);
+    if (it == kParams.end()) return false;
+    args = json::object();
+    for (size_t i = 0; i < it->second.size() && i + 1 < c.size(); ++i)
+        if (!c[i + 1].is_null()) args[it->second[i]] = c[i + 1];
+    return true;
+}
+
+json compile_condition(const Graph& g, const std::string& node_uid, std::vector<std::string>& errors, int depth) {
+    const GraphNode* n = g.find(node_uid);
+    if (!n) return nullptr;
+    if (depth > 32) {
+        errors.push_back("conditions nested too deep");
+        return nullptr;
+    }
+    if (n->type == "all" || n->type == "any") {
+        json list = json::array();
+        for (auto* l : links_into(g, n->uid, "in")) {
+            json c = compile_condition(g, l->from_node, errors, depth + 1);
+            if (!c.is_null()) list.push_back(c);
+        }
+        if (list.empty()) {
+            errors.push_back(std::string("an '") + (n->type == "all" ? "All of" : "Any of") + "' node has no conditions linked");
+            return nullptr;
+        }
+        return json::array({n->type, list});
+    }
+    if (n->type == "not") {
+        auto in = links_into(g, n->uid, "in");
+        if (in.empty()) {
+            errors.push_back("a 'Not' node has no condition linked");
+            return nullptr;
+        }
+        json c = compile_condition(g, in.front()->from_node, errors, depth + 1);
+        return c.is_null() ? json(nullptr) : json::array({"not", c});
+    }
+    if (n->type != "cond") return nullptr;
+    return leaf_condition(n->data.value("kind", std::string()), n->data.value("args", json::object()), errors);
+}
+
 json condition_on(const Graph& g, const std::string& node_uid, const std::string& pin, std::vector<std::string>& errors) {
     json list = json::array();
     for (auto* l : links_into(g, node_uid, pin)) {
@@ -305,7 +322,7 @@ std::string describe_condition(const json& c) {
         return list.size() > 1 ? "(" + out + ")" : out;
     }
     if (k == "not") return "not " + describe_condition(c.size() > 1 ? c[1] : json());
-    if (k == "quest") return "quest " + s(1) + " is " + (c.size() > 2 ? s(2) : std::string("running"));
+    if (k == "quest") return "quest " + s(1) + " is " + (c.size() > 2 ? s(2) : std::string("Success"));  // risen.cond.quest's default
     if (k == "item") return (c.size() > 3 ? s(3) : std::string("player")) + " has " + (c.size() > 2 ? s(2) : std::string("1")) + " " + s(1);
     if (k == "var") return "variable " + s(1) + (c.size() > 2 ? " " + (c.size() > 3 ? s(3) : std::string("==")) + " " + s(2) : std::string(" exists"));
     if (k == "event") return "event " + s(1) + " happened";

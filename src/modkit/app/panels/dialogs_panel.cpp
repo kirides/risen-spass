@@ -437,78 +437,7 @@ private:
         if (ch) app.touch();
     }
 
-    bool condition_editor(App& app, json& dd) {
-        bool ch = false;
-        static const std::vector<std::string> kKinds = {"quest", "item", "var", "event", "skill", "guild", "dead", "alive"};
-        std::string kind = dd.value("kind", std::string("quest"));
-        if (ui::combo("Kind", kind, kKinds, false)) {
-            dd["kind"] = kind;
-            dd["args"] = json::object();
-            ch = true;
-        }
-        if (!dd.contains("args") || !dd["args"].is_object()) dd["args"] = json::object();
-        json& a = dd["args"];
-        static const std::vector<std::string> kOps = {">=", "==", "~=", "<=", ">", "<"};
-        std::vector<std::string> qs, npcs;
-        for (auto& q : app.project.quests) qs.push_back(q.name);
-        for (auto& n : app.project.npcs) npcs.push_back(n.name);
-        auto who = [&](const char* key, const char* label) {
-            ch |= json_str(label, a, key, "player (empty), npc or a unique name");
-        };
-        if (kind == "quest") {
-            ch |= json_combo("Quest", a, "quest", qs, true);
-            ch |= json_combo("Status", a, "status", quest_states());
-        } else if (kind == "item") {
-            std::string it = a.value("item", std::string());
-            if (ui::template_picker("Item", it, app.game.get(), {TplKind::Item, TplKind::Recipe}, ui::project_item_names(app.project))) {
-                a["item"] = it;
-                ch = true;
-            }
-            int cnt = a.value("count", 1);
-            if (ImGui::InputInt("Count", &cnt)) {
-                a["count"] = std::max(1, cnt);
-                ch = true;
-            }
-            who("holder", "Holder");
-        } else if (kind == "var") {
-            ch |= json_str("Variable", a, "name");
-            bool has = a.contains("value") && !a["value"].is_null();
-            if (ImGui::Checkbox("Compare a value", &has)) {
-                if (has) a["value"] = 1;
-                else {
-                    a.erase("value");
-                    a.erase("op");
-                }
-                ch = true;
-            }
-            if (has) {
-                int v = a.value("value", 1);
-                if (ImGui::InputInt("Value", &v)) {
-                    a["value"] = v;
-                    ch = true;
-                }
-                ch |= json_combo("Compare", a, "op", kOps);
-            }
-        } else if (kind == "event") {
-            ch |= json_str("Event", a, "name");
-            ui::help("A game event: set by the dialogue command SetGameEvent (a game variable with the value 0).");
-        } else if (kind == "skill") {
-            ch |= json_combo("Skill", a, "skill", skill_names(app.game.get()));
-            int v = a.value("value", 1);
-            if (ImGui::InputInt("Value", &v)) {
-                a["value"] = v;
-                ch = true;
-            }
-            ch |= json_combo("Compare", a, "op", kOps);
-            who("who", "Who");
-        } else if (kind == "guild") {
-            ch |= json_combo("Guild", a, "guild", guild_names());
-            who("who", "Who");
-        } else {
-            ch |= json_combo("NPC", a, "who", npcs, true);
-        }
-        return ch;
-    }
+    bool condition_editor(App& app, json& dd) { return ui::condition_args(app, dd); }
 
     static void draw_issues(const std::vector<DialogIssue>& issues, const std::string& node) {
         bool header = false;

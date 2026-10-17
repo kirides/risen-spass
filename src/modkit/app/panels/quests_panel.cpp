@@ -297,7 +297,12 @@ private:
                 ch |= json_int("Value", d, "value", 1, -1000000);
             }
             if (tr == "quest") {
-                ch |= json_combo("Quest", d, "quest", quests, true);
+                std::string qv = d.value("quest", std::string());
+                if (ui::quest_picker("Quest", qv, app, q.name)) {
+                    d["quest"] = qv;
+                    ch = true;
+                }
+                ui::help("A quest of this mod or any quest of the game.");
                 ch |= json_combo("Status", d, "status", quest_states());
             }
         } else if (n->type == "objective") {
@@ -318,7 +323,12 @@ private:
                 ch |= json_str("Variable", d, "name");
                 ch |= json_int("At least", d, "value", 1, -1000000);
             } else if (k == "quest") {
-                ch |= json_combo("Quest", d, "quest", quests, true);
+                std::string qv = d.value("quest", std::string());
+                if (ui::quest_picker("Quest", qv, app, q.name)) {
+                    d["quest"] = qv;
+                    ch = true;
+                }
+                ui::help("A quest of this mod or any quest of the game.");
                 ch |= json_combo("Status", d, "status", quest_states());
             }
             ch |= json_text("Log entry when it begins", d["text"], langs, true);

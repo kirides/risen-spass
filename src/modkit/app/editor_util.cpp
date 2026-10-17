@@ -7,10 +7,28 @@
 #include "app/dragdrop.h"
 #include "app/pickers.h"
 #include "app/widgets.h"
+#include "core/catalog.h"
+#include "core/graph.h"
+
+#include <imgui_stdlib.h>
 
 namespace mk::ui {
 
 namespace {
+
+bool json_str(const char* label, json& obj, const char* key, const char* hint = nullptr) {
+    std::string s = obj.value(key, std::string());
+    if (!(hint ? ImGui::InputTextWithHint(label, hint, &s) : ImGui::InputText(label, &s))) return false;
+    obj[key] = s;
+    return true;
+}
+
+bool json_choice(const char* label, json& obj, const char* key, const std::vector<std::string>& items) {
+    std::string s = obj.value(key, std::string());
+    if (!combo(label, s, items, false)) return false;
+    obj[key] = s;
+    return true;
+}
 
 // tells that the list takes dropped items (next to its add button)
 void drop_hint() {
@@ -189,6 +207,182 @@ bool inventory_list(const char* id, std::vector<InvItem>& v, App& app, const std
     }
     ImGui::PopID();
     return changed;
+}
+
+bool condition_args(App& app, json& dd) {
+    bool ch = false;
+    static const std::vector<std::string> kKinds = {"quest", "item", "var", "event", "skill", "guild", "dead", "alive"};
+    std::string kind = dd.value("kind", std::string("quest"));
+    if (combo("Kind", kind, kKinds, false)) {
+        dd["kind"] = kind;
+        dd["args"] = json::object();
+        ch = true;
+    }
+    if (!dd.contains("args") || !dd["args"].is_object()) dd["args"] = json::object();
+    json& a = dd["args"];
+    static const std::vector<std::string> kOps = {">=", "==", "~=", "<=", ">", "<"};
+    std::vector<std::string> npcs;
+    for (auto& n : app.project.npcs) npcs.push_back(n.name);
+    auto who = [&](const char* key, const char* label) { ch |= json_str(label, a, key, "player (empty), npc or a unique name"); };
+    if (kind == "quest") {
+        std::string q = a.value("quest", std::string());
+        if (quest_picker("Quest", q, app)) {
+            a["quest"] = q;
+            ch = true;
+        }
+        help("A quest of this mod or ANY quest of the game (the list shows the game's 370 quests with their titles). The condition holds while the quest has "
+             "the status (Success: it was solved).");
+        ch |= json_choice("Status", a, "status", quest_states());
+    } else if (kind == "item") {
+        std::string it = a.value("item", std::string());
+        if (template_picker("Item", it, app.game.get(), {TplKind::Item, TplKind::Recipe}, project_item_names(app.project))) {
+            a["item"] = it;
+            ch = true;
+        }
+        int cnt = a.value("count", 1);
+        if (ImGui::InputInt("Count", &cnt)) {
+            a["count"] = std::max(1, cnt);
+            ch = true;
+        }
+        who("holder", "Holder");
+    } else if (kind == "var") {
+        ch |= json_str("Variable", a, "name");
+        bool has = a.contains("value") && !a["value"].is_null();
+        if (ImGui::Checkbox("Compare a value", &has)) {
+            if (has) a["value"] = 1;
+            else {
+                a.erase("value");
+                a.erase("op");
+            }
+            ch = true;
+        }
+        if (has) {
+            int v = a.value("value", 1);
+            if (ImGui::InputInt("Value", &v)) {
+                a["value"] = v;
+                ch = true;
+            }
+            ch |= json_choice("Compare", a, "op", kOps);
+        }
+    } else if (kind == "event") {
+        ch |= json_str("Event", a, "name");
+        help("A game event: set by the dialogue command SetGameEvent (a game variable with the value 0).");
+    } else if (kind == "skill") {
+        ch |= json_choice("Skill", a, "skill", skill_names(app.game.get()));
+        int v = a.value("value", 1);
+        if (ImGui::InputInt("Value", &v)) {
+            a["value"] = v;
+            ch = true;
+        }
+        ch |= json_choice("Compare", a, "op", kOps);
+        who("who", "Who");
+    } else if (kind == "guild") {
+        ch |= json_choice("Guild", a, "guild", guild_names());
+        who("who", "Who");
+    } else {
+        std::string w = a.value("who", std::string());
+        if (combo("NPC", w, npcs, false)) {
+            a["who"] = w;
+            ch = true;
+        }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(150);
+        if (ImGui::InputTextWithHint("##who", "or a unique name", &w)) {
+            a["who"] = w;
+            ch = true;
+        }
+    }
+    return ch;
+}
+
+bool condition_list(const char* id, json& cond, App& app, const char* none_label) {
+    bool ch = false;
+    ImGui::PushID(id);
+    // the editable form: a mode and a list of single conditions
+    int mode = 0;  // 0 none, 1 all, 2 any
+    std::vector<json> items;  // { kind, args }
+    bool nested = false;
+    auto add_leaf = [&](const json& c) {
+        std::string kind;
+        json args;
+        if (leaf_args(c, kind, args)) items.push_back(json{{"kind", kind}, {"args", args}});
+        else nested = true;
+    };
+    if (cond.is_array() && !cond.empty() && cond[0].is_string()) {
+        const std::string k = cond[0].get<std::string>();
+        if ((k == "all" || k == "any") && cond.size() > 1 && cond[1].is_array()) {
+            mode = k == "all" ? 1 : 2;
+            for (auto& c : cond[1]) add_leaf(c);
+        } else {
+            mode = 1;
+            add_leaf(cond);
+        }
+    }
+    if (nested) {
+        ImGui::TextWrapped("%s", describe_condition(cond).c_str());
+        const bool replace = ImGui::SmallButton("Replace by a simple list (drops this condition)");
+        if (replace) cond = nullptr;
+        ImGui::PopID();
+        return replace;
+    }
+    static const char* kModes[] = {nullptr, "all of these hold", "any of these holds"};
+    const char* cur = mode == 0 ? none_label : kModes[mode];
+    bool rebuild = false;
+    ImGui::SetNextItemWidth(220);
+    if (ImGui::BeginCombo("##mode", cur)) {
+        if (ImGui::Selectable(none_label, mode == 0)) {
+            mode = 0;
+            rebuild = true;
+        }
+        for (int m = 1; m <= 2; ++m)
+            if (ImGui::Selectable(kModes[m], mode == m)) {
+                if (mode == 0 && items.empty()) items.push_back(json{{"kind", "quest"}, {"args", json{{"status", "Success"}}}});
+                mode = m;
+                rebuild = true;
+            }
+        ImGui::EndCombo();
+    }
+    if (mode != 0) {
+        int remove = -1;
+        for (size_t i = 0; i < items.size(); ++i) {
+            ImGui::PushID(static_cast<int>(i));
+            std::vector<std::string> errs;
+            const json leaf = leaf_condition(items[i].value("kind", std::string()), items[i].value("args", json::object()), errs);
+            const std::string text = leaf.is_null() ? std::string("?") : describe_condition(leaf);
+            const bool open = ImGui::TreeNodeEx("##c", ImGuiTreeNodeFlags_SpanAvailWidth | (items.size() == 1 ? ImGuiTreeNodeFlags_DefaultOpen : 0), "%s%s", text.c_str(),
+                                                errs.empty() ? "" : "  (incomplete)");
+            ImGui::SameLine(ImGui::GetContentRegionAvail().x - 10);
+            if (ImGui::SmallButton("x")) remove = static_cast<int>(i);
+            if (open) {
+                if (condition_args(app, items[i])) rebuild = true;
+                ImGui::TreePop();
+            }
+            ImGui::PopID();
+        }
+        if (remove >= 0) {
+            items.erase(items.begin() + remove);
+            if (items.empty()) mode = 0;
+            rebuild = true;
+        }
+        if (ImGui::SmallButton("+ condition")) {
+            items.push_back(json{{"kind", "quest"}, {"args", json{{"status", "Success"}}}});
+            rebuild = true;
+        }
+    }
+    if (rebuild) {
+        std::vector<std::string> errs;
+        json list = json::array();
+        for (auto& it : items) {
+            json leaf = leaf_condition(it.value("kind", std::string()), it.value("args", json::object()), errs);
+            if (!leaf.is_null()) list.push_back(leaf);
+        }
+        if (mode == 0 || list.empty()) cond = nullptr;
+        else if (list.size() == 1) cond = list[0];
+        else cond = json::array({mode == 1 ? "all" : "any", list});
+        ch = true;
+    }
+    ImGui::PopID();
+    return ch;
 }
 
 TplKind kind_of(const App& app, const std::string& name) {

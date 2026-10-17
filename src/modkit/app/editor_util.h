@@ -27,6 +27,12 @@ bool ingredient_list(const char* id, std::vector<Ingredient>& v, App& app, const
 // a list of (item, amount, equip) rows
 bool inventory_list(const char* id, std::vector<InvItem>& v, App& app, const std::vector<std::string>& extra, bool with_equip);
 
+// one condition as the dialogue editor keeps it: { kind = "quest" | "item" | "var" | "event" | "skill" | "guild" | "dead" | "alive", args = { ... } }
+bool condition_args(App& app, json& dd);
+// a condition of the exported form (core/graph.h leaf_condition; null = none): a list of conditions that must all (or any) hold. `none_label` names the
+// state without conditions ("from the start"). A nested condition (an import) is shown as text and can be replaced by a list.
+bool condition_list(const char* id, json& cond, App& app, const char* none_label);
+
 // the kind of a template name: the game's kind; a new template of the project has the kind of its base (items Item, recipes Recipe, NPC templates
 // Npc when the base is unknown); Other when nothing knows the name
 TplKind kind_of(const App& app, const std::string& name);

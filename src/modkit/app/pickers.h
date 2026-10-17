@@ -15,6 +15,9 @@ bool template_picker(const char* label, std::string& name, const GameData* game,
                      const std::vector<std::string>& extra = {}, float width = 0);
 // a resource name by compiled extension ("_xmsh"); `strip_compiled` turns "X._xmsh" into "X.xmsh" (the raw name templates use)
 bool asset_picker(const char* label, std::string& name, const GameData* game, const char* ext, bool strip_compiled, float width = 0);
+// a quest id: the project's quests first, then every quest of the game (compiled_quests.bin) with its English title; free text is accepted too
+// (a name nobody knows is shown in orange). `exclude`: a project quest left out (the quest being edited).
+bool quest_picker(const char* label, std::string& name, App& app, const std::string& exclude = {}, float width = 0);
 // a label for a template name: the project's label, else the game's English label, else ""
 std::string label_of(const App& app, const std::string& name);
 

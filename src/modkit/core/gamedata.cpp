@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstring>
 #include <cstdint>
 #include <set>
 #include <stdexcept>
@@ -231,6 +232,47 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
     log_info("game data: " + std::to_string(gd->texts_.size()) + " strings in " + std::to_string(gd->languages_.size()) + " languages");
 
     // ---- resources by compiled extension
+    // ---- the game's quests (compiled_quests.bin, docs/RE.md section 43): one gCQuest record per quest. The quest names are the first strings of the
+    // table ("<name>.xqst", in record order); each record has one LogTopic (type gCQuestLocString, payload = u16 string index of its title id in quests.tab)
+    // and one Silent flag, also in record order.
+    for (const std::string& k : gd->compiled_.order) {
+        if (!p2m::ends_with(p2m::lower(k), "compiled_quests.bin")) continue;
+        try {
+            const p2m::Bytes raw = gd->compiled_.files.at(k).read();
+            const p2m::Template t = p2m::parse_template(raw);
+            std::vector<std::string> names;
+            for (const std::string& s : t.strings)
+                if (p2m::ends_with(s, ".xqst")) names.push_back(s.substr(0, s.size() - 5));
+            std::vector<std::string> topics;
+            const auto& st = t.strings;
+            const auto li = std::find(st.begin(), st.end(), std::string("LogTopic")), ti = std::find(st.begin(), st.end(), std::string("gCQuestLocString"));
+            if (li != st.end() && ti != st.end()) {
+                const uint16_t hdr[3] = {static_cast<uint16_t>(li - st.begin()), static_cast<uint16_t>(ti - st.begin()), 0x1e};
+                const std::string pat(reinterpret_cast<const char*>(hdr), 6);
+                for (size_t at = raw.find(pat); at != std::string::npos; at = raw.find(pat, at + 1)) {
+                    if (at + 12 > raw.size()) break;
+                    uint32_t size = 0;
+                    std::memcpy(&size, raw.data() + at + 6, 4);
+                    uint16_t idx = 0xffff;
+                    if (size >= 2) std::memcpy(&idx, raw.data() + at + 10, 2);
+                    topics.push_back(idx < st.size() ? st[idx] : std::string());
+                }
+            }
+            std::vector<bool> silent;
+            for (const p2m::Prop& p : t.props)
+                if (p.pset == "gCQuest" && p.name == "Silent") silent.push_back(p.value.k == p2m::Val::Bool && p.value.i != 0);
+            const bool aligned = topics.size() == names.size() && silent.size() == names.size();
+            if (!aligned) log_warn("compiled_quests.bin: " + std::to_string(names.size()) + " quests, " + std::to_string(topics.size()) + " titles, " +
+                                   std::to_string(silent.size()) + " flags: titles left out");
+            for (size_t i = 0; i < names.size(); ++i)
+                gd->quests_.push_back({names[i], aligned ? topics[i] : std::string(), aligned && silent[i]});
+        } catch (const std::exception& e) {
+            log_warn(std::string("compiled_quests.bin skipped: ") + e.what());
+        }
+    }
+    std::sort(gd->quests_.begin(), gd->quests_.end(), [](const GameQuest& a, const GameQuest& b) { return p2m::lower(a.name) < p2m::lower(b.name); });
+    log_info("game data: " + std::to_string(gd->quests_.size()) + " quests");
+
     report(0.9f, "resources");
     for (const p2m::Layered* layer : {&gd->common_, &gd->compiled_}) {
         for (const std::string& k : layer->order) {
@@ -327,6 +369,13 @@ p2m::Bytes GameData::read_path(const std::string& path) const {
 std::string GameData::enum_name(const std::string& type, const p2m::Val& v) const {
     auto n = ctx_.enum_name(type, v);
     return n ? *n : std::string();
+}
+
+const GameQuest* GameData::quest(const std::string& name) const {
+    const std::string low = p2m::lower(name);
+    for (const GameQuest& q : quests_)
+        if (p2m::lower(q.name) == low) return &q;
+    return nullptr;
 }
 
 }  // namespace mk

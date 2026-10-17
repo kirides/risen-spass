@@ -104,6 +104,77 @@ bool template_picker(const char* label, std::string& name, const GameData* game,
     return changed;
 }
 
+bool quest_picker(const char* label, std::string& name, App& app, const std::string& exclude, float width) {
+    bool changed = false;
+    ImGui::PushID(label);
+    const GameData* g = app.game.get();
+    bool known = name.empty() || (g && g->quest(name));
+    for (auto& q : app.project.quests)
+        if (q.name == name) known = true;
+    if (!known) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.65f, 0.3f, 1));
+    ImGui::SetNextItemWidth(width > 0 ? width : ImGui::CalcItemWidth() - ImGui::GetFrameHeight() - ImGui::GetStyle().ItemInnerSpacing.x);
+    changed |= ImGui::InputTextWithHint("##name", "quest id", &name);
+    if (!known) {
+        ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("No quest with this id in the project or the game");
+    } else if (g && !name.empty() && ImGui::IsItemHovered()) {
+        if (const GameQuest* gq = g->quest(name)) {
+            const std::string t = gq->title_id.empty() ? std::string() : g->text(gq->title_id);
+            ImGui::SetTooltip("a quest of the game%s%s", t.empty() ? "" : ": ", t.c_str());
+        }
+    }
+    ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+    static std::string filter;
+    if (ImGui::ArrowButton("##open", ImGuiDir_Down)) {
+        filter.clear();
+        ImGui::OpenPopup("##pick");
+    }
+    visible_label(label);
+    if (ImGui::BeginPopup("##pick")) {
+        if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+        ImGui::SetNextItemWidth(360);
+        ImGui::InputTextWithHint("##filter", "filter by id or title", &filter);
+        ImGui::BeginChild("##list", ImVec2(620, 380));
+        struct Row {
+            std::string id, title;
+            bool mod, silent;
+        };
+        std::vector<Row> rows;
+        for (auto& q : app.project.quests) {
+            if (q.name.empty() || q.name == exclude) continue;
+            const std::string t = q.title.empty() ? std::string() : q.title.begin()->second;
+            if (icontains(q.name, filter) || icontains(t, filter)) rows.push_back({q.name, t, true, q.silent});
+        }
+        if (g)
+            for (auto& q : g->quests()) {
+                const std::string t = q.title_id.empty() ? std::string() : g->text(q.title_id);
+                if (icontains(q.name, filter) || icontains(t, filter)) rows.push_back({q.name, t, false, q.silent});
+            }
+        ImGuiListClipper clip;
+        clip.Begin(static_cast<int>(rows.size()));
+        while (clip.Step())
+            for (int i = clip.DisplayStart; i < clip.DisplayEnd; ++i) {
+                const Row& r = rows[i];
+                ImGui::PushID(i);
+                if (r.mod) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.55f, 0.8f, 1.0f, 1.0f));
+                if (ImGui::Selectable(r.id.c_str(), r.id == name)) {
+                    name = r.id;
+                    changed = true;
+                    ImGui::CloseCurrentPopup();
+                }
+                if (r.mod) ImGui::PopStyleColor();
+                ImGui::SameLine(300);
+                ImGui::TextDisabled("%s%s%s", r.mod ? "(mod) " : "", r.title.c_str(), r.silent ? "  [silent]" : "");
+                ImGui::PopID();
+            }
+        ImGui::EndChild();
+        ImGui::TextDisabled("%zu quests%s", rows.size(), g ? "" : " (load the game data to see the game's quests)");
+        ImGui::EndPopup();
+    }
+    ImGui::PopID();
+    return changed;
+}
+
 bool asset_picker(const char* label, std::string& name, const GameData* game, const char* ext, bool strip_compiled, float width) {
     bool changed = false;
     ImGui::PushID(label);
