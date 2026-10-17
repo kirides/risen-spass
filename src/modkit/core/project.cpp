@@ -52,6 +52,16 @@ QuestDef* Project::quest(const std::string& name) {
         if (x.name == name) return &x;
     return nullptr;
 }
+const QuestDef* Project::quest(const std::string& name) const {
+    for (auto& x : quests)
+        if (x.name == name) return &x;
+    return nullptr;
+}
+const PlacedNpc* Project::npc(const std::string& name) const {
+    for (auto& x : npcs)
+        if (x.name == name) return &x;
+    return nullptr;
+}
 
 // ---- JSON helpers ---------------------------------------------------------------------------------------------------------------------------------------
 namespace {

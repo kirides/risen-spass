@@ -18,6 +18,7 @@ std::map<std::string, std::string> render_mod(const Project& p);
 // the data tables of the export as JSON (the same content as data/*.lua; the importer and the tests use it)
 json balance_spec(const Project& p);
 json npcs_data(const Project& p);  // data/npcs.lua: the persistent NPC declarations
+json quests_data(const Project& p);  // data/quests.lua: the quests (risen.quest.define) and their flow
 
 struct ExportOptions {
     std::string project_dir;     // where the project file is: asset files are relative to it

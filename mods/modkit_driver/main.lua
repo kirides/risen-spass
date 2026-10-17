@@ -28,6 +28,14 @@ T.plan {
     "placed NPC inventory",
     "placed NPC equipped his knife",
     "placed NPC routine post",
+    "dialogue options exist",
+    "turn-in option has engine conditions",
+    "offered options before the quest",
+    "the work option starts the quest",
+    "the quest log has the entry",
+    "the turn-in is offered with the ore",
+    "the turn-in takes the ore and succeeds the quest",
+    "the parent option opens its sub-options",
 }
 
 local npc_ready = {}
@@ -115,6 +123,56 @@ T.run(function()
         local r = risen.npc.get_routine(hob) or {}
         local d = r.work and r.work:distance_to(hob)
         T.expect("placed NPC routine post", r.work ~= nil and d ~= nil and d < 400, ("work=%s distance=%s"):format(tostring(r.work), tostring(d)))
+
+        -- dialogues: talk like a player (open the conversation, choose an option, wait until it played)
+        local names = { "MK_Hob_Who", "MK_Hob_Work", "MK_Hob_Ore", "MK_Hob_Island", "MK_Hob_Pirates", "MK_Hob_Never" }
+        local missing = {}
+        for _, n in ipairs(names) do if not risen.dialog.get(n) then missing[#missing + 1] = n end end
+        T.expect("dialogue options exist", #missing == 0, table.concat(missing, ", "))
+        -- quest state and item amount are conditions the engine evaluates itself (no Lua condition behind them)
+        local ore = risen.dialog.get("MK_Hob_Ore")
+        T.eq("turn-in option has engine conditions", ore and ore:condition_count(), 2)
+        local function offered()   -- this mod's options only (the game adds its generic ones, PANKRATZX2_...)
+            local t = {}
+            for _, o in ipairs(risen.dialog.available()) do
+                local n = tostring(o:name())
+                if n:find("^MK_") then t[#t + 1] = n end
+            end
+            table.sort(t)
+            return table.concat(t, ",")
+        end
+        local function open_talk()
+            risen.dialog.start(player, hob)
+            T.sleep(90)
+        end
+        local function choose(info)
+            assert(risen.dialog.get(info), info):run()
+            T.wait_event("info.finished", 60, function(name) return name == info end)
+            T.sleep(60)
+        end
+        risen.item.take(player, "It_IronOre", 99)   -- the crafting check above left none, but be sure
+        open_talk()
+        T.eq("offered options before the quest", offered(), "MK_Hob_Island,MK_Hob_Who,MK_Hob_Work")
+        choose("MK_Hob_Work")
+        T.expect("the work option starts the quest", risen.quest.is_running("Q_MK_Ore"))
+        local q = risen.quest.get("Q_MK_Ore")
+        T.expect("the quest log has the entry", q ~= nil and q:log_count() >= 1, tostring(q and q:log_count()))
+        risen.item.give(player, "It_IronOre", 2)
+        open_talk()
+        local now = offered()
+        T.expect("the turn-in is offered with the ore", now:find("MK_Hob_Ore", 1, true) ~= nil, now)
+        local hob_ore = risen.item.count(hob, "It_IronOre")
+        choose("MK_Hob_Ore")
+        local status = q and q:get_property("Status") or "?"
+        T.eq("the turn-in takes the ore and succeeds the quest",
+             { risen.item.count(player, "It_IronOre"), risen.item.count(hob, "It_IronOre") - hob_ore, tostring(status):find("Success") ~= nil },
+             { 0, 2, true })
+        open_talk()
+        assert(risen.dialog.get("MK_Hob_Island")):run()
+        T.wait_event("info.finished", 60, function(name) return name == "MK_Hob_Island" end)
+        T.sleep(60)
+        T.eq("the parent option opens its sub-options", offered(), "MK_Hob_Never,MK_Hob_Pirates")
+        choose("MK_Hob_Never")
     end
     T.finish()
 end, "modkit")

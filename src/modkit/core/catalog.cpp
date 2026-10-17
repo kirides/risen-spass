@@ -154,6 +154,20 @@ std::vector<std::string> npc_skill_names(const GameData* g) {
     return v;
 }
 
+const std::vector<std::string>& quest_types() {
+    static const std::vector<std::string> v = {"Report", "Kill", "HasItems", "EnterArea", "BringNpc", "FollowNpc", "DriveAway", "Defeat", "Duel", "Arena",
+                                               "Plunder", "Sparring"};
+    return v;
+}
+const std::vector<std::string>& info_types() {
+    static const std::vector<std::string> v = {"Info", "Important", "Comment", "News", "Refuse", "Parent"};
+    return v;
+}
+const std::vector<std::string>& quest_states() {
+    static const std::vector<std::string> v = {"Running", "Success", "Failed", "Cancelled", "Open", "Obsolete", "Won", "Lost"};
+    return v;
+}
+
 const std::vector<std::string>& recipe_stations() {
     static const std::vector<std::string> v = {"alchemy", "anvil", "coolweapon", "cooking", "forge", "frying", "goldsmith", "grindstone", "scroll"};
     return v;

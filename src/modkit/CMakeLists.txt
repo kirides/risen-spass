@@ -31,8 +31,10 @@ execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${CMAKE_CURRENT
 
 add_library(modkit_core STATIC
     core/catalog.cpp
+    core/dialog.cpp
     core/export.cpp
     core/gamedata.cpp
+    core/graph.cpp
     core/history.cpp
     core/log.cpp
     core/paths.cpp
@@ -59,10 +61,12 @@ add_executable(risen-modkit
     app/fonts.cpp
     app/screenshot.cpp
     app/editor_util.cpp
+    app/node_canvas.cpp
     app/pickers.cpp
     app/prop_editor.cpp
     app/widgets.cpp
     app/panels/browser_panel.cpp
+    app/panels/dialogs_panel.cpp
     app/panels/items_panel.cpp
     app/panels/problems_panel.cpp
     app/panels/recipes_panel.cpp

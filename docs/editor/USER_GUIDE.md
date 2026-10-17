@@ -4,7 +4,7 @@
 world placements) in a desktop application and export an ordinary mod folder that the layer loads. The plan and the state of the stages are in
 [REQUIREMENTS.md](REQUIREMENTS.md); this guide describes what works now.
 
-Contents: [Build and start](#build-and-start) · [First start](#first-start) · [The window](#the-window) · [Items](#items) · [Recipes](#recipes) · [NPCs and monsters](#npcs-and-monsters) · [Export](#export) ·
+Contents: [Build and start](#build-and-start) · [First start](#first-start) · [The window](#the-window) · [Items](#items) · [Recipes](#recipes) · [NPCs and monsters](#npcs-and-monsters) · [Dialogues](#dialogues) · [Export](#export) ·
 [The exported mod](#the-exported-mod) · [Command line](#command-line) · [Limits](#limits)
 
 ## Build and start
@@ -42,6 +42,7 @@ Panels can be dragged, docked and tabbed; **Window > Reset layout** brings back 
 | **Items** | your new items, changes of shipped items and item groups (below) |
 | **Recipes** | new crafting recipes and changes of shipped ones (below) |
 | **NPCs** | NPC and monster templates, and placed NPCs (below) |
+| **Dialogues** | conversations as node graphs (below) |
 | **Problems** | what is wrong with the project (errors block the export, warnings do not); click a line to jump to the object |
 | **Log** | what the editor did, and problems reading the game data |
 | **Settings** | data directory, export folder, UI scale |
@@ -98,6 +99,34 @@ Two kinds of objects:
 
 The export declares every placed NPC with `risen.npc.persistent`: made in a new game, found again after a load, never made twice.
 
+## Dialogues
+
+A dialogue is the conversation of one **owner** NPC (a placed NPC of the project, or the unique name of an NPC in the world) with the player, drawn as
+a graph on a canvas: scroll with the right mouse button, zoom with the wheel, **right-click** the background for a new node, **drag from a pin into
+empty space** for a new node that is already linked, select and press **Delete** to remove. The selected node's properties are on the right.
+
+| Node | Pins | What it is |
+|---|---|---|
+| **Option** | in: `parent`, `when`; out: `then`, `choices` | what the player says (one text per language). `then` leads to the lines and commands that follow; `choices` to sub-options shown after this one ran (the engine's sub-menu); `when` takes conditions (several = all). Type (Info, Important, ...), permanent (stays after use), info name (the option's key in savegames) |
+| **Line** | in, `next` | a spoken line: the NPC, the player or another NPC (unique name) |
+| **Command** | in, `next` | an engine dialogue command with its parameters: Give, GiveXP, SetGameEvent, DoTrade, ... (the parameter list comes from the engine) |
+| **Quest** | in, `next` | starts, succeeds, fails or cancels a quest of the project |
+| **Log entry** | in, `next` | a line in a quest's log |
+| **Script** | in, `next` | calls a script (yours in `custom.lua`, or a game script) |
+| **End** | in | ends the conversation |
+| **Condition** | out | quest state, items carried, a game variable or event, a skill, a guild, an NPC dead / alive |
+| **All of / Any of / Not** | in, out | combine conditions |
+| **Comment** | | a note on the canvas |
+
+Links only join pins that fit (the pin shapes and colours tell: triangles for the sequence, blue circles for options, teal for conditions), and the
+option tree and the conditions cannot loop. A sequence that does not end with **End** returns to the list of options; an option without
+sub-options gets an End by itself (an open conversation blocks saving). The inspector of an option shows the Lua the export writes for it; nodes with a
+problem have a red border and the problems are listed under the properties and in the Problems panel.
+
+The quest conditions and item amounts become conditions the engine checks itself; any, not, values of variables and guilds are one Lua condition
+behind them (`risen.cond`, see `docs/LUA_API.md`). Quests are defined from the Quests list of the project (stage E6 adds the quest editor; until then
+a quest has a name, a title, a type and experience).
+
 ## Export
 
 **File > Export mod...** writes the mod into a folder, normally `<Risen>\bin\spass\mods\<mod id>`. The export
@@ -119,6 +148,8 @@ Start the game: the layer loads the mod like any other (it is listed in the Mods
   custom.lua            yours: created once, never overwritten
   data\balance.lua      items, recipes, NPC and monster templates as a risen.balance.install spec (readable, plain data)
   data\npcs.lua         the placed NPCs (risen.npc.persistent declarations)
+  data\quests.lua       the quests (risen.quest.define)
+  data\dialogs.lua      the dialogue options (risen.dialog.create, parents first) and the quest actions their lines call
   strings\all.csv       texts of shipped items you renamed (first language = fallback), strings\<Language>.csv for the others
   modkit\runtime.lua    the generic code, the same for every exported mod
   modkit\project.json   the editor project the mod was made from (File > Open it, or keep it for a later import)
@@ -126,7 +157,9 @@ Start the game: the layer loads the mod like any other (it is listed in the Mods
 
 The runtime applies the data with the layer's savegame-safe calls (`risen.balance.install`: on the first tick and on every session start) and emits
 the event `modkit.applied` (`mod id, when, report`) after every application, and `modkit.npc_ready` (`mod id, NPC name, reason`) whenever a
-placed NPC is in the world, so other mods and tests can react.
+placed NPC is in the world, and `modkit.quest_action` (`mod id, quest, action`) after a dialogue line started, succeeded, failed or
+cancelled a quest, so other mods and tests can react. Quests and dialogue options are made on `load.before` and on every session start (the engine
+restores their saved state only into objects that exist).
 
 ## Command line
 
@@ -139,7 +172,8 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 
 ## Limits
 
-* Items, recipes and NPCs so far; dialogues, quests and the world view follow (REQUIREMENTS.md section 9).
+* Items, recipes, NPCs and dialogues so far; the quest editor and the world view follow (REQUIREMENTS.md section 9).
+* A dialogue cannot be played through inside the editor yet (DLG-5); test it in the game.
 * A template's shipped loot is not shown (the editor cannot read it offline yet).
 * Icons are offered from the shipped items' icons; a preview of meshes and icons comes with stage E8.
 * Linux and macOS builds are part of the CMake setup but were not built yet (no such host in the development setup).

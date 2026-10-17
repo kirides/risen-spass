@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "core/catalog.h"
+#include "core/dialog.h"
 #include "core/export.h"
 #include "core/gamedata.h"
 #include "core/history.h"
@@ -311,6 +312,7 @@ TEST(gamedata_real_archives) {
 }
 
 #include "export_tests.inc"
+#include "graph_tests.inc"
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);

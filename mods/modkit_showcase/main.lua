@@ -4,5 +4,7 @@ local runtime = require("modkit.runtime")
 runtime.install({
     balance = require("data.balance"),
     npcs = require("data.npcs"),
+    quests = require("data.quests"),
+    dialogs = require("data.dialogs"),
 })
 require("custom")

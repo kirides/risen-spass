@@ -205,6 +205,8 @@ struct Project {
     NpcTemplateDef* npc_template(const std::string& name);
     PlacedNpc* npc(const std::string& name);
     QuestDef* quest(const std::string& name);
+    const QuestDef* quest(const std::string& name) const;
+    const PlacedNpc* npc(const std::string& name) const;
 };
 
 json to_json(const Project& p);

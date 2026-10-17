@@ -189,8 +189,515 @@
       }
     }
   ],
-  "dialogs": [],
-  "quests": [],
+  "dialogs": [
+    {
+      "uid": "79eb17f1b6ae93a18f26a4310b68f42d",
+      "name": "Hob",
+      "owner": "MK_Hob",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "b77b3fe8ea826b1c726d5f828e6ab39c",
+            "type": "option",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "Who are you?",
+                "German": "Wer bist du?"
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MK_Hob_Who"
+            }
+          },
+          {
+            "uid": "0097a41a838e5e0ed0f74908897e6bcb",
+            "type": "line",
+            "pos": [
+              330.0,
+              0.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "I am Hob. I make knives and other useful things.",
+                "German": "Ich bin Hob. Ich mache Messer und andere nützliche Dinge."
+              }
+            }
+          },
+          {
+            "uid": "b1d3dd40da0b9a00887533be842fcbe2",
+            "type": "option",
+            "pos": [
+              0.0,
+              220.0
+            ],
+            "data": {
+              "text": {
+                "English": "Do you have work for me?",
+                "German": "Hast du Arbeit für mich?"
+              },
+              "type": "Info",
+              "permanent": false,
+              "info": "MK_Hob_Work"
+            }
+          },
+          {
+            "uid": "060d929eb68f688c619dd03a6694e37a",
+            "type": "line",
+            "pos": [
+              330.0,
+              220.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "Bring me two lumps of iron ore.",
+                "German": "Bring mir zwei Brocken Eisenerz."
+              }
+            }
+          },
+          {
+            "uid": "05fb99c6888680178d36f86c526abca1",
+            "type": "quest",
+            "pos": [
+              660.0,
+              220.0
+            ],
+            "data": {
+              "quest": "Q_MK_Ore",
+              "action": "start"
+            }
+          },
+          {
+            "uid": "4eed98d8ffe348bc3576765635a148af",
+            "type": "log",
+            "pos": [
+              960.0,
+              220.0
+            ],
+            "data": {
+              "quest": "Q_MK_Ore",
+              "text": {
+                "English": "Hob wants two lumps of iron ore.",
+                "German": "Hob will zwei Brocken Eisenerz."
+              }
+            }
+          },
+          {
+            "uid": "673e81c0ae6951947af874378e9ce12b",
+            "type": "end",
+            "pos": [
+              1260.0,
+              220.0
+            ]
+          },
+          {
+            "uid": "26a4ced4f440239e50e7378d0f2f39fa",
+            "type": "cond",
+            "pos": [
+              -380.0,
+              420.0
+            ],
+            "data": {
+              "kind": "quest",
+              "args": {
+                "quest": "Q_MK_Ore",
+                "status": "Running"
+              }
+            }
+          },
+          {
+            "uid": "0db83df90848484daf4ca658ec851a35",
+            "type": "cond",
+            "pos": [
+              -380.0,
+              540.0
+            ],
+            "data": {
+              "kind": "item",
+              "args": {
+                "item": "It_IronOre",
+                "count": 2
+              }
+            }
+          },
+          {
+            "uid": "c58be2c42394315301e8eec5f535a16a",
+            "type": "option",
+            "pos": [
+              0.0,
+              440.0
+            ],
+            "data": {
+              "text": {
+                "English": "Here is the ore.",
+                "German": "Hier ist das Erz."
+              },
+              "type": "Info",
+              "permanent": false,
+              "info": "MK_Hob_Ore"
+            }
+          },
+          {
+            "uid": "41fe340c7352f92410f3c35d65c87992",
+            "type": "command",
+            "pos": [
+              330.0,
+              440.0
+            ],
+            "data": {
+              "command": "Give",
+              "params": {
+                "Entity1": "player",
+                "Entity2": "npc",
+                "Item": "It_IronOre",
+                "Amount": 2
+              }
+            }
+          },
+          {
+            "uid": "dd8cf4ca858d201ec7e1d5ec3f89c286",
+            "type": "command",
+            "pos": [
+              660.0,
+              440.0
+            ],
+            "data": {
+              "command": "GiveXP",
+              "params": {
+                "Amount": 100
+              }
+            }
+          },
+          {
+            "uid": "5b27217425c34edb103630990441f6ff",
+            "type": "quest",
+            "pos": [
+              960.0,
+              440.0
+            ],
+            "data": {
+              "quest": "Q_MK_Ore",
+              "action": "succeed"
+            }
+          },
+          {
+            "uid": "3e599ff620aca9d60bcf23ebabd89493",
+            "type": "line",
+            "pos": [
+              1260.0,
+              440.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "Thank you! That is good ore.",
+                "German": "Danke! Das ist gutes Erz."
+              }
+            }
+          },
+          {
+            "uid": "182c186606a4442b251dfd39f6142b75",
+            "type": "end",
+            "pos": [
+              1560.0,
+              440.0
+            ]
+          },
+          {
+            "uid": "5ab9e00039b1ad64f8bdab45cefb1c2c",
+            "type": "option",
+            "pos": [
+              0.0,
+              700.0
+            ],
+            "data": {
+              "text": {
+                "English": "Tell me about the island.",
+                "German": "Erzähl mir von der Insel."
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MK_Hob_Island"
+            }
+          },
+          {
+            "uid": "76e6777e35a6380ae98ef67d2d53db84",
+            "type": "line",
+            "pos": [
+              330.0,
+              700.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "What do you want to know?",
+                "German": "Was willst du wissen?"
+              }
+            }
+          },
+          {
+            "uid": "e69410f8813f2ef432068e40f7d1a99a",
+            "type": "option",
+            "pos": [
+              330.0,
+              900.0
+            ],
+            "data": {
+              "text": {
+                "English": "About the pirates.",
+                "German": "Über die Piraten."
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MK_Hob_Pirates"
+            }
+          },
+          {
+            "uid": "63c1e940055670a223b4fc6c2edd0b48",
+            "type": "line",
+            "pos": [
+              660.0,
+              900.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "Stay away from them.",
+                "German": "Halte dich von ihnen fern."
+              }
+            }
+          },
+          {
+            "uid": "7a2e0fbd0799af0bb5951ab3e9946d1a",
+            "type": "option",
+            "pos": [
+              330.0,
+              1080.0
+            ],
+            "data": {
+              "text": {
+                "English": "Never mind.",
+                "German": "Schon gut."
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MK_Hob_Never"
+            }
+          },
+          {
+            "uid": "291acefe16fa0e5b000e1243b1cd0624",
+            "type": "comment",
+            "pos": [
+              660.0,
+              700.0
+            ],
+            "data": {
+              "text": "Island: a parent option with two sub-options (the engine's sub-menu)."
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "ba28bc3494389e8b22db58eb7ccc3f9c",
+            "from": [
+              "b77b3fe8ea826b1c726d5f828e6ab39c",
+              "then"
+            ],
+            "to": [
+              "0097a41a838e5e0ed0f74908897e6bcb",
+              "in"
+            ]
+          },
+          {
+            "uid": "a2ccb15b9ff48117c76cc1a44d7fb8d0",
+            "from": [
+              "b1d3dd40da0b9a00887533be842fcbe2",
+              "then"
+            ],
+            "to": [
+              "060d929eb68f688c619dd03a6694e37a",
+              "in"
+            ]
+          },
+          {
+            "uid": "ea6c5f85858533fdf0d98e002b7ad1db",
+            "from": [
+              "060d929eb68f688c619dd03a6694e37a",
+              "next"
+            ],
+            "to": [
+              "05fb99c6888680178d36f86c526abca1",
+              "in"
+            ]
+          },
+          {
+            "uid": "13e91f52e6496e8756b642eff7ebc8c4",
+            "from": [
+              "05fb99c6888680178d36f86c526abca1",
+              "next"
+            ],
+            "to": [
+              "4eed98d8ffe348bc3576765635a148af",
+              "in"
+            ]
+          },
+          {
+            "uid": "4a18d9df1d65780437bc94ecf8940c49",
+            "from": [
+              "4eed98d8ffe348bc3576765635a148af",
+              "next"
+            ],
+            "to": [
+              "673e81c0ae6951947af874378e9ce12b",
+              "in"
+            ]
+          },
+          {
+            "uid": "eaea39db53fe5aa4c69bafb0980f0f42",
+            "from": [
+              "26a4ced4f440239e50e7378d0f2f39fa",
+              "out"
+            ],
+            "to": [
+              "c58be2c42394315301e8eec5f535a16a",
+              "when"
+            ]
+          },
+          {
+            "uid": "a49946485a2fdc1bfb7cb4228cd80b67",
+            "from": [
+              "0db83df90848484daf4ca658ec851a35",
+              "out"
+            ],
+            "to": [
+              "c58be2c42394315301e8eec5f535a16a",
+              "when"
+            ]
+          },
+          {
+            "uid": "7b05d29ff6758bbab77b3f1470d046ea",
+            "from": [
+              "c58be2c42394315301e8eec5f535a16a",
+              "then"
+            ],
+            "to": [
+              "41fe340c7352f92410f3c35d65c87992",
+              "in"
+            ]
+          },
+          {
+            "uid": "42b100467b3577ade1b253c9b397eb6c",
+            "from": [
+              "41fe340c7352f92410f3c35d65c87992",
+              "next"
+            ],
+            "to": [
+              "dd8cf4ca858d201ec7e1d5ec3f89c286",
+              "in"
+            ]
+          },
+          {
+            "uid": "d7dd9e61cc1c4f1a7786284ca9448cea",
+            "from": [
+              "dd8cf4ca858d201ec7e1d5ec3f89c286",
+              "next"
+            ],
+            "to": [
+              "5b27217425c34edb103630990441f6ff",
+              "in"
+            ]
+          },
+          {
+            "uid": "dc72212080232cb46e4ba2190e9aae3b",
+            "from": [
+              "5b27217425c34edb103630990441f6ff",
+              "next"
+            ],
+            "to": [
+              "3e599ff620aca9d60bcf23ebabd89493",
+              "in"
+            ]
+          },
+          {
+            "uid": "24782b82da84a5224110dd153431cb02",
+            "from": [
+              "3e599ff620aca9d60bcf23ebabd89493",
+              "next"
+            ],
+            "to": [
+              "182c186606a4442b251dfd39f6142b75",
+              "in"
+            ]
+          },
+          {
+            "uid": "38ae58022c1ed60890ef64f961d3d9ba",
+            "from": [
+              "5ab9e00039b1ad64f8bdab45cefb1c2c",
+              "then"
+            ],
+            "to": [
+              "76e6777e35a6380ae98ef67d2d53db84",
+              "in"
+            ]
+          },
+          {
+            "uid": "374cf02b110d3e750675e65a2949db48",
+            "from": [
+              "5ab9e00039b1ad64f8bdab45cefb1c2c",
+              "choices"
+            ],
+            "to": [
+              "e69410f8813f2ef432068e40f7d1a99a",
+              "parent"
+            ]
+          },
+          {
+            "uid": "05b1e85638335e7ae16c128fbcd1b06a",
+            "from": [
+              "5ab9e00039b1ad64f8bdab45cefb1c2c",
+              "choices"
+            ],
+            "to": [
+              "7a2e0fbd0799af0bb5951ab3e9946d1a",
+              "parent"
+            ]
+          },
+          {
+            "uid": "6fdb4dfa8c95617da5f138a9ec0c8a1e",
+            "from": [
+              "e69410f8813f2ef432068e40f7d1a99a",
+              "then"
+            ],
+            "to": [
+              "63c1e940055670a223b4fc6c2edd0b48",
+              "in"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "quests": [
+    {
+      "uid": "692b2ed00dfce3e86a214f690dcb63bc",
+      "name": "Q_MK_Ore",
+      "title": {
+        "English": "Ore for Hob",
+        "German": "Erz für Hob"
+      },
+      "type": "Report",
+      "xp": 60,
+      "graph": {
+        "nodes": [],
+        "links": []
+      }
+    }
+  ],
   "world": {
     "world": "World",
     "spawns": [],

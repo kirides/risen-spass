@@ -46,6 +46,13 @@ const std::vector<std::string>& damage_type_names();
 // the skills a balance spec may set on an NPC (`skills = {...}`): everything but the point pools and the level, which have their own settings
 std::vector<std::string> npc_skill_names(const GameData* g);
 
+// the quest types of risen.quest.define (QuestType of types/risen.d.lua)
+const std::vector<std::string>& quest_types();
+// the info types and conditions of risen.dialog.create (InfoType / InfoCondition)
+const std::vector<std::string>& info_types();
+// the quest states of risen.cond.quest
+const std::vector<std::string>& quest_states();
+
 // the layer's station names and the engine's gECraft numbers (src/game/lua_recipe.cpp)
 const std::vector<std::string>& recipe_stations();
 

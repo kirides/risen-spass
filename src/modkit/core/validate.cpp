@@ -7,6 +7,7 @@
 
 #include "common/template_id.h"
 #include "core/catalog.h"
+#include "core/dialog.h"
 
 namespace mk {
 
@@ -299,6 +300,70 @@ void check_placed_npcs(Ctx& c) {
     }
 }
 
+void check_quests(Ctx& c) {
+    std::map<std::string, int> seen;
+    for (auto& q : c.p.quests) {
+        const char* A = "Quests";
+        const std::string subj = q.name.empty() ? "(unnamed quest)" : q.name;
+        if (q.name.empty()) c.add(Severity::Error, A, q.uid, subj, "the quest needs a name");
+        for (unsigned char ch : q.name)
+            if (!(std::isalnum(ch) && ch < 0x80) && ch != '_') {
+                c.add(Severity::Error, A, q.uid, subj, "the quest name may only contain letters, digits and _");
+                break;
+            }
+        if (++seen[q.name] == 2) c.add(Severity::Error, A, q.uid, subj, "the project has this quest twice");
+        if (q.title.empty()) c.add(Severity::Warning, A, q.uid, subj, "no title: the quest log shows the name");
+        const auto& types = quest_types();
+        if (std::find(types.begin(), types.end(), q.type) == types.end()) c.add(Severity::Error, A, q.uid, subj, "unknown quest type '" + q.type + "'");
+        if (q.xp && *q.xp < 0) c.add(Severity::Error, A, q.uid, subj, "the experience must not be negative");
+    }
+}
+
+void check_dialogs(Ctx& c) {
+    std::map<std::string, std::string> infos;  // info name -> dialogue
+    for (auto& d : c.p.dialogs) {
+        const char* A = "Dialogues";
+        const std::string subj = d.name.empty() ? "(unnamed dialogue)" : d.name;
+        std::vector<DialogIssue> issues;
+        const json list = compile_dialog(c.p, d, issues);
+        for (auto& i : issues) c.add(i.error ? Severity::Error : Severity::Warning, A, d.uid, subj + (i.node.empty() ? "" : " (node)"), i.message);
+        if (!d.owner.empty() && !c.p.npc(d.owner))
+            c.add(Severity::Warning, A, d.uid, subj, "the owner '" + d.owner + "' is not a placed NPC of the project: it must be the unique name of an NPC in the world");
+        bool any_option = false;
+        for (auto& n : d.graph.nodes) any_option |= n.type == "option";
+        if (!any_option) c.add(Severity::Warning, A, d.uid, subj, "the dialogue has no option");
+        for (auto& info : list) {
+            const std::string name = info["name"].get<std::string>();
+            if (const std::string why = npc_name_problem(name); !why.empty()) c.add(Severity::Error, A, d.uid, subj, "option name '" + name + "': " + why);
+            auto [it, fresh] = infos.emplace(name, subj);
+            if (!fresh) c.add(Severity::Error, A, d.uid, subj, "the option name '" + name + "' is used twice (also in " + it->second + ")");
+            // quest conditions must name a quest that exists when the option is made (else the engine shows a blocking message box)
+            std::vector<const json*> todo;
+            if (info.contains("when")) todo.push_back(&info["when"]);
+            while (!todo.empty()) {
+                const json& w = *todo.back();
+                todo.pop_back();
+                if (!w.is_array() || w.empty()) continue;
+                const std::string k = w[0].is_string() ? w[0].get<std::string>() : "";
+                if (k == "all" || k == "any") {
+                    if (w.size() > 1)
+                        for (auto& x : w[1]) todo.push_back(&x);
+                } else if (k == "not") {
+                    if (w.size() > 1) todo.push_back(&w[1]);
+                } else if (k == "quest" && w.size() > 1 && w[1].is_string() && !c.p.quest(w[1].get<std::string>())) {
+                    c.add(Severity::Warning, A, d.uid, subj, "a condition names the quest '" + w[1].get<std::string>() + "' that is not in the project: it must be a quest of the game");
+                } else if (k == "item" && w.size() > 1 && w[1].is_string() && !item_known(c, w[1].get<std::string>())) {
+                    c.add(Severity::Error, A, d.uid, subj, "a condition names '" + w[1].get<std::string>() + "', no item of the game or the project");
+                }
+            }
+            for (auto& l : info["lines"]) {
+                if (l.contains("command") && l["command"] == "Give" && l.contains("Item") && l["Item"].is_string() && !item_known(c, l["Item"].get<std::string>()))
+                    c.add(Severity::Error, A, d.uid, subj, "Give names '" + l["Item"].get<std::string>() + "', no item of the game or the project");
+            }
+        }
+    }
+}
+
 }  // namespace
 
 std::vector<Problem> validate(const Project& p, const GameData* game) {
@@ -322,6 +387,8 @@ std::vector<Problem> validate(const Project& p, const GameData* game) {
     check_recipes(c);
     check_npc_templates(c);
     check_placed_npcs(c);
+    check_quests(c);
+    check_dialogs(c);
     return out;
 }
 

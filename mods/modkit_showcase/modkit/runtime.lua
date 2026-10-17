@@ -6,11 +6,15 @@
 --             tick and on every session.start
 --   npcs      risen.npc.persistent (or risen.spawn.when with appear_when / leave_when): made in a new game, restored after a load, never twice;
 --             the items marked "equip" are equipped when the NPC is made
+--   quests    risen.quest.define, and dialogs: risen.dialog.create (parents first), both on load.before (the engine restores their saved state only
+--             into objects that exist) and on every session.start (a new game removes runtime quests); the quest actions of the dialogue lines
+--             are scripts (risen.script.define) defined once at load time
 --
 -- Events for other mods and tests:
 --   "modkit.applied"   (mod id, when, report) after every application of the balance data (when = "first tick", "session.start (new)", ...)
 --   "modkit.npc_ready" (mod id, npc name, reason) whenever a placed NPC is in the world (reason as risen.npc.persistent's on_ready)
-local M = { VERSION = 2 }
+--   "modkit.quest_action" (mod id, quest, action) after a dialogue line started / succeeded / failed / cancelled a quest
+local M = { VERSION = 3 }
 
 local unpack = table.unpack or unpack
 local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
@@ -25,7 +29,9 @@ function M.cond(d)
         for i, c in ipairs(d[2] or {}) do list[i] = M.cond(c) end
         return risen.cond[kind](list)
     elseif kind == "not" then
-        return risen.cond.negate(M.cond(d[2]))
+        local inner = M.cond(d[2])
+        if not inner then error("modkit: 'not' without a condition") end
+        return risen.cond.negate(inner)
     elseif type(risen.cond[kind]) == "function" then
         return risen.cond[kind](unpack(d, 2))
     end
@@ -64,6 +70,35 @@ local function npc_spec(id, n, define)
     return s
 end
 
+-- what a Quest node of a dialogue does
+function M.quest_action(quest, action)
+    if action == "start" then
+        risen.quest.open(quest)
+        risen.quest.run(quest)
+    elseif action == "succeed" then
+        risen.quest.succeed(quest)
+    elseif action == "fail" then
+        risen.quest.fail(quest)
+    elseif action == "cancel" then
+        risen.quest.close(quest)
+    end
+    risen.emit("modkit.quest_action", mod and mod.id or "?", quest, action)
+end
+
+local function define_content(id, data)
+    for _, q in ipairs(data.quests or {}) do
+        local ok, why = risen.quest.define({ name = q.name, title = q.title, type = q.type, xp = q.xp, silent = q.silent })
+        if not ok then risen.log.error(("%s: quest %s: %s"):format(id, q.name, tostring(why))) end
+    end
+    for _, d in ipairs((data.dialogs or {}).infos or {}) do
+        local spec = {}
+        for k, v in pairs(d) do spec[k] = v end
+        spec.when = M.cond(d.when)
+        local info, why = risen.dialog.create(spec)
+        if not info then risen.log.error(("%s: dialogue option %s: %s"):format(id, d.name, tostring(why))) end
+    end
+end
+
 function M.install(data)
     local id = mod and mod.id or "?"
     if nonempty(data.balance) then
@@ -75,6 +110,13 @@ function M.install(data)
                 risen.emit("modkit.applied", id, when, report)
             end,
         })
+    end
+    for _, a in ipairs((data.dialogs or {}).quest_actions or {}) do
+        risen.script.define(a.script, function() M.quest_action(a.quest, a.action) return 0 end)
+    end
+    if nonempty(data.quests) or nonempty((data.dialogs or {}).infos) then
+        risen.on("load.before", function() define_content(id, data) end)
+        risen.on("session.start", function() define_content(id, data) end)
     end
     for _, n in ipairs(data.npcs or {}) do
         local spec = npc_spec(id, n, nil)

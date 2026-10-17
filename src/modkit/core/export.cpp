@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <set>
 
+#include "core/dialog.h"
 #include "core/log.h"
 #include "core/lua_writer.h"
 #include "core/paths.h"
@@ -264,6 +265,26 @@ json balance_spec(const Project& p) {
     return spec;
 }
 
+json quests_data(const Project& p) {
+    json list = json::array();
+    for (auto& q : p.quests) {
+        json e = json::object();
+        e["name"] = q.name;
+        // risen.quest.define takes one title: the first language's
+        for (auto& lang : p.mod.languages)
+            if (auto it = q.title.find(lang); it != q.title.end() && !it->second.empty()) {
+                e["title"] = it->second;
+                break;
+            }
+        if (!e.contains("title") && !q.title.empty()) e["title"] = q.title.begin()->second;
+        e["type"] = q.type;
+        put(e, "xp", q.xp);
+        if (q.silent) e["silent"] = true;
+        list.push_back(e);
+    }
+    return list;
+}
+
 json npcs_data(const Project& p) {
     json list = json::array();
     for (auto& n : p.npcs) {
@@ -345,12 +366,28 @@ std::map<std::string, std::string> render_mod(const Project& p) {
                     "runtime.install({\n"
                     "    balance = require(\"data.balance\"),\n"
                     "    npcs = require(\"data.npcs\"),\n"
+                    "    quests = require(\"data.quests\"),\n"
+                    "    dialogs = require(\"data.dialogs\"),\n"
                     "})\n"
                     "require(\"custom\")\n";
 
     f["data/balance.lua"] = data_file("Items, item groups, recipes, NPC and monster templates: a BalanceSpec for risen.balance.install (types/risen.d.lua).",
                                       balance_spec(p));
     f["data/npcs.lua"] = data_file("Placed NPCs: risen.npc.persistent declarations (spawned in a new game, restored after a load, never twice).", npcs_data(p));
+    f["data/quests.lua"] = data_file("Quests: risen.quest.define, made on load.before and on every session.start (before the dialogues that name them).", quests_data(p));
+    {
+        json actions = json::array();
+        json infos = dialogs_data(p, &actions);
+        // one script per quest action, however many lines call it
+        json unique = json::array();
+        std::set<std::string> seen;
+        for (auto& a : actions)
+            if (seen.insert(a["script"].get<std::string>()).second) unique.push_back(a);
+        json dialogs = json::object();
+        dialogs["infos"] = infos;
+        dialogs["quest_actions"] = unique;
+        f["data/dialogs.lua"] = data_file("Dialogue options: risen.dialog.create in this order (parents first), on load.before and on every session.start; the quest actions their lines call.", dialogs);
+    }
     f["modkit/runtime.lua"] = runtime_lua();
     f["modkit/project.json"] = dump_project(p);
 
