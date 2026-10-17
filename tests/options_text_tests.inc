@@ -169,7 +169,11 @@ TEST(string_files_of_the_options_pages_are_complete_in_every_language) {
     }
     // the model's texts: every key of its TEXT table (except the game's own labels, GAME) has a string, every string belongs to a key, every key the code asks for exists
     const auto manager = readStrings(mods / "modmanager" / "strings" / "all.csv");
-    const std::string model = slurp(mods / "modmanager" / "model.lua");
+    const std::string model = [&] {                                                  // without '\r': the checkout may have CRLF line endings (autocrlf)
+        std::string s = slurp(mods / "modmanager" / "model.lua");
+        s.erase(std::remove(s.begin(), s.end(), '\r'), s.end());
+        return s;
+    }();
     const auto keysOf = [&](const char* start) {
         std::set<std::string> out;
         const auto from = model.find(start);
