@@ -67,6 +67,11 @@ local function save_game()
     return saved
 end
 
+local function qstatus(name)
+    local q = risen.quest.get(name)
+    return tostring(q and q:get_property("Status"))
+end
+
 local function prop(name, set, key)   -- get_property returns the value as text
     local t = risen.template.get(name)
     return t and tonumber(t:get_property(set, key))
@@ -219,17 +224,16 @@ T.run(function()
         T.expect("saved", save_game())
         kill_wolf()
         local gold1, pot1, xp1 = wallet()
-        T.eq("the second kill pays the reward and succeeds", { tostring(wq:get_property("Status")):find("Success") ~= nil, gold1 - gold0, pot1 - pot0, xp1 - xp0 >= 150 },
+        T.eq("the second kill pays the reward and succeeds", { qstatus("Q_MK_Wolves"):find("Success") ~= nil, gold1 - gold0, pot1 - pot0, xp1 - xp0 >= 150 },
              { true, 50, 1, true })
         risen.world.quick_load()
         T.wait_event("session.start", 120, function(m) return m == "load" end)
         T.sleep(120)
-        wq = risen.quest.get("Q_MK_Wolves")
         local g2 = wallet()
         T.eq("a load rolls the quest back to one kill", { risen.quest.is_running("Q_MK_Wolves"), g2 }, { true, gold0 })
         kill_wolf()
         local g3, p3 = wallet()
-        T.eq("after the load the kill pays once more", { tostring(wq:get_property("Status")):find("Success") ~= nil, g3 - gold0, p3 - pot0 }, { true, 50, 1 })
+        T.eq("after the load the kill pays once more", { qstatus("Q_MK_Wolves"):find("Success") ~= nil, g3 - gold0, p3 - pot0 }, { true, 50, 1 })
 
         -- Q_MK_Potions started with the new game: done while the player carries three
         T.expect("the game-start quest runs", risen.quest.is_running("Q_MK_Potions"))
