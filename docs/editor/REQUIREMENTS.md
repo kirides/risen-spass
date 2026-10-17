@@ -311,7 +311,7 @@ Each stage ends with a usable feature (or the base the next stage needs), is ver
 | **E9** Import | project.json import, sandboxed Lua data import, raw-Lua passthrough | IMP-1, IMP-2 | **done** (export -> import from the data files alone -> export gives identical files; unknown balance sections are kept and exported again) |
 | **E10** Placement | gizmo placement of NPCs, items in the world, chest contents, ground snapping, export of `data/world.lua`, live check | WLD-4..6 | **done** (click on the ground through the depth buffer, ImGuizmo moves, chest contents; scenario `modkit`: 46 checks, nothing doubled after a load) |
 | **E11** Custom assets | compiled asset files in the project, sounds for dialogue lines with preview, image -> `._ximg`, icons, (B) meshes via assimp | AST-2..5 | AST-2, AST-3, AST-5 **done** (Assets panel; pictures -> DXT textures with mips or icon atlas + `.ximl`, verified drawn in the game; the 3D views read project files first like the engine's name cache; sound picker over 77 000 game sounds with playback through miniaudio; scenario `modkit`: the layer compiled the line's Ogg and MP3 and the engine asked for the line's voice); AST-4 open |
-| **E12** World edits (bonus) | layer API for transform/remove of entities (RE + live verification, types/risen.d.lua), static mesh placement, moving/removing existing entities | WLD-7, WLD-8 | open |
+| **E12** World edits (bonus) | layer API for transform/remove of entities (RE + live verification, types/risen.d.lua), static mesh placement, moving/removing existing entities | WLD-7, WLD-8 | **done** (`Entity:pose` / `set_pose` via `Entity::MoveTo`, RE.md section 50; objects placed with a rotation and kept in the savegame; world entities moved/turned or removed by ID on every `world.ready`; scenario `modkit`: 55 checks, after a load too) |
 
 Order rationale: E0-E2 give a usable tool with a real mod at the end of E2; E3-E6 add the other content kinds on the same export pipeline; the world (E7-E8) is independent
 of the content editors and needs format work; placement (E10) needs both; E11/E12 need engine-side work and verification.
@@ -325,11 +325,10 @@ of the content editors and needs format work; placement (E10) needs both; E11/E1
   bare name is what resolves.
 * **Textures.** `._ximg` holds a DDS (RE.md section 26); DXT via `GL_EXT_texture_compression_s3tc` where present (all desktop drivers including macOS), else a CPU decode.
 * **World size.** `World` has ~600 layer files with thousands of entities and large level meshes: progressive loading, culling, a distance limit for mesh drawing.
-* **Rotation of spawned entities, removal and moving of world entities (E12).** The layer has `risen.entity.spawn(template, x, y, z)` (no rotation) and no
-  `Entity:remove()` / `set_transform`. Needed: binding of the engine's matrix setter and entity removal (`eCEntity` exports), and verification that the engine saves both
-  (the savegame lists removed native entities, RE.md section 32; a moved native entity's matrix must be saved with its sector). Until then the editor marks these edits
-  "needs layer E12" and does not export them.
-* **Static mesh templates.** Whether `risen.entity.spawn` of building/prop templates (no NPC, no item) gives a visible, colliding, saved entity is not verified (E12).
+* **Rotation of spawned entities, removal and moving of world entities (E12)** -- solved: `Entity:set_pose` (MoveTo) for the rotation and moves, `Entity:kill`
+  for removals; the runtime applies removals and moves on every `world.ready`, so it does not depend on what the engine saves (RE.md section 50).
+* **Static mesh templates** -- a spawned object is drawn and stands where it was placed, but it is not save-relevant by itself: the runtime sets it
+  (RE.md section 50). Whether such an object collides was not checked.
 * **Custom meshes (AST-4).** Writing an MS02 file the engine accepts is unverified; the risk is contained by verifying in the game (resource state 3 and
   `risen.debug.screenshot`, RE.md section 26).
 * **Icons.** `compiled_imagelists.bin` (`V001`) is not decoded yet; until it is, icon names come from the item templates (`gCItem_PS.IconImage`) and previews are skipped.

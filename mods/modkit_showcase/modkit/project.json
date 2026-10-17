@@ -983,6 +983,20 @@
           620.0,
           -4650.0
         ]
+      },
+      {
+        "uid": "7a3c1e5b9d2f4a6c8e0b1d3f5a7c9e21",
+        "template": "Object_Interact_Bench_Outdoor",
+        "position": [
+          -32250.0,
+          600.0,
+          -4450.0
+        ],
+        "rotation": [
+          45.0,
+          0.0,
+          0.0
+        ]
       }
     ],
     "containers": [
@@ -1003,8 +1017,32 @@
         ]
       }
     ],
-    "removals": [],
-    "moves": []
+    "removals": [
+      {
+        "uid": "8b4d2f6c0e3a4b7d9f1c2e4a6b8d0f22",
+        "guid": "01c4332e-efae-459f-9098-ae6c71dbd23d",
+        "entity_name": "Obj_LS_Torch_Ground_01",
+        "layer": "Game_Start_Dyn_Lights"
+      }
+    ],
+    "moves": [
+      {
+        "uid": "9c5e3a7d1f4b4c8e0a2d3f5b7c9e1a23",
+        "guid": "3dbe0473-6c27-4a13-a0c2-86fdafabff88",
+        "entity_name": "Obj_Nat_Stone_Shape_02_Small_L01",
+        "layer": "Game_Start_Dyn",
+        "position": [
+          -31910.0,
+          655.0,
+          -3777.0
+        ],
+        "rotation": [
+          33.0,
+          0.0,
+          0.0
+        ]
+      }
+    ]
   },
   "assets": [
     {

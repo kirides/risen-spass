@@ -427,7 +427,8 @@ void check_world(Ctx& c) {
         else if (!c.is_project_template(s.template_name) && c.g && !c.g->tpl(s.template_name))
             c.add(Severity::Error, A, s.uid, subj, "no template of the game or the project");
         if (s.amount < 1) c.add(Severity::Error, A, s.uid, subj, "the amount must be 1 or more");
-        if (s.rotation != Vec3{0, 0, 0}) c.add(Severity::Warning, A, s.uid, subj, "the rotation is not exported yet (risen.entity.spawn places without one)");
+        for (double x : s.rotation)
+            if (!std::isfinite(x) || std::fabs(x) > 100000) c.add(Severity::Error, A, s.uid, subj, "the rotation is not a usable number");
         for (double x : s.position)
             if (!std::isfinite(x) || std::fabs(x) > 1e7) c.add(Severity::Error, A, s.uid, subj, "the position is not a usable number");
     }
@@ -443,6 +444,34 @@ void check_world(Ctx& c) {
         for (auto& i : ct.items)
             if (!item_known(c, i.item)) c.add(Severity::Error, A, ct.uid, subj, "'" + i.item + "' is no item of the game or the project");
     }
+    // removals and moves of the world's entities
+    std::map<std::string, std::string> seen;  // guid -> what
+    auto check_ref = [&](const EntityRef& r, const char* what) {
+        const std::string subj = r.entity_name.empty() ? r.guid : r.entity_name;
+        if (!guid_text_ok(r.guid)) {
+            c.add(Severity::Error, A, r.uid, subj, "the entity id is not of the form xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx");
+            return;
+        }
+        if (auto [it, fresh] = seen.emplace(p2m::lower(r.guid), what); !fresh)
+            c.add(Severity::Error, A, r.uid, subj, std::string("the entity is ") + what + " and " + it->second + " at once");
+        if (c.w) {
+            const WorldEntity* e = c.w->by_guid(r.guid);
+            if (!e) c.add(Severity::Error, A, r.uid, subj, "no entity with this id in the world " + c.w->name);
+            else if (e->npc) c.add(Severity::Warning, A, r.uid, subj, "an NPC of the world: his daily routine moves him again (and a removed NPC's quests break)");
+        }
+        for (const auto* v : {&r.position, &r.rotation})
+            if (*v)
+                for (double x : **v)
+                    if (!std::isfinite(x) || std::fabs(x) > 1e7) c.add(Severity::Error, A, r.uid, subj, "the pose is not a usable number");
+    };
+    for (auto& r : c.p.world.removals) check_ref(r, "removed");
+    for (auto& m : c.p.world.moves) {
+        check_ref(m, "moved");
+        if (!m.position && !m.rotation) c.add(Severity::Warning, A, m.uid, m.entity_name.empty() ? m.guid : m.entity_name, "a move without a new position or rotation");
+    }
+    for (auto& ct : c.p.world.containers)
+        if (auto it = seen.find(p2m::lower(ct.guid)); it != seen.end() && it->second == std::string("removed"))
+            c.add(Severity::Error, A, ct.uid, ct.entity_name.empty() ? ct.guid : ct.entity_name, "items are added to a container the mod removes");
 }
 
 void check_assets(Ctx& c) {

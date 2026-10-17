@@ -666,6 +666,8 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
                 ws.template_name = s.value("template", std::string());
                 const json pos = s.value("position", json::array({0, 0, 0}));
                 for (size_t i = 0; i < 3 && i < pos.size(); ++i) ws.position[i] = pos[i].get<double>();
+                const json rot = s.value("rotation", json::array({0, 0, 0}));
+                for (size_t i = 0; i < 3 && i < rot.size(); ++i) ws.rotation[i] = rot[i].get<double>();
                 ws.amount = s.value("amount", 1);
                 p.world.spawns.push_back(ws);
             }
@@ -677,6 +679,22 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
                 for (auto& it : ct.value("items", json::array()))
                     if (it.is_array() && !it.empty()) ce.items.push_back({it[0].get<std::string>(), it.size() > 1 ? it[1].get<int>() : 1, false});
                 p.world.containers.push_back(ce);
+            }
+            auto vec3 = [](const json& a) {
+                Vec3 v{0, 0, 0};
+                for (size_t i = 0; i < 3 && i < a.size(); ++i) v[i] = a[i].get<double>();
+                return v;
+            };
+            for (const char* section : {"removals", "moves"}) {
+                for (auto& m : world.value(section, json::array())) {
+                    EntityRef er;
+                    er.uid = m.value("key", std::string()) + new_uid().substr(12);
+                    er.guid = m.value("id", std::string());
+                    er.entity_name = m.value("name", std::string());
+                    if (m.contains("position")) er.position = vec3(m["position"]);
+                    if (m.contains("rotation")) er.rotation = vec3(m["rotation"]);
+                    (std::string(section) == "removals" ? p.world.removals : p.world.moves).push_back(er);
+                }
             }
         }
         // the languages: English first, then the others in a stable order

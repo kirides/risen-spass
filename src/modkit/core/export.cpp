@@ -302,8 +302,27 @@ json world_data(const Project& p) {
         e["key"] = s.uid.substr(0, 12);  // the key of "already done" in risen.save: stable across renames
         e["template"] = s.template_name;
         e["position"] = json::array({s.position[0], s.position[1], s.position[2]});
+        if (s.rotation[0] != 0 || s.rotation[1] != 0 || s.rotation[2] != 0) e["rotation"] = json::array({s.rotation[0], s.rotation[1], s.rotation[2]});
         if (s.amount != 1) e["amount"] = s.amount;
         spawns.push_back(e);
+    }
+    // entities of the world removed or moved: by their ID, applied on every world.ready (Entity:kill / Entity:set_pose)
+    json removals = json::array(), moves = json::array();
+    for (auto& r : p.world.removals) {
+        json e = json::object();
+        e["key"] = r.uid.substr(0, 12);
+        e["id"] = r.guid;
+        if (!r.entity_name.empty()) e["name"] = r.entity_name;
+        removals.push_back(e);
+    }
+    for (auto& m : p.world.moves) {
+        json e = json::object();
+        e["key"] = m.uid.substr(0, 12);
+        e["id"] = m.guid;
+        if (!m.entity_name.empty()) e["name"] = m.entity_name;
+        if (m.position) e["position"] = json::array({(*m.position)[0], (*m.position)[1], (*m.position)[2]});
+        if (m.rotation) e["rotation"] = json::array({(*m.rotation)[0], (*m.rotation)[1], (*m.rotation)[2]});
+        moves.push_back(e);
     }
     for (auto& c : p.world.containers) {
         json e = json::object();
@@ -318,6 +337,8 @@ json world_data(const Project& p) {
     json w = json::object();
     w["spawns"] = spawns;
     w["containers"] = containers;
+    if (!removals.empty()) w["removals"] = removals;
+    if (!moves.empty()) w["moves"] = moves;
     return w;
 }
 
@@ -430,7 +451,7 @@ std::map<std::string, std::string> render_mod(const Project& p) {
         dialogs["quest_actions"] = unique;
         f["data/dialogs.lua"] = data_file("Dialogue options: risen.dialog.create in this order (parents first), on load.before and on every session.start; the quest actions their lines call.", dialogs);
     }
-    f["data/world.lua"] = data_file("World edits: entities spawned and items put into containers once per savegame (on world.ready; risen.save remembers what was done).", world_data(p));
+    f["data/world.lua"] = data_file("World edits: entities spawned and items put into containers once per savegame (on world.ready; risen.save remembers what was done); entities of the world removed or moved (by id, on every world.ready).", world_data(p));
     f["modkit/runtime.lua"] = runtime_lua();
     f["modkit/project.json"] = dump_project(p);
 

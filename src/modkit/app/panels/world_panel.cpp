@@ -16,6 +16,7 @@
 #include <ImGuizmo.h>
 
 #include "app/editor_util.h"
+#include "common/pose.h"
 #include "app/panels/panels.h"
 #include "app/pickers.h"
 #include "app/render/gl_util.h"
@@ -260,7 +261,7 @@ private:
         ImGui::SameLine();
         ImGui::RadioButton("Place NPC", &mode_, 1);
         ImGui::SameLine();
-        ImGui::RadioButton("Place item", &mode_, 2);
+        ImGui::RadioButton("Place item / object", &mode_, 2);
         if (mode_ == 1) {
             ImGui::SameLine();
             ImGui::SetNextItemWidth(200);
@@ -282,13 +283,23 @@ private:
             }
         } else if (mode_ == 2) {
             ImGui::SameLine();
-            ui::template_picker("##itemt", place_item_, app.game.get(), {TplKind::Item, TplKind::Recipe}, ui::project_item_names(app.project), 200);
+            ui::template_picker("##itemt", place_item_, app.game.get(), {TplKind::Item, TplKind::Recipe, TplKind::Object, TplKind::Interactive, TplKind::Effect},
+                                ui::project_item_names(app.project), 200);
             ImGui::SameLine();
             ImGui::SetNextItemWidth(90);
             ImGui::InputInt("amount", &place_amount_);
             place_amount_ = std::max(1, place_amount_);
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(70);
+            ImGui::DragFloat("yaw", &place_yaw_, 1.0f, 0, 360, "%.0f");
         }
-        ImGui::TextDisabled("right mouse: look, WASD/QE: move, wheel: speed, click: %s, F: focus, gizmo: move the selected project object",
+        ImGui::SameLine(0, 24);
+        ImGui::TextDisabled("gizmo:");
+        ImGui::SameLine();
+        ImGui::RadioButton("move", &gizmo_op_, 0);
+        ImGui::SameLine();
+        ImGui::RadioButton("turn", &gizmo_op_, 1);
+        ImGui::TextDisabled("right mouse: look, WASD/QE: move, wheel: speed, click: %s, F: focus, gizmo: move / turn the selected project object",
                             mode_ == 0 ? "select" : "place on the ground");
     }
 
@@ -369,7 +380,23 @@ private:
             // with meshes on, a box only for what has no mesh (or a mesh the editor cannot read)
             if (draw_meshes_ && !boxes_for_meshes_ && !mesh_names_[i].empty() && !(res_ && res_->failed(mesh_names_[i]))) continue;
             if (draw_meshes_ && !boxes_plain_objects_ && e.kind == TplKind::Object && mesh_names_[i].empty()) continue;
+            const int edit = i < edit_state_.size() ? edit_state_[i] : 0;
+            if (edit == 1) {  // removed by the mod: a red box where it was
+                if (e.has_box()) boxes_.box(to_gl(e.box_min[0], e.box_min[1], e.box_max[2]), to_gl(e.box_max[0], e.box_max[1], e.box_min[2]), IM_COL32(255, 50, 50, 255));
+                else boxes_.cross(to_gl(e.x(), e.y(), e.z()), 40, IM_COL32(255, 50, 50, 255));
+                continue;
+            }
+            if (edit == 2 && draw_meshes_ && !mesh_names_[i].empty()) continue;  // drawn as a mesh at its new place
             const uint32_t c = kind_color(e.kind);
+            if (edit == 2) {
+                const auto& m = moved_matrix_.at(i);
+                const glm::vec3 d(m[12] - e.x(), m[13] - e.y(), m[14] - e.z());
+                if (e.has_box())
+                    boxes_.box(to_gl(e.box_min[0] + d.x, e.box_min[1] + d.y, e.box_max[2] + d.z), to_gl(e.box_max[0] + d.x, e.box_max[1] + d.y, e.box_min[2] + d.z),
+                               IM_COL32(255, 160, 40, 255));
+                else boxes_.cross(to_gl(m[12], m[13], m[14]), 25, IM_COL32(255, 160, 40, 255));
+                continue;
+            }
             if (e.has_box()) {
                 const glm::vec3 a = to_gl(e.box_min[0], e.box_min[1], e.box_max[2]);
                 const glm::vec3 b = to_gl(e.box_max[0], e.box_max[1], e.box_min[2]);
@@ -407,6 +434,14 @@ private:
             const glm::vec3 p = to_gl(static_cast<float>(s.position[0]), static_cast<float>(s.position[1]), static_cast<float>(s.position[2]));
             const bool sel = proj_sel_ == s.uid;
             overlay_.box(p + glm::vec3(-25, 0, -25), p + glm::vec3(25, 50, 25), sel ? IM_COL32(255, 255, 200, 255) : IM_COL32(250, 220, 60, 255));
+            const float yaw = glm::radians(static_cast<float>(s.rotation[0]));
+            overlay_.line(p + glm::vec3(0, 25, 0), p + glm::vec3(std::sin(yaw) * 80, 25, -std::cos(yaw) * 80), IM_COL32(250, 220, 60, 255));
+        }
+        for (auto& [i, m] : moved_matrix_) {
+            const WorldEntity& e = world_->entities[i];
+            const glm::vec3 from = to_gl(e.x(), e.y(), e.z()), to = to_gl(m[12], m[13], m[14]);
+            overlay_.line(from, to, IM_COL32(255, 160, 40, 255));
+            overlay_.cross(to, 40, IM_COL32(255, 160, 40, 255));
         }
         overlay_.upload();
         overlay_dirty_ = false;
@@ -429,6 +464,7 @@ private:
     void draw_view(App& app) {
         const ImVec2 avail = ImGui::GetContentRegionAvail();
         const int w = std::max(16, static_cast<int>(avail.x)), h = std::max(16, static_cast<int>(avail.y));
+        sync_edits(app);
         if (boxes_dirty_) rebuild_boxes();
         if (overlay_dirty_) rebuild_overlay(app);
         // input first, so the frame shows this frame's camera
@@ -501,19 +537,22 @@ private:
             if (mesh_names_[i].empty()) continue;
             const WorldEntity& e = world_->entities[i];
             if (!layer_on_[e.layer] || !kinds_[static_cast<int>(e.kind)]) continue;
+            const int edit = i < edit_state_.size() ? edit_state_[i] : 0;
+            if (edit == 1) continue;  // removed by the mod
             const bool level = is_level_mesh(e);
             if (!level) {
                 const float dx = e.x() - cam_game.x, dy = e.y() - cam_game.y, dz = e.z() - cam_game.z;
                 if (dx * dx + dy * dy + dz * dz > d2) continue;
             }
-            if (e.has_box() && !fr.sees(to_gl(e.box_min[0], e.box_min[1], e.box_max[2]), to_gl(e.box_max[0], e.box_max[1], e.box_min[2]))) continue;
+            if (edit == 0 && e.has_box() && !fr.sees(to_gl(e.box_min[0], e.box_min[1], e.box_max[2]), to_gl(e.box_max[0], e.box_max[1], e.box_min[2]))) continue;
             const gfx::GpuMesh* m = res_->mesh(mesh_names_[i]);
             if (!m) {
                 if (res_->failed(mesh_names_[i])) ++failed_seen_;
                 continue;
             }
-            const glm::vec4 tint = i == selected_ ? glm::vec4(1.4f, 1.3f, 0.9f, 1) : glm::vec4(1);
-            mesh_r_.draw(*m, gfx::entity_model(e.matrix.data()), *res_, tint);
+            glm::vec4 tint = i == selected_ ? glm::vec4(1.4f, 1.3f, 0.9f, 1) : glm::vec4(1);
+            if (edit == 2) tint *= glm::vec4(1.3f, 1.05f, 0.75f, 1);
+            mesh_r_.draw(*m, gfx::entity_model(edit == 2 ? moved_matrix_.at(i).data() : e.matrix.data()), *res_, tint);
             ++drawn_;
         }
         mesh_r_.end();
@@ -539,6 +578,8 @@ private:
         for (auto& n : app.project.npcs)
             if (!n.offset) test(n.uid, n.position, 40, 200);
         for (auto& s : app.project.world.spawns) test(s.uid, s.position, 25, 50);
+        for (auto& m : app.project.world.moves)
+            if (m.position) test(m.uid, *m.position, 40, 120);
         if (best.empty()) return false;
         proj_sel_ = best;
         selected_ = SIZE_MAX;
@@ -596,6 +637,7 @@ private:
             s.uid = new_uid();
             s.template_name = place_item_;
             s.position = pos;
+            s.rotation = {std::round(place_yaw_), 0, 0};
             s.amount = place_amount_;
             app.project.world.spawns.push_back(s);
             proj_sel_ = s.uid;
@@ -611,7 +653,55 @@ private:
             if (n.uid == uid && !n.offset) return &n.position;
         for (auto& s : app.project.world.spawns)
             if (s.uid == uid) return &s.position;
+        for (auto& m : app.project.world.moves)
+            if (m.uid == uid && m.position) return &*m.position;
         return nullptr;
+    }
+    Vec3* project_rotation(App& app, const std::string& uid) {
+        for (auto& s : app.project.world.spawns)
+            if (s.uid == uid) return &s.rotation;
+        for (auto& m : app.project.world.moves)
+            if (m.uid == uid && m.rotation) return &*m.rotation;
+        return nullptr;
+    }
+
+    // which world entities the project removes (1) or moves (2), and the moved ones' new matrices; rebuilt when the edits change
+    void sync_edits(App& app) {
+        std::string sig;
+        char buf[160];
+        for (auto& r : app.project.world.removals) sig += "r" + r.guid;
+        for (auto& m : app.project.world.moves) {
+            const Vec3 p = m.position.value_or(Vec3{0, 0, 0}), r = m.rotation.value_or(Vec3{0, 0, 0});
+            std::snprintf(buf, sizeof buf, "m%s%d%d%.2f,%.2f,%.2f,%.2f,%.2f,%.2f", m.guid.c_str(), m.position ? 1 : 0, m.rotation ? 1 : 0, p[0], p[1], p[2], r[0], r[1], r[2]);
+            sig += buf;
+        }
+        if (sig == edits_sig_ && edit_state_.size() == world_->entities.size()) return;
+        edits_sig_ = sig;
+        edit_state_.assign(world_->entities.size(), 0);
+        moved_matrix_.clear();
+        auto index_of = [&](const std::string& guid) -> size_t {
+            const WorldEntity* e = world_->by_guid(guid);
+            return e ? static_cast<size_t>(e - world_->entities.data()) : SIZE_MAX;
+        };
+        for (auto& r : app.project.world.removals)
+            if (size_t i = index_of(r.guid); i != SIZE_MAX) edit_state_[i] = 1;
+        for (auto& m : app.project.world.moves) {
+            const size_t i = index_of(m.guid);
+            if (i == SIZE_MAX || edit_state_[i] == 1) continue;
+            const WorldEntity& e = world_->entities[i];
+            spass::pose::Matrix orig;
+            std::copy(e.matrix.begin(), e.matrix.end(), orig.begin());
+            spass::pose::Angles a = spass::pose::decompose(orig);
+            if (m.rotation) a = {static_cast<float>((*m.rotation)[0]), static_cast<float>((*m.rotation)[1]), static_cast<float>((*m.rotation)[2])};
+            const Vec3 p = m.position.value_or(Vec3{e.x(), e.y(), e.z()});
+            moved_matrix_[i] = m.rotation ? spass::pose::compose(static_cast<float>(p[0]), static_cast<float>(p[1]), static_cast<float>(p[2]), a, spass::pose::scale_of(orig))
+                                          : orig;
+            moved_matrix_[i][12] = static_cast<float>(p[0]);
+            moved_matrix_[i][13] = static_cast<float>(p[1]);
+            moved_matrix_[i][14] = static_cast<float>(p[2]);
+            edit_state_[i] = 2;
+        }
+        boxes_dirty_ = overlay_dirty_ = true;
     }
 
     void draw_gizmo(App& app, const ImVec2& origin, int w, int h, float aspect) {
@@ -622,22 +712,35 @@ private:
         ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
         ImGuizmo::SetRect(origin.x, origin.y, static_cast<float>(w), static_cast<float>(h));
         const glm::mat4 view = cam_.view(), proj = cam_.proj(aspect);
-        if (!gizmo_active_) gizmo_ = glm::translate(glm::mat4(1), to_gl(static_cast<float>((*pos)[0]), static_cast<float>((*pos)[1]), static_cast<float>((*pos)[2])));
-        ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), ImGuizmo::TRANSLATE, ImGuizmo::WORLD, glm::value_ptr(gizmo_));
+        Vec3* rot = project_rotation(app, proj_sel_);
+        const bool turn = gizmo_op_ == 1 && rot;
+        // a game yaw y (left-handed, forward = (sin y, 0, cos y)) is a turn by -y about +y in the view's mirrored space
+        if (!gizmo_active_)
+            gizmo_ = glm::translate(glm::mat4(1), to_gl(static_cast<float>((*pos)[0]), static_cast<float>((*pos)[1]), static_cast<float>((*pos)[2]))) *
+                     glm::rotate(glm::mat4(1), glm::radians(rot ? -static_cast<float>((*rot)[0]) : 0.0f), glm::vec3(0, 1, 0));
+        ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj), turn ? ImGuizmo::ROTATE_Y : ImGuizmo::TRANSLATE, turn ? ImGuizmo::LOCAL : ImGuizmo::WORLD,
+                             glm::value_ptr(gizmo_));
         gizmo_over_ = ImGuizmo::IsOver() || ImGuizmo::IsUsing();
         const bool using_now = ImGuizmo::IsUsing();
         if (using_now) {
             gizmo_active_ = true;
             overlay_dirty_ = true;
-            const glm::vec3 g = gfx::from_gl(glm::vec3(gizmo_[3]));
-            *pos = {std::round(g.x * 10) / 10, std::round(g.y * 10) / 10, std::round(g.z * 10) / 10};
+            if (turn) {
+                const glm::vec4 f = gizmo_ * glm::vec4(0, 0, -1, 0);  // the game's +z
+                float yaw = glm::degrees(std::atan2(f.x, -f.z));
+                if (yaw < 0) yaw += 360;
+                (*rot)[0] = std::round(yaw * 10) / 10;
+            } else {
+                const glm::vec3 g = gfx::from_gl(glm::vec3(gizmo_[3]));
+                *pos = {std::round(g.x * 10) / 10, std::round(g.y * 10) / 10, std::round(g.z * 10) / 10};
+            }
         } else if (gizmo_active_) {
             gizmo_active_ = false;  // one drag = one undo step: the model was written while dragging, the step is taken now
             app.touch();
         }
     }
 
-    // the meshes of the items the project spawns (at their position, no rotation: the spawn has none)
+    // the meshes of the things the project spawns, at their pose
     void draw_project_meshes(App& app, const glm::mat4& vp) {
         mesh_r_.begin(vp, glm::vec3(0.35f, -1.0f, 0.25f));
         for (auto& s : app.project.world.spawns) {
@@ -651,8 +754,9 @@ private:
             if (mesh.empty()) continue;
             const gfx::GpuMesh* m = res_->mesh(compiled_name(p2m::bare_name(mesh)));
             if (!m) continue;
-            const glm::mat4 model = glm::translate(glm::mat4(1), to_gl(static_cast<float>(s.position[0]), static_cast<float>(s.position[1]), static_cast<float>(s.position[2]))) *
-                                    glm::scale(glm::mat4(1), glm::vec3(1, 1, -1));
+            const spass::pose::Matrix pm = spass::pose::compose(static_cast<float>(s.position[0]), static_cast<float>(s.position[1]), static_cast<float>(s.position[2]),
+                                                                {static_cast<float>(s.rotation[0]), static_cast<float>(s.rotation[1]), static_cast<float>(s.rotation[2])});
+            const glm::mat4 model = gfx::entity_model(pm.data());
             mesh_r_.draw(*m, model, *res_, proj_sel_ == s.uid ? glm::vec4(1.4f, 1.3f, 0.9f, 1) : glm::vec4(1));
         }
         mesh_r_.end();
@@ -680,7 +784,8 @@ private:
             if (s.uid != proj_sel_) continue;
             ImGui::TextUnformatted(s.template_name.c_str());
             ImGui::TextDisabled("spawned once per savegame by the mod");
-            ch |= ui::template_picker("Template", s.template_name, app.game.get(), {TplKind::Item, TplKind::Recipe}, ui::project_item_names(app.project), 200);
+            ch |= ui::template_picker("Template", s.template_name, app.game.get(), {TplKind::Item, TplKind::Recipe, TplKind::Object, TplKind::Interactive, TplKind::Effect},
+                                      ui::project_item_names(app.project), 200);
             ImGui::SetNextItemWidth(120);
             if (ImGui::InputInt("Amount", &s.amount)) {
                 s.amount = std::max(1, s.amount);
@@ -692,7 +797,41 @@ private:
                 overlay_dirty_ = true;
                 ch = true;
             }
+            float r[3] = {static_cast<float>(s.rotation[0]), static_cast<float>(s.rotation[1]), static_cast<float>(s.rotation[2])};
+            if (ImGui::DragFloat3("yaw, pitch, roll", r, 1.0f, -360, 360, "%.1f")) {
+                s.rotation = {r[0], r[1], r[2]};
+                overlay_dirty_ = true;
+                ch = true;
+            }
             if (ImGui::Button("Remove from the project")) remove = s.uid;
+        }
+        std::string drop;
+        for (auto& m : app.project.world.moves) {
+            if (m.uid != proj_sel_) continue;
+            ImGui::TextUnformatted(m.entity_name.empty() ? m.guid.c_str() : m.entity_name.c_str());
+            ImGui::TextDisabled("an entity of the world, moved by the mod on every world.ready");
+            ImGui::TextDisabled("id %s", m.guid.c_str());
+            if (m.position) {
+                float p[3] = {static_cast<float>((*m.position)[0]), static_cast<float>((*m.position)[1]), static_cast<float>((*m.position)[2])};
+                if (ImGui::DragFloat3("position", p, 5.0f, 0, 0, "%.1f")) {
+                    m.position = Vec3{p[0], p[1], p[2]};
+                    ch = true;
+                }
+            }
+            if (m.rotation) {
+                float r[3] = {static_cast<float>((*m.rotation)[0]), static_cast<float>((*m.rotation)[1]), static_cast<float>((*m.rotation)[2])};
+                if (ImGui::DragFloat3("yaw, pitch, roll", r, 1.0f, -360, 360, "%.1f")) {
+                    m.rotation = Vec3{r[0], r[1], r[2]};
+                    ch = true;
+                }
+            }
+            if (ImGui::Button("Back to its place (drop the move)")) drop = m.uid;
+        }
+        if (!drop.empty()) {
+            auto& v = app.project.world.moves;
+            v.erase(std::remove_if(v.begin(), v.end(), [&](const EntityRef& x) { return x.uid == drop; }), v.end());
+            proj_sel_.clear();
+            ch = true;
         }
         if (!remove.empty()) {
             auto& v = app.project.world.spawns;
@@ -732,6 +871,61 @@ private:
             ch = true;
         }
         if (ch) app.touch();
+    }
+
+    // moving or removing an entity of the world (E12): the mod applies it by the entity's id on every world.ready
+    void draw_world_edit(App& app, const WorldEntity& e) {
+        ImGui::SeparatorText("Change it in the world");
+        auto& rem = app.project.world.removals;
+        auto& mov = app.project.world.moves;
+        auto removed = std::find_if(rem.begin(), rem.end(), [&](const EntityRef& r) { return r.guid == e.guid; });
+        auto moved = std::find_if(mov.begin(), mov.end(), [&](const EntityRef& r) { return r.guid == e.guid; });
+        if (removed != rem.end()) {
+            ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "Removed by this mod.");
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Keep it")) {
+                rem.erase(removed);
+                app.touch();
+            }
+            return;
+        }
+        if (moved != mov.end()) {
+            ImGui::TextColored(ImVec4(1, 0.65f, 0.25f, 1), "Moved by this mod.");
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Edit the move")) {
+                proj_sel_ = moved->uid;
+                overlay_dirty_ = true;
+            }
+            return;
+        }
+        if (ImGui::SmallButton("Move or turn it")) {
+            EntityRef r;
+            r.uid = new_uid();
+            r.guid = e.guid;
+            r.entity_name = e.name;
+            r.layer = world_->layers[e.layer].name;
+            spass::pose::Matrix m;
+            std::copy(e.matrix.begin(), e.matrix.end(), m.begin());
+            const spass::pose::Angles a = spass::pose::decompose(m);
+            r.position = Vec3{e.x(), e.y(), e.z()};
+            r.rotation = Vec3{std::round(a.yaw * 10) / 10, std::round(a.pitch * 10) / 10, std::round(a.roll * 10) / 10};
+            mov.push_back(r);
+            proj_sel_ = r.uid;
+            overlay_dirty_ = true;
+            app.touch();
+            app.status("Drag the gizmo (move / turn) or type the new pose");
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Remove it from the world")) {
+            EntityRef r;
+            r.uid = new_uid();
+            r.guid = e.guid;
+            r.entity_name = e.name;
+            r.layer = world_->layers[e.layer].name;
+            rem.push_back(r);
+            app.touch();
+        }
+        if (e.npc) ImGui::TextDisabled("An NPC: his routine moves him again, and removing him can break quests.");
     }
 
     void pick_at(float u, float v, float aspect) {
@@ -805,6 +999,7 @@ private:
             const std::string t = e.template_name;
             app.defer([&app, t] { app.select_in(kPanelBrowser, t); });
         }
+        draw_world_edit(app, e);
         if (props_for_ != selected_) {
             props_ = entity_properties(*app.game, *world_, e);
             inv_ = e.inventory ? entity_inventory(*app.game, *world_, e) : std::vector<std::pair<std::string, int>>{};
@@ -853,7 +1048,12 @@ private:
     std::vector<std::string> mesh_names_;  // per entity: the compiled mesh name ("" = none)
     size_t drawn_ = 0, failed_seen_ = 0;
     // placing
-    int mode_ = 0;  // 0 select, 1 place NPC, 2 place item
+    int mode_ = 0;  // 0 select, 1 place NPC, 2 place item or object
+    int gizmo_op_ = 0;  // 0 move, 1 turn (yaw)
+    float place_yaw_ = 0;
+    std::vector<int8_t> edit_state_;  // per entity: 0, 1 removed, 2 moved (sync_edits)
+    std::map<size_t, spass::pose::Matrix> moved_matrix_;
+    std::string edits_sig_;
     std::string place_npc_, place_template_ = "Peasant_1_01", place_item_ = "It_Apple";
     int place_amount_ = 1;
     std::string proj_sel_;  // the selected project object (placed NPC or spawn uid)

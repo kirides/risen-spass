@@ -197,14 +197,20 @@ The Browser and the item editor show a turning preview of a template's mesh (dra
 **Placing** (the buttons next to the search field):
 
 * **Place NPC**: choose one of the project's placed NPCs (or *a new NPC of the template* and the template) and click on the ground: the NPC gets
-  that world position (instead of an offset from the player). **Place item**: choose an item and an amount and click: the mod spawns it there once per
-  savegame. The point under the cursor is read from the rendered depth, so things land on the ground, a roof, a table.
-* **Select** mode: a click on a magenta (NPC) or yellow (item) box selects the project's object; the **gizmo** moves it along the axes, the inspector
-  has the exact position, the template and the amount. Undo covers every move.
+  that world position (instead of an offset from the player). **Place item / object**: choose an item (and an amount) or an object -- a bench, a
+  campfire, a barrel, any interactive or decoration template -- and a yaw, and click: the mod spawns it there once per savegame. The point under the
+  cursor is read from the rendered depth, so things land on the ground, a roof, a table.
+* **Select** mode: a click on a magenta (NPC) or yellow (spawned) box selects the project's object; the **gizmo** moves it along the axes (*gizmo: move*)
+  or turns it about the vertical axis (*gizmo: turn*); the inspector has the exact position, yaw / pitch / roll, the template and the amount. Undo
+  covers every move.
+* **The world's own entities**: select one and choose *Move or turn it* (it is then drawn at its new pose, an orange line leads from its old place;
+  the gizmo and the inspector work as for spawned things; *Back to its place* drops the move) or *Remove it from the world* (drawn as a red box;
+  *Keep it* takes it back). The mod finds them by their ID and applies both on every `world.ready`, so they hold after a load. Moving an NPC of the
+  world is possible but his daily routine walks him off again, and removing one can break quests (the Problems panel warns).
 * **Chests**: select a chest (or any entity with an inventory) of the world: *Add items to this container* lists items the mod puts into it once per
   savegame (found by the entity's ID).
 * The export writes them into `data\world.lua`; the runtime spawns and fills on `world.ready` and remembers it in the savegame's mod data, so a load never
-  spawns or fills twice. Items are spawned without a rotation (the layer cannot rotate a spawn yet).
+  spawns or fills twice; a spawned object is marked for the savegame (objects are not by themselves).
 
 ## Export
 
@@ -254,7 +260,7 @@ The runtime applies the data with the layer's savegame-safe calls (`risen.balanc
 the event `modkit.applied` (`mod id, when, report`) after every application, and `modkit.npc_ready` (`mod id, NPC name, reason`) whenever a
 placed NPC is in the world, and `modkit.quest_action` (`mod id, quest, action`) after a dialogue line started, succeeded, failed or
 cancelled a quest, `modkit.quest_started` / `modkit.objective` / `modkit.quest_done` for quest flows, and `modkit.world_spawned` /
-`modkit.container_filled` for the world edits, so other mods and tests can react. Quests and dialogue options are made on `load.before` and on every session start (the engine
+`modkit.container_filled` / `modkit.world_removed` / `modkit.world_moved` for the world edits, so other mods and tests can react. Quests and dialogue options are made on `load.before` and on every session start (the engine
 restores their saved state only into objects that exist).
 
 ## Command line
@@ -270,7 +276,8 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 ## Limits
 
 * NPCs, monsters and vegetation are boxes in the world view (actors and SpeedTrees are not decoded).
-* Placing buildings and other objects, and moving or removing what the world has, needs a layer extension (stage E12).
+* A spawned object's collision was not checked; level meshes (the landscape, houses that are part of a level mesh) cannot be moved or removed, only
+  entities.
 * Icons are not previewed (the game's icon lists are not decoded yet).
 * Meshes in authoring formats (glTF, OBJ, FBX) cannot be added yet; only `._xmsh` files compiled for the engine (AST-4). A new texture on a new mesh
   needs a material that names it (the editor does not write materials).

@@ -481,6 +481,10 @@
     X(world_get_time, L"Script.dll", "?GetWorldTime@Entity@@SAMXZ", float (*)(), false) \
     X(world_set_time, L"Script.dll", "?SetWorldTime@Entity@@SAXM@Z", void (*)(float), false) \
     X(ent_get_at, L"Script.dll", "?GetAtVector@Entity@@QEBA?AVbCVector@@XZ", void* (*)(const void* self, float* ret3), false) \
+    /* the world matrix (bCMatrix, row-major, position in row 3; RE.md section 50): GetPose = eCGeometryEntity::GetWorldMatrix, MoveTo =               \
+       SetToWorldMatrix + rigid body / navigation / movement reset (a teleport, no collision test) */                                                   \
+    X(ent_get_pose, L"Script.dll", "?GetPose@Entity@@QEBA?AVbCMatrix@@XZ", void* (*)(const void* self, float* ret16), false) \
+    X(ent_move_to, L"Script.dll", "?MoveTo@Entity@@QEAAXAEBVbCMatrix@@@Z", void (*)(void* self, const float* m16), false) \
     X(ent_nearest_nav_point, L"Script.dll", "?GetNearestNavigationPoint@Entity@@QEAA?AVbCVector@@V2@M@Z", void* (*)(void* self, float* ret3, const float* position, float radius), false) \
     /* ---- AI scripting (M11, docs/RE.md section 36): the AI state / function / callback namespaces of the script registry, the processing unit of an NPC ---- */ \
     X(script_map_register_state, L"Engine.dll", "?RegisterScriptAIState@eCScriptFunctionMap@@QEAAPEAUeSScriptBase@@AEBVbCString@@@Z", void* (*)(void* self, const void* name), false) \

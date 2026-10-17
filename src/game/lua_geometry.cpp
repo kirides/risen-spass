@@ -5,6 +5,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "common/pose.h"
 #include "common/trace.h"
 #include "game/abi.h"
 #include "game/geometry_lua.h"
@@ -18,6 +19,7 @@
 //   risen.world.engine_free_los(a, b)                       the engine's own entity-to-entity test, bounding box centres, both entities ignored
 //   risen.world.camera()                                    the render camera (the player's view): position, direction, field of view
 //   Entity:bounds()                                         the world bounding box
+//   Entity:pose() / Entity:set_pose(spec)                   the world matrix as position + angles (common/pose.h), moved with Entity::MoveTo
 //
 // The Lua layer on top (vectors, yaw conventions, fields of view, random streams) is geometry_lua.h.
 
@@ -300,6 +302,112 @@ using Bounds = std::tuple<sol::optional<float>, sol::optional<float>, sol::optio
 }  // namespace
 
 void addGeometryMethods(sol::usertype<LuaEntity>& ut) {
+    // Entity:pose() -> { x, y, z, yaw, pitch, roll, scale = { sx, sy, sz }, matrix = { 16 } } | nil: the world matrix (Entity::GetPose)
+    ut["pose"] = [](sol::this_state ts, const LuaEntity& e) -> sol::object {
+        sol::state_view L(ts);
+        void* entity = ptr(e);
+        if (entity == nullptr || sym().ent_get_pose == nullptr) {
+            return sol::make_object(L, sol::lua_nil);
+        }
+        pose::Matrix m{};
+        if (!guarded([&] {
+                EntityHolder h{entity};
+                sym().ent_get_pose(&h, m.data());
+            }) ||
+            !pose::sane(m)) {
+            return sol::make_object(L, sol::lua_nil);
+        }
+        const pose::Angles a = pose::decompose(m);
+        const auto sc = pose::scale_of(m);
+        sol::table t = L.create_table();
+        t["x"] = m[12];
+        t["y"] = m[13];
+        t["z"] = m[14];
+        t["yaw"] = a.yaw;
+        t["pitch"] = a.pitch;
+        t["roll"] = a.roll;
+        t["scale"] = L.create_table_with(1, sc[0], 2, sc[1], 3, sc[2]);
+        sol::table mt = L.create_table(16, 0);
+        for (int i = 0; i < 16; ++i) mt[i + 1] = m[i];
+        t["matrix"] = mt;
+        return sol::make_object(L, t);
+    };
+    // Entity:set_pose({ x?, y?, z?, yaw?, pitch?, roll? } | { matrix = { 16 } }) -> true | nil, reason: moves and turns the entity (Entity::MoveTo: also
+    // resets its rigid body, navigation and movement). Missing coordinates / angles keep the current ones; the scale stays.
+    ut["set_pose"] = [](sol::this_state ts, const LuaEntity& e, sol::object specArg) -> Two {
+        sol::state_view L(ts);
+        void* entity = ptr(e);
+        if (entity == nullptr) {
+            return failResult(L, "the entity is gone");
+        }
+        if (sym().ent_get_pose == nullptr || sym().ent_move_to == nullptr) {
+            return failResult(L, "Entity::GetPose / MoveTo are not available in this build");
+        }
+        if (!specArg.is<sol::table>()) {
+            return failResult(L, "expected a table { x, y, z, yaw, pitch, roll } or { matrix = { 16 numbers } }");
+        }
+        sol::table spec = specArg.as<sol::table>();
+        pose::Matrix cur{};
+        if (!guarded([&] {
+                EntityHolder h{entity};
+                sym().ent_get_pose(&h, cur.data());
+            })) {
+            return failResult(L, "the engine raised an exception reading the pose");
+        }
+        pose::Matrix m{};
+        const sol::object mo = spec["matrix"];
+        if (mo.valid() && mo.get_type() != sol::type::lua_nil) {
+            if (!mo.is<sol::table>()) {
+                return failResult(L, "matrix: expected 16 numbers (row-major, position in row 3)");
+            }
+            sol::table mt = mo.as<sol::table>();
+            for (int i = 0; i < 16; ++i) {
+                if (!coord(mt[i + 1], m[i])) {
+                    return failResult(L, "matrix: expected 16 finite numbers (row-major, position in row 3)");
+                }
+            }
+        } else {
+            float pos[3] = {cur[12], cur[13], cur[14]};
+            const char* keys[3] = {"x", "y", "z"};
+            for (int i = 0; i < 3; ++i) {
+                const sol::object v = spec[keys[i]];
+                if (v.valid() && v.get_type() != sol::type::lua_nil && !coord(v, pos[i])) {
+                    return failResult(L, std::string(keys[i]) + ": expected a finite number (|value| <= 1e7)");
+                }
+            }
+            pose::Angles a = pose::decompose(cur);
+            float* angles[3] = {&a.yaw, &a.pitch, &a.roll};
+            const char* akeys[3] = {"yaw", "pitch", "roll"};
+            bool turned = false;
+            for (int i = 0; i < 3; ++i) {
+                const sol::object v = spec[akeys[i]];
+                if (!v.valid() || v.get_type() == sol::type::lua_nil) continue;
+                if (!coord(v, *angles[i]) || std::fabs(*angles[i]) > 100000.0f) {
+                    return failResult(L, std::string(akeys[i]) + ": expected a finite number of degrees");
+                }
+                turned = true;
+            }
+            if (turned) {
+                m = pose::compose(pos[0], pos[1], pos[2], a, pose::scale_of(cur));
+            } else {
+                m = cur;  // the rotation as it is (exactly, no round trip through angles)
+                m[12] = pos[0];
+                m[13] = pos[1];
+                m[14] = pos[2];
+            }
+        }
+        if (!pose::sane(m)) {
+            return failResult(L, "the pose is not finite");
+        }
+        if (!guarded([&] {
+                EntityHolder h{entity};
+                sym().ent_move_to(&h, m.data());
+            })) {
+            return failResult(L, "the engine raised an exception moving the entity");
+        }
+        SPASS_TRACE(trace::Channel::Spawn, "set_pose {:.0f} {:.0f} {:.0f}", m[12], m[13], m[14]);
+        return {sol::make_object(L, true), sol::make_object(L, sol::lua_nil)};
+    };
     // Entity:bounds() -> minx, miny, minz, maxx, maxy, maxz: the world bounding box (the virtual `GetWorldBoundary` at vftable +0x260 that eCGeometryEntity::IsFreeLOS
     // reads); nil for an entity without one (a freepoint, a stale handle)
     ut["bounds"] = [](const LuaEntity& e) -> Bounds {

@@ -18,8 +18,9 @@
 --   "modkit.npc_ready" (mod id, npc name, reason) whenever a placed NPC is in the world (reason as risen.npc.persistent's on_ready)
 --   "modkit.quest_action" (mod id, quest, action) after a dialogue line started / succeeded / failed / cancelled a quest
 --   "modkit.quest_started" (mod id, quest), "modkit.objective" (mod id, quest, step), "modkit.quest_done" (mod id, quest, result) for quest flows
---   "modkit.world_spawned" (mod id, key, entity), "modkit.container_filled" (mod id, key, container) for the world edits
-local M = { VERSION = 6 }
+--   "modkit.world_spawned" (mod id, key, entity), "modkit.container_filled" (mod id, key, container), "modkit.world_removed" (mod id, key, entity id),
+--   "modkit.world_moved" (mod id, key, entity) for the world edits
+local M = { VERSION = 7 }
 
 local unpack = table.unpack or unpack
 local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
@@ -272,10 +273,22 @@ local warned = {}
 local function apply_world(id, w)
     for _, s in ipairs(w.spawns or {}) do
         local key = "modkit.world.spawn." .. s.key
-        if not risen.save.get(key) then
+        local done = risen.save.get(key)
+        -- an object (not an item: the player may have picked that up) that is not in the world any more is placed again
+        if done and risen.save.get(key .. ".object") and type(done) == "string" and not risen.entity.by_id(done) then
+            risen.log.info(("%s: %s (%s) is missing after the load: placed again"):format(id, s.template, done))
+            done = nil
+        end
+        if not done then
             local e = risen.entity.spawn(s.template, s.position[1], s.position[2], s.position[3])
             if e then
+                if s.rotation then e:set_pose({ yaw = s.rotation[1], pitch = s.rotation[2], roll = s.rotation[3] }) end
                 if s.amount and s.amount > 1 then e:set_item_amount(s.amount) end
+                -- spawned objects are not save-relevant by themselves (items and NPCs are): the engine is asked to keep it in the savegame
+                if not e:is_item() then
+                    e:set_save_relevant(true)
+                    risen.save.set(key .. ".object", true)
+                end
                 risen.save.set(key, e:id() or true)
                 risen.emit("modkit.world_spawned", id, s.key, e)
             elseif not warned[key] then
@@ -296,6 +309,33 @@ local function apply_world(id, w)
                 warned[key] = true
                 risen.log.warn(("%s: no entity %s (%s) in this world"):format(id, c.id, tostring(c.name)))
             end
+        end
+    end
+    -- removals and moves of the world's own entities: on every world.ready (idempotent; the engine keeps a removal in the savegame, a move only for
+    -- save-relevant entities, so both are simply applied again after a load)
+    for _, r in ipairs(w.removals or {}) do
+        local ent = risen.entity.by_id(r.id)
+        if ent then
+            ent:kill()
+            risen.emit("modkit.world_removed", id, r.key, r.id)
+        end
+    end
+    for _, m in ipairs(w.moves or {}) do
+        local ent = risen.entity.by_id(m.id)
+        if ent then
+            local spec = {}
+            if m.position then spec.x, spec.y, spec.z = m.position[1], m.position[2], m.position[3] end
+            if m.rotation then spec.yaw, spec.pitch, spec.roll = m.rotation[1], m.rotation[2], m.rotation[3] end
+            local ok, why = ent:set_pose(spec)
+            if ok then
+                risen.emit("modkit.world_moved", id, m.key, ent)
+            elseif not warned["move." .. m.key] then
+                warned["move." .. m.key] = true
+                risen.log.warn(("%s: cannot move %s (%s): %s"):format(id, m.id, tostring(m.name), tostring(why)))
+            end
+        elseif not warned["move." .. m.key] then
+            warned["move." .. m.key] = true
+            risen.log.warn(("%s: no entity %s (%s) in this world"):format(id, m.id, tostring(m.name)))
         end
     end
 end
@@ -342,7 +382,7 @@ function M.install(data)
         risen.on("session.start", function() define_content(id, data) end)
     end
     local w = data.world or {}
-    if nonempty(w.spawns) or nonempty(w.containers) then
+    if nonempty(w.spawns) or nonempty(w.containers) or nonempty(w.removals) or nonempty(w.moves) then
         risen.on("world.ready", function() apply_world(id, w) end)
     end
     for _, n in ipairs(data.npcs or {}) do

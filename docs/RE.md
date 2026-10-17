@@ -1626,3 +1626,36 @@ The standalone converter ([PACK2MOD.md](PACK2MOD.md), `src/pack2mod/`) re-implem
   from the mod (resource state 3, path `#G3:/mods/modkit_showcase/assets/...`) and **is drawn** (`risen.debug.screenshot`: a club with the checker
   pattern); a written A8R8G8B8 atlas with an `.ximl` list registered by `risen.assets.load_icons` attached its icon to a new item (`bitmap.attached`,
   `IconImage` = the cell name). The 32 trailing bytes left at zero did no visible harm.
+
+## 50. Moving, turning and removing the world's entities (editor stage E12) [confirmed in-game unless marked]
+
+Driven by `Entity:pose()` / `Entity:set_pose()` (`src/game/lua_geometry.cpp`, the angle math in `src/common/pose.h`, shared with risen-modkit) and the world
+edits of the modkit runtime (`data/world.lua`: `removals`, `moves`, spawns with `rotation`; scenario `modkit`). Decompiled with headless Ghidra (Script.dll,
+Engine.dll, Game.dll of the 64-bit Enhanced build; dumps in `B:\DevDrive\risen-ghidra\e12_*.txt`).
+
+* **Pose.** `Entity::GetPose` (Script `0x20d290`) returns `eCGeometryEntity::GetWorldMatrix` (`+0x60`; identity for a template entity). `Entity::SetPose`
+  (`0x20d230`) calls `eCGeometryEntity::SetToWorldMatrix` (Engine `0x6aaf80`: local = inverse(parent world) * M, then the virtual local-matrix setter) for
+  everything but templates: there is no branch on "static" or physics. `Entity::MoveTo` (`0x20caa0`) does the same and then `PSRigidBody::SetPose`,
+  `PSNavigation::ResetAll`, `PSCharacterMovement::StopMovement` when the entity has those sets; `Teleport(Entity)` is MoveTo with a dead check. Both are
+  teleports (no swept move). `eCDynamicEntity::OnUpdatedWorldMatrix` (`0x69e8a0`) sets bit `0x2` of `+0x1e0` ("matrix changed"), updates the portal
+  room and the physic object. The matrix is row-major with row 0 right, row 1 up, row 2 forward, row 3 position, +y up. The layer uses MoveTo.
+  Live: `pose()` of an untouched level object (`Obj_Nat_Stonehenge_01`, `789b1754-...`) gave x -31956.5, z -3756.7, yaw 217.1 -- what risen-modkit reads
+  from the level file; `set_pose{ x, y, z, yaw }` moved and turned a level stone (`3dbe0473-...`) and `pose()` read back the new values exactly.
+* **Savegames** [decompiled; the live test re-applies, see below]. `eCEntityDynamicContext::WriteSaveGame` writes an entity when it is save-relevant
+  (`eCEntity +0x28` flag `0x80000`, `Is/SetSaveGameRelevant`) and not killed or temporary, in sectors whose `gCSector +0x31` is set;
+  `eCDynamicEntity::WriteSaveGame` writes its matrices only when the "matrix changed" bit is set. **No entity flags are written** (an `Enable` /
+  `EnableRendering` change is not saved). Killing (`eCEntity::Kill`, deferred through the entity admin's kill list) a *native* entity (bit 0 of
+  `+0x1e0`, from a level file) calls Game's killed-entity callback, which adds its ID to `gCWorld`'s removed-native list (`AddToRemovedNativeEntityList`,
+  written by `gCWorld::WriteSaveGame`, killed again by `ReadSaveGame`) -- under a runtime flag `0x20000` whose setter was not found.
+* **What the runtime does about it.** Removals and moves are applied again on every `world.ready` (by ID; a removed entity is simply not found the next
+  time), so the result does not depend on the open points above. Live (scenario `modkit`, after a quick save and load): the removed ground torch was gone
+  and the moved stone stood at its new pose.
+* **Spawned objects are not save-relevant.** A spawned item or NPC is saved (section 32), but `risen.entity.spawn("Object_Interact_Bench_Outdoor", ...)`
+  was **missing after a load**: its flag `0x80000` is off. With `Entity:set_save_relevant(true)` right after the spawn the bench came back from the
+  savegame (no second spawn; verified with the runtime's "placed again" fallback, which did not fire). The runtime does this for every spawned non-item and
+  keeps a fallback: an object whose saved ID is missing after a load is placed again (never items: the player may have picked them up).
+* Exports for later use: `?Enable@eCEntity@@UEAAX_N@Z` (`0x6a3670`), `?EnableRendering@eCEntity@@QEAAX_N@Z` (`0x6a5d80`), `?EnableCollision@eCGeometryEntity@@QEAAX_N@Z`
+  (`0x6a6690`), `?IsNativeSaveGameEntity@eCDynamicEntity@@QEBA_NXZ` (`0x69f080`), `?SetWorldMatrix@eCGeometryEntity@@QEAAXAEBVbCMatrix@@@Z` (`0x6a8e90`, raw),
+  `?CreateDynamicEntity@gCWorld@@QEAAPEAVeCDynamicEntity@@XZ` + `?SetMeshVisual@eCDynamicEntity@@QEAA?AW4bEResult@@AEBVbCString@@_N@Z` (a mesh entity
+  without a template: killed on load unless its creator template resolves, section 32). Flags of `eCEntity +0x28`: `0x2` rendering, `0x4` enabled,
+  `0x8` killed, `0x10` in processing range, `0x20` cached in, `0x80` picking, `0x3c00` insert type, `0x80000` save-relevant, `0x100000` temporary.

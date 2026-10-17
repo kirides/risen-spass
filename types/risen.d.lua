@@ -120,6 +120,31 @@ function Entity:direction() end
 ---@return number|nil maxz
 function Entity:bounds() end
 
+---An entity's pose: its world matrix as position and angles (degrees: yaw 0 looks along +z, 90 along +x; pitch > 0 tilts the forward axis up;
+---roll > 0 lifts the right side), the row lengths (scale) and the matrix itself (16 numbers, row-major, position in row 3).
+---@class EntityPose
+---@field x number
+---@field y number
+---@field z number
+---@field yaw number 0..360
+---@field pitch number
+---@field roll number
+---@field scale number[] Lengths of the right, up and forward rows.
+---@field matrix number[] The 16 numbers of `Entity::GetPose`.
+
+---The entity's pose (`Entity::GetPose`, the world matrix); `nil` for a stale handle. Works for every placed entity: objects of the world, items, NPCs.
+---@return EntityPose|nil
+function Entity:pose() end
+
+---Moves and turns the entity at once (`Entity::MoveTo`: the world matrix, plus a reset of its rigid body, navigation and movement; a teleport without a
+---collision test). `spec`: any of `x, y, z, yaw, pitch, roll` (the missing ones keep their current value; only position = the rotation stays exactly as it
+---is; the scale always stays), or `{ matrix = { 16 numbers } }`. Works for objects of the world too; whether the engine saves the new pose depends on the
+---entity being save-relevant (`save_relevant()`, docs/RE.md section 50): re-apply it after a load when it matters. Returns `true` or `nil, reason`.
+---@param spec { x?: number, y?: number, z?: number, yaw?: number, pitch?: number, roll?: number, matrix?: number[] }
+---@return true|nil ok
+---@return string|nil reason
+function Entity:set_pose(spec) end
+
 -- Item properties (entities made from item templates) ------------------------------------------------------------------
 
 ---Whether the entity has item data (is an item).

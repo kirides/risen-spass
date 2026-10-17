@@ -52,7 +52,12 @@ T.plan {
     "an item is spawned where it was placed",
     "a chest of the world got the items",
     "an NPC stands at his world position",
+    "pose() reads a world object as the editor does",
+    "an object is placed with its rotation",
+    "a world object is removed",
+    "a world object is moved and turned",
     "after the load: nothing spawned or filled twice",
+    "after the load: the removal and the move hold",
 }
 
 local spawned, filled = {}, {}
@@ -71,6 +76,26 @@ local function knives_near()
         if near(e, KNIFE_AT, 400) then n = n + 1 end
     end
     return n
+end
+
+-- E12: entities of the world the showcase removes / moves (ids from the editor's world view), the bench it places turned by 45 degrees
+local TORCH = "01c4332e-efae-459f-9098-ae6c71dbd23d"
+local STONE = "3dbe0473-6c27-4a13-a0c2-86fdafabff88"     -- moved to -31910 655 -3777, yaw 33 (was -32160, yaw 123)
+local STONEHENGE = "789b1754-3d25-45e3-b6b8-6cd9006be2d1" -- untouched: -31956 639 -3757, yaw 217 in the level file
+local BENCH_AT = { -32250, 600, -4450 }
+local function angle_diff(a, b) return math.abs(((a - b + 180) % 360) - 180) end
+local function benches_near()
+    local t = risen.template.get("Object_Interact_Bench_Outdoor")
+    local n = 0
+    for _, e in ipairs(t and t:instances(1000) or {}) do
+        if near(e, BENCH_AT, 150) then n = n + 1 end
+    end
+    return n
+end
+local function stone_moved()
+    local s = risen.entity.by_id(STONE)
+    local p = s and s:pose()
+    return p ~= nil and math.abs(p.x + 31910) < 5 and math.abs(p.z + 3777) < 5 and angle_diff(p.yaw, 33) < 1, p
 end
 
 local npc_ready = {}
@@ -121,6 +146,22 @@ T.run(function()
     T.wait_until(function() return risen.entity.get("MK_Watcher") ~= nil end, 30, "MK_Watcher made")
     local watcher = risen.entity.get("MK_Watcher")
     T.expect("an NPC stands at his world position", watcher ~= nil and near(watcher, { -31900, 600, -4800 }, 300), watcher and table.concat({ watcher:position() }, " ") or "missing")
+    -- E12: Entity:pose() of an untouched level object gives what the editor read from the level file
+    local sh = risen.entity.by_id(STONEHENGE)
+    local shp = sh and sh:pose()
+    T.expect("pose() reads a world object as the editor does", shp ~= nil and math.abs(shp.x + 31956) < 2 and math.abs(shp.z + 3757) < 2 and angle_diff(shp.yaw, 217) < 1,
+             shp and ("%.1f %.1f %.1f yaw %.1f pitch %.1f roll %.1f"):format(shp.x, shp.y, shp.z, shp.yaw, shp.pitch, shp.roll) or "no entity")
+    local bench
+    for _, e in ipairs(spawned) do
+        if e:template() and e:template():name() == "Object_Interact_Bench_Outdoor" then bench = e end
+    end
+    local bp = bench and bench:pose()
+    T.expect("an object is placed with its rotation", bp ~= nil and near(bench, BENCH_AT, 100) and angle_diff(bp.yaw, 45) < 1 and benches_near() == 1,
+             bp and ("%.0f %.0f %.0f yaw %.1f, %d near"):format(bp.x, bp.y, bp.z, bp.yaw, benches_near()) or "not spawned")
+    T.wait_until(function() return risen.entity.by_id(TORCH) == nil end, 5, "torch removed")
+    T.expect("a world object is removed", risen.entity.by_id(TORCH) == nil)
+    local moved_ok, sp = stone_moved()
+    T.expect("a world object is moved and turned", moved_ok, sp and ("%.1f %.1f %.1f yaw %.1f"):format(sp.x, sp.y, sp.z, sp.yaw) or "no entity")
 
     T.expect("new item exists", risen.template.exists("MK_Hob_Knife"))
     T.eq("new item numbers", { prop("MK_Hob_Knife", "gCItem_PS", "GoldValue"), prop("MK_Hob_Knife", "gCDamage_PS", "DamageAmount") }, { 250, 20 })
@@ -298,7 +339,11 @@ T.run(function()
         T.eq("after the load the kill pays once more", { qstatus("Q_MK_Wolves"):find("Success") ~= nil, g3 - gold0, p3 - pot0 }, { true, 50, 1 })
 
         local chest2 = risen.entity.by_id(CHEST)
-        T.eq("after the load: nothing spawned or filled twice", { knives_near(), chest2 and risen.item.count(chest2, "MK_Strong_Potion") }, { 1, 2 })
+        T.eq("after the load: nothing spawned or filled twice", { knives_near(), chest2 and risen.item.count(chest2, "MK_Strong_Potion"), benches_near() }, { 1, 2, 1 })
+        T.wait_until(function() return risen.entity.by_id(TORCH) == nil and stone_moved() end, 10, "world edits after the load")
+        local moved2, sp2 = stone_moved()
+        T.expect("after the load: the removal and the move hold", risen.entity.by_id(TORCH) == nil and moved2,
+                 ("torch %s, stone %s"):format(risen.entity.by_id(TORCH) and "back" or "gone", sp2 and ("%.0f %.0f yaw %.0f"):format(sp2.x, sp2.z, sp2.yaw) or "?"))
 
         -- Q_MK_Potions started with the new game: done while the player carries three
         T.expect("the game-start quest runs", risen.quest.is_running("Q_MK_Potions"))

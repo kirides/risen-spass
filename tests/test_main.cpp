@@ -28,6 +28,7 @@
 #include "common/asset_names.h"
 #include "common/crash.h"
 #include "common/input_names.h"
+#include "common/pose.h"
 #include "common/sound_file.h"
 #include "common/template_id.h"
 #include "common/test_run.h"
@@ -562,4 +563,33 @@ int main() {
     }
     std::printf("\n%d check(s), %d failure(s)\n", g_checks, g_failures);
     return g_failures == 0 ? 0 : 1;
+}
+
+TEST(pose_angles_round_trip) {
+    using namespace spass::pose;
+    auto close = [](double a, double b) { return std::fabs(a - b) < 1e-3; };
+    // yaw 0 looks along +z, 90 along +x (Entity:direction's convention); up stays +y
+    Matrix m = compose(1, 2, 3, Angles{90, 0, 0});
+    CHECK(close(m[8], 1) && close(m[9], 0) && close(m[10], 0));
+    CHECK(close(m[4], 0) && close(m[5], 1) && close(m[6], 0));
+    CHECK(close(m[0], 0) && close(m[2], -1));
+    CHECK(m[12] == 1 && m[13] == 2 && m[14] == 3 && m[15] == 1);
+    // pitch up raises the forward axis, roll lifts the right side
+    CHECK(compose(0, 0, 0, Angles{0, 30, 0})[9] > 0.49f);
+    CHECK(compose(0, 0, 0, Angles{0, 0, 20})[1] > 0.33f);
+    // angles -> matrix -> angles, with a scale that stays
+    for (float yaw : {0.f, 37.f, 123.f, 270.f, 359.f})
+        for (float pitch : {-60.f, 0.f, 15.f})
+            for (float roll : {-30.f, 0.f, 45.f}) {
+                const Matrix a = compose(5, 6, 7, Angles{yaw, pitch, roll}, {2, 2, 2});
+                const Angles b = decompose(a);
+                CHECK(close(b.yaw, yaw) && close(b.pitch, pitch) && close(b.roll, roll));
+                const auto s = scale_of(a);
+                CHECK(close(s[0], 2) && close(s[1], 2) && close(s[2], 2));
+                const Matrix c = compose(5, 6, 7, b, s);
+                for (int i = 0; i < 16; ++i) CHECK(close(a[i], c[i]));
+            }
+    Matrix bad = m;
+    bad[3] = std::nanf("");
+    CHECK(!sane(bad) && sane(m));
 }

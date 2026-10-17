@@ -173,7 +173,10 @@ Limit: 1024 Lua scripts.
 `risen.entity.get("UniqueName")`, `risen.entity.player()` → `Entity | nil`, `risen.entity.by_id("xxxxxxxx-xxxx-…")` → the entity with that ID (see `Entity:id()`),
 `risen.entity.npcs([center, radius])` → every NPC/monster (or those within `radius` of `center`).
 Entity methods: `name()`, `display_name()`, `set_name(s)`, `id()` (the GUID the savegame stores: unlike the name it survives a load), `save_relevant()`, `set_save_relevant(b)` (whether the engine writes the entity
-into savegames; true for every spawned one), `position()` → `x, y, z`, `distance_to(e)`,
+into savegames; true for every spawned item and NPC, **not** for a spawned object such as a bench: set it to keep one), `position()` → `x, y, z`,
+`pose()` → `{ x, y, z, yaw, pitch, roll, scale, matrix }` (the world matrix, `Entity::GetPose`; works for the world's own objects), `set_pose{ x?, y?, z?, yaw?, pitch?, roll? }`
+or `set_pose{ matrix = {16} }` → `true | nil, reason` (`Entity::MoveTo`: a teleport that also resets the rigid body, navigation and movement; missing values
+keep theirs, the scale stays; RE.md section 50), `distance_to(e)`,
 `is_npc()`, `is_player()`, `is_dead()`, `is_item()`, `is_character()`, `kill()`, `set_frozen(b)`,
 `enable_rendering(b)`, `teleport(name_or_entity)`, `valid()`, `address`, `area_names()` / `set_area_names(list)` (the names of an area entity: security zones, see "Theft" under `risen.ai`). A handle remembers the entity's unique
 name: after a savegame load, a session start/stop or a world change it looks the entity up **by name again** instead of
