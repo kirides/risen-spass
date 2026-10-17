@@ -76,7 +76,41 @@
       "value_mult": 2.0
     }
   ],
-  "recipes": [],
+  "recipes": [
+    {
+      "uid": "6b1f0e2a9c4d4e5f8a7b6c5d4e3f2a30",
+      "mode": "new",
+      "name": "MK_Recipe_Hob_Knife",
+      "station": "anvil",
+      "ingredients": [
+        [
+          "It_1H_Machete",
+          1
+        ],
+        [
+          "It_IronOre",
+          2
+        ]
+      ],
+      "skills": {
+        "Smith": 1
+      },
+      "result": "MK_Hob_Knife",
+      "label": {
+        "English": "Smithing plan: Hob's Knife",
+        "German": "Schmiedeplan: Hobs Messer"
+      },
+      "learn": true
+    },
+    {
+      "uid": "6b1f0e2a9c4d4e5f8a7b6c5d4e3f2a31",
+      "mode": "edit",
+      "name": "It_1H_Steel_Hot",
+      "skills": {
+        "Smith": 1
+      }
+    }
+  ],
   "npc_templates": [],
   "npcs": [],
   "dialogs": [],

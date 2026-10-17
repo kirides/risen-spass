@@ -89,6 +89,18 @@ json int_map(const IntMap& m) {
     return o;
 }
 
+// ingredients as a list (keeps the order the modder chose): { { item = "It_IronOre", count = 2 }, ... }
+json ingredients(const std::vector<Ingredient>& v) {
+    json a = json::array();
+    for (auto& i : v) {
+        json e = json::object();
+        e["item"] = i.item;
+        e["count"] = i.count;
+        a.push_back(e);
+    }
+    return a;
+}
+
 }  // namespace
 
 json balance_spec(const Project& p) {
@@ -156,6 +168,49 @@ json balance_spec(const Project& p) {
         }
         spec["new_items"] = items;
     }
+
+    std::vector<const RecipeDef*> redits, rnews;
+    for (auto& r : p.recipes) (r.mode == Mode::Edit ? redits : rnews).push_back(&r);
+    auto rby_name = [](const RecipeDef* a, const RecipeDef* b) { return a->name < b->name; };
+    std::sort(redits.begin(), redits.end(), rby_name);
+    std::sort(rnews.begin(), rnews.end(), rby_name);
+    if (!redits.empty()) {
+        json recipes = json::object();
+        for (const RecipeDef* r : redits) {
+            json e = json::object();
+            if (!r->station.empty()) e["station"] = r->station;
+            if (r->ingredients) e["ingredients"] = ingredients(*r->ingredients);
+            if (r->skills) e["skills"] = int_map(*r->skills);
+            put(e, "result", r->result);
+            PropEdits props = r->properties;
+            if (r->icon) props["gCItem_PS"]["IconImage"] = *r->icon;
+            if (r->mesh) props["eCMesh_PS"]["MeshFileName"] = *r->mesh;
+            if (r->value) props["gCItem_PS"]["GoldValue"] = *r->value;
+            if (json pj = props_json(props); !pj.empty()) e["properties"] = pj;
+            recipes[r->name] = e;
+        }
+        spec["recipes"] = recipes;
+    }
+    if (!rnews.empty()) {
+        json recipes = json::object();
+        for (const RecipeDef* r : rnews) {
+            json e = json::object();
+            if (!r->base.empty()) e["base"] = r->base;
+            if (json t = text_value(r->label, p.mod.languages); !t.is_null()) e["name"] = t;
+            if (json t = text_value(r->description, p.mod.languages); !t.is_null()) e["description"] = t;
+            e["station"] = r->station;
+            e["ingredients"] = ingredients(r->ingredients.value_or(std::vector<Ingredient>{}));
+            e["result"] = r->result.value_or(std::string());
+            if (r->skills) e["skills"] = int_map(*r->skills);
+            put(e, "icon", r->icon);
+            put(e, "mesh", r->mesh);
+            put(e, "value", r->value);
+            if (json pj = props_json(r->properties); !pj.empty()) e["properties"] = pj;
+            if (r->learn) e["learn"] = true;
+            recipes[r->name] = e;
+        }
+        spec["new_recipes"] = recipes;
+    }
     return spec;
 }
 
@@ -168,6 +223,11 @@ std::map<std::string, Text> string_rows(const Project& p) {
         if (it.mode != Mode::Edit) continue;
         if (!it.label.empty()) rows["FO_" + it.name] = it.label;
         if (!it.description.empty()) rows["ITEMDESC_" + it.name] = it.description;
+    }
+    for (auto& r : p.recipes) {
+        if (r.mode != Mode::Edit) continue;
+        if (!r.label.empty()) rows["FO_" + r.name] = r.label;
+        if (!r.description.empty()) rows["ITEMDESC_" + r.name] = r.description;
     }
     return rows;
 }

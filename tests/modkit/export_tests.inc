@@ -179,3 +179,35 @@ TEST(validate_with_game_data) {
     CHECK(has("no property set gCNPC_PS"));
     CHECK(has("gEItemUseType: unknown value"));
 }
+
+TEST(recipes_export_and_validate) {
+    Project p = load_showcase();
+    const json b = balance_spec(p);
+    CHECK_EQ(b["new_recipes"]["MK_Recipe_Hob_Knife"]["station"].get<std::string>(), std::string("anvil"));
+    CHECK_EQ(b["new_recipes"]["MK_Recipe_Hob_Knife"]["ingredients"][1]["item"].get<std::string>(), std::string("It_IronOre"));
+    CHECK_EQ(b["new_recipes"]["MK_Recipe_Hob_Knife"]["learn"].get<bool>(), true);
+    CHECK_EQ(b["recipes"]["It_1H_Steel_Hot"]["skills"]["Smith"].get<int>(), 1);
+    CHECK(!b["recipes"]["It_1H_Steel_Hot"].contains("ingredients"));  // unchanged parts stay out
+    RecipeDef bad;
+    bad.uid = "bad";
+    bad.name = "MK_Bad_Plan";
+    bad.station = "oven";
+    bad.ingredients = std::vector<Ingredient>{{"", 0}};
+    p.recipes.push_back(bad);
+    auto v = validate(p, nullptr);
+    auto has = [&](const std::string& part) {
+        return std::any_of(v.begin(), v.end(), [&](const Problem& x) { return x.uid == "bad" && x.message.find(part) != std::string::npos; });
+    };
+    CHECK(has("unknown station 'oven'"));
+    CHECK(has("needs a result item"));
+    CHECK(has("an ingredient has no item"));
+    CHECK(has("count must be 1 or more"));
+    if (auto g = game_data()) {
+        p.recipes.back().ingredients = std::vector<Ingredient>{{"Wolf", 1}, {"MK_Hob_Knife", 1}};  // a monster is no ingredient, a project item is
+        p.recipes.back().result = "No_Such_Item";
+        v = validate(p, g.get());
+        CHECK(has("ingredient 'Wolf' is no item"));
+        CHECK(!has("ingredient 'MK_Hob_Knife'"));
+        CHECK(has("result 'No_Such_Item'"));
+    }
+}

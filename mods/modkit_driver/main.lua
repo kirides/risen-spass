@@ -15,6 +15,11 @@ T.plan {
     "changed item label",
     "free property written",
     "item group applied",
+    "new recipe: station, result, ingredients, skills",
+    "the player got the plan",
+    "the skill requirement holds",
+    "the recipe crafts the new item",
+    "changed recipe skill",
 }
 
 local applied = {}   -- when -> report
@@ -56,5 +61,22 @@ T.run(function()
         if tostring(label):find("Items/Plants", 1, true) then group = label end
     end
     T.expect("item group applied", group ~= nil, table.concat(rep.applied or {}, " | "))
+
+    -- recipes
+    local info = risen.recipe.info("MK_Recipe_Hob_Knife") or {}
+    local ingr = {}
+    for _, i in ipairs(info.ingredients or {}) do ingr[#ingr + 1] = i.item .. "=" .. i.count end
+    T.eq("new recipe: station, result, ingredients, skills", { info.station, info.result and info.result.item, table.concat(ingr, ","), (info.skills or {}).Smith },
+         { "anvil", "MK_Hob_Knife", "It_1H_Machete=1,It_IronOre=2", 1 })
+    T.wait_until(function() return risen.recipe.known(player, "MK_Recipe_Hob_Knife") end, 20, "the plan in the inventory")
+    T.expect("the player got the plan", risen.recipe.known(player, "MK_Recipe_Hob_Knife"))
+    risen.item.give(player, "It_1H_Machete", 1)
+    risen.item.give(player, "It_IronOre", 2)
+    local times, missing = risen.recipe.can_craft(player, "MK_Recipe_Hob_Knife")
+    T.expect("the skill requirement holds", times == 0 and tostring(missing):find("Smith") ~= nil, tostring(times) .. " " .. tostring(missing))
+    local before = risen.item.count(player, "MK_Hob_Knife")
+    risen.recipe.craft_raw(player, "MK_Recipe_Hob_Knife", 1)   -- what a station does once the check passed
+    T.eq("the recipe crafts the new item", { risen.item.count(player, "MK_Hob_Knife") - before, risen.item.count(player, "It_IronOre") }, { 1, 0 })
+    T.eq("changed recipe skill", ((risen.recipe.info("It_1H_Steel_Hot") or {}).skills or {}).Smith, 1)
     T.finish()
 end, "modkit")

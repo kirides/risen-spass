@@ -121,6 +121,61 @@ void check_items(Ctx& c) {
     }
 }
 
+// an item name a recipe refers to: a shipped item or one the project creates
+bool item_known(const Ctx& c, const std::string& name) {
+    if (c.is_project_template(name)) return true;
+    if (!c.g) return true;
+    const TemplateInfo* t = c.g->tpl(name);
+    return t && (t->kind == TplKind::Item || t->kind == TplKind::Recipe);
+}
+
+void check_recipes(Ctx& c) {
+    std::map<std::string, int> seen;
+    const auto& stations = recipe_stations();
+    for (auto& r : c.p.recipes) {
+        const char* A = "Recipes";
+        const std::string subj = r.name.empty() ? "(unnamed recipe)" : r.name;
+        if (++seen[p2m::lower(r.name)] == 2) c.add(Severity::Error, A, r.uid, subj, "the project has this recipe twice");
+        const TemplateInfo* target = nullptr;
+        if (r.mode == Mode::New) {
+            if (const std::string why = template_name_problem(r.name); !why.empty()) c.add(Severity::Error, A, r.uid, subj, why);
+            if (c.g && c.g->tpl(r.name)) c.add(Severity::Error, A, r.uid, subj, "a game template with this name exists: choose a new, prefixed name");
+            if (r.station.empty()) c.add(Severity::Error, A, r.uid, subj, "a new recipe needs a station");
+            if (!r.ingredients || r.ingredients->empty()) c.add(Severity::Error, A, r.uid, subj, "a new recipe needs at least one ingredient");
+            if (!r.result || r.result->empty()) c.add(Severity::Error, A, r.uid, subj, "a new recipe needs a result item");
+            if (!r.base.empty() && c.g) {
+                target = c.g->tpl(r.base);
+                if (!target) c.add(Severity::Error, A, r.uid, subj, "the base '" + r.base + "' is no template of the game");
+                else if (!target->has_set("gCRecipe_PS")) c.add(Severity::Error, A, r.uid, subj, "the base '" + r.base + "' is no recipe item (no gCRecipe_PS)");
+            }
+            if (r.base.empty() && c.g) target = c.g->tpl("It_Recipe_Health_01");
+        } else {
+            if (r.name.empty()) c.add(Severity::Error, A, r.uid, subj, "choose the shipped recipe to change");
+            else if (c.g) {
+                target = c.g->tpl(r.name);
+                if (!target) c.add(Severity::Error, A, r.uid, subj, "no game template with this name");
+                else if (target->kind != TplKind::Recipe) c.add(Severity::Error, A, r.uid, subj, std::string("not a recipe (") + kind_name(target->kind) + ")");
+            }
+        }
+        if (!r.station.empty() && std::find(stations.begin(), stations.end(), r.station) == stations.end())
+            c.add(Severity::Error, A, r.uid, subj, "unknown station '" + r.station + "'");
+        if (r.ingredients) {
+            if (r.ingredients->size() > 16) c.add(Severity::Error, A, r.uid, subj, "at most 16 ingredients");
+            std::map<std::string, int> twice;
+            for (auto& i : *r.ingredients) {
+                if (i.item.empty()) c.add(Severity::Error, A, r.uid, subj, "an ingredient has no item");
+                else if (!item_known(c, i.item)) c.add(Severity::Error, A, r.uid, subj, "ingredient '" + i.item + "' is no item of the game or the project");
+                if (i.count < 1) c.add(Severity::Error, A, r.uid, subj, "ingredient '" + i.item + "': the count must be 1 or more");
+                if (++twice[i.item] == 2) c.add(Severity::Warning, A, r.uid, subj, "ingredient '" + i.item + "' is listed twice");
+            }
+        }
+        if (r.result && !r.result->empty() && !item_known(c, *r.result))
+            c.add(Severity::Error, A, r.uid, subj, "result '" + *r.result + "' is no item of the game or the project");
+        if (r.skills) check_skills(c, A, r.uid, subj, *r.skills, "skills");
+        check_properties(c, A, r.uid, subj, r.properties, target);
+    }
+}
+
 }  // namespace
 
 std::vector<Problem> validate(const Project& p, const GameData* game) {
@@ -141,6 +196,7 @@ std::vector<Problem> validate(const Project& p, const GameData* game) {
     if (p.mod.name.empty()) c.add(Severity::Warning, "Mod", "", p.mod.id, "the mod has no name");
     if (p.mod.languages.empty()) c.add(Severity::Error, "Mod", "", p.mod.id, "the mod needs at least one language");
     check_items(c);
+    check_recipes(c);
     return out;
 }
 

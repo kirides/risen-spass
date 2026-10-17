@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "app/panels/panels.h"
+#include "app/editor_util.h"
 #include "app/pickers.h"
 #include "app/prop_editor.h"
 #include "app/widgets.h"
@@ -15,80 +16,6 @@
 namespace mk {
 
 namespace {
-
-std::string prefix_of(const Project& p) {
-    std::string s = p.mod.id;
-    if (!s.empty()) s[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(s[0])));
-    return s.empty() ? "My" : s;
-}
-
-std::string unique_name(const Project& p, const GameData* g, std::string want) {
-    auto taken = [&](const std::string& n) {
-        if (g && g->tpl(n)) return true;
-        for (auto& i : p.items)
-            if (i.name == n) return true;
-        for (auto& r : p.recipes)
-            if (r.name == n) return true;
-        for (auto& t : p.npc_templates)
-            if (t.name == n) return true;
-        return false;
-    };
-    if (want.size() > 60) want.resize(60);
-    if (!taken(want)) return want;
-    for (int i = 2;; ++i)
-        if (!taken(want + "_" + std::to_string(i))) return want + "_" + std::to_string(i);
-}
-
-// an optional enum value as "set" checkbox + combo
-bool opt_enum(const char* label, std::optional<std::string>& v, const std::vector<std::string>& names, const std::string& shipped) {
-    bool changed = false;
-    ImGui::PushID(label);
-    bool on = v.has_value();
-    if (ImGui::Checkbox("##set", &on)) {
-        if (on) v = shipped.empty() ? (names.empty() ? std::string() : names.front()) : shipped;
-        else v.reset();
-        changed = true;
-    }
-    ImGui::SameLine();
-    ImGui::BeginDisabled(!v.has_value());
-    const std::string cur = v ? *v : shipped;
-    if (ImGui::BeginCombo(label, cur.empty() ? "(none)" : cur.c_str(), ImGuiComboFlags_HeightLarge)) {
-        for (auto& n : names)
-            if (ImGui::Selectable(n.c_str(), n == cur)) {
-                v = n;
-                changed = true;
-            }
-        ImGui::EndCombo();
-    }
-    ImGui::EndDisabled();
-    ImGui::PopID();
-    return changed;
-}
-
-// "replace the list" checkbox + the skill table
-bool opt_skills(const char* label, std::optional<IntMap>& m, const IntMap& shipped, const std::vector<std::string>& skills, const char* help) {
-    bool changed = false;
-    ImGui::PushID(label);
-    bool on = m.has_value();
-    if (ImGui::Checkbox(label, &on)) {
-        if (on) m = shipped;
-        else m.reset();
-        changed = true;
-    }
-    ui::help(help);
-    if (m) {
-        ImGui::Indent();
-        changed |= ui::int_map("##map", *m, skills, 1, -1000, 1000);
-        ImGui::Unindent();
-    } else {
-        std::string s;
-        for (auto& [k, v] : shipped) s += (s.empty() ? "" : ", ") + k + " " + std::to_string(v);
-        ImGui::SameLine();
-        ImGui::TextDisabled("shipped: %s", s.empty() ? "none" : s.c_str());
-    }
-    ImGui::PopID();
-    return changed;
-}
 
 class ItemsPanel : public Panel {
 public:
@@ -122,7 +49,7 @@ public:
         d.uid = new_uid();
         d.mode = Mode::New;
         d.base = base;
-        d.name = unique_name(app.project, app.game.get(), prefix_of(app.project) + "_" + (base.empty() ? std::string("Item") : base));
+        d.name = ui::unique_template_name(app.project, app.game.get(), ui::name_prefix(app.project) + "_" + (base.empty() ? std::string("Item") : base));
         app.project.items.push_back(d);
         sel_ = d.uid;
         app.touch();
@@ -215,7 +142,7 @@ private:
                 if (ImGui::MenuItem("Duplicate")) {
                     ItemDef d = i;
                     d.uid = new_uid();
-                    if (d.mode == Mode::New) d.name = unique_name(p, app.game.get(), d.name);
+                    if (d.mode == Mode::New) d.name = ui::unique_template_name(p, app.game.get(), d.name);
                     app.defer([&app, d] {
                         app.project.items.push_back(d);
                         app.touch();
@@ -289,14 +216,14 @@ private:
 
         ui::section("Requirements and effects");
         const auto skills = skill_names(g);
-        ch |= opt_skills("Replace requirements", it.requirements, shipped.requirements, skills,
+        ch |= ui::opt_skills("Replace requirements", it.requirements, shipped.requirements, skills,
                          "What the player needs to equip or use the item (attributes, combat skills, ...). Only the player is held to them.");
-        ch |= opt_skills("Replace modifiers", it.modifies, shipped.modifies, skills,
+        ch |= ui::opt_skills("Replace modifiers", it.modifies, shipped.modifies, skills,
                          "What the item adds while worn or when used: HitPoints for a potion, ProtEdge for armour, ...");
 
         ui::section("Kind");
-        ch |= opt_enum("Use type", it.use_type, enum_names(g, "gEItemUseType"), shipped.use_type);
-        ch |= opt_enum("Category", it.category, enum_names(g, "gEItemCategory"), shipped.category);
+        ch |= ui::opt_enum("Use type", it.use_type, enum_names(g, "gEItemUseType"), shipped.use_type);
+        ch |= ui::opt_enum("Category", it.category, enum_names(g, "gEItemCategory"), shipped.category);
 
         ui::section("Appearance");
         {

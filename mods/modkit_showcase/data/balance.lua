@@ -22,4 +22,15 @@ return {
             modifies = { HitPoints = 120 },
         },
     },
+    recipes = { It_1H_Steel_Hot = { skills = { Smith = 1 } } },
+    new_recipes = {
+        MK_Recipe_Hob_Knife = {
+            name = { English = "Smithing plan: Hob's Knife", German = "Schmiedeplan: Hobs Messer" },
+            station = "anvil",
+            ingredients = { { item = "It_1H_Machete", count = 1 }, { item = "It_IronOre", count = 2 } },
+            result = "MK_Hob_Knife",
+            skills = { Smith = 1 },
+            learn = true,
+        },
+    },
 }

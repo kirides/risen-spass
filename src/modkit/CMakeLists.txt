@@ -58,12 +58,14 @@ add_executable(risen-modkit
     app/app.cpp
     app/fonts.cpp
     app/screenshot.cpp
+    app/editor_util.cpp
     app/pickers.cpp
     app/prop_editor.cpp
     app/widgets.cpp
     app/panels/browser_panel.cpp
     app/panels/items_panel.cpp
     app/panels/problems_panel.cpp
+    app/panels/recipes_panel.cpp
     app/panels/log_panel.cpp
     app/panels/project_panel.cpp
     app/panels/settings_panel.cpp

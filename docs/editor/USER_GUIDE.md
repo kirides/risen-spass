@@ -4,7 +4,7 @@
 world placements) in a desktop application and export an ordinary mod folder that the layer loads. The plan and the state of the stages are in
 [REQUIREMENTS.md](REQUIREMENTS.md); this guide describes what works now.
 
-Contents: [Build and start](#build-and-start) · [First start](#first-start) · [The window](#the-window) · [Items](#items) · [Export](#export) ·
+Contents: [Build and start](#build-and-start) · [First start](#first-start) · [The window](#the-window) · [Items](#items) · [Recipes](#recipes) · [Export](#export) ·
 [The exported mod](#the-exported-mod) · [Command line](#command-line) · [Limits](#limits)
 
 ## Build and start
@@ -40,6 +40,7 @@ Panels can be dragged, docked and tabbed; **Window > Reset layout** brings back 
 | **Mod** | the mod's identity: id (folder name, a-z 0-9 _), name, version, author, description, the languages you write texts in (the first is the fallback for all others), dependencies; an overview of the content |
 | **Browser** | every template of the game by group (Items, NPC, Monster, Objects, ...), search by name or label, filter by kind; the inspector shows every property of the selected template. Buttons for the editors: **New item based on this**, **Change this item** |
 | **Items** | your new items, changes of shipped items and item groups (below) |
+| **Recipes** | new crafting recipes and changes of shipped ones (below) |
 | **Problems** | what is wrong with the project (errors block the export, warnings do not); click a line to jump to the object |
 | **Log** | what the editor did, and problems reading the game data |
 | **Settings** | data directory, export folder, UI scale |
@@ -63,6 +64,20 @@ Panels can be dragged, docked and tabbed; **Window > Reset layout** brings back 
 * **Item groups**: a factor on the value or damage of every item of a group path (`Items/Potions`), a name pattern (a Lua pattern) or a list.
   Factors are computed from the shipped values, so applying them twice never compounds.
 
+## Recipes
+
+A recipe is an **item** (the plan, a "recipe item"): a character knows the recipe while the plan is in his inventory, and the station lists the
+plans of its kind.
+
+* **New recipe**: the plan's template name, the **station** (anvil, forge, grindstone, coolweapon, alchemy, goldsmith, scroll, cooking, frying),
+  the **result item** (a shipped item or one of your new items), 1 to 16 **ingredients** with their counts, the **skills** the crafter needs
+  (`Smith 1`, `Alchemy 2`, ...), and the plan's label and description (empty label: "Recipe: <result>"). **learn** gives the plan to the player once
+  per savegame; without it, hand the plan out yourself (an NPC's inventory or a dialogue, coming stages). The engine makes one result item per craft.
+* **Change a shipped recipe**: station, ingredients (tick *Replace ingredients*: the shipped list is copied in), skills and result; the shipped
+  recipe is shown above. The smithing chain of the game is a sequence of recipe items (raw blade at the forge, hot blank at the anvil, ...,
+  see `docs/RECIPE_PROPERTIES.md`).
+* The Browser offers **New recipe for this item** on an item and **Change this recipe** on a recipe.
+
 ## Export
 
 **File > Export mod...** writes the mod into a folder, normally `<Risen>\bin\spass\mods\<mod id>`. The export
@@ -82,7 +97,7 @@ Start the game: the layer loads the mod like any other (it is listed in the Mods
   mod.toml              generated from the Mod panel
   main.lua              generated: requires the runtime, installs the data, then requires custom.lua
   custom.lua            yours: created once, never overwritten
-  data\balance.lua      the items as a risen.balance.install spec (readable, plain data)
+  data\balance.lua      items and recipes as a risen.balance.install spec (readable, plain data)
   strings\all.csv       texts of shipped items you renamed (first language = fallback), strings\<Language>.csv for the others
   modkit\runtime.lua    the generic code, the same for every exported mod
   modkit\project.json   the editor project the mod was made from (File > Open it, or keep it for a later import)
@@ -102,6 +117,6 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 
 ## Limits
 
-* Only items so far; recipes, NPCs, dialogues, quests and the world view follow (REQUIREMENTS.md section 9).
+* Items and recipes so far; NPCs, dialogues, quests and the world view follow (REQUIREMENTS.md section 9).
 * Icons are offered from the shipped items' icons; a preview of meshes and icons comes with stage E8.
 * Linux and macOS builds are part of the CMake setup but were not built yet (no such host in the development setup).

@@ -4,10 +4,19 @@
 #include <imgui_stdlib.h>
 
 #include <algorithm>
+#include <cstring>
 
 namespace mk::ui {
 
 namespace {
+
+void visible_label(const char* label) {
+    const char* end = std::strstr(label, "##");
+    const size_t n = end ? static_cast<size_t>(end - label) : std::strlen(label);
+    if (!n) return;
+    ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+    ImGui::TextUnformatted(label, label + n);
+}
 
 bool icontains(const std::string& hay, const std::string& needle) {
     if (needle.empty()) return true;
@@ -46,8 +55,7 @@ bool template_picker(const char* label, std::string& name, const GameData* game,
         filter.clear();
         ImGui::OpenPopup("##pick");
     }
-    ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
-    ImGui::TextUnformatted(label);
+    visible_label(label);
     if (ImGui::BeginPopup("##pick")) {
         if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
         ImGui::SetNextItemWidth(360);
@@ -97,8 +105,7 @@ bool asset_picker(const char* label, std::string& name, const GameData* game, co
         filter.clear();
         ImGui::OpenPopup("##pick");
     }
-    ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
-    ImGui::TextUnformatted(label);
+    visible_label(label);
     if (ImGui::BeginPopup("##pick")) {
         if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
         ImGui::SetNextItemWidth(360);
