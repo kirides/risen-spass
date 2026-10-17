@@ -1727,3 +1727,24 @@ with `mesh = "Spass_Probe.xmsh"` spawns it, and the engine draws it with the mat
 front faces counter-clockwise; D3D culls counter-clockwise faces, so the game's front faces are *clockwise*: the importer negates z for a right-handed model (a mirror reverses the winding by itself) and keeps the triangle order,
 and without the mirror it turns the triangles around. **Not verified:** that the game's axes really are the mirror image of OBJ's/glTF's (the default `Mirror Z` is an inference from D3D being left-handed: the importer's option can be
 switched off), what the bounding tree is used for (only single-node trees were written), and meshes with more than 65535 vertices or lightmap UVs.
+
+## 54. Actors (`._xmac`) read offline: monsters in the editor's world view (editor stage E19b) [static; checked on all 111 actors and drawn]
+
+`data/compiled/animations.pak/_emfx36/**/*._xmac` (111 files) is `GR01MA02` (the container of section 53 with `.xac` instead of a mesh stream: header, property stream `eCMotionActorResource2 { Boundary bCBox }`) around an
+**EMotion FX actor** file: the magic `XAC ` at the payload (`0x8c` in the wolf), `u8 1, 0` version, `u8 0` little endian, `u8 0` multiplication order, then chunks `{ u32 id, u32 size, u32 version }`:
+
+| id | name | notes |
+|---|---|---|
+| 7 | INFO v2 | `u32 numLODs, u32 trajectory node, u32 motion extraction node`, exporter `u8 3, 6, u16 0`, four strings (`u32 length` + text, no terminator): source application, source file, date, actor name |
+| 11 | NODES v1 | `u32 nodes, u32 roots`, per node 156 bytes (rotation `4f`, scale rotation `4f`, position `3f`, scale `3f`, `3 x -1.0f`, `u32 0xffffffff`, `u32 0xffffffff`, **`u32 parent index` at +76**, flags, a 76-byte box record) and its name string; the wolf has 59 (`Bone_ROOT`, `Bone_Spine1..5`, `Bone_Head`, ...). The chicken's record differs (not read) |
+| 13 | MATERIALINFO | `u32 total, standard, fx` |
+| 3 | STDMATERIAL v2 | colours `4 x 4f`, 4 floats, `u8 double sided, wireframe, transparency type, number of layers`, the name string: the chunk size covers exactly that; **the layers follow the chunk without a header and are not part of its size**: per layer `f32 amount, u,v offset, u,v tiling, rotation` (24 bytes), `u16 material number`, `u8 map type`, one more byte, then the texture's name string. Map type 2 = diffuse (`Ani_Monster_Wolf_Body_01_Diffuse_S1` = the image `...._ximg`), 5 = normal, 3 = specular |
+| 1 | MESH v1 | `u32 node, original vertices, vertices, indices, sub-meshes, layers`, `u8 collision mesh` + 3 pad; per layer `u32 type, u32 bytes per vertex, u8 deformation flag, u8 scale flag, 2 pad` and the vertex data: type 0 position `3f`, 1 normal `3f`, 2 tangent `4f`, 3 UV `2f`, 5 original vertex number `u32`; per sub-mesh `u32 indices, vertices, material, bones`, the indices (**relative to the sub-mesh's own vertices**, which follow one another) and the bone list |
+| 2 | SKINNINGINFO v3 | influences per vertex: not read (the bind pose needs none) |
+| 8 | MESHLODLEVELS | the lower levels of detail follow |
+
+After the last chunk of the visible actor comes the physics stream of the collision mesh (`NXUSTREAM`, chunk ids above 17 are not chunks). The wolf: one visible mesh (node `Wolf`, 3857 vertices, 5744 triangles, two sub-meshes: body, claws) and
+one collision mesh (node `collisionMesh`, 1500 indices); its vertices are in model space, standing on y = 0, y up, 150 high and 295 long along **z**, 72 wide: they can be drawn as they are with the entity's world matrix (a wolf with
+yaw 295 in the editor's world view looks along -x as the game's matrix says). The UVs need no flip for the editor's texture upload. **Checked:** `modkit_tests` `actor_matches_the_game` (the wolf's numbers, 102 of 111 actors give a visible mesh:
+the others are skeletons, heads and armour parts, the nautilus' mesh has another version; 223 of 242 diffuse textures resolve to an image), `world_monsters_have_actors` (1253 of 1306 monsters of the world have an actor that decodes,
+27 distinct actors), and the world view's picture of a wolf. Humans are not drawn this way: a human is assembled from body parts, heads and armour items.

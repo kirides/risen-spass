@@ -1,5 +1,7 @@
 #include "app/render/resources.h"
 
+#include "core/actor.h"
+
 #include <algorithm>
 #include <chrono>
 #include <cstring>
@@ -163,11 +165,13 @@ void ResourceCache::worker() {
         d.name = job.name;
         try {
             if (job.is_mesh) {
-                d.mesh = std::make_unique<MeshData>(decode_mesh(read(job.name)));
+                const std::string lowered = p2m::lower(job.name);
+                d.mesh = std::make_unique<MeshData>(p2m::ends_with(lowered, "._xmac") ? decode_actor(read(job.name)) : decode_mesh(read(job.name)));
                 for (auto& s : d.mesh->submeshes) {
                     std::string tex;
                     try {
-                        if (!s.material.empty() && exists(s.material)) tex = material_texture(read(s.material));
+                        if (!s.texture.empty()) tex = s.texture + "._ximg";  // an actor names its texture itself
+                        else if (!s.material.empty() && exists(s.material)) tex = material_texture(read(s.material));
                     } catch (...) {
                     }
                     d.textures.push_back(tex);

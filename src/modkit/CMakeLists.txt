@@ -33,6 +33,7 @@ file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp.tmp" "${MK_EMBED_SRC
 execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp.tmp" "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp")
 
 add_library(modkit_core STATIC
+    core/actor.cpp
     core/assets.cpp
     core/behavior.cpp
     core/catalog.cpp

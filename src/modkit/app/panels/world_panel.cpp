@@ -192,6 +192,15 @@ private:
         mesh_names_.assign(world_->entities.size(), std::string());
         for (size_t i = 0; i < world_->entities.size(); ++i)
             if (!world_->entities[i].mesh.empty()) mesh_names_[i] = compiled_name(world_->entities[i].mesh);
+        // monsters and animals are drawn as their actor (the bind pose of the skinned mesh) instead of a box: the actor file their template names
+        if (app.game)
+            for (size_t i = 0; i < world_->entities.size(); ++i) {
+                const WorldEntity& e = world_->entities[i];
+                if (!mesh_names_[i].empty() || e.kind != TplKind::Monster || e.template_name.empty()) continue;
+                const TemplateInfo* t = app.game->tpl(e.template_name);
+                const p2m::Val* v = t ? t->get("eCAnimation_PS.ResourceFilePath") : nullptr;
+                if (v && v->is_str() && !v->s.empty()) mesh_names_[i] = compiled_name(v->s);
+            }
         layer_on_.assign(world_->layers.size(), 1);
         // the system, navigation and sound layers are hidden at first: they are mostly helpers
         for (size_t i = 0; i < world_->layers.size(); ++i) {

@@ -20,6 +20,7 @@ namespace mk {
 struct SubMesh {
     std::string material;  // "ItWpn_SwordBlades_01_Diffuse_01._xmat"
     uint32_t first_index = 0, index_count = 0, first_vertex = 0, vertex_count = 0;
+    std::string texture;  // set by decoders whose files name the texture themselves (actors): "X" of "X._ximg"; empty = look the material up
 };
 
 struct MeshData {

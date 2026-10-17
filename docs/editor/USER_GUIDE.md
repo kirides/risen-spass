@@ -403,7 +403,7 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 
 ## Limits
 
-* NPCs, monsters and vegetation are boxes in the world view (actors and SpeedTrees are not decoded).
+* Monsters and animals are drawn as their actor in the world view (the bind pose, textured, no animation: 1253 of the 1306 monsters of the game); NPCs (humans are assembled from body parts, heads and armour) and vegetation (SpeedTrees) are still boxes.
 * A spawned object's collision was not checked; level meshes (the landscape, houses that are part of a level mesh) cannot be moved or removed, only
   entities.
 * Icon previews show the game's own icons; a picture of the project used as an item's icon is not previewed (only its name).
