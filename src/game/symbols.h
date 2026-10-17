@@ -120,6 +120,7 @@
     X(rt_full_stop, L"Script.dll", "?FullStop@PSRoutine@@QEAAXXZ", void (*)(void* self), true)                  \
     X(ent_goto_entity, L"Script.dll", "?StartGoto@Entity@@QEAA_NAEAV1@W4gEWalkMode@@@Z", bool (*)(void* self, void* target, int walkMode), true) \
     X(ent_goto_pos, L"Script.dll", "?StartGoto@Entity@@QEAA_NAEBVbCVector@@W4gEWalkMode@@@Z", bool (*)(void* self, const float* xyz, int walkMode), true) \
+    X(ent_start_say_svm, L"Script.dll", "?StartSaySVM@Entity@@QEAAXAEAV1@VbCString@@_N2@Z", void (*)(void* self, void* listener, void* byValueSvmId, bool, bool), false) \
     X(ent_stop_goto, L"Script.dll", "?StopGoto@Entity@@QEAAXXZ", void (*)(void* self), true)                    \
     X(ent_turn_to, L"Script.dll", "?StartTurnTo@Entity@@QEAA_NAEBV1@@Z", bool (*)(void* self, const void* target), true) \
     X(inv_equip_stack, L"Script.dll", "?EquipStack@PSInventory@@QEAA_NH@Z", bool (*)(void* self, int stack), true) \
@@ -402,6 +403,9 @@
     X(input_current_event, L"Script.dll", "?GetCurrentActionEvent@Input@@QEBAAEBUgSAction@@XZ", const void* (*)(const void* input), false) \
     X(input_object, L"Script.dll", "input", unsigned char*, false) \
     X(gui2_object, L"Script.dll", "gui2", unsigned char*, false) \
+    X(tutorial_object, L"Script.dll", "tutorial", void*, false) \
+    X(tut_stop_event, L"Script.dll", "?StopEvent@Tutorial@@QEAAXVbCString@@_N@Z", void (*)(void* self, void* byValueName, bool completed), false) \
+    X(tut_is_completed, L"Script.dll", "?IsCompleted@Tutorial@@QEBA_NVbCString@@@Z", bool (*)(const void* self, void* byValueName), false) \
     X(gui_print_log, L"Script.dll", "?PrintGameLog@GUI2@@QEAAXAEBVbCUnicodeString@@W4gELogMessageType@@_NPEAD@Z", void (*)(void* gui, const void* text, int type, bool flag, char* extra), false) \
     X(gui_print_item_log, L"Script.dll", "?PrintItemLog@GUI2@@QEAAXVEntity@@H@Z", void (*)(void* gui, void* byValueItem, int amount), false) \
     X(gui_is_browsing, L"Script.dll", "?IsBrowsing@GUI2@@QEBA_NXZ", bool (*)(const void* gui), false) \

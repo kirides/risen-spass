@@ -29,7 +29,7 @@
 // title of the variant for the current voice language comes back instead of the engine's own composition.
 //
 // Natives (shared, risen.voice): language(), normalize(name), get(key), keys(), remove(key), title(key), last(), say(entity, key_or_sound[, opts]),
-//   speaking(entity), stop(entity);  risen.assets.sound(name): what the engine and FMOD made of a loaded sound
+//   say_svm(entity, svm_id[, listener]), speaking(entity), stop(entity);  risen.assets.sound(name): what the engine and FMOD made of a loaded sound
 // Per mod: risen.assets.import_sound(name, source), risen.voice.check/set/load_dir; risen.dialog.create learns `sound` (a Lua chunk below).
 
 namespace spass::game {
@@ -480,6 +480,27 @@ void bindVoiceNatives(sol::state_view lua, sol::table risen) {
             ok = s.rout_start_output(ps, n.get(), type);
         });
         SPASS_TRACE(trace::Channel::Voice, "say: '{}' on '{}' -> {}", name, entityNameOf(ent), ok);
+        return ok;
+    });
+    // say_svm(entity, svm_id[, listener]) -> bool: the engine's `Entity::StartSaySVM` (what the script helper behind `GamestartLoot` & co. calls): the speaker says
+    // the standard voice message `svm_id` in its own voice (the `Voice` property of its gCNPC_PS; the sample `SVM_<voice>_<id>` of the voice language, the
+    // plain "NPC" voice when that voice has none). The listener defaults to the speaker.
+    voice.set_function("say_svm", [&s](const LuaEntity& e, const std::string& id, sol::optional<LuaEntity> listener) {
+        if (s.ent_start_say_svm == nullptr || id.empty() || id.size() > 128) {
+            return false;
+        }
+        void* ent = ptr(e);
+        void* lis = listener ? ptr(*listener) : ent;
+        if (ent == nullptr || lis == nullptr) {
+            return false;
+        }
+        const bool ok = guarded([&] {
+            EntityHolder self{ent};
+            EntityHolder other{lis};
+            ByValueString n(id);  // by value: the callee destroys it
+            s.ent_start_say_svm(&self, &other, n.ptr(), false, false);
+        });
+        SPASS_TRACE(trace::Channel::Voice, "say_svm: '{}' on '{}' -> {}", id, entityNameOf(ent), ok);
         return ok;
     });
     voice.set_function("speaking", [&s](const LuaEntity& e) {

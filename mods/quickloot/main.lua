@@ -124,6 +124,7 @@ local function take_item(player, item)
     local stack = risen.item.pick_up(player, item)
     if stack == nil then return false, "the engine refused the pick-up" end
     if cfg.print then risen.hud.item_log(name, amount) end
+    risen.hud.tutorial_stop("takeitem")   -- the animated take ends this hint (Interact_Player_TakeItem)
     return true, name .. " x" .. tostring(amount)
 end
 
@@ -131,6 +132,7 @@ local function take_corpse(player, body)
     local n = lootable_stacks(body)
     if n == 0 then return false, "nothing the loot filter lets through" end
     local taken = risen.script.call("AutoLoot", player, body)
+    if taken > 0 then risen.hud.tutorial_stop("loot") end   -- PreInteract_Player_Loot ends this hint
     return taken > 0, ("%d stack(s)"):format(taken)
 end
 
@@ -160,6 +162,20 @@ local function take_container(player, box, before_take)
 end
 
 -- ---------------------------------------------------------------------------------------------------------------------------------------------
+-- the hero's remark at a body that has one (the beach: "GamestartLoot"), as the game's script helper does it: the voice message of the player in his own voice,
+-- not again while the same line is still playing, and the text as a game log line when the text language is not the voice language.
+local function say_comment(player, svm)
+    if not (risen.voice and risen.voice.say_svm) or risen.voice.speaking(player) then return false end
+    if not risen.voice.say_svm(player, svm) then return false end
+    local voice_lang = risen.voice.language and risen.voice.language()
+    if voice_lang and risen.loc.language() ~= voice_lang then
+        local voice = player:get_property("gCNPC_PS", "Voice")
+        local text = voice and voice ~= "" and risen.loc.get(("SVM_%s_%s"):format(voice, svm))
+        if text then risen.hud.log(text, 2) end
+    end
+    return true
+end
+
 -- one attempt on one target; returns result = { handled, kind, target, reason }
 -- ---------------------------------------------------------------------------------------------------------------------------------------------
 local function attempt(target, source)
@@ -222,6 +238,8 @@ local function attempt(target, source)
         done, detail = take_container(player, target, theft and function() return assess_theft(res, target) end or nil)
     end
     res.handled, res.reason = done, detail
+    local svm = done and policy.comment_of(chosen)
+    if svm then res.comment = say_comment(player, svm) end
     trace("%s %s (%s): %s%s", done and "took" or "declined", target:name(), kind, tostring(detail), res.assessed and (res.reacted and " [an NPC reacted]" or " [assessed, nobody reacted]") or "")
     return res
 end

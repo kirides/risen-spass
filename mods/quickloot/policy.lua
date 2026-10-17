@@ -13,8 +13,9 @@ M.PLAYER = "gEInteractionType_Interact_Player"
 local ITEM_INTERACT = "Interact_Player_TakeItem"
 local CORPSE = { can = "CanInteract_Player_Loot", pre = "PreInteract_Player_Loot", interact = "Interact_Player_Loot" }
 -- The bodies on the beach of a new game (Beach_Seaman_Dead, Beach_Officer_Dead...) have PreInteract_Player_Loot_Comment: it shows the HUD message "GamestartLoot" and then
--- runs PreInteract_Player_Loot (decompiled, RE.md section 31): nothing but the message is added.
+-- runs PreInteract_Player_Loot (decompiled, RE.md section 31): "GamestartLoot" is a standard voice message, the hero's remark about the dead (a spoken line). Quick loot says it too.
 local CORPSE_PRE = { PreInteract_Player_Loot = true, PreInteract_Player_Loot_Comment = true }
+local COMMENTS = { PreInteract_Player_Loot_Comment = "GamestartLoot" }
 -- Monsters and animals carry the same pre/interact scripts but a can script of their species: it asks CanInteract_Player_Loot (AI mode Down or Dead) and, the first
 -- time, puts the trophies into the corpse's inventory (It_Teeth, It_Meat_Raw, and the fur only with the Trophy skill; PSInventory::SetGeneratedPlunder). They are looted like a human.
 local MONSTER_CAN = {}
@@ -51,6 +52,11 @@ function M.kind_of(it)
         return "container"
     end
     return nil, ("interaction %s/%s/%s is not a plain take/loot"):format(it.can, it.pre, it.interact)
+end
+
+-- The standard voice message (SVM id) the player says in the animated path of this interaction before the loot window opens, or nil.
+function M.comment_of(it)
+    return it and COMMENTS[it.pre] or nil
 end
 
 -- Which of the interactions the engine would run: the first whose can script (empty = always) accepts. `can(name)` asks the script.

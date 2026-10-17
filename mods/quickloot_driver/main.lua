@@ -12,10 +12,10 @@ local T = risen.test
 local phase = T.param("phase", "default")
 
 local PLAN_DEFAULT = {
-    "ground item: handled as item", "ground item: one stack more", "ground item: events (picked_up, added pickup, destroyed) exactly once", "ground item: no interaction state", "ground item: same events as the engine path",
+    "ground item: handled as item", "ground item: one stack more", "ground item: events (picked_up, added pickup, destroyed) exactly once", "ground item: tutorial hint takeitem handled like the engine path", "ground item: no interaction state", "ground item: same events as the engine path",
     "engine path baseline: ZS_Interact states ran",
-    "dead human: handled as corpse", "dead human: the club moved, fists and joint stayed", "dead human: same items as the engine's loot window", "dead human: inventory events, one pair per stack",
-    "knocked-out human looted", "living human declined", "witness: a living human nearby does not stop the pick-up (assess mode, no watched area)", "monster corpse (wolf) looted", "monster corpse: trophy taken, fist stayed", "monster corpse: same items as the engine's loot window", "monster corpses of other species looted", "washed-up body (Beach_Seaman_Dead) looted", "washed-up body: same items as the engine's loot window", "door-like object declined", "empty chest declined",
+    "dead human: handled as corpse", "dead human: tutorial hint loot can be ended", "dead human: the club moved, fists and joint stayed", "dead human: same items as the engine's loot window", "dead human: inventory events, one pair per stack",
+    "knocked-out human looted", "living human declined", "witness: a living human nearby does not stop the pick-up (assess mode, no watched area)", "monster corpse (wolf) looted", "monster corpse: trophy taken, fist stayed", "monster corpse: same items as the engine's loot window", "monster corpses of other species looted", "washed-up body (Beach_Seaman_Dead) looted", "washed-up body: the hero says his remark (GamestartLoot)", "washed-up body: same items as the engine's loot window", "trophies without skill: only the unconditional ones", "trophies without skill: nothing left on the carcasses", "trophies with the Trophy skill: fur taken", "trophies with skill and recipes: horns, claws, tusks, stings taken", "trophies: nothing lootable left on the carcasses", "trophies: same items as the engine's loot window (skill learned)", "door-like object declined", "empty chest declined",
     "plain chest looted", "plain chest: items moved and chest empty", "plain chest: same items as the engine path", "chest is not left in an interaction",
     "locked chest without key declined", "locked chest stays locked", "locked chest with key looted", "key chest unlocked and key kept", "quest-script lock declined while locked", "quest-script lock script not run", "chest with unlocked quest-script lock looted",
     "cupboard looted", "sarcophagus looted", "trap sarcophagus declined", "trap sarcophagus: nothing spawned by the quick path", "trap sarcophagus: engine path spawns the skeleton exactly once",
@@ -155,6 +155,7 @@ local function default_phase()
     local P0 = { "It_Apple", "It_1H_Club", "It_Fist_Left", "It_Joint", "It_Gold", "It_Key_Gamestart" }
 
     T.section("ground item")
+    local tut_take0, tut_loot0 = risen.hud.tutorial_done("takeitem"), risen.hud.tutorial_done("loot")
     local apple = spawn_at("It_Apple", 150)
     local before = risen.item.count(p, "It_Apple")
     local mark = #rec
@@ -166,6 +167,8 @@ local function default_phase()
     check("ground item: events (picked_up, added pickup, destroyed) exactly once",
         count_ev(mark, "^item%.picked_up%(PC_Hero,It_Apple") == 1 and count_ev(mark, "^inventory%.added%(PC_Hero,It_Apple,1,%d+,pickup") == 1 and count_ev(mark, "^entity%.destroyed%(It_Apple") == 1,
         table.concat(ev_since(mark, ".*"), " | "))
+    -- Tutorial::IsCompleted stays false after the engine's own take as well (the hint is not what it reports in the test copy): the claim is only that the call works and the state equals the engine path's
+    local quick_tut = risen.hud.tutorial_done("takeitem")
     check("ground item: no interaction state", interact_frames == 0, "frames in ZS_Interact: " .. interact_frames)
     local quick_item_events = inv_norm(mark, "PC_Hero")
     -- baseline: the engine's own pick-up of another apple
@@ -174,6 +177,8 @@ local function default_phase()
     interact_frames = 0
     engine_interaction(apple2, false)
     check("engine path baseline: ZS_Interact states ran", interact_frames > 10, "frames: " .. interact_frames)
+    check("ground item: tutorial hint takeitem handled like the engine path", risen.hud.tutorial_stop("takeitem") == true and quick_tut == risen.hud.tutorial_done("takeitem"),
+        ("before %s, after quick %s, after engine %s"):format(tostring(tut_take0), tostring(quick_tut), tostring(risen.hud.tutorial_done("takeitem"))))
     T.eq("ground item: same events as the engine path", inv_norm(mark, "PC_Hero"), quick_item_events)
 
     local function chest(tpl, locked, items, ang)
@@ -207,6 +212,7 @@ local function default_phase()
     T.sleep(5)
     local pd = counts(p, P0)
     check("dead human: handled as corpse", r.handled and r.kind == "corpse", tostring(r.reason))
+    check("dead human: tutorial hint loot can be ended", risen.hud.tutorial_stop("loot") == true and risen.hud.tutorial_done("loot") == tut_loot0, "before " .. tostring(tut_loot0) .. ", after " .. tostring(risen.hud.tutorial_done("loot")))
     check("dead human: the club moved, fists and joint stayed", pd.It_1H_Club == pc.It_1H_Club + 1 and pd.It_Fist_Left == pc.It_Fist_Left and pd.It_Joint == pc.It_Joint,
         ("club %d->%d fist %d->%d joint %d->%d"):format(pc.It_1H_Club, pd.It_1H_Club, pc.It_Fist_Left, pd.It_Fist_Left, pc.It_Joint, pd.It_Joint))
     local quick_body = inv_norm(mark, nil)
@@ -280,6 +286,8 @@ local function default_phase()
     local gained = 0
     for _, n in ipairs(W0) do gained = gained + pd[n] - pc[n] end
     check("washed-up body (Beach_Seaman_Dead) looted", r.handled and r.kind == "corpse" and gained > 0, tostring(r.reason) .. "; stacks " .. sea_stacks .. "; gained " .. gained)
+    local said = T.wait_until(function() return risen.voice.speaking(p) end, 90, "the hero speaks")
+    check("washed-up body: the hero says his remark (GamestartLoot)", r.comment == true and said, "comment=" .. tostring(r.comment) .. " speaking=" .. tostring(said))
     local sea2 = carcass("Beach_Seaman_Dead", 230)
     pc = counts(p, W0)
     engine_interaction(sea2, true)
@@ -287,6 +295,93 @@ local function default_phase()
     local gained2 = 0
     for _, n in ipairs(W0) do gained2 = gained2 + pd[n] - pc[n] end
     check("washed-up body: same items as the engine's loot window", gained2 == gained, "quick " .. gained .. ", window " .. gained2)
+    T.section("trophies")
+    -- The species can scripts (docs/RE.md section 31) put the trophies into the corpse the first time they are asked: fur and the like only when the player has the Trophy skill (id 33),
+    -- tusks/horns/claws/stings also with the matching recipe item in his inventory. Quick loot asks the same script, so what he gets must follow the skill like the animated path.
+    local CASES = {
+        { "Wolf",          always = { "It_Teeth" },                         skill = { "It_Fur_Wolf" } },
+        { "Boar",          always = { "It_Meat_Raw" },                      skill = { "It_Fur_Boar" },       recipe = { "It_Recipe_Tusk", "It_Tusk" } },
+        { "Rotworm",       always = { "It_Teeth", "It_Meat_Raw" },          recipe = { "It_Recipe_Rotworm", "It_Claw_Rotworm" } },
+        { "GiantScorpion", always = { "It_Claw_Scorpion" },                 recipe = { "It_Recipe_Sting", "It_Sting_Scorpion" } },
+        { "Ghul",          always = { "It_Claw" } },
+        { "AshBeast",      always = { "It_Teeth", "It_Heart_Ashbeast" },    skill = { "It_Fur_AshBeast" } },
+    }
+    local ALL, seen = {}, {}
+    local function add_all(n) if not seen[n] then seen[n] = true; ALL[#ALL + 1] = n end end
+    for _, c in ipairs(CASES) do
+        for _, n in ipairs(c.always) do add_all(n) end
+        for _, n in ipairs(c.skill or {}) do add_all(n) end
+        if c.recipe then add_all(c.recipe[2]) end
+    end
+    local function left_on(m)
+        local n = 0
+        for i = 0, (m:stack_count() or 0) - 1 do if (risen.script.call("InvFilter_Loot", m, nil, i) or 0) > 0 then n = n + 1 end end
+        return n
+    end
+    local function loot_all(with_skill)
+        local detail, left = {}, 0
+        local gained_all = {}
+        for _, c in ipairs(CASES) do
+            local m = carcass(c[1], 280)
+            local before = counts(p, ALL)
+            local r2 = try(m)
+            T.sleep(3)
+            local after = counts(p, ALL)
+            local got = {}
+            for _, n in ipairs(ALL) do if after[n] > before[n] then got[#got + 1] = n .. "x" .. (after[n] - before[n]) end end
+            gained_all[c[1]] = { before = before, after = after }
+            detail[#detail + 1] = c[1] .. ": " .. (r2.handled and "" or "DECLINED (" .. tostring(r2.reason) .. ") ") .. table.concat(got, ",")
+            left = left + left_on(m)
+        end
+        return gained_all, detail, left
+    end
+    local function has(g, c, n) return g[c[1]].after[n] > g[c[1]].before[n] end
+
+    risen.npc.set_skill_base(p, 33, 0)
+    local g0, d0, l0 = loot_all(false)
+    local ok0 = true
+    for _, c in ipairs(CASES) do
+        for _, n in ipairs(c.always) do ok0 = ok0 and has(g0, c, n) end
+        for _, n in ipairs(c.skill or {}) do ok0 = ok0 and not has(g0, c, n) end
+        if c.recipe then ok0 = ok0 and not has(g0, c, c.recipe[2]) end
+    end
+    check("trophies without skill: only the unconditional ones", ok0, table.concat(d0, " | "))
+    check("trophies without skill: nothing left on the carcasses", l0 == 0, "stacks left: " .. l0)
+    risen.npc.set_skill_base(p, 33, 1)
+    local g1, d1, l1 = loot_all(true)
+    local fur_ok = true
+    for _, c in ipairs(CASES) do for _, n in ipairs(c.skill or {}) do fur_ok = fur_ok and has(g1, c, n) end end
+    check("trophies with the Trophy skill: fur taken", fur_ok and (risen.npc.skill_raw(p, 33) or 0) >= 1, table.concat(d1, " | "))
+    for _, c in ipairs(CASES) do if c.recipe then risen.item.give(p, c.recipe[1], 1) end end
+    T.sleep(3)
+    local g2, d2, l2 = loot_all(true)
+    local rec_ok = true
+    for _, c in ipairs(CASES) do
+        for _, n in ipairs(c.always) do rec_ok = rec_ok and has(g2, c, n) end
+        for _, n in ipairs(c.skill or {}) do rec_ok = rec_ok and has(g2, c, n) end
+        if c.recipe then rec_ok = rec_ok and has(g2, c, c.recipe[2]) end
+    end
+    check("trophies with skill and recipes: horns, claws, tusks, stings taken", rec_ok, table.concat(d2, " | "))
+    check("trophies: nothing lootable left on the carcasses", l1 == 0 and l2 == 0, "stacks left: " .. l1 .. " / " .. l2)
+    -- the engine's loot window with the skill learned: the same set as the quick path (a Boar: fur, tusk, meat)
+    local bq = carcass("Boar", 280)
+    local pq = counts(p, ALL)
+    try(bq); T.sleep(3)
+    local aq = counts(p, ALL)
+    local be = carcass("Boar", 280)
+    local pe = counts(p, ALL)
+    engine_interaction(be, true)
+    local ae = counts(p, ALL)
+    local same = true
+    local dq, de = {}, {}
+    for _, n in ipairs(ALL) do
+        if (aq[n] - pq[n]) ~= (ae[n] - pe[n]) then same = false end
+        if aq[n] ~= pq[n] then dq[#dq + 1] = n .. "x" .. (aq[n] - pq[n]) end
+        if ae[n] ~= pe[n] then de[#de + 1] = n .. "x" .. (ae[n] - pe[n]) end
+    end
+    check("trophies: same items as the engine's loot window (skill learned)", same and #dq > 0, "quick " .. table.concat(dq, ",") .. "; window " .. table.concat(de, ","))
+    risen.npc.set_skill_base(p, 33, 0)
+
     local bed = spawn_at("Object_Interact_Bed", 200)
     r = try(bed)
     check("door-like object declined", not r.handled, tostring(r.reason))

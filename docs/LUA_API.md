@@ -481,6 +481,7 @@ an item held in the left hand), the middle one to `WeaponMode` (draw/sheathe). `
 A consumed `pressed` should be followed by consuming the matching `held` and `released` events of that press.
 
 **HUD** (`risen.hud`): `risen.hud.log(text [, type])` prints a line into the game log, `risen.hud.item_log("It_Apple" | entity [, amount])` an item line (icon, name, amount),
+`risen.hud.tutorial_stop(name)` ends a tutorial hint the way the game's take (`"takeitem"`) and corpse loot (`"loot"`) scripts do, `risen.hud.tutorial_done(name)` asks whether it is completed,
 `risen.hud.state()` -> `{ browsing, game, loot, mode, pages }` (`loot` = the loot window is open; `browsing` is true in this test copy, which makes the game's own use key ignore the press).
 
 **Options** (`risen.config`): `local cfg, problems = risen.config({ key = "SecondaryAction", items = true, repeat_ms = 80 })` reads `<mod dir>/config.toml` on top of the defaults (the defaults fix
@@ -594,6 +595,7 @@ risen.voice.say(risen.entity.get("Hob"), "Hob_Warning")      -- true; risen.voic
 | `risen.voice.load_dir(dir)` | `<dir>/<language>/<key>.<ogg\|wav\|mp3>` and `<dir>/<key>.<ext>` (default) -> `set` for every key; returns `keys, files` |
 | `risen.voice.get(key)`, `keys()`, `remove(key)`, `title(key)` | the entry (`variants` by language with title, compiled name, source, duration; `requests` = how often the engine asked), the keys, forget, the raw sound name for the current language (for `SaySound`) |
 | `risen.voice.say(entity, key_or_sound[, { type = n }])` | a bark: starts a registered key or any sound name the engine finds as the entity's speech output (no animation or subtitle); `type` 0 NPC (default), 2 the player, 3 comment. `false` when it cannot start |
+| `risen.voice.say_svm(entity, svm_id[, listener])` | the engine's `Entity::StartSaySVM`: the character says a standard voice message (`"GamestartLoot"`, the hero's remark at the dead on the beach) in its own voice, the plain NPC voice when its voice has none; no subtitle, no repeat protection (the game's script helper adds both). `false` when the engine cannot be asked |
 | `risen.voice.speaking(entity)`, `stop(entity)` | whether a speech sound plays; stops it |
 | `risen.voice.language()`, `normalize(name)`, `last()`, `title_calls()` | current voice language; `"de"` -> `"German"`; `{ key, title, language }` of the last registered key the engine asked for (the proof that a spoken line used your sound); the number of titles the engine asked for |
 | `risen.assets.sound(name)` | what the engine and FMOD made of a sound: `{ state, duration_ms, flags, fmod, fmod_length_ms, channels, bits, sample_rate, type }` (`state` 3 = loaded when it is first played; `fmod` true = playable; `type` 10 Ogg Vorbis, 9 MPEG, 15 WAV) |

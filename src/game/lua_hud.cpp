@@ -71,6 +71,42 @@ void bindHud(sol::state_view lua, sol::table risen) {
 
     // risen.hud.state() -> { mode = number, browsing = bool, loot = bool, game = bool, pages = { gEHudPage numbers that are visible } } | nil: what the GUI shows (browsing = an inventory / loot / map /
     // menu page is open; game = the plain game view; loot = the loot window)
+    // risen.hud.tutorial_stop(name) -> true | nil, reason: ends the tutorial hint `name` (`Tutorial::StopEvent(name, true)`: what the game's take/loot scripts do for "takeitem" and
+    // "loot"). risen.hud.tutorial_done(name) -> boolean | nil: `Tutorial::IsCompleted`.
+    const auto tutorial_name_ok = [](const std::string& n) { return !n.empty() && n.size() <= 64 && n.find_first_of("\r\n\t") == std::string::npos; };
+    hud.set_function("tutorial_stop", [fail, ok, tutorial_name_ok](sol::this_state ts, const std::string& name) -> Two {
+        sol::state_view L(ts);
+        const Symbols& s = sym();
+        if (s.tutorial_object == nullptr || s.tut_stop_event == nullptr) {
+            return fail(L, "engine function Tutorial::StopEvent is unavailable");
+        }
+        if (!tutorial_name_ok(name)) {
+            return fail(L, "the tutorial name must be 1..64 characters without line breaks");
+        }
+        if (!guarded([&] {
+                ByValueString n(name);  // by value: the callee destroys it
+                s.tut_stop_event(s.tutorial_object, n.ptr(), true);
+            })) {
+            return fail(L, "the engine raised an exception");
+        }
+        return ok(L);
+    });
+    hud.set_function("tutorial_done", [tutorial_name_ok](sol::this_state ts, const std::string& name) -> sol::object {
+        sol::state_view L(ts);
+        const Symbols& s = sym();
+        if (s.tutorial_object == nullptr || s.tut_is_completed == nullptr || !tutorial_name_ok(name)) {
+            return sol::make_object(L, sol::lua_nil);
+        }
+        bool done = false;
+        if (!guarded([&] {
+                ByValueString n(name);
+                done = s.tut_is_completed(s.tutorial_object, n.ptr());
+            })) {
+            return sol::make_object(L, sol::lua_nil);
+        }
+        return sol::make_object(L, done);
+    });
+
     hud.set_function("state", [](sol::this_state ts) -> sol::object {
         sol::state_view L(ts);
         const Symbols& s = sym();

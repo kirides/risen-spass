@@ -2005,6 +2005,17 @@ function hudApi.log(text, type) end
 ---@return string|nil reason
 function hudApi.item_log(item, amount) end
 
+---Ends a tutorial hint (`Tutorial::StopEvent(name, true)`), the way the game's own take and loot scripts end `"takeitem"` and `"loot"`. An unknown name does nothing.
+---@param name string 1..64 characters.
+---@return boolean|nil ok
+---@return string|nil reason
+function hudApi.tutorial_stop(name) end
+
+---Whether the tutorial hint `name` is completed (`Tutorial::IsCompleted`); `nil` when the engine cannot be asked.
+---@param name string
+---@return boolean|nil done
+function hudApi.tutorial_done(name) end
+
 ---What the GUI shows: `browsing` (`GUI2::IsBrowsing`: some page that is more than the plain game view is visible; the game's own use key is ignored while it is true), `game` (the plain
 ---game view), `loot` (the loot window), `mode` (`gEHudMode`), `pages` (the visible `gEHudPage` numbers).
 ---@return { browsing: boolean, game: boolean, loot: boolean, mode: integer, pages: integer[] }|nil state
@@ -4048,6 +4059,16 @@ function voiceApi.title_calls() end
 ---@param opts? {type?: integer}
 ---@return boolean started
 function voiceApi.say(entity, key_or_sound, opts) end
+
+---Makes a character say a standard voice message (SVM: the short comments the game stores per voice, e.g. `"GamestartLoot"`, the hero's remark at a dead body of the beach) in
+---its own voice: the engine's `Entity::StartSaySVM` (the sample `SVM_<voice>_<id>` of the voice language, the plain NPC voice when the voice has none). The listener defaults
+---to the speaker. Returns `false` when the engine could not be asked (a stale entity, an empty or over-long id, no such export); an id nobody recorded is silent but still `true`.
+---No subtitle and no repeat protection: the game's own script helper adds both.
+---@param entity Entity
+---@param svm_id string
+---@param listener? Entity
+---@return boolean started
+function voiceApi.say_svm(entity, svm_id, listener) end
 
 ---Whether the entity is playing a speech sound right now.
 ---@param entity Entity
