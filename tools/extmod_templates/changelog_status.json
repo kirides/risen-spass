@@ -39,7 +39,7 @@
   "item": "Pickpocket gives XP by required level (65 dialogue infos)",
   "status": "generated",
   "needs": "",
-  "note": "67 XP rewards on the pickpocket lessons (read back); the engine pays an added GiveXP through a real conversation (extplay: +100 XP). The lessons themselves are offered by the engine in pickpocket mode and their voiced lines never end in the test setup: not played"
+  "note": "67 XP rewards on the pickpocket lessons (read back); a lesson is: option text, the player's line, a PickPocket command (the interactive pickpocket game, Difficulty = the required level), a closing command, then the GiveXP the mod adds, i.e. the XP is paid when the game is over, as in the mod; the engine pays an added GiveXP through a real conversation (extplay: +100 XP); the lessons themselves are offered by the engine in pickpocket mode and wait for the interactive game: not played"
  },
  {
   "id": 7,
@@ -65,9 +65,9 @@
  {
   "id": 10,
   "item": "New smithing recipes (11 weapons, whole chains)",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "recipe items converted, two broken chains (Dark Wind, obsidian staff) repaired; plans are handed out by the starter kit option until traders sell them (chapter infos)"
+  "note": "recipe items converted; the chain of Dark Wind is complete now (the 'broken chain' was a file-name artefact, RE.md section 48), the obsidian staff chain is still repaired by the profile; plans are handed out by the starter kit option until traders sell them (chapter infos); a whole smithing chain crafts in the scenario extmod"
  },
  {
   "id": 11,
@@ -79,9 +79,9 @@
  {
   "id": 12,
   "item": "Big gems sold earlier",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "trader entries (chapter 3: Costa ruby, Jack sapphire, Oscar emerald) run by the chapter-3 info; the info is the gate; a RunScript command added the same way stocks the trader through a real conversation"
+  "note": "chapter-3 entries (Costa ruby, Jack sapphire, Oscar emerald) stock their traders through the engine's own refill script (scenario extmod runs all 80 entries of chapters 2-4: traders exist, item names resolve, trade stack appears); the gate is the chapter info, which cannot be played (voiced lines wait)"
  },
  {
   "id": 13,
@@ -116,7 +116,7 @@
   "item": "2H reach higher from a skill",
   "status": "verified",
   "needs": "",
-  "note": "risen.npc.combat_style: two-hand style range 2.0 at Axe 1, 2.5 at Axe 9; staff 2.1; the blow itself steps towards its target, so the true reach was not measured"
+  "note": "risen.npc.combat_style (the style the combat AI picks, with its HitRange): two-hand style 2.0 at Axe 1-5, 2.2 at 6-8, 2.5 at 9-10, staff 2.1 with the mod's table, against 1.8 everywhere in the game's own table (read back in a run without the mod); an NPC fight cannot measure the blow itself (the blow steps towards its target, frozen or peaceful targets are not attacked)"
  },
  {
   "id": 18,
@@ -128,44 +128,44 @@
  {
   "id": 19,
   "item": "All weapon values and requirements",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "value, damage, STR/DEX requirements of existing items"
+  "note": "value, damage, STR/DEX requirements and modifiers of all 200 changed items read back from the engine by the scenario extmod, also after a quick save and load"
  },
  {
   "id": 20,
   "item": "Many new weapons (64) incl. DEX and mage weapons",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "new templates + meshes"
+  "note": "132 new templates: numbers read back, labelled, six weapons spawn and load their loose meshes, equippable once the requirements are met; seen on screen in phase D (no missing model among the 76 equippable new items)"
  },
  {
   "id": 21,
   "item": "New / reworked helmets and shields",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": ""
+  "note": "seen on screen (leather helmet = a metal cap, shields differ, phase D); numbers read back"
  },
  {
   "id": 22,
   "item": "A few armors for guildless players",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "Crawler armor (chapter 3, Oscar) and Heavy Guard armor (chapter 4, Leto) are sold by the chapter infos; what the guilds may wear is script-side (nothing in the archives)"
+  "note": "Crawler armor (chapter 3, Oscar) and Heavy Guard armor (chapter 4, Leto) are in the chapter stock: the refill entries stock the traders (scenario extmod); the guild restriction of the armors is script-side (nothing in the archives)"
  },
  {
   "id": 23,
   "item": "Captain armor only in chapter 4",
-  "status": "generated",
-  "needs": "M20",
-  "note": "stocked by the chapter-4 info of the mod (Leto): the gate is that info, as in the mod; the added-command path is verified"
+  "status": "verified",
+  "needs": "",
+  "note": "stocked by the chapter-4 entry of the mod (Leto): the refill stocks him (scenario extmod); the gate is the chapter-4 info, as in the mod"
  },
  {
   "id": 24,
   "item": "Mage robes: armor lowered, magic protection raised",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": ""
+  "note": "armor and magic protection of the robes read back"
  },
  {
   "id": 25,
@@ -177,16 +177,16 @@
  {
   "id": 26,
   "item": "Mana costs of runes and scrolls, minimum mana",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "38 mana costs + MaxMP requirements"
+  "note": "38 mana costs + MaxMP requirements read back (spot checks of runes and crystals in the scenario extmod)"
  },
  {
   "id": 27,
   "item": "Crystal mana cost / damage, blessed crystals",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "3 blessed crystals are in the trader lists of the chapter infos"
+  "note": "crystal mana costs 16 / 24 / 9 read back; the blessed crystals are in the trader lists of the chapter infos (all entries stock their traders)"
  },
  {
   "id": 28,
@@ -205,23 +205,23 @@
  {
   "id": 30,
   "item": "Bow amulet lower; Acrobat / Sneak rings need DEX; amulets need a seal",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": ""
+  "note": "numbers read back"
  },
  {
   "id": 31,
   "item": "Permanent potions +3 / HP +15; meat in bread coat +4 HP",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": ""
+  "note": "permanent potions +3 / HP +15 read back (spot check)"
  },
  {
   "id": 32,
   "item": "Recipes baked plaice / hunter's pan buyable from chapter 2",
-  "status": "generated",
-  "needs": "M20",
-  "note": "recipe values converted; the sellers (Jasmin, Illumar) are in the chapter-2 info, which is the gate"
+  "status": "verified",
+  "needs": "",
+  "note": "recipe values converted; the sellers (Jasmin, Illumar) are in the chapter-2 entries and stock their traders (scenario extmod); the gate is the chapter-2 info"
  },
  {
   "id": 33,
@@ -240,22 +240,22 @@
  {
   "id": 35,
   "item": "Trader stock (106 refills: weapons, blanks, recipes, runes, crystals ...)",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "105 refills on the 4 chapter infos (read back); chapter 1 handed out at the start and verified; a RunScript refill added the same way stocks a trader through a real conversation; chapters 2-4 themselves not played (shipped infos cannot be played to their commands: the voiced Say lines stall)"
+  "note": "105 refills on the 4 chapter infos (read back); chapter 1 handed out at the start; all 80 entries of chapters 2-4 run through the engine's refill script and stock their trader (traders exist, names resolve, 0 failed); the chapter infos themselves cannot be played here"
  },
  {
   "id": 36,
   "item": "Items placed in the world (recipes, potions, rings, bastard sword ...)",
-  "status": "generated",
+  "status": "verified",
   "needs": "",
-  "note": "11 chests and 4 NPC equipment slots filled on world.ready (verified for a chest)"
+  "note": "all 12 chests hold their new items (including the second chest of BD_Farm_Events) and 3 NPC equipment items are placed; Karakos' ogre axe is the changed shipped It_Axe_Ogre"
  },
  {
   "id": 37,
   "item": "Wind strength (WeatherStates)",
   "status": "generated",
-  "needs": "M22",
-  "note": "WeatherStates.g3ws (WindPower 0.3) as a loose file; the engine reads the loose copy at start (file trace); the strength was not looked at"
+  "needs": "",
+  "note": "WeatherStates.g3ws as a loose file (the engine reads it at start): the wind power of the 8 weather states 0.55-0.70 -> 0.30, everything else equal (byte comparison with the game's file); frame-to-frame screenshot comparisons were too noisy (camera, intro) to show the sway: not judged by eye"
  }
 ]

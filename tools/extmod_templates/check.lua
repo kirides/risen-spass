@@ -24,7 +24,7 @@ return function(M)
             "replaced stock assets are shadowed", "second pass keeps the numbers",
             "dialogue edits applied", "an XP reward is on its info", "a trader refill is on its info", "chapter 1 trader stock is on the traders", "the combat table is the mod's (no backwards hop)", "a fight under the new combat table", "teacher limits are raised", "world edits applied", "a chest holds its new item",
             "hud2 texts are applied", "wind file and combat table are the mod's", "the repaired smithing chains",
-            "placed items carry the mod's data", "Karakos carries the changed ogre axe", "renamed weapons are equippable", "Oscar sells the runesword from chapter 3",
+            "placed items carry the mod's data", "Karakos carries the changed ogre axe", "renamed weapons are equippable", "Oscar sells the runesword from chapter 3", "chapters 2-4: every trader entry stocks its trader",
         },
         load = { "load: the templates resolve", "load: items are still in the inventory", "load: the numbers are applied again", "load: stacks of the changed shipped items survive" },
     }
@@ -265,9 +265,18 @@ return function(M)
             T.eq("teacher limits are raised", wrong, {})
             local w = M.world or {}
             T.eq("world edits applied", { w.containers, w.equipped ~= nil }, { #WORLD.containers, true })
-            local box = WORLD.containers[1]
-            local be = box and risen.entity.by_id(box.id)
-            T.expect("a chest holds its new item", be ~= nil and risen.item.count(be, box.items[1].item) >= box.items[1].count, box and (box.name .. " " .. box.items[1].item))
+            -- every container of the world data (12 in the Extended Mod, among them the second chest of BD_Farm_Events that the research overlooked)
+            local empty = {}
+            for _, box in ipairs(WORLD.containers) do
+                local be = risen.entity.by_id(box.id)
+                if not be then empty[#empty + 1] = box.name .. " " .. box.layer .. ": not found"
+                else
+                    for _, it in ipairs(box.items) do
+                        if risen.item.count(be, it.item) < it.count then empty[#empty + 1] = box.name .. " " .. box.layer .. ": " .. it.item end
+                    end
+                end
+            end
+            T.eq("a chest holds its new item", empty, {})
 
             T.section("texts, wind, repaired chains")
             local wr = risen.loc.get("HUD2_Recipe_WriteScroll") or ""
@@ -363,6 +372,32 @@ return function(M)
                 end
             end
             T.expect("Oscar sells the runesword from chapter 3", sold, "Oscar " .. tostring(oscar ~= nil))
+            -- every entry of chapters 2-4: the script the chapter info runs, called with the entry's trader and a spawned template (as main.lua does for chapter 1). The infos themselves
+            -- cannot be played here (RE.md section 46); this proves that every trader exists, every item name resolves and the engine's own script stocks it.
+            local missing_t, failed_e, n_e = {}, {}, 0
+            for _, t in ipairs(DLG.trade) do
+                if t.chapter and t.chapter >= 2 then
+                    for _, en in ipairs(t.entries) do
+                        n_e = n_e + 1
+                        local tr = risen.entity.get(en.trader)
+                        if not tr then missing_t[en.trader] = true
+                        else
+                            local item = risen.entity.spawn(en.item, (x or 0) + 100, (y or 0) + 10, z or 0)
+                            if not item then failed_e[#failed_e + 1] = ("ch%d %s %s: cannot spawn"):format(t.chapter, en.trader, en.item)
+                            else
+                                local ok = pcall(function() risen.script.call("OnTradeInfo_RefillTradeItems", tr, item, en.count) end)
+                                item:kill()
+                                if not (ok and has_stack(tr, en.item)) then failed_e[#failed_e + 1] = ("ch%d %s %s"):format(t.chapter, en.trader, en.item) end
+                            end
+                        end
+                    end
+                end
+            end
+            local mt = {}
+            for k in pairs(missing_t) do mt[#mt + 1] = k end
+            table.sort(mt)
+            risen.log.info(("extmod: chapters 2-4: %d entries, missing traders %s, failed %s"):format(n_e, table.concat(mt, ","), table.concat(failed_e, "; ")))
+            T.eq("chapters 2-4: every trader entry stocks its trader", { mt, failed_e }, { {}, {} })
 
             -- keep a few things for the load phase
             risen.world.quick_save()

@@ -116,6 +116,7 @@ return function(phase)
             "loaded: every waypoint keeps its freepoint as a child", "loaded: the patroller still works at its first waypoint's freepoint", "loaded: the patroller stands at a waypoint",
             "loaded: the restored patrol sends the patroller to another waypoint", "loaded: the gate keeper is the saved NPC", "loaded: the gate keeper keeps the post made before the save (not made again)",
             "loaded: the gate keeper is at his post", "loaded: no freepoint was made twice",
+            "killing NPCs with a routine: on the way, at the post, a corpse, a patroller, from far away",
         }
         T.plan(checks)
         T.run(function()
@@ -340,6 +341,49 @@ return function(phase)
             wait_gate()
             P0.x, P0.y, P0.z = assert(risen.entity.player()):position()
             check_loaded(exp, "loaded")
+
+            -- ---- killing NPCs that still have a routine (phase F of the Extended Mod looked for a crash here: an NPC killed while the AI works on his routine points;
+            -- more than 20 variants did not reproduce it, this keeps them as a regression test) ----------------------------------------------------------------------------
+            T.section("killing")
+            do
+                local victims = {}
+                local made = 0
+                local function victim(tag, dx, dz, spec, opts)
+                    local v = npc_at("RT_X" .. tag, dx, dz)
+                    local vx, vy, vz = v:position()
+                    local info, why = risen.npc.set_routine(v, spec(vx, vy, vz), opts)
+                    if info then made = made + 1 victims[tag] = { npc = v, info = info } else risen.log.warn("routines: killing: no routine for " .. tag .. ": " .. tostring(why)) v:kill() end
+                end
+                victim("walk", 500, 500, function(x, y, z) return { at = { x + 300, y, z, kind = "guard", yaw = 90 } } end)
+                victim("post", 800, 100, function(x, y, z) return { at = { x, y, z, kind = "guard", yaw = 180 } } end)
+                victim("corpse", 700, 700, function(x, y, z) return { at = { x, y, z, kind = "lookat" } } end)
+                victim("patrol", 200, 600, function(x, y, z) return { patrol = { { x + 100, y, z }, { x + 100, y, z + 300 }, { x + 400, y, z + 200 }, name = "RingX", kind = "guard" } } end)
+                victim("far", 900, 600, function(x, y, z) return { work = { x, y, z, kind = "guard" }, relax = { x + 200, y, z, kind = "lookat" }, sleep = { x, y, z + 200, kind = "sleep" } } end,
+                    { origin = { P0.x, P0.y, P0.z } })
+                T.sleep(60)
+                if victims.walk then victims.walk.npc:kill() end            -- still walking to his post
+                if victims.post then
+                    await(function() return busy_at(victims.post.npc, victims.post.info.work, 90) end, 30)
+                    victims.post.npc:kill()                                   -- busy at his post
+                end
+                if victims.corpse then
+                    victims.corpse.npc:add_hp(-100000)                        -- a real death first, the body keeps its routine, then the body goes
+                    T.sleep(80)
+                    victims.corpse.npc:kill()
+                end
+                if victims.patrol then victims.patrol.npc:kill() end          -- patroller
+                local player = assert(risen.entity.player())
+                local far_spot = risen.world.add_point("stand", spot(0, 700))
+                if far_spot then player:teleport(far_spot) end                -- the player leaves, the last one is killed from far away
+                T.sleep(80)
+                if victims.far then victims.far.npc:kill() end
+                T.sleep(40)
+                player:teleport(assert(risen.entity.get("RT_Gate")))
+                T.sleep(250)                                                  -- the engine keeps working: the routine system runs over the points that are left
+                T.expect("killing NPCs with a routine: on the way, at the post, a corpse, a patroller, from far away", made >= 3 and risen.entity.player() ~= nil and risen.entity.get("RT_Gate") ~= nil
+                    and risen.world.time() ~= nil, made .. " victims killed, the game is alive")
+                for _, v in pairs(victims) do pcall(risen.npc.clear_routine, v.npc) end
+            end
         end, "routines")
         return
     end
