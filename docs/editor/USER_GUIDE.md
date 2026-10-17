@@ -399,6 +399,10 @@ risen-modkit project.rmk.json --export DIR [--data DIR]            validate and 
 risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch] [--click x,y ...]
                     [--drag x1,y1,x2,y2 ...]                       render (after the given clicks and drags, in order), save a PNG, exit (tests)
 --verbose                                                          debug lines on stderr too
+risen-modkit project.rmk.json --game-dir <Risen folder> --play    the Play button (export, start the game or hot reload); --palette TEXT and --wizard fetch|weapon|trader open the palette / a wizard (screenshots)
+risen-modkit --convert-model model.(obj|gltf|glb) --out My_Mesh._xmsh --material X._xmat [--scale S] [--z-up] [--no-mirror]
+                                                                   convert a 3D model into a compiled mesh without a window
+risen-modkit --import MODDIR --save project.rmk.json [--from-data] import an exported mod (or only its data files) as a project
 ```
 
 ## Limits
