@@ -314,3 +314,6 @@ M.dlg, M.wrld = DLG, WORLD
 if risen.test and risen.test.is_active() and risen.test.param("check") == "extmod" then
     require("check")(M)
 end
+if risen.test and risen.test.is_active() and risen.test.param("check") == "extplay" then
+    require("play")(M)
+end

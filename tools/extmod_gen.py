@@ -806,7 +806,7 @@ def main():
     write(os.path.join(data_dir, "dialog.lua"), hdr + "return " + lua(dialog) + "\n")
     write(os.path.join(data_dir, "world.lua"), hdr + "return " + lua(world) + "\n")
     write(os.path.join(data_dir, "assets.lua"), hdr + "return " + lua({"new": assets["new"], "replaced": assets["replaced"]}) + "\n")
-    for f in ("main.lua", "check.lua", "config.lua"):
+    for f in ("main.lua", "check.lua", "play.lua", "config.lua"):
         src = os.path.join(HERE, "extmod_templates", f)
         if os.path.exists(src):
             shutil.copyfile(src, os.path.join(out, f))

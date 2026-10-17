@@ -1453,6 +1453,21 @@ function npcApi.skill_raw(target, skill) end
 ---@return integer|string|nil total The reason when `base` is `nil`.
 function npcApi.set_skill_base(target, skill, value) end
 
+---@class NpcCombatStyle
+---@field name string The style's name in the combat table (`None_Axe_S5`, `None_2H_S3`, `None_Staff_S7`, ...).
+---@field template string The style it derives from (informational).
+---@field hit_range number Its reach in metres (`HitRange` 200 = 2.0).
+
+---The melee / ranged style the engine would pick for this NPC or monster (`gCCombatSystem_PS::GetCurrentStyle`): from the use types of the weapons in its two hands and its own skills (the matching
+---style with the highest required skill; RE.md section 45). With `hands` it asks for a hypothetical pair of use types instead of the worn items (`GetStyle(left, right)`), still with the character's current skills, which is
+---how the loaded combat table can be checked without equipping: `risen.npc.combat_style(player, { right = "2H" })`. Use types by name (`"1H"`, `"2H"`, `"BS"`, `"Fist"`, `"Shield"`, `"Staff"`, `"Axe"`, `"Bow"`, `"CrossBow"`, `"None"`) or number;
+---a missing hand is an empty hand (`Fist`). `nil, reason` when no style fits (a weapon whose skill the character lacks: it would not attack with it). Read only.
+---@param target Entity An NPC, monster or the player.
+---@param hands? { left?: string|integer, right?: string|integer }
+---@return NpcCombatStyle|nil style
+---@return string|nil reason
+function npcApi.combat_style(target, hands) end
+
 ---The properties of a combat species (`gCCombatAdmin`): attack/strafe distances, animations and the fist items (`RightFistItem`, `LeftFistItem`) monsters hit with.
 ---@param name string `"Human"`, `"Wolf"`, `"Boar"`, `"Lizard"`, `"Ogre"`, `"Goblin"`, ...
 ---@return { name: string, type: string, value: string }[]|nil properties
@@ -2337,6 +2352,18 @@ function questApi.new(name) end
 ---@param name string
 ---@return Quest|nil
 function questApi.get(name) end
+
+---The story chapter (`gCQuestManager::GetCurrentChapter`): 1 in the first chapter of a new game, up to 4-6 later; `nil` when the engine function is unavailable. The chapter changes when the story's chapter info
+---(a dialogue info with the chapter card and, in the Extended Mod, the trader refills) has run.
+---@return integer|nil chapter
+function questApi.chapter() end
+
+---Test aid: `gCQuestManager::SetCurrentChapter(n, notify)`: the quests and infos synchronise to the chapter (`StartChapter` / `EndChapter` of infos); the chapter title card and the chapter info of the story are NOT run.
+---@param n integer 0..10
+---@param notify? boolean Default `false`.
+---@return boolean|nil ok
+---@return string|nil reason
+function questApi.set_chapter(n, notify) end
 
 ---Number of quests known to the manager.
 ---@return integer

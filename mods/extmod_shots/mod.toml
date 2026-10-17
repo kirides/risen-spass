@@ -1,0 +1,6 @@
+id          = "extmod_shots"
+name        = "Extended Mod screenshot driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Development driver: spawns templates in front of the camera and takes screenshots (risen.debug.screenshot) to look at the Risen Extended Mod conversion. Run with scripts/test-run.ps1 -Mods risen_extended,extmod_shots -Scenario extmod_shots."
+main        = "main.lua"

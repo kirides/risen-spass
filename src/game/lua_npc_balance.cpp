@@ -1,3 +1,4 @@
+#include <cctype>
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
@@ -296,6 +297,99 @@ void bindNpcBalance(sol::state_view lua, sol::table risen) {
             return failResult(L, "the engine refused to set '" + prop + "'");
         }
         return {sol::make_object(L, true), sol::make_object(L, sol::lua_nil)};
+    });
+
+    // risen.npc.combat_style(npc [, { left = , right = }]) -> { name, template, hit_range } | nil, reason
+    //   The melee/ranged style the engine's gCCombatSystem_PS picks for this NPC (gCCombatSystem_PS::GetCurrentStyle: reads the use types of the
+    //   two hand slots and the NPC's own skills, takes the matching style with the highest required skill; docs/RE.md section 45). With `hands`
+    //   it asks for a hypothetical pair of use types instead of the worn items (GetStyle(left, right); numbers or names None, 1H, 2H, BS, Fist,
+    //   Shield, Staff, Axe, Bow, CrossBow ...; a missing hand is an empty hand = Fist), still with the NPC's current skills: that is how the combat table can be checked without equipping.
+    npc.set_function("combat_style", [](sol::this_state ts, sol::object target, sol::optional<sol::table> hands) -> Two {
+        sol::state_view L(ts);
+        const Symbols& s = sym();
+        if (s.combat_current_style == nullptr || s.ent_get_property_set == nullptr) {
+            return failResult(L, "engine function gCCombatSystem_PS::GetCurrentStyle is unavailable");
+        }
+        if (!target.is<LuaEntity>()) {
+            return failResult(L, "expected an NPC entity");
+        }
+        void* entity = ptr(target.as<LuaEntity>());
+        if (entity == nullptr) {
+            return failResult(L, "entity is gone");
+        }
+        int left = 8, right = 8;
+        bool useHands = false;
+        if (hands) {
+            static const std::pair<const char*, int> kUseTypes[] = {
+                {"none", 0}, {"1h", 1}, {"2h", 2}, {"bs", 3}, {"arrow", 4}, {"bow", 5}, {"crossbow", 6}, {"bolt", 7}, {"fist", 8}, {"empty", 8},
+                {"shield", 9}, {"armor", 10}, {"helmet", 11}, {"staff", 12}, {"amulet", 13}, {"ring", 14}, {"axe", 18}, {"cast", 19}};
+            auto parse = [&](const char* key, int& out) -> std::string {
+                sol::object v = (*hands)[key];
+                if (v.get_type() == sol::type::nil) {
+                    out = 8;   // missing = an empty hand (Fist), which is what a character without an item in that hand reports
+                    return std::string();
+                }
+                if (v.get_type() == sol::type::number) {
+                    const double d = v.as<double>();
+                    if (d < 0 || d > 40) {
+                        return std::string(key) + " must be a use type 0..40";
+                    }
+                    out = static_cast<int>(d);
+                    return std::string();
+                }
+                if (v.get_type() == sol::type::string) {
+                    std::string n = v.as<std::string>();
+                    std::transform(n.begin(), n.end(), n.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                    if (n.rfind("gEItemUseType_", 0) == 0 || n.rfind("geitemusetype_", 0) == 0) {
+                        n = n.substr(14);
+                    }
+                    for (const auto& [name, num] : kUseTypes) {
+                        if (n == name) {
+                            out = num;
+                            return std::string();
+                        }
+                    }
+                    return "unknown use type '" + v.as<std::string>() + "'";
+                }
+                return std::string(key) + " must be a use type name or number";
+            };
+            std::string why = parse("left", left);
+            if (why.empty()) {
+                why = parse("right", right);
+            }
+            if (!why.empty()) {
+                return failResult(L, why);
+            }
+            if (s.combat_get_style == nullptr) {
+                return failResult(L, "engine function gCCombatSystem_PS::GetStyle is unavailable");
+            }
+            useHands = true;
+        }
+        void* ps = nullptr;
+        void* style = nullptr;
+        if (!guarded([&] {
+                const BString cls("gCCombatSystem_PS");
+                ps = s.ent_get_property_set(entity, cls.get());
+                if (ps != nullptr) {
+                    style = useHands ? s.combat_get_style(ps, left, right) : s.combat_current_style(ps);
+                }
+            })) {
+            return failResult(L, "the engine raised an exception (not an NPC?)");
+        }
+        if (ps == nullptr) {
+            return failResult(L, "the entity has no combat system (gCCombatSystem_PS): not an NPC or monster");
+        }
+        if (style == nullptr) {
+            return failResult(L, "no style fits (a weapon the NPC lacks the skill for, or a use type no style lists): it would not attack with that");
+        }
+        sol::table out = L.create_table();
+        const auto name = propertyGet(style, "Name");
+        const auto tpl = propertyGet(style, "Template");
+        const auto range = propertyGet(style, "HitRange");
+        out["name"] = name ? *name : std::string();
+        out["template"] = tpl ? *tpl : std::string();
+        out["hit_range"] = range ? std::strtod(range->c_str(), nullptr) : 0.0;
+        return {sol::make_object(L, out), sol::make_object(L, sol::lua_nil)};
     });
 
     // ---- inventory of a template (loot) -------------------------------------------------------------------------------------

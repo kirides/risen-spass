@@ -1,3 +1,5 @@
+#include <cstdint>
+#include <tuple>
 #include <cstring>
 
 #include <spdlog/spdlog.h>
@@ -167,6 +169,33 @@ void bindQuestObjects(sol::state_view lua, sol::table risen) {
             return sol::nullopt;
         }
         return LuaQuest{q};
+    });
+    // risen.quest.chapter() -> integer | nil: the story chapter (gCQuestManager::GetCurrentChapter, 0 before the game, 1..6 in the story)
+    quest.set_function("chapter", [&s]() -> sol::optional<std::uint32_t> {
+        if (s.qm_get_chapter == nullptr) {
+            return sol::nullopt;
+        }
+        std::uint32_t c = 0;
+        if (!guarded([&] { c = s.qm_get_chapter(questManager()); })) {
+            return sol::nullopt;
+        }
+        return c;
+    });
+    // risen.quest.set_chapter(n [, notify]) -> true | nil, reason: gCQuestManager::SetCurrentChapter (the infos / quests synchronise to the chapter: StartChapter / EndChapter);
+    // the chapter title cut scene and the chapter infos of the story are NOT run (they are dialogue infos). A test aid.
+    quest.set_function("set_chapter", [&s](sol::this_state ts, double n, sol::optional<bool> notify) -> std::tuple<sol::object, sol::object> {
+        sol::state_view L(ts);
+        if (s.qm_set_chapter == nullptr) {
+            return {sol::make_object(L, sol::lua_nil), sol::make_object(L, std::string("engine function gCQuestManager::SetCurrentChapter is unavailable"))};
+        }
+        if (!(n >= 0 && n <= 10)) {
+            return {sol::make_object(L, sol::lua_nil), sol::make_object(L, std::string("chapter must be 0..10"))};
+        }
+        const bool ok = guarded([&] { s.qm_set_chapter(questManager(), static_cast<std::uint32_t>(n), notify.value_or(false)); });
+        if (!ok) {
+            return {sol::make_object(L, sol::lua_nil), sol::make_object(L, std::string("the engine raised an exception (game not running?)"))};
+        }
+        return {sol::make_object(L, true), sol::make_object(L, sol::lua_nil)};
     });
     // risen.quest.count() / risen.quest.at(i) (1-based): enumerate every quest known to the manager
     quest.set_function("count", [&s]() {

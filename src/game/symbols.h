@@ -302,6 +302,10 @@
     X(skills_infos, L"Game.dll", "?ms_arrSkillInfos@gCSkills_PS@@2PAUgSSkillInfo@@A", unsigned char*, false) \
     X(combat_admin_instance, L"Game.dll", "?GetInstance@gCCombatAdmin@@SAPEAV1@XZ", void* (*)(), false) \
     X(combat_get_species, L"Game.dll", "?GetSpecies@gCCombatAdmin@@QEBAPEAVgCCombatSpecies@@AEBVbCString@@@Z", void* (*)(const void* self, const void* name), false) \
+    X(combat_current_style, L"Game.dll", "?GetCurrentStyle@gCCombatSystem_PS@@QEBAPEAVgCCombatStyle@@XZ", void* (*)(const void* combatPs), false) \
+    X(combat_get_style, L"Game.dll", "?GetStyle@gCCombatSystem_PS@@QEBAPEAVgCCombatStyle@@W4gEItemUseType@@0@Z", void* (*)(const void* combatPs, int left, int right), false) \
+    X(qm_get_chapter, L"Game.dll", "?GetCurrentChapter@gCQuestManager@@QEBAKXZ", std::uint32_t (*)(const void* self), false) \
+    X(qm_set_chapter, L"Game.dll", "?SetCurrentChapter@gCQuestManager@@QEAAXK_N@Z", void (*)(void* self, std::uint32_t chapter, bool notify), false) \
     /* ---- new templates at runtime: clone + rename + id (docs/RE.md section 25) ---- */ \
     X(tple_create_copy, L"Engine.dll", "?CreateEntityCopy@eCTemplateEntity@@SAPEAV1@PEAV1@@Z", void* (*)(void* source), false) \
     X(tple_set_name, L"Engine.dll", "?SetName@eCTemplateEntity@@UEAAXAEBVbCString@@@Z", void (*)(void* self, const void* name), false) \
