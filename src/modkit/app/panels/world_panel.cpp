@@ -308,7 +308,7 @@ private:
         ImGui::RadioButton("move", &gizmo_op_, 0);
         ImGui::SameLine();
         ImGui::RadioButton("turn", &gizmo_op_, 1);
-        ImGui::TextDisabled("right mouse: look, WASD/QE: move, wheel: speed, click: %s, F: focus, gizmo: move / turn the selected project object",
+        ImGui::TextDisabled("right mouse: look, WASD/QE: move, wheel: speed, click: %s, F: focus, End: align with mesh, gizmo: move / turn the selected project object",
                             mode_ == 0 ? "select" : "place on the ground");
     }
 
@@ -480,9 +480,14 @@ private:
         if (overlay_dirty_) rebuild_overlay(app);
         // input first, so the frame shows this frame's camera
         const ImVec2 origin = ImGui::GetCursorScreenPos();
-        ImGui::InvisibleButton("##viewport", ImVec2(static_cast<float>(w), static_cast<float>(h)),
-                               ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+        // over the gizmo the view is no button: ImGuizmo only takes a click when no ImGui item is hovered (or was in the last frame)
+        const bool on_gizmo = gizmo_over_ && !view_active_ && !ImGui::GetDragDropPayload() && !ImGui::IsMouseDown(ImGuiMouseButton_Right);
+        if (on_gizmo) ImGui::Dummy(ImVec2(static_cast<float>(w), static_cast<float>(h)));
+        else
+            ImGui::InvisibleButton("##viewport", ImVec2(static_cast<float>(w), static_cast<float>(h)),
+                                   ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
         const bool hovered = ImGui::IsItemHovered();
+        view_active_ = !on_gizmo && ImGui::IsItemActive();
         ImGuiIO& io = ImGui::GetIO();
         const float aspect = static_cast<float>(w) / static_cast<float>(h);
         if (ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
@@ -508,6 +513,16 @@ private:
         if (const ui::DragTemplate* d = ui::drop_target(place_kinds(), placed)) dropped = *d;
         if (hovered && ui::dragging()) drop_preview(*ui::dragging());
         if (hovered && ImGui::IsKeyPressed(ImGuiKey_F) && selected_ < world_->entities.size()) fly_to(world_->entities[selected_]);
+        if (hovered && ImGui::IsKeyPressed(ImGuiKey_End) && !proj_sel_.empty()) settle_req_ = proj_sel_;
+        // align with mesh: asked for by the button / End, or after a placement (once the object's mesh is there, two seconds at most)
+        if (!settle_req_.empty()) {
+            settle(app, settle_req_, false);
+            settle_req_.clear();
+        }
+        if (!settle_auto_.empty() && (settle_ready(app, settle_auto_) || ++settle_wait_ > 120)) {
+            settle(app, settle_auto_, true);
+            settle_auto_.clear();
+        }
         bool clicked = false, pick_wanted = false;
         float cu = 0, cv = 0;
         if (dropped) {
@@ -550,7 +565,7 @@ private:
 
     // `ids`: the picking pass (pick_at): the same meshes, each in the colour of its entity number; level meshes in black (they hide what is behind
     // them, but are only clickable when their boxes are shown)
-    void draw_meshes(const glm::mat4& vp, bool ids = false) {
+    void draw_meshes(const glm::mat4& vp, bool ids = false, size_t skip = SIZE_MAX) {
         if (!ids) res_->update(6.0);
         const gfx::Frustum fr(vp);
         const glm::vec3 cam_game = gfx::from_gl(cam_.pos);
@@ -562,7 +577,7 @@ private:
         }
         size_t failed_before = failed_seen_;
         for (size_t i = 0; i < world_->entities.size(); ++i) {
-            if (mesh_names_[i].empty()) continue;
+            if (mesh_names_[i].empty() || i == skip) continue;
             const WorldEntity& e = world_->entities[i];
             if (!layer_on_[e.layer] || !kinds_[static_cast<int>(e.kind)]) continue;
             const int edit = i < edit_state_.size() ? edit_state_[i] : 0;
@@ -717,6 +732,8 @@ private:
         sp.amount = amount;
         app.project.world.spawns.push_back(sp);
         after_place(app, sp.uid, "Placed " + tpl);
+        settle_auto_ = sp.uid;  // onto the surface with its lowest point once its mesh is loaded
+        settle_wait_ = 0;
     }
 
     Vec3* project_position(App& app, const std::string& uid) {
@@ -793,6 +810,10 @@ private:
                              glm::value_ptr(gizmo_));
         gizmo_over_ = ImGuizmo::IsOver() || ImGuizmo::IsUsing();
         const bool using_now = ImGuizmo::IsUsing();
+        // while dragging, the gizmo holds ImGui's active id: no window moves with the mouse, no other item reacts
+        const ImGuiID gid = ImGui::GetID("##gizmo");
+        if (using_now) ImGui::SetActiveID(gid, ImGui::GetCurrentWindow());
+        else if (ImGui::GetActiveID() == gid) ImGui::ClearActiveID();
         if (using_now) {
             gizmo_active_ = true;
             overlay_dirty_ = true;
@@ -811,26 +832,148 @@ private:
         }
     }
 
-    // the meshes of the things the project spawns, at their pose
-    void draw_project_meshes(App& app, const glm::mat4& vp) {
+    // the compiled mesh of a spawn's template ("" = none)
+    static std::string spawn_mesh(const App& app, const WorldSpawn& s) {
+        const TemplateInfo* t = app.game ? app.game->tpl(s.template_name) : nullptr;
+        std::string mesh = t ? t->mesh : std::string();
+        for (auto& it : app.project.items)
+            if (it.name == s.template_name && it.mode == Mode::New) {
+                if (it.mesh) mesh = *it.mesh;
+                else if (const TemplateInfo* b = app.game ? app.game->tpl(it.base) : nullptr) mesh = b->mesh;
+            }
+        return mesh.empty() ? std::string() : compiled_name(p2m::bare_name(mesh));
+    }
+    static spass::pose::Matrix spawn_matrix(const WorldSpawn& s) {
+        return spass::pose::compose(static_cast<float>(s.position[0]), static_cast<float>(s.position[1]), static_cast<float>(s.position[2]),
+                                    {static_cast<float>(s.rotation[0]), static_cast<float>(s.rotation[1]), static_cast<float>(s.rotation[2])});
+    }
+
+    // the meshes of the things the project spawns, at their pose (`skip`: a spawn left out, the one being settled)
+    void draw_project_meshes(App& app, const glm::mat4& vp, const std::string& skip = {}) {
         mesh_r_.begin(vp, glm::vec3(0.35f, -1.0f, 0.25f));
         for (auto& s : app.project.world.spawns) {
-            const TemplateInfo* t = app.game ? app.game->tpl(s.template_name) : nullptr;
-            std::string mesh = t ? t->mesh : std::string();
-            for (auto& it : app.project.items)
-                if (it.name == s.template_name && it.mode == Mode::New) {
-                    if (it.mesh) mesh = *it.mesh;
-                    else if (const TemplateInfo* b = app.game ? app.game->tpl(it.base) : nullptr) mesh = b->mesh;
-                }
+            if (s.uid == skip) continue;
+            const std::string mesh = spawn_mesh(app, s);
             if (mesh.empty()) continue;
-            const gfx::GpuMesh* m = res_->mesh(compiled_name(p2m::bare_name(mesh)));
+            const gfx::GpuMesh* m = res_->mesh(mesh);
             if (!m) continue;
-            const spass::pose::Matrix pm = spass::pose::compose(static_cast<float>(s.position[0]), static_cast<float>(s.position[1]), static_cast<float>(s.position[2]),
-                                                                {static_cast<float>(s.rotation[0]), static_cast<float>(s.rotation[1]), static_cast<float>(s.rotation[2])});
+            const spass::pose::Matrix pm = spawn_matrix(s);
             const glm::mat4 model = gfx::entity_model(pm.data());
             mesh_r_.draw(*m, model, *res_, proj_sel_ == s.uid ? glm::vec4(1.4f, 1.3f, 0.9f, 1) : glm::vec4(1));
         }
         mesh_r_.end();
+    }
+
+    // ---- align with mesh: put a project object (spawn, placed NPC, moved world entity) onto the surface below it. A small orthographic depth
+    // pass looks straight down from just above the object over its footprint and draws everything but the object; the highest surface it
+    // finds is where the object's lowest point goes.
+
+    // the object's mesh is loaded (or it has none): the settle can use its bounds
+    bool settle_ready(App& app, const std::string& uid) {
+        if (!res_) return true;
+        for (auto& s : app.project.world.spawns)
+            if (s.uid == uid) {
+                const std::string m = spawn_mesh(app, s);
+                return m.empty() || res_->mesh(m) || res_->failed(m);
+            }
+        return true;
+    }
+
+    bool settle(App& app, const std::string& uid, bool quiet) {
+        Vec3* pos = project_position(app, uid);
+        if (!pos || !res_ || !world_) {
+            if (!quiet) app.status("Select a placed NPC, a spawned object or a moved entity of the project to align it");
+            return false;
+        }
+        const glm::vec3 p(static_cast<float>((*pos)[0]), static_cast<float>((*pos)[1]), static_cast<float>((*pos)[2]));
+        // the object's bounds in game coordinates: a mesh's box at its pose, a world entity's box, or a point (NPCs stand on their position)
+        glm::vec3 mn = p - glm::vec3(20, 0, 20), mx = p + glm::vec3(20, 0, 20);
+        const gfx::GpuMesh* mesh = nullptr;
+        spass::pose::Matrix pm{};
+        size_t skip_entity = SIZE_MAX;
+        std::string skip_spawn, what = "it";
+        bool is_npc = false;
+        for (auto& sp : app.project.world.spawns)
+            if (sp.uid == uid) {
+                const std::string m = spawn_mesh(app, sp);
+                mesh = m.empty() ? nullptr : res_->mesh(m);
+                pm = spawn_matrix(sp);
+                skip_spawn = uid;
+                what = sp.template_name;
+            }
+        for (auto& n : app.project.npcs)
+            if (n.uid == uid) {
+                is_npc = true;
+                what = n.name;
+                mx.y = p.y + 100;  // starts above his knees: a slightly sunken NPC comes up
+            }
+        for (auto& mv : app.project.world.moves)
+            if (mv.uid == uid) {
+                const WorldEntity* e = world_->by_guid(mv.guid);
+                if (!e) break;
+                skip_entity = static_cast<size_t>(e - world_->entities.data());
+                what = mv.entity_name.empty() ? mv.guid : mv.entity_name;
+                auto it = moved_matrix_.find(skip_entity);
+                std::copy(e->matrix.begin(), e->matrix.end(), pm.begin());
+                if (it != moved_matrix_.end()) pm = it->second;
+                mesh = mesh_names_[skip_entity].empty() ? nullptr : res_->mesh(mesh_names_[skip_entity]);
+                if (!mesh && e->has_box()) {
+                    const glm::vec3 d = p - glm::vec3(e->x(), e->y(), e->z());
+                    mn = glm::vec3(e->box_min[0], e->box_min[1], e->box_min[2]) + d;
+                    mx = glm::vec3(e->box_max[0], e->box_max[1], e->box_max[2]) + d;
+                }
+            }
+        if (mesh) {
+            mn = glm::vec3(1e30f);
+            mx = glm::vec3(-1e30f);
+            for (int c = 0; c < 8; ++c) {
+                const glm::vec3 l((c & 1) ? mesh->box_max.x : mesh->box_min.x, (c & 2) ? mesh->box_max.y : mesh->box_min.y,
+                                  (c & 4) ? mesh->box_max.z : mesh->box_min.z);
+                glm::vec3 wpt;  // row vectors: world = local * M
+                for (int j = 0; j < 3; ++j) wpt[j] = l.x * pm[j] + l.y * pm[4 + j] + l.z * pm[8 + j] + pm[12 + j];
+                mn = glm::min(mn, wpt);
+                mx = glm::max(mx, wpt);
+            }
+        }
+        const float top = mx.y + 20, depth_range = 20000;
+        const float hw = std::max((mx.x - mn.x) * 0.5f, 2.0f), hd = std::max((mx.z - mn.z) * 0.5f, 2.0f);
+        const float cx = (mn.x + mx.x) * 0.5f, cz = (mn.z + mx.z) * 0.5f;
+        const glm::vec3 eye = gfx::to_gl(cx, top, cz);
+        const glm::mat4 vp = glm::ortho(-hw, hw, -hd, hd, 0.0f, depth_range) * glm::lookAt(eye, eye - glm::vec3(0, 1, 0), glm::vec3(0, 0, -1));
+        constexpr int kSize = 32;
+        settle_rt_.resize(kSize, kSize);
+        settle_rt_.bind();
+        glEnable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
+        glClearColor(0, 0, 0, 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        draw_meshes(vp, true, skip_entity);
+        draw_project_meshes(app, vp, skip_spawn);
+        std::vector<float> depth(kSize * kSize, 1.0f);
+        glReadPixels(0, 0, kSize, kSize, GL_DEPTH_COMPONENT, GL_FLOAT, depth.data());
+        settle_rt_.unbind();
+        const float nearest = *std::min_element(depth.begin(), depth.end());
+        if (nearest >= 1.0f) {
+            if (!quiet) app.status("Nothing below " + what + " to align it with (meshes further than the draw distance are not drawn)");
+            return false;
+        }
+        const float surface = top - nearest * depth_range;
+        const double y = std::round((surface + (p.y - (is_npc ? p.y : mn.y))) * 10) / 10;
+        if (std::fabs(y - (*pos)[1]) < 0.05) {
+            if (!quiet) app.status(what + " already rests on the mesh below");
+            return true;
+        }
+        (*pos)[1] = y;
+        boxes_dirty_ = overlay_dirty_ = true;
+        app.touch();
+        app.status((quiet ? "Placed " : "Aligned ") + what + " with the mesh below (height " + p2m::fmt_g(y) + ")");
+        return true;
+    }
+
+    void align_button(const std::string& uid) {
+        if (ImGui::Button("Align with mesh")) settle_req_ = uid;
+        ui::help("Lets the object down (or up) onto the surface below it: the table under an apple, the ground under a crate. Its lowest point "
+                 "goes onto the highest point of what is below its footprint. Key: End (in the view).");
     }
 
     void draw_project_inspector(App& app) {
@@ -845,6 +988,7 @@ private:
                 overlay_dirty_ = true;
                 ch = true;
             }
+            if (!n.offset) align_button(n.uid);
             if (ImGui::Button("Edit in NPCs")) {
                 const std::string uid = n.uid;
                 app.defer([&app, uid] { app.select_in(kPanelNpcs, uid); });
@@ -874,6 +1018,7 @@ private:
                 overlay_dirty_ = true;
                 ch = true;
             }
+            align_button(s.uid);
             if (ImGui::Button("Remove from the project")) remove = s.uid;
         }
         std::string drop;
@@ -896,6 +1041,7 @@ private:
                     ch = true;
                 }
             }
+            if (m.position) align_button(m.uid);
             if (ImGui::Button("Back to its place (drop the move)")) drop = m.uid;
         }
         if (!drop.empty()) {
@@ -1165,7 +1311,10 @@ private:
     int place_amount_ = 1;
     std::string proj_sel_;  // the selected project object (placed NPC or spawn uid)
     glm::mat4 gizmo_{1.0f};
-    bool gizmo_active_ = false, gizmo_over_ = false;
+    bool gizmo_active_ = false, gizmo_over_ = false, view_active_ = false;
+    gfx::RenderTarget settle_rt_;
+    std::string settle_req_, settle_auto_;  // align with mesh: asked for / after a placement
+    int settle_wait_ = 0;
     bool boxes_dirty_ = true, overlay_dirty_ = true;
     gfx::LineBatch boxes_, overlay_;
     gfx::RenderTarget rt_;

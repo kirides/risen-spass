@@ -212,10 +212,15 @@ The Browser and the item editor show a turning preview of a template's mesh (dra
 * **Place NPC**: choose one of the project's placed NPCs (or *a new NPC of the template* and the template) and click on the ground: the NPC gets
   that world position (instead of an offset from the player). **Place item / object**: choose an item (and an amount) or an object -- a bench, a
   campfire, a barrel, any interactive or decoration template -- and a yaw, and click: the mod spawns it there once per savegame. The point under the
-  cursor is read from the rendered depth, so things land on the ground, a roof, a table.
+  cursor is read from the rendered depth, so things land on the ground, a roof, a table; a placed item or object is then settled with its
+  lowest point onto the surface (see *Align with mesh*).
 * **Select** mode: a click on a magenta (NPC) or yellow (spawned) box selects the project's object; the **gizmo** moves it along the axes (*gizmo: move*)
-  or turns it about the vertical axis (*gizmo: turn*); the inspector has the exact position, yaw / pitch / roll, the template and the amount. Undo
-  covers every move.
+  or turns it about the vertical axis (*gizmo: turn*): drag an arrow (one axis) or a square (two axes). The inspector has the exact position,
+  yaw / pitch / roll, the template and the amount. Undo covers every move.
+* **Align with mesh** (inspector button, or **End** with the cursor in the view): lets the selected spawned object, placed NPC or moved entity down
+  (or up) onto the surface below it -- the apple onto the table, the crate onto the slope. The editor looks straight down from just above the
+  object over its footprint and puts its lowest point onto the highest surface there (the object itself does not count). Only what the view
+  draws counts: hidden kinds and layers, and meshes beyond the mesh distance, are ignored.
 * **The world's own entities**: select one and choose *Move or turn it* (it is then drawn at its new pose, an orange line leads from its old place;
   the gizmo and the inspector work as for spawned things; *Back to its place* drops the move) or *Remove it from the world* (drawn as a red box;
   *Keep it* takes it back). The mod finds them by their ID and applies both on every `world.ready`, so they hold after a load. Moving an NPC of the
