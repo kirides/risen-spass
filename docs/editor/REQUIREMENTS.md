@@ -299,7 +299,7 @@ Each stage ends with a usable feature (or the base the next stage needs), is ver
 | Stage | Delivers | Requirements | State |
 |---|---|---|---|
 | **E0** Foundation | CMake/vcpkg feature `modkit`, portable pack2mod readers, app shell (GLFW, ImGui docking, menus, settings, log), project model with JSON and undo/redo, `--screenshot`, `modkit_tests` | APP-1..6, NF-1..3 | **done** (Windows; Linux/macOS builds not verified: no host) |
-| **E1** Game data browser | archive set, template catalogue with kinds and groups, string labels, asset index, browser + property inspector, index cache | DATA-1..6 | open |
+| **E1** Game data browser | archive set, template catalogue with kinds and groups, string labels, asset index, browser + property inspector, index cache | DATA-1..6 | **done** (2664 templates, 24213 strings in 7 languages, 19 archives in 0.7 s: the cache of DATA-6 is not needed) |
 | **E2** Items + export | item editor (shipped edits, new items, groups), export pipeline (runtime, balance data, mod.toml, project.json, custom.lua), validation, golden test, live scenario `modkit` (items) | ITEM-1..4, EXP-1..3 | open |
 | **E3** Recipes | recipe editor (new, edits), station/ingredient pickers incl. project items, live check (craft) | REC-1..3 | open |
 | **E4** NPCs and monsters | NPC template editor, inventory/equipment/loot, placed NPCs with numeric positions and routines, live check | NPC-1..4, (NPC-5 with E5) | open |
