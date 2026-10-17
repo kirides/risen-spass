@@ -132,7 +132,7 @@ TEST(export_writes_safely) {
     CHECK(read_text(out / "mod.toml").find("assets      = \"assets\"") != std::string::npos);
     r = export_mod(p, u8str(out), o);
     CHECK(r.ok && !fs::exists(out / "assets" / "My_Mesh._xmsh"));
-    CHECK(fs::exists(out / "sounds" / "hob_who.ogg") && read_text(out / "mod.toml").find("assets      = false") != std::string::npos);
+    CHECK(fs::exists(out / "sounds" / "hob_who.ogg") && fs::exists(out / "assets" / "modkit_showcase_Icons.ximl"));
 }
 
 TEST(validate_without_game_data) {

@@ -7,5 +7,6 @@ runtime.install({
     quests = require("data.quests"),
     dialogs = require("data.dialogs"),
     world = require("data.world"),
+    assets = require("data.assets"),
 })
 require("custom")

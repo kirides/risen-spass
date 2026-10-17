@@ -40,6 +40,7 @@ add_library(modkit_core STATIC
     core/gamedata.cpp
     core/graph.cpp
     core/history.cpp
+    core/image.cpp
     core/import.cpp
     core/log.cpp
     core/paths.cpp
@@ -53,6 +54,8 @@ add_library(modkit_core STATIC
     "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp"
 )
 target_include_directories(modkit_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/src")
+# stb_image (pictures), stb_image_resize2, stb_dxt (core/image.cpp)
+target_include_directories(modkit_core PRIVATE ${STB_INCLUDE_DIRS})
 target_compile_features(modkit_core PUBLIC cxx_std_20)
 target_compile_definitions(modkit_core PUBLIC MK_VERSION="${PROJECT_VERSION}")
 # LuaJIT reads the data files of an exported mod back (core/import.cpp); toml++ its mod.toml

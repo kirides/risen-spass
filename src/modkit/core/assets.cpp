@@ -1,8 +1,10 @@
 #include "core/assets.h"
 
+#include <algorithm>
 #include <cstring>
 
 #include "common/sound_file.h"
+#include "core/image.h"
 #include "pack2mod/util.h"
 
 namespace mk {
@@ -37,6 +39,8 @@ std::string asset_kind(const std::string& file) {
     if (e == "._xmac") return "actor";
     if (e == "._xmot") return "motion";
     if (e == "._xsnd" || is_raw_audio(file)) return "sound";
+    if (is_picture(file)) return "picture";
+    if (e == ".ximl") return "iconlist";
     return "other";
 }
 
@@ -95,6 +99,50 @@ std::string sound_export_path(const std::string& ref) {
 std::string sound_raw_name(const std::string& compiled) {
     if (!is_compiled_sound(compiled)) return compiled;
     return compiled.substr(0, compiled.size() - 6) + ".wav";
+}
+
+std::string resolve_icon(const Project& p, const std::string& icon) {
+    if (is_picture(icon) && find_asset(p, icon)) return project_icon_name(p.mod.id, icon);
+    return icon;
+}
+
+std::vector<std::string> icon_pictures(const Project& p) {
+    std::vector<std::string> out;
+    auto add = [&](const std::optional<std::string>& icon) {
+        if (!icon || !is_picture(*icon) || !find_asset(p, *icon)) return;
+        const std::string k = p2m::lower(p2m::bare_name(*icon));
+        if (std::find(out.begin(), out.end(), k) == out.end()) out.push_back(k);
+    };
+    for (auto& i : p.items) add(i.icon);
+    for (auto& r : p.recipes) add(r.icon);
+    std::sort(out.begin(), out.end());
+    return out;
+}
+
+std::vector<std::string> icon_lists(const Project& p) {
+    std::vector<std::string> out;
+    if (!icon_pictures(p).empty()) out.push_back(p.mod.id + "_Icons");
+    for (auto& a : p.assets) {
+        std::string n = p2m::bare_name(a.file);
+        if (asset_kind(n) != "iconlist") continue;
+        n.erase(n.rfind('.'));
+        if (std::find(out.begin(), out.end(), n) == out.end()) out.push_back(n);
+    }
+    return out;
+}
+
+std::vector<std::string> generated_asset_names(const Project& p) {
+    std::vector<std::string> out;
+    const auto icons = icon_pictures(p);
+    for (auto& a : p.assets) {
+        const std::string n = p2m::bare_name(a.file);
+        if (is_picture(n) && std::find(icons.begin(), icons.end(), p2m::lower(n)) == icons.end()) out.push_back(p2m::lower(picture_compiled_name(n)));
+    }
+    if (!icons.empty()) {
+        out.push_back(p2m::lower(p.mod.id + "_Icons.ximl"));
+        out.push_back(p2m::lower(p.mod.id + "_IconAtlas._ximg"));
+    }
+    return out;
 }
 
 }  // namespace mk

@@ -11,6 +11,7 @@
 --             are scripts (risen.script.define) defined once at load time. A quest with a flow is started by a dialogue or a trigger (an item, a kill,
 --             a game variable, another quest, the start of a game) and walks its steps from the engine's events
 --   world     entities spawned at a position and items put into containers of the world (by entity ID), once per savegame on world.ready
+--   assets    the icon image lists (risen.assets.load_icons) registered on the first tick, before the balance data makes the items that use them
 --
 -- Events for other mods and tests:
 --   "modkit.applied"   (mod id, when, report) after every application of the balance data (when = "first tick", "session.start (new)", ...)
@@ -18,7 +19,7 @@
 --   "modkit.quest_action" (mod id, quest, action) after a dialogue line started / succeeded / failed / cancelled a quest
 --   "modkit.quest_started" (mod id, quest), "modkit.objective" (mod id, quest, step), "modkit.quest_done" (mod id, quest, result) for quest flows
 --   "modkit.world_spawned" (mod id, key, entity), "modkit.container_filled" (mod id, key, container) for the world edits
-local M = { VERSION = 5 }
+local M = { VERSION = 6 }
 
 local unpack = table.unpack or unpack
 local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
@@ -310,6 +311,19 @@ function M.install(data)
         end
     end
     if any_flow then install_flow_events() end
+    -- icons first: a tick handler registered before risen.balance.install's own runs before it, so new items find their icons
+    local icons = (data.assets or {}).icons
+    if nonempty(icons) then
+        local done = false
+        risen.on("tick", function()
+            if done then return end
+            done = true
+            for _, list in ipairs(icons) do
+                local ok, why = risen.assets.load_icons(list)
+                if not ok then risen.log.error(("%s: icon list %s: %s"):format(id, list, tostring(why))) end
+            end
+        end)
+    end
     if nonempty(data.balance) then
         risen.balance.install(data.balance, {
             on_applied = function(when, report)

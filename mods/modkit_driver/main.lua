@@ -9,6 +9,8 @@ T.plan {
     "new item numbers",
     "new item requirement",
     "new item label",
+    "new item icon from the mod's atlas",
+    "a picture replaces a game texture",
     "new item can be given",
     "new potion modifier",
     "changed item numbers",
@@ -125,6 +127,19 @@ T.run(function()
     local req = risen.item.requirements("MK_Hob_Knife") or {}
     T.eq("new item requirement", req.Strength, 12)
     T.eq("new item label", risen.loc.get("FO_MK_Hob_Knife"), "Hob's Knife")
+    -- pictures: hob_knife.png is a cell of the exported icon atlas (registered by the runtime before the items were made)
+    local icon = "IC_modkit_showcase_hob_knife"
+    local bm = risen.assets.bitmap(icon)
+    local knife_t = risen.template.get("MK_Hob_Knife")
+    local icon_prop = tostring(knife_t and knife_t:get_property("gCItem_PS", "IconImage"))
+    T.expect("new item icon from the mod's atlas", bm ~= nil and bm.attached and icon_prop:lower() == icon:lower(),
+             ("attached=%s IconImage=%s"):format(tostring(bm and bm.attached), icon_prop))
+    -- ItWpn_SwordMisc_01_Diffuse_01.png became the compiled texture of that name: the handles of the knife Hob carries load it from the mod
+    local tex = "ItWpn_SwordMisc_01_Diffuse_01._ximg"
+    T.wait_until(function() local r = risen.assets.resource(tex) return r ~= nil and r.state == 3 end, 20, "texture loaded")
+    local res, info = risen.assets.resource(tex), risen.assets.info(tex)
+    T.expect("a picture replaces a game texture", res ~= nil and res.state == 3 and tostring(res.path):find("modkit_showcase", 1, true) ~= nil and
+             info.source == "modkit_showcase:assets", ("state=%s path=%s source=%s"):format(tostring(res and res.state), tostring(res and res.path), tostring(info.source)))
     local player = assert(risen.entity.player(), "no player")
     risen.item.give(player, "MK_Hob_Knife", 1)
     T.eq("new item can be given", risen.item.count(player, "MK_Hob_Knife"), 1)
@@ -293,6 +308,19 @@ T.run(function()
         local pq = risen.quest.get("Q_MK_Potions")
         T.eq("carrying three potions finishes it and sets the variable", { tostring(pq and pq:get_property("Status")):find("Success") ~= nil, risen.gamevar.get("MK_Potions_Done") },
              { true, 1 })
+    end
+    if T.param("shot", "") ~= "" then
+        -- a look at the new texture (-Param shot=1): a club and the knife on the ground between the camera and the player
+        local cam = risen.world.camera()
+        local p = risen.entity.player()
+        if cam and p then
+            local x, y, z = p:position()
+            risen.entity.spawn("It_1H_Club", x - cam.dx * 120, y + 60, z - cam.dz * 120, true)
+            risen.entity.spawn("MK_Hob_Knife", x - cam.dx * 150 + cam.dz * 40, y + 60, z - cam.dz * 150 - cam.dx * 40, true)
+            T.sleep(60)
+            risen.debug.screenshot("modkit_textures")
+            T.sleep(20)
+        end
     end
     T.finish()
 end, "modkit")

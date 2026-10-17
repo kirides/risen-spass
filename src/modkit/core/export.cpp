@@ -6,6 +6,7 @@
 #include "core/assets.h"
 #include "core/dialog.h"
 #include "core/gamedata.h"
+#include "core/image.h"
 #include "core/quest.h"
 #include "core/log.h"
 #include "core/lua_writer.h"
@@ -129,7 +130,7 @@ json balance_spec(const Project& p) {
             // a shipped item's mesh, icon and material are plain properties (the named settings exist only for new templates)
             PropEdits props = it->properties;
             if (it->mesh) props["eCMesh_PS"]["MeshFileName"] = *it->mesh;
-            if (it->icon) props["gCItem_PS"]["IconImage"] = *it->icon;
+            if (it->icon) props["gCItem_PS"]["IconImage"] = resolve_icon(p, *it->icon);
             if (it->material) props["eCMesh_PS"]["MaterialSwitch"] = *it->material;
             if (json pj = props_json(props); !pj.empty()) e["properties"] = pj;
             items[it->name] = e;
@@ -165,7 +166,7 @@ json balance_spec(const Project& p) {
             put(e, "use_type", it->use_type);
             put(e, "category", it->category);
             put(e, "mesh", it->mesh);
-            put(e, "icon", it->icon);
+            if (it->icon) e["icon"] = resolve_icon(p, *it->icon);
             put(e, "material", it->material);
             if (json pj = props_json(it->properties); !pj.empty()) e["properties"] = pj;
             items[it->name] = e;
@@ -187,7 +188,7 @@ json balance_spec(const Project& p) {
             if (r->skills) e["skills"] = int_map(*r->skills);
             put(e, "result", r->result);
             PropEdits props = r->properties;
-            if (r->icon) props["gCItem_PS"]["IconImage"] = *r->icon;
+            if (r->icon) props["gCItem_PS"]["IconImage"] = resolve_icon(p, *r->icon);
             if (r->mesh) props["eCMesh_PS"]["MeshFileName"] = *r->mesh;
             if (r->value) props["gCItem_PS"]["GoldValue"] = *r->value;
             if (json pj = props_json(props); !pj.empty()) e["properties"] = pj;
@@ -206,7 +207,7 @@ json balance_spec(const Project& p) {
             e["ingredients"] = ingredients(r->ingredients.value_or(std::vector<Ingredient>{}));
             e["result"] = r->result.value_or(std::string());
             if (r->skills) e["skills"] = int_map(*r->skills);
-            put(e, "icon", r->icon);
+            if (r->icon) e["icon"] = resolve_icon(p, *r->icon);
             put(e, "mesh", r->mesh);
             put(e, "value", r->value);
             if (json pj = props_json(r->properties); !pj.empty()) e["properties"] = pj;
@@ -406,8 +407,11 @@ std::map<std::string, std::string> render_mod(const Project& p) {
                     "    quests = require(\"data.quests\"),\n"
                     "    dialogs = require(\"data.dialogs\"),\n"
                     "    world = require(\"data.world\"),\n"
+                    "    assets = require(\"data.assets\"),\n"
                     "})\n"
                     "require(\"custom\")\n";
+    f["data/assets.lua"] = data_file("Assets: the image lists of icons the runtime registers (risen.assets.load_icons) before the items that use them are made.",
+                                     json::object({{"icons", icon_lists(p)}}));
 
     f["data/balance.lua"] = data_file("Items, item groups, recipes, NPC and monster templates: a BalanceSpec for risen.balance.install (types/risen.d.lua).",
                                       balance_spec(p));
@@ -510,9 +514,39 @@ ExportResult export_mod(const Project& p, const std::string& out_dir, const Expo
             if (write_text_if_changed(out / u8(rel), content)) r.written.push_back(rel);
             else r.unchanged.push_back(rel);
         };
+        // pictures: an icon goes into the atlas, every other one becomes a texture <stem>._ximg (a new one, or a game texture replaced)
+        const auto icon_names = icon_pictures(p);
+        std::vector<std::pair<std::string, Picture>> icons;
         for (auto& a : p.assets) {
             const fs::path src = u8(a.file).is_absolute() ? u8(a.file) : base / u8(a.file);
             const std::string name = u8str(src.filename());
+            if (!is_picture(name)) continue;
+            std::string why;
+            std::optional<Picture> pic;
+            try {
+                pic = load_picture(read_text(src), why);
+            } catch (const std::exception& e) {
+                why = e.what();
+            }
+            if (!pic) {
+                r.errors.push_back("picture " + name + ": " + why);
+                continue;
+            }
+            if (std::find(icon_names.begin(), icon_names.end(), p2m::lower(name)) != icon_names.end())
+                icons.push_back({project_icon_name(p.mod.id, name), *pic});
+            else
+                put("assets/" + picture_compiled_name(name), build_ximg(*pic, XimgKind::Texture, u8str(src.extension())));
+        }
+        if (!icons.empty()) {
+            std::sort(icons.begin(), icons.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+            const IconAtlas atlas = build_icon_atlas(icons, p.mod.id + "_IconAtlas.dds");
+            put("assets/" + p.mod.id + "_IconAtlas._ximg", build_ximg(atlas.texture, XimgKind::Gui));
+            put("assets/" + p.mod.id + "_Icons.ximl", atlas.ximl);
+        }
+        for (auto& a : p.assets) {
+            const fs::path src = u8(a.file).is_absolute() ? u8(a.file) : base / u8(a.file);
+            const std::string name = u8str(src.filename());
+            if (is_picture(name)) continue;
             const std::string rel = (is_raw_audio(name) ? "sounds/" : "assets/") + name;
             produced.insert(rel);
             const fs::path dst = out / u8(rel);

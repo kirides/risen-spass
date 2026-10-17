@@ -6,4 +6,4 @@ author      = "risen-spass"
 description = "The example project of risen-modkit (examples/modkit/showcase.rmk.json), exported. Verified by the scenario modkit (mods/modkit_driver)."
 main        = "main.lua"
 api_version = 1
-assets      = false
+assets      = "assets"

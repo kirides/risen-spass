@@ -30,7 +30,8 @@
       "damage": 20,
       "requires": {
         "Strength": 12
-      }
+      },
+      "icon": "hob_knife.png"
     },
     {
       "uid": "6b1f0e2a9c4d4e5f8a7b6c5d4e3f2a11",
@@ -1015,6 +1016,16 @@
       "uid": "5f1e0c7a2b9d4e6f8a1b3c5d7e9f0a22",
       "file": "audio/hob_who_de.mp3",
       "kind": "sound"
+    },
+    {
+      "uid": "5f1e0c7a2b9d4e6f8a1b3c5d7e9f0a23",
+      "file": "images/hob_knife.png",
+      "kind": "picture"
+    },
+    {
+      "uid": "5f1e0c7a2b9d4e6f8a1b3c5d7e9f0a24",
+      "file": "images/ItWpn_SwordMisc_01_Diffuse_01.png",
+      "kind": "picture"
     }
   ],
   "editor": {}

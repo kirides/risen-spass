@@ -15,6 +15,7 @@
 #include "app/render/resources.h"
 #include "app/widgets.h"
 #include "core/assets.h"
+#include "core/image.h"
 #include "core/mesh.h"
 #include "core/paths.h"
 #include "pack2mod/util.h"
@@ -72,7 +73,7 @@ public:
         }
         if (ImGui::Button("Add files...")) {
             const std::string dir = app.project_path.empty() ? std::string() : u8str(u8(app.project_path).parent_path());
-            add_files(app, dialog_open_files("Resources and audio", "_xmsh,_xmat,_ximg,_xmac,_xmot,_xsnd,ogg,wav,mp3", dir));
+            add_files(app, dialog_open_files("Resources, pictures and audio", "_xmsh,_xmat,_ximg,_xmac,_xmot,_xsnd,ximl,png,tga,jpg,jpeg,bmp,ogg,wav,mp3", dir));
         }
         ImGui::SameLine();
         if (ImGui::Button("Reload")) {
@@ -95,6 +96,7 @@ public:
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 110);
             ImGui::TableSetupScrollFreeze(0, 1);
             ImGui::TableHeadersRow();
+            const auto icons = icon_pictures(app.project);
             for (auto& a : app.project.assets) {
                 ImGui::PushID(a.uid.c_str());
                 const std::string name = p2m::bare_name(a.file);
@@ -110,10 +112,13 @@ public:
                 ImGui::TableNextColumn();
                 if (exists) ImGui::Text("%.1f KB", static_cast<double>(fs::file_size(path, ec)) / 1024.0);
                 ImGui::TableNextColumn();
+                const bool icon = std::find(icons.begin(), icons.end(), p2m::lower(name)) != icons.end();
+                const std::string target = is_picture(name) ? picture_compiled_name(name) : name;
                 if (!exists) ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "missing");
-                else if (!is_raw_audio(name) && app.game && app.game->exists(name)) ImGui::TextColored(ImVec4(1, 0.75f, 0.3f, 1), "replaces the game's file");
+                else if (icon) ImGui::TextDisabled("-> icon %s", project_icon_name(app.project.mod.id, name).c_str());
+                else if (!is_raw_audio(name) && app.game && app.game->exists(target)) ImGui::TextColored(ImVec4(1, 0.75f, 0.3f, 1), "replaces the game's %s", target.c_str());
                 else if (is_raw_audio(name)) ImGui::TextDisabled("-> sounds/");
-                else ImGui::TextDisabled("-> assets/");
+                else ImGui::TextDisabled("-> assets/%s", target.c_str());
                 ImGui::TableNextColumn();
                 if (asset_kind(name) == "sound") {
                     ui::sound_button(app, name);
@@ -145,7 +150,10 @@ private:
         std::string text;   // a line about the content
         std::string error;
         bool sound = false;
+        Picture picture;
     };
+    GLuint picture_tex_ = 0;
+    std::string picture_of_;  // the uid the texture shows
     std::map<std::string, Info> info_;
     MeshPreview preview_;
 
@@ -187,6 +195,14 @@ private:
             } else if (asset_kind(name) == "image") {
                 const ImageData img = decode_image(read_text(u8(path)));
                 in.text = std::to_string(img.width) + " x " + std::to_string(img.height);
+            } else if (asset_kind(name) == "picture") {
+                std::string why;
+                if (auto pic = load_picture(read_text(u8(path)), why)) {
+                    in.text = std::to_string(pic->width) + " x " + std::to_string(pic->height) + (pic->has_alpha() ? ", with alpha" : "");
+                    in.picture = std::move(*pic);
+                } else {
+                    in.error = why;
+                }
             }
         } catch (const std::exception& e) {
             in.error = e.what();
@@ -218,6 +234,26 @@ private:
         } else if (kind == "mesh") {
             if (app.game) preview_.draw(app, name, ImVec2(ImGui::GetContentRegionAvail().x, std::max(160.0f, ImGui::GetContentRegionAvail().y)));
             else ImGui::TextDisabled("load the game data to see the mesh (its materials and textures may come from the game)");
+        } else if (kind == "picture") {
+            const auto icons = icon_pictures(app.project);
+            const bool icon = std::find(icons.begin(), icons.end(), p2m::lower(name)) != icons.end();
+            if (icon) ImGui::TextDisabled("An item icon: exported into the icon atlas of the mod as %s.", project_icon_name(app.project.mod.id, name).c_str());
+            else ImGui::TextDisabled("Exported as the texture %s (DXT, with mip maps). Choose it as an item's icon to make it an icon instead.",
+                                     picture_compiled_name(name).c_str());
+            if (!in.picture.rgba.empty()) {
+                if (picture_of_ != a.uid) {
+                    if (!picture_tex_) glGenTextures(1, &picture_tex_);
+                    glBindTexture(GL_TEXTURE_2D, picture_tex_);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+                    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, in.picture.width, in.picture.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, in.picture.rgba.data());
+                    picture_of_ = a.uid;
+                }
+                const float avail = std::min(256.0f, ImGui::GetContentRegionAvail().x);
+                const float sc = avail / static_cast<float>(std::max(in.picture.width, in.picture.height));
+                ImGui::Image(static_cast<ImTextureID>(picture_tex_), ImVec2(in.picture.width * sc, in.picture.height * sc));
+            }
         } else if (kind == "image") {
             if (gfx::ResourceCache* res = app.resources()) {
                 const GLuint t = res->texture(name);

@@ -21,6 +21,7 @@
 #include "core/export.h"
 #include "core/gamedata.h"
 #include "core/history.h"
+#include "core/image.h"
 #include "core/import.h"
 #include "core/lua_writer.h"
 #include "core/mesh.h"
@@ -326,6 +327,7 @@ TEST(gamedata_real_archives) {
 #include "graph_tests.inc"
 #include "import_tests.inc"
 #include "asset_tests.inc"
+#include "image_tests.inc"
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);

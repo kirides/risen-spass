@@ -12,6 +12,8 @@
 #include "app/render/mesh_preview.h"
 #include "app/widgets.h"
 #include "core/catalog.h"
+#include "core/image.h"
+#include "pack2mod/util.h"
 #include "core/validate.h"
 
 namespace mk {
@@ -254,6 +256,15 @@ private:
             ImGui::BeginDisabled(!it.icon);
             std::string ic = it.icon ? *it.icon : shipped.icon;
             if (ImGui::BeginCombo("Icon", ic.c_str(), ImGuiComboFlags_HeightLarge)) {
+                // the project's pictures first: they become cells of the mod's icon atlas
+                for (auto& a : app.project.assets) {
+                    const std::string n = p2m::bare_name(a.file);
+                    if (!is_picture(n)) continue;
+                    if (ImGui::Selectable((n + "  (picture of the project)").c_str(), n == ic)) {
+                        it.icon = n;
+                        ch = true;
+                    }
+                }
                 if (g) {
                     if (icons_.empty()) icons_ = known_icons(*g);
                     for (auto& n : icons_)

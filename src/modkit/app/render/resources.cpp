@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "core/log.h"
+#include "core/image.h"
 #include "core/paths.h"
 
 namespace mk::gfx {
@@ -82,7 +83,17 @@ p2m::Bytes ResourceCache::read(const std::string& name) {
         std::lock_guard<std::mutex> lock(mu_);
         if (auto it = loose_.find(key_of(name)); it != loose_.end()) path = it->second;
     }
-    if (!path.empty()) return read_text(u8(path));
+    if (!path.empty()) {
+        p2m::Bytes bytes = read_text(u8(path));
+        // a picture of the project stands for the texture the export makes of it
+        if (is_picture(path)) {
+            std::string why;
+            const auto pic = load_picture(bytes, why);
+            if (!pic) throw std::runtime_error(why);
+            return build_ximg(*pic, XimgKind::Gui);
+        }
+        return bytes;
+    }
     return game_->read(name);
 }
 

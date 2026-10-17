@@ -1,0 +1,15 @@
+<ImageList
+	ClassName="eCGuiImageList2"
+	ImageSize="0; 0"
+	TextureName="modkit_showcase_IconAtlas.dds"
+	>
+	<Images>
+		<Image
+			ClassName="eCGuiImage2"
+			ImageName="IC_modkit_showcase_hob_knife"
+			RectOnTexture="0; 0; 40; 40"
+			BlendMode="eEImageBlend_AlphaBlend"
+		>
+		</Image>
+	</Images>
+</ImageList>

@@ -14,6 +14,7 @@ return {
             value = 250,
             damage = 20,
             requires = { Strength = 12 },
+            icon = "IC_modkit_showcase_hob_knife",
         },
         MK_Strong_Potion = {
             base = "It_Po_Health_01",

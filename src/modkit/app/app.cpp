@@ -17,6 +17,7 @@
 #include "app/panels/panels.h"
 #include "app/render/resources.h"
 #include "core/export.h"
+#include "core/image.h"
 #include "core/import.h"
 #include "core/log.h"
 #include "core/paths.h"
@@ -236,7 +237,9 @@ void App::refresh_assets(bool reload) {
     std::string sig;
     for (auto& a : project.assets) {
         const std::string path = asset_path(a);
-        files[p2m::lower(u8str(u8(a.file).filename()))] = path;
+        const std::string name = u8str(u8(a.file).filename());
+        // a picture is seen under the name of the texture it becomes
+        files[p2m::lower(is_picture(name) ? picture_compiled_name(name) : name)] = path;
         sig += path + "\n";
     }
     if (!reload && sig == assets_sig_ && res == assets_res_) return;

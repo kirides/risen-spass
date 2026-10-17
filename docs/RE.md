@@ -1614,3 +1614,15 @@ The standalone converter ([PACK2MOD.md](PACK2MOD.md), `src/pack2mod/`) re-implem
   images in `eCColorSrcSampler.ImageFilePath` (`bCImageResourceString`, the raw `.tga` name; the diffuse map first); **images** (`._ximg`, IM04) hold a DDS at
   offset 265: DXT1, DXT3, DXT5, a few A8R8G8B8, L8 and A8. Level mesh entities name their mesh by a virtual path (`#G3:/data/raw/meshes/World//X._xmsh`);
   the resource is found by the bare name like every other (section 26).
+* **Writing images (`._ximg`, editor stage E11, AST-3)** [confirmed in-game]. The header is `GR01` `IM04`, `u32 0x28`, `u32 225` (property stream size),
+  `u32 265` (payload offset), `u32` payload size, a FILETIME, the source extension (`.dds`/`.tga` + `00 fe fe fe`). The 225-byte stream of an
+  `eCImageResource2` is the same in all 41 files surveyed apart from four values and the object's own 32 bytes at the end: `Width` (int) at stream offset
+  `0x3b`, `Height` at `0x52`, `SkipMips` (long) at `0x6c`, `PixelFormat` (`eEColorFormat` = the D3D format: 21 `A8R8G8B8`, or the FourCC `DXT1`/`DXT3`/`DXT5`)
+  at `0xbb`. The trailing 32 bytes are zero when `SkipMips` is 0 or 1 (no-mip images, the GUI atlas has other values there) and carry per-level codes
+  when it is set (inferred: the texture-quality option's mip skipping). The DDS is ordinary: shipped ones carry no pitch/linear-size flag (`0x1007`,
+  `+0x20000` with mips), caps `0x1002` (A8R8G8B8) or `0x401008` (mip chain). `src/modkit/core/image.cpp` writes DXT1/DXT5 textures with a full mip chain
+  (stb_dxt) and SkipMips 0, and A8R8G8B8 GUI images; `modkit_tests --data` compares its header and DDS header with `GUI_IconSets01._ximg` byte for byte.
+  Live (scenario `modkit`): a written 256x256 DXT1 texture named like the shipped `ItWpn_SwordMisc_01_Diffuse_01._ximg` in the mod's `assets` was loaded
+  from the mod (resource state 3, path `#G3:/mods/modkit_showcase/assets/...`) and **is drawn** (`risen.debug.screenshot`: a club with the checker
+  pattern); a written A8R8G8B8 atlas with an `.ximl` list registered by `risen.assets.load_icons` attached its icon to a new item (`bitmap.attached`,
+  `IconImage` = the cell name). The 32 trailing bytes left at zero did no visible harm.

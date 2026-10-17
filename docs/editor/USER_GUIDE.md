@@ -145,6 +145,12 @@ A file inside the project's folder is stored relative to it, so save the project
   replace game files of the same name everywhere (the panel and the Problems panel say so). The world view, the mesh previews and the pickers use them
   at once. The details show a mesh preview, the size of an image, the texture of a material, the length of a sound.
 * **Audio files** (Ogg Vorbis, WAV, MP3): exported into `sounds\` for voiced lines; the details show format, channels, rate and length, with Play.
+* **Pictures** (PNG, TGA, JPG, BMP): each becomes a texture `<name>._ximg` in `assets\` (DXT1, or DXT5 with transparency, with mip maps; the size is
+  brought to powers of two up to 2048). Name a picture like a game texture (`ItWpn_SwordMisc_01_Diffuse_01.png`) to **retexture** everything that uses
+  it; the world view and the mesh previews show it at once. Choose a picture as an item's or recipe's **icon** (Items panel, Icon) and it becomes a
+  40x40 cell of the mod's icon atlas instead (`<mod>_IconAtlas._ximg` + `<mod>_Icons.ximl`, registered by the runtime before the items are made;
+  the item's icon is then `IC_<mod>_<name>`).
+* **Image lists** (`.ximl` + the `._ximg` it names): your own icon lists; the runtime registers every one of them.
 
 ## Quests
 
@@ -236,7 +242,8 @@ Command line: `risen-modkit --import <mod folder> --save project.rmk.json [--fro
   data\quests.lua       the quests (risen.quest.define)
   data\dialogs.lua      the dialogue options (risen.dialog.create, parents first) and the quest actions their lines call
   data\world.lua        items spawned at a position and items added to containers, once per savegame
-  assets\               the project's compiled resources (mounted by the layer: mod.toml assets = "assets")
+  assets\               the project's compiled resources and the textures and icon atlas made from pictures (mounted: mod.toml assets = "assets")
+  data\assets.lua       the icon lists the runtime registers
   sounds\               the audio of voiced lines (the project's files, game sounds unpacked)
   strings\all.csv       texts of shipped items you renamed (first language = fallback), strings\<Language>.csv for the others
   modkit\runtime.lua    the generic code, the same for every exported mod
@@ -265,7 +272,9 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 * NPCs, monsters and vegetation are boxes in the world view (actors and SpeedTrees are not decoded).
 * Placing buildings and other objects, and moving or removing what the world has, needs a layer extension (stage E12).
 * Icons are not previewed (the game's icon lists are not decoded yet).
-* Images and meshes in authoring formats (PNG, glTF, ...) cannot be added yet; only files already compiled for the engine (AST-3, AST-4).
+* Meshes in authoring formats (glTF, OBJ, FBX) cannot be added yet; only `._xmsh` files compiled for the engine (AST-4). A new texture on a new mesh
+  needs a material that names it (the editor does not write materials).
+* A picture replaces a game texture only where the engine has not loaded it yet when the mod is mounted (at start: always).
 * Lip sync: a voiced line of the mod has no lip-sync motion (the face does not move); a data-only import turns game sounds the export unpacked into
   project audio files (an import from `modkit\project.json` keeps them as game sounds).
 * A quest flow is one chain (no branches inside a quest); branch with dialogues and follow-up quests.

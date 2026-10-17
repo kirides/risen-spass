@@ -8,6 +8,7 @@
 #include "common/template_id.h"
 #include "core/assets.h"
 #include "core/catalog.h"
+#include "core/image.h"
 #include "core/dialog.h"
 #include "core/quest.h"
 
@@ -45,6 +46,7 @@ struct Ctx {
     std::set<std::string> new_templates;  // lower-case names the project creates
     std::set<std::string> asset_files;    // lower-case bare names of the project's asset files
     std::set<std::string> icons;          // lower-case icon names of the shipped items
+    bool own_icon_lists = false;          // the project brings .ximl image lists (their icon names are not checked)
 
     void add(Severity s, const char* area, const std::string& uid, const std::string& subject, const std::string& msg) {
         out.push_back({s, area, uid, subject, msg});
@@ -120,8 +122,12 @@ void check_items(Ctx& c) {
         check_enum(c, A, it.uid, subj, it.category, "gEItemCategory");
         if (it.mesh && !it.mesh->empty() && !c.asset_known(*it.mesh))
             c.add(Severity::Error, A, it.uid, subj, "the mesh '" + *it.mesh + "' is neither in the game archives nor among the project's asset files");
-        if (it.icon && !it.icon->empty() && c.g) {
-            if (!c.icons.count(p2m::lower(*it.icon))) c.add(Severity::Warning, A, it.uid, subj, "the icon '" + *it.icon + "' is not used by any shipped item (the layer refuses icons it cannot resolve)");
+        if (it.icon && !it.icon->empty()) {
+            if (is_picture(*it.icon)) {
+                if (!find_asset(c.p, *it.icon)) c.add(Severity::Error, A, it.uid, subj, "the icon picture '" + *it.icon + "' is not one of the project's asset files");
+            } else if (c.g && !c.icons.count(p2m::lower(*it.icon)) && !c.own_icon_lists) {
+                c.add(Severity::Warning, A, it.uid, subj, "the icon '" + *it.icon + "' is not used by any shipped item (the layer refuses icons it cannot resolve)");
+            }
         }
         if (it.value && *it.value < 0) c.add(Severity::Error, A, it.uid, subj, "the value must not be negative");
         check_properties(c, A, it.uid, subj, it.properties, target);
@@ -449,9 +455,27 @@ void check_assets(Ctx& c) {
         const std::string kind = asset_kind(name);
         if (kind == "other")
             c.add(Severity::Warning, A, a.uid, name, "not a resource the engine loads (._xmsh, ._xmat, ._ximg, ._xmac, ._xmot, ._xsnd) and no audio file (.ogg, .wav, .mp3)");
-        else if (!is_raw_audio(name) && c.g && c.g->exists(name))
+        else if (!is_raw_audio(name) && !is_picture(name) && kind != "iconlist" && c.g && c.g->exists(name))
             c.add(Severity::Warning, A, a.uid, name, "replaces the game's file of the same name everywhere it is used");
     }
+    // pictures: each becomes <stem>._ximg (or an icon); that name must not be taken twice
+    std::map<std::string, std::string> made;  // generated lower-case name -> source
+    const auto icons = icon_pictures(c.p);
+    for (auto& a : c.p.assets) {
+        const std::string name = p2m::bare_name(a.file);
+        if (!is_picture(name)) continue;
+        if (std::find(icons.begin(), icons.end(), p2m::lower(name)) != icons.end()) continue;
+        const std::string out = picture_compiled_name(name);
+        if (names.count(p2m::lower(out)))
+            c.add(Severity::Error, A, a.uid, name, "becomes " + out + ", which is also an asset file of the project");
+        if (auto [it, fresh] = made.emplace(p2m::lower(out), name); !fresh)
+            c.add(Severity::Error, A, a.uid, name, "becomes " + out + " like " + it->second);
+        else if (c.g && c.g->exists(out))
+            c.add(Severity::Warning, A, a.uid, name, "becomes " + out + " and replaces the game's texture of that name everywhere it is used");
+    }
+    if (!icons.empty())
+        for (const std::string gen : {c.p.mod.id + "_Icons.ximl", c.p.mod.id + "_IconAtlas._ximg"})
+            if (names.count(p2m::lower(gen))) c.add(Severity::Error, A, "", gen, "the export makes this file for the icon pictures: rename the project's file");
 }
 
 }  // namespace
@@ -466,7 +490,11 @@ std::vector<Problem> validate(const Project& p, const GameData* game, const Worl
         if (r.mode == Mode::New) c.new_templates.insert(p2m::lower(r.name));
     for (auto& n : p.npc_templates)
         if (n.mode == Mode::New) c.new_templates.insert(p2m::lower(n.name));
-    for (auto& a : p.assets) c.asset_files.insert(p2m::lower(p2m::bare_name(a.file)));
+    for (auto& a : p.assets) {
+        c.asset_files.insert(p2m::lower(p2m::bare_name(a.file)));
+        c.own_icon_lists |= asset_kind(a.file) == "iconlist";
+    }
+    for (auto& n : generated_asset_names(p)) c.asset_files.insert(n);
     if (game)
         for (auto& i : known_icons(*game)) c.icons.insert(p2m::lower(i));
 
