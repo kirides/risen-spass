@@ -8,6 +8,14 @@ on:
     - cron: '0 3 * * *'
   workflow_dispatch:
 
+# A newer push to the same branch cancels the older run (nightly / manual runs are never cancelled)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+
+env:
+  LUALS_VERSION: '3.19.2'   # pinned: a new LuaLS release may add diagnostics; keep in step with the local one
+
 jobs:
   # Decides whether to build and whether to publish the nightly release. A scheduled run is skipped when the nightly
   # tag already points at the current commit; a manual run on the default branch always rebuilds and republishes.
@@ -40,25 +48,49 @@ jobs:
           echo "build=$build" >> "$GITHUB_OUTPUT"
           echo "release=$release" >> "$GITHUB_OUTPUT"
 
+  # The Lua side needs no compiler: it runs next to the Windows build and reports even when the build fails
+  lua:
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The Lua API description must match the bindings
+      - name: API definitions are in sync
+        run: python3 tools/check_luadefs.py
+
+      - name: Type-check the mods with the Lua language server
+        run: |
+          curl -fsSL "https://github.com/LuaLS/lua-language-server/releases/download/${LUALS_VERSION}/lua-language-server-${LUALS_VERSION}-linux-x64.tar.gz" -o "$RUNNER_TEMP/luals.tar.gz"
+          mkdir -p "$RUNNER_TEMP/luals"
+          tar -xzf "$RUNNER_TEMP/luals.tar.gz" -C "$RUNNER_TEMP/luals"
+          cd mods
+          "$RUNNER_TEMP/luals/bin/lua-language-server" --check . --configpath .luarc.json --checklevel Warning
+
   windows:
     needs: gate
     if: needs.gate.outputs.build == 'true'
     runs-on: windows-latest
-    permissions:
-      contents: write   # only used by the nightly release steps
     env:
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\.vcpkg-cache
     steps:
       - uses: actions/checkout@v4
 
-      # vcpkg binary packages (spdlog, minhook, sol2, tomlplusplus, luajit, the modkit libraries) are cached between runs
+      # vcpkg binary packages (spdlog, minhook, sol2, tomlplusplus, luajit, the modkit libraries; ~5 minutes to build
+      # from source) are cached between runs. Restore and save are separate steps so the cache is stored right after
+      # vcpkg installed the packages, even when a later step fails (actions/cache only saves after a green job).
       - name: Prepare the vcpkg binary cache
         shell: pwsh
         run: New-Item -ItemType Directory -Force $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
-      - uses: actions/cache@v4
+      - name: Restore the vcpkg binary cache
+        id: vcpkg-cache
+        uses: actions/cache/restore@v4
         with:
           path: .vcpkg-cache
           key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'CMakePresets.json') }}
+          # an older cache still has every package whose ABI did not change
+          restore-keys: vcpkg-${{ runner.os }}-
 
       # Sets up the VS developer environment, including VCPKG_ROOT -> the vcpkg bundled with Visual Studio
       # (manifest mode only: it resolves the ports through "builtin-baseline" in vcpkg.json).
@@ -71,30 +103,24 @@ jobs:
         run: |
           if (-not (Get-Command ninja -ErrorAction SilentlyContinue)) { python -m pip install --quiet ninja }
           ninja --version
-          Write-Host "VCPKG_ROOT=$env:VCPKG_ROOT"
 
       # The "ninja" preset is meant for a Visual Studio developer shell (this is the same command sequence used locally).
       - name: Configure
         run: cmake --preset ninja
+
+      - name: Save the vcpkg binary cache
+        if: steps.vcpkg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json', 'CMakePresets.json') }}
+
       - name: Build
         run: cmake --build build-ninja --config RelWithDebInfo
       - name: Unit tests (no game needed)
         run: build-ninja\RelWithDebInfo\spass_tests.exe
-
-      # The Lua API description must match the bindings
-      - name: API definitions are in sync
-        run: python tools/check_luadefs.py
-
-      - name: Install the Lua language server and type-check the example mods
-        shell: pwsh
-        run: |
-          $url = (Invoke-RestMethod https://api.github.com/repos/LuaLS/lua-language-server/releases/latest).assets |
-              Where-Object { $_.name -like '*win32-x64.zip' } | Select-Object -First 1 -ExpandProperty browser_download_url
-          Invoke-WebRequest $url -OutFile $env:RUNNER_TEMP\luals.zip
-          Expand-Archive $env:RUNNER_TEMP\luals.zip -DestinationPath $env:RUNNER_TEMP\luals
-          Push-Location mods
-          & "$env:RUNNER_TEMP\luals\bin\lua-language-server.exe" --check . --configpath .luarc.json --checklevel Warning
-          Pop-Location
+      - name: Unit tests of risen-modkit
+        run: build-ninja\src\modkit\RelWithDebInfo\modkit_tests.exe
 
       - name: Package
         shell: pwsh
@@ -108,7 +134,7 @@ jobs:
           name: risen-spass
           path: dist/*.zip
 
-      # Nightly: two flat zips, replaced on every run
+      # Nightly: two flat zips
       #   risen-spass.zip                       sentry.dll, mods\modmanager\*, mods\quickloot\*
       #   risen-spass-tools-windows-x64.zip     risen-pack2mod.exe, risen-modkit.exe
       - name: Package the nightly
@@ -127,18 +153,36 @@ jobs:
           Copy-Item "$bin\risen-pack2mod.exe", 'build-ninja\src\modkit\RelWithDebInfo\risen-modkit.exe' $tools
           Compress-Archive -Path "$tools\*" -DestinationPath "$out\risen-spass-tools-windows-x64.zip" -Force
           Get-ChildItem $out | Format-Table Name, Length
-
-      - name: Publish the nightly release
+      - name: Upload the nightly zips
         if: needs.gate.outputs.release == 'true'
-        shell: pwsh
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly
+          path: nightly/*.zip
+          retention-days: 3
+
+  # Publishes only when the build, the unit tests and the Lua checks all passed. The release is recreated so the
+  # "nightly" tag moves to this commit.
+  release:
+    needs: [gate, lua, windows]
+    if: needs.gate.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: nightly
+          path: nightly
+      - name: Publish the nightly release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          # Recreate the release so the "nightly" tag moves to this commit
-          gh release delete nightly --yes --cleanup-tag 2>$null
-          $global:LASTEXITCODE = 0
-          $notes = "Automated build of $env:GITHUB_SHA ($(Get-Date -AsUTC -Format 'yyyy-MM-dd HH:mm') UTC).`n`n" +
-                   "- **risen-spass.zip**: sentry.dll + mods/modmanager + mods/quickloot (first rename the game's <Risen>\bin\sentry.dll to sentry_orig.dll, then copy sentry.dll to <Risen>\bin and the mods to <Risen>\bin\spass\mods)`n" +
-                   "- **risen-spass-tools-windows-x64.zip**: risen-pack2mod.exe, risen-modkit.exe"
-          gh release create nightly nightly\risen-spass.zip nightly\risen-spass-tools-windows-x64.zip `
-              --target $env:GITHUB_SHA --prerelease --title "Nightly ($($env:GITHUB_SHA.Substring(0, 7)))" --notes $notes
+          gh release delete nightly --yes --cleanup-tag 2>/dev/null || true
+          notes="Automated build of ${GITHUB_SHA} ($(date -u '+%Y-%m-%d %H:%M') UTC).
+
+          - **risen-spass.zip**: sentry.dll + mods/modmanager + mods/quickloot (first rename the game's <Risen>\\bin\\sentry.dll to sentry_orig.dll, then copy sentry.dll to <Risen>\\bin and the mods to <Risen>\\bin\\spass\\mods)
+          - **risen-spass-tools-windows-x64.zip**: risen-pack2mod.exe, risen-modkit.exe"
+          gh release create nightly nightly/risen-spass.zip nightly/risen-spass-tools-windows-x64.zip \
+              --target "$GITHUB_SHA" --prerelease --title "Nightly (${GITHUB_SHA::7})" --notes "$notes"

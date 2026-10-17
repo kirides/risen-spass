@@ -32,6 +32,10 @@ C++20, MSVC, vcpkg manifest (`vcpkg.json`: spdlog, minhook, sol2, tomlplusplus, 
 `CMakeLists.txt`. The editor's clang diagnostics ("file not found", "undeclared identifier sol") are noise: only the MSBuild
 result counts. If you replace a header's content with a file copy, `touch` it: a preserved old mtime makes MSBuild skip
 dependent files and the `Symbols` struct layout then differs between translation units (silent breakage).
+Build speed: each library has a precompiled header (`target_precompile_headers`: sol2, spdlog, toml++, nlohmann/json, imgui,
+std; `-DSPASS_PCH=OFF` to check that a file includes what it uses), so every file sees those headers first. Keep
+`<windows.h>` out of the PCH (its macros such as `near` break unrelated files). `WIN32_LEAN_AND_MEAN`/`NOMINMAX` are global,
+debug info is `/Z7`, and the Visual Studio generator gets `/MP`. Vcpkg's port versions are pinned by `builtin-baseline` in `vcpkg.json`.
 
 ## Unit tests (no game needed)
 

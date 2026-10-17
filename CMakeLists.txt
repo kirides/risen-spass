@@ -30,6 +30,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+if(WIN32)
+    # every <windows.h> in the project (and in the headers it includes) is the trimmed one, without min/max macros
+    add_compile_definitions(WIN32_LEAN_AND_MEAN NOMINMAX)
+endif()
+
+# Build speed. MSBuild compiles the files of one project one after another unless cl.exe gets /MP (Ninja runs one
+# cl.exe per file anyway).
+if(MSVC AND CMAKE_GENERATOR MATCHES "Visual Studio")
+    add_compile_options(/MP)
+endif()
+# Debug info goes into each object file (/Z7) instead of one shared PDB per target (/Zi): with /Zi every
+# parallel cl.exe waits for mspdbsrv to write that PDB. The linker still writes the .pdb next to the binary (/DEBUG).
+set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
+# Precompiled headers: sol2 (through the bindings' headers), spdlog/fmt, nlohmann/json (modkit) and the
+# standard library are most of the compile time of every file.
+option(SPASS_PCH "Precompile the common headers of each library (faster builds)" ON)
 
 # ---------------------------------------------------------------------------------------------
 # Dependencies (vcpkg manifest: vcpkg.json)
@@ -133,13 +149,19 @@ add_library(spass_core STATIC
 target_include_directories(spass_core PUBLIC src)
 target_compile_features(spass_core PUBLIC cxx_std_20)
 target_compile_definitions(spass_core PUBLIC
-    WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+    UNICODE _UNICODE
     SOL_LUAJIT=1 SOL_ALL_SAFETIES_ON=1 SOL_EXCEPTIONS_SAFE_PROPAGATION=0
     SPASS_VERSION="${PROJECT_VERSION}")
 target_link_libraries(spass_core PUBLIC
     spdlog::spdlog minhook::minhook sol2::sol2 tomlplusplus::tomlplusplus luajit::luajit)
 if(MSVC)
     target_compile_options(spass_core PUBLIC /W4 /permissive- /utf-8 /Zc:__cplusplus /EHsc /FS)
+endif()
+if(SPASS_PCH)
+    target_precompile_headers(spass_core PRIVATE
+        <sol/sol.hpp> <spdlog/spdlog.h> <toml++/toml.hpp>
+        <algorithm> <atomic> <cstdint> <cstring> <filesystem> <fstream> <functional> <map> <mutex> <optional> <set>
+        <string> <string_view> <tuple> <unordered_map> <vector>)
 endif()
 endif()
 
@@ -191,10 +213,16 @@ add_library(pack2mod_core STATIC
 )
 target_include_directories(pack2mod_core PUBLIC src)
 target_compile_features(pack2mod_core PUBLIC cxx_std_20)
-target_compile_definitions(pack2mod_core PUBLIC WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING P2M_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(pack2mod_core PUBLIC UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _SILENCE_CXX20_U8PATH_DEPRECATION_WARNING P2M_VERSION="${PROJECT_VERSION}")
 target_link_libraries(pack2mod_core PUBLIC ZLIB::ZLIB)
 if(MSVC)
     target_compile_options(pack2mod_core PUBLIC /W4 /permissive- /utf-8 /Zc:__cplusplus /EHsc /FS)
+endif()
+if(SPASS_PCH)
+    target_precompile_headers(pack2mod_core PRIVATE
+        <algorithm> <cstdint> <filesystem> <map> <optional> <set> <string> <unordered_map> <vector>)
+    # the generated file with the embedded Lua is plain C arrays
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/pack2mod_embedded.cpp" PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 endif()
 if(SPASS_BUILD_LAYER)
     add_executable(risen-pack2mod src/pack2mod/main.cpp)

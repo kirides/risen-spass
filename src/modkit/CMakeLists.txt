@@ -67,6 +67,12 @@ if(MSVC)
 else()
     target_compile_options(modkit_core PUBLIC -Wall -Wextra)
 endif()
+if(SPASS_PCH)
+    # core/project.h (included almost everywhere) brings nlohmann/json
+    target_precompile_headers(modkit_core PRIVATE
+        <nlohmann/json.hpp> <algorithm> <array> <cstdint> <filesystem> <map> <optional> <set> <string> <vector>)
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp" PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+endif()
 
 add_executable(risen-modkit
     app/main.cpp
@@ -102,6 +108,10 @@ add_executable(risen-modkit
 target_include_directories(risen-modkit PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" ${STB_INCLUDE_DIRS} ${MINIAUDIO_INCLUDE_DIRS})
 target_link_libraries(risen-modkit PRIVATE
     modkit_core glfw glad::glad glm::glm imgui::imgui unofficial::imgui-node-editor::imgui-node-editor imguizmo::imguizmo nfd::nfd OpenGL::GL)
+if(SPASS_PCH)
+    target_precompile_headers(risen-modkit PRIVATE
+        <nlohmann/json.hpp> <imgui.h> <algorithm> <array> <cstdint> <filesystem> <map> <optional> <set> <string> <vector>)
+endif()
 if(NOT WIN32)
     # miniaudio loads the audio backends at run time (ALSA, PulseAudio, Core Audio)
     find_package(Threads REQUIRED)
