@@ -696,6 +696,260 @@
         "nodes": [],
         "links": []
       }
+    },
+    {
+      "uid": "208979a3e7b0d70f40d15ad692ce523b",
+      "name": "Q_MK_Wolves",
+      "title": {
+        "English": "Dire Wolves",
+        "German": "Schreckenswölfe"
+      },
+      "type": "Kill",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "58b840572ba0699e8fb6de175f58782c",
+            "type": "start",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "trigger": "quest",
+              "quest": "Q_MK_Ore",
+              "status": "Success"
+            }
+          },
+          {
+            "uid": "99857d11d924997c8fd61fa18f70a903",
+            "type": "log",
+            "pos": [
+              300.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "Hob asks me to kill two dire wolves.",
+                "German": "Hob bittet mich, zwei Schreckenswölfe zu töten."
+              }
+            }
+          },
+          {
+            "uid": "c62fabdac4f9d967371dc2b0d7a96fcd",
+            "type": "objective",
+            "pos": [
+              600.0,
+              0.0
+            ],
+            "data": {
+              "kind": "kill",
+              "target": "MK_Dire_Wolf",
+              "count": 2,
+              "text": {
+                "English": "Kill two dire wolves.",
+                "German": "Töte zwei Schreckenswölfe."
+              }
+            }
+          },
+          {
+            "uid": "9dd74be49bdcadde809557d4bd812c3f",
+            "type": "reward",
+            "pos": [
+              900.0,
+              0.0
+            ],
+            "data": {
+              "xp": 150,
+              "gold": 50,
+              "items": [
+                [
+                  "MK_Strong_Potion",
+                  1
+                ]
+              ]
+            }
+          },
+          {
+            "uid": "3d96948aa6fb855f4d948f57fb8679ce",
+            "type": "outcome",
+            "pos": [
+              1200.0,
+              0.0
+            ],
+            "data": {
+              "result": "success",
+              "text": {
+                "English": "The wolves are dead.",
+                "German": "Die Wölfe sind tot."
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "1d54e18402a215ce24c0fb4f6f2c7bb6",
+            "from": [
+              "58b840572ba0699e8fb6de175f58782c",
+              "next"
+            ],
+            "to": [
+              "99857d11d924997c8fd61fa18f70a903",
+              "in"
+            ]
+          },
+          {
+            "uid": "359e7e6480e9623ec375fa777d0f8386",
+            "from": [
+              "99857d11d924997c8fd61fa18f70a903",
+              "next"
+            ],
+            "to": [
+              "c62fabdac4f9d967371dc2b0d7a96fcd",
+              "in"
+            ]
+          },
+          {
+            "uid": "df852c1f3185ce796c2e9b19cff31877",
+            "from": [
+              "c62fabdac4f9d967371dc2b0d7a96fcd",
+              "next"
+            ],
+            "to": [
+              "9dd74be49bdcadde809557d4bd812c3f",
+              "in"
+            ]
+          },
+          {
+            "uid": "40528f130d13cfaafadf66bd38dcebca",
+            "from": [
+              "9dd74be49bdcadde809557d4bd812c3f",
+              "next"
+            ],
+            "to": [
+              "3d96948aa6fb855f4d948f57fb8679ce",
+              "in"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "39e3583bb0a4047007a712c698433bf0",
+      "name": "Q_MK_Potions",
+      "title": {
+        "English": "Three Draughts",
+        "German": "Drei Tränke"
+      },
+      "type": "HasItems",
+      "silent": true,
+      "graph": {
+        "nodes": [
+          {
+            "uid": "4f7dfdc5e196a4448f9d27f08d830ec5",
+            "type": "start",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "trigger": "game_start"
+            }
+          },
+          {
+            "uid": "da75d98050cf5b5c9e2f460381c0b20b",
+            "type": "objective",
+            "pos": [
+              300.0,
+              0.0
+            ],
+            "data": {
+              "kind": "items",
+              "item": "MK_Strong_Potion",
+              "count": 3,
+              "text": {
+                "English": "Collect three strong healing draughts.",
+                "German": "Sammle drei starke Heiltränke."
+              }
+            }
+          },
+          {
+            "uid": "21c7d91692cacfc552ff7e672ebe7e0a",
+            "type": "reward",
+            "pos": [
+              600.0,
+              0.0
+            ],
+            "data": {
+              "xp": 0,
+              "gold": 0,
+              "items": [],
+              "var": "MK_Potions_Done",
+              "var_value": 1
+            }
+          },
+          {
+            "uid": "5cc417dd685843c8d59fad742eca18dc",
+            "type": "outcome",
+            "pos": [
+              900.0,
+              0.0
+            ],
+            "data": {
+              "result": "success",
+              "text": {
+                "English": "I have three of them.",
+                "German": "Ich habe drei davon."
+              }
+            }
+          },
+          {
+            "uid": "90d81933174ca04f1fa3cf8ec5039ad7",
+            "type": "comment",
+            "pos": [
+              300.0,
+              200.0
+            ],
+            "data": {
+              "text": "Started with every new game; done while the player carries three potions."
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "7c72ce7f2342ce37f09042d1c90b2143",
+            "from": [
+              "4f7dfdc5e196a4448f9d27f08d830ec5",
+              "next"
+            ],
+            "to": [
+              "da75d98050cf5b5c9e2f460381c0b20b",
+              "in"
+            ]
+          },
+          {
+            "uid": "5e7f42eca17a02f5f6f3e75ab8509a3f",
+            "from": [
+              "da75d98050cf5b5c9e2f460381c0b20b",
+              "next"
+            ],
+            "to": [
+              "21c7d91692cacfc552ff7e672ebe7e0a",
+              "in"
+            ]
+          },
+          {
+            "uid": "7d36f7565dc7aef8c49008d556f59108",
+            "from": [
+              "21c7d91692cacfc552ff7e672ebe7e0a",
+              "next"
+            ],
+            "to": [
+              "5cc417dd685843c8d59fad742eca18dc",
+              "in"
+            ]
+          }
+        ]
+      }
     }
   ],
   "world": {

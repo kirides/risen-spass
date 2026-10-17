@@ -8,6 +8,7 @@
 #include "common/template_id.h"
 #include "core/catalog.h"
 #include "core/dialog.h"
+#include "core/quest.h"
 
 namespace mk {
 
@@ -316,6 +317,24 @@ void check_quests(Ctx& c) {
         const auto& types = quest_types();
         if (std::find(types.begin(), types.end(), q.type) == types.end()) c.add(Severity::Error, A, q.uid, subj, "unknown quest type '" + q.type + "'");
         if (q.xp && *q.xp < 0) c.add(Severity::Error, A, q.uid, subj, "the experience must not be negative");
+        std::vector<DialogIssue> issues;
+        const json flow = compile_quest(c.p, q, issues);
+        for (auto& i : issues) c.add(i.error ? Severity::Error : Severity::Warning, A, q.uid, subj + (i.node.empty() ? "" : " (node)"), i.message);
+        if (flow.is_object()) {
+            const auto infos = project_info_names(c.p);
+            for (auto& st : flow["steps"]) {
+                if (st.value("objective", std::string()) == "talk" && std::find(infos.begin(), infos.end(), st.value("info", std::string())) == infos.end())
+                    c.add(Severity::Warning, A, q.uid, subj, "the talk objective names '" + st.value("info", std::string()) + "', no dialogue option of the project");
+                if (st.contains("item") && st["item"].is_string() && !item_known(c, st["item"].get<std::string>()))
+                    c.add(Severity::Error, A, q.uid, subj, "the objective names '" + st["item"].get<std::string>() + "', no item of the game or the project");
+                if (st.contains("items"))
+                    for (auto& it : st["items"])
+                        if (!item_known(c, it[0].get<std::string>())) c.add(Severity::Error, A, q.uid, subj, "the reward names '" + it[0].get<std::string>() + "', no item of the game or the project");
+            }
+            const json& t = flow["trigger"];
+            if (t.value("kind", std::string()) == "item" && !item_known(c, t.value("item", std::string())))
+                c.add(Severity::Error, A, q.uid, subj, "the trigger names '" + t.value("item", std::string()) + "', no item of the game or the project");
+        }
     }
 }
 

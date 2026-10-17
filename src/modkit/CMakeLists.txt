@@ -39,6 +39,7 @@ add_library(modkit_core STATIC
     core/log.cpp
     core/paths.cpp
     core/project.cpp
+    core/quest.cpp
     core/lua_writer.cpp
     core/settings.cpp
     core/validate.cpp
@@ -69,6 +70,7 @@ add_executable(risen-modkit
     app/panels/dialogs_panel.cpp
     app/panels/items_panel.cpp
     app/panels/problems_panel.cpp
+    app/panels/quests_panel.cpp
     app/panels/recipes_panel.cpp
     app/panels/log_panel.cpp
     app/panels/npcs_panel.cpp
@@ -88,7 +90,8 @@ endif()
 
 if(SPASS_BUILD_TESTS)
     add_executable(modkit_tests "${CMAKE_SOURCE_DIR}/tests/modkit/modkit_tests.cpp")
-    target_link_libraries(modkit_tests PRIVATE modkit_core)
+    # LuaJIT compiles the runtime and the exported data files in the tests (the same LuaJIT the layer runs them with)
+    target_link_libraries(modkit_tests PRIVATE modkit_core luajit::luajit)
     target_compile_definitions(modkit_tests PRIVATE MODKIT_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
     add_test(NAME modkit_tests COMMAND modkit_tests)
 endif()

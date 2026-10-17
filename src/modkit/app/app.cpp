@@ -73,6 +73,7 @@ App::App(AppOptions opts) : options(std::move(opts)) {
     panels_.push_back(make_recipes_panel());
     panels_.push_back(make_npcs_panel());
     panels_.push_back(make_dialogs_panel());
+    panels_.push_back(make_quests_panel());
     panels_.push_back(make_problems_panel());
     panels_.push_back(make_log_panel());
     panels_.push_back(make_settings_panel());

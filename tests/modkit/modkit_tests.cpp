@@ -21,7 +21,10 @@
 #include "core/log.h"
 #include "core/paths.h"
 #include "core/project.h"
+#include "core/quest.h"
 #include "core/validate.h"
+
+#include <luajit/lua.hpp>
 
 namespace fs = std::filesystem;
 

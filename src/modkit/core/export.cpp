@@ -4,6 +4,7 @@
 #include <set>
 
 #include "core/dialog.h"
+#include "core/quest.h"
 #include "core/log.h"
 #include "core/lua_writer.h"
 #include "core/paths.h"
@@ -280,6 +281,9 @@ json quests_data(const Project& p) {
         e["type"] = q.type;
         put(e, "xp", q.xp);
         if (q.silent) e["silent"] = true;
+        std::vector<DialogIssue> issues;
+        json flow = compile_quest(p, q, issues);
+        if (!flow.is_null()) e["flow"] = flow;
         list.push_back(e);
     }
     return list;

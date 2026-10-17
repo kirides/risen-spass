@@ -123,3 +123,67 @@ TEST(dialog_problems) {
     CHECK(dialog_command("Give") && dialog_command("Give")->params.size() == 4);
     CHECK(dialog_commands().size() > 40);
 }
+
+TEST(lua_files_compile) {
+    // the runtime and every generated data file are valid Lua for LuaJIT (the layer's interpreter); data files return a table
+    const Project p = load_showcase();
+    auto files = render_mod(p);
+    size_t n = 0;
+    for (auto& [rel, content] : files) {
+        if (rel.size() < 4 || rel.compare(rel.size() - 4, 4, ".lua") != 0) continue;
+        lua_State* L = luaL_newstate();
+        const int rc = luaL_loadbuffer(L, content.data(), content.size(), rel.c_str());
+        if (rc != 0) {
+            ++g_failures;
+            std::printf("  %s does not compile: %s\n", rel.c_str(), lua_tostring(L, -1));
+        } else if (rel.rfind("data/", 0) == 0) {
+            // plain data: runs without any API and returns a table
+            const int run = lua_pcall(L, 0, 1, 0);
+            if (run != 0 || !lua_istable(L, -1)) {
+                ++g_failures;
+                std::printf("  %s does not return a table: %s\n", rel.c_str(), run ? lua_tostring(L, -1) : "");
+            }
+        }
+        ++g_checks;
+        ++n;
+        lua_close(L);
+    }
+    CHECK(n >= 6);  // main, runtime and the four data files
+}
+
+TEST(quest_compile) {
+    const Project p = load_showcase();
+    const QuestDef* w = p.quest("Q_MK_Wolves");
+    CHECK(w != nullptr);
+    if (!w) return;
+    std::vector<DialogIssue> issues;
+    const json f = compile_quest(p, *w, issues);
+    CHECK(issues.empty());
+    CHECK_EQ(f["trigger"]["kind"].get<std::string>(), std::string("quest"));
+    CHECK_EQ(f["steps"].size(), size_t(4));
+    CHECK_EQ(f["steps"][1]["objective"].get<std::string>(), std::string("kill"));
+    CHECK_EQ(f["steps"][2]["gold"].get<int>(), 50);
+    CHECK_EQ(f["steps"][3]["result"].get<std::string>(), std::string("success"));
+    // a quest without a Start has no flow
+    QuestDef plain = *p.quest("Q_MK_Ore");
+    CHECK(compile_quest(p, plain, issues).is_null());
+    // problems: an objective without an item, a follow-up that does not exist, a circle
+    QuestDef bad = *w;
+    for (auto& n : bad.graph.nodes) {
+        if (n.type == "objective") {
+            n.data["kind"] = "items";
+            n.data["item"] = "";
+        }
+        if (n.type == "outcome") n.data["next_quest"] = "Q_Nope";
+    }
+    issues.clear();
+    compile_quest(p, bad, issues);
+    auto has = [&](const std::string& part) {
+        return std::any_of(issues.begin(), issues.end(), [&](const DialogIssue& i) { return i.message.find(part) != std::string::npos; });
+    };
+    CHECK(has("needs an item"));
+    CHECK(has("'Q_Nope' is not in the project"));
+    // the exported quests carry the flow
+    const json q = quests_data(p);
+    CHECK(q[1].contains("flow") && !q[0].contains("flow"));
+}

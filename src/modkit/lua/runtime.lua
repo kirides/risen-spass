@@ -8,13 +8,15 @@
 --             the items marked "equip" are equipped when the NPC is made
 --   quests    risen.quest.define, and dialogs: risen.dialog.create (parents first), both on load.before (the engine restores their saved state only
 --             into objects that exist) and on every session.start (a new game removes runtime quests); the quest actions of the dialogue lines
---             are scripts (risen.script.define) defined once at load time
+--             are scripts (risen.script.define) defined once at load time. A quest with a flow is started by a dialogue or a trigger (an item, a kill,
+--             a game variable, another quest, the start of a game) and walks its steps from the engine's events
 --
 -- Events for other mods and tests:
 --   "modkit.applied"   (mod id, when, report) after every application of the balance data (when = "first tick", "session.start (new)", ...)
 --   "modkit.npc_ready" (mod id, npc name, reason) whenever a placed NPC is in the world (reason as risen.npc.persistent's on_ready)
 --   "modkit.quest_action" (mod id, quest, action) after a dialogue line started / succeeded / failed / cancelled a quest
-local M = { VERSION = 3 }
+--   "modkit.quest_started" (mod id, quest), "modkit.objective" (mod id, quest, step), "modkit.quest_done" (mod id, quest, result) for quest flows
+local M = { VERSION = 4 }
 
 local unpack = table.unpack or unpack
 local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
@@ -70,19 +72,182 @@ local function npc_spec(id, n, define)
     return s
 end
 
+-- ---- quest flows: a quest's steps (objectives wait for events; log entries, rewards and the outcome happen at once) ------------------------
+-- The state of a running flow is in risen.save ("modkit.quest.<name>" = { step, entered, n, talked, done, result }): part of every savegame,
+-- rolled back by a load, empty in a new game. A step is advanced before its effects run, so a reward is never paid twice.
+local MOD_ID = "?"
+local flows = {}   -- quest name -> { trigger = {...}, steps = {...} }
+
+local function qkey(q) return "modkit.quest." .. q end
+local function qstate(q) return risen.save.get(qkey(q)) end
+local function set_qstate(q, s) risen.save.set(qkey(q), s) end
+local function status_is(q, status)
+    local quest = risen.quest.get(q)
+    return quest ~= nil and tostring(quest:get_property("Status")):find(status, 1, true) ~= nil
+end
+
+local function give_reward(st)
+    local p = risen.entity.player()
+    if not p then return end
+    if st.xp then risen.script.call("GiveXP", p, p, st.xp) end   -- the game's own script (what a kill pays through)
+    if st.gold then risen.item.give(p, "It_Gold", st.gold) end
+    for _, it in ipairs(st.items or {}) do risen.item.give(p, it[1], it[2]) end
+    if st.var then risen.gamevar.set(st.var, st.var_value or 1) end
+end
+
+local function objective_done(st, s)
+    if st.objective == "items" then
+        local p = risen.entity.player()
+        return p ~= nil and risen.item.count(p, st.item) >= st.count
+    elseif st.objective == "kill" then
+        return (s.n or 0) >= st.count
+    elseif st.objective == "talk" then
+        return s.talked == true
+    elseif st.objective == "var" then
+        local v = risen.gamevar.get(st.name)
+        return v ~= nil and v >= st.value
+    elseif st.objective == "quest" then
+        return status_is(st.quest, st.status)
+    end
+    return false
+end
+
+local function advance(q)
+    local f, s = flows[q], qstate(q)
+    if not f or not s or s.done then return end
+    while true do
+        local st = f.steps[s.step]
+        if not st then
+            s.done = true
+            set_qstate(q, s)
+            return
+        end
+        if st.kind == "objective" then
+            if not s.entered then
+                s.entered, s.n, s.talked = true, 0, false
+                set_qstate(q, s)
+                if st.log then risen.quest.add_log(q, st.log) end
+            end
+            if not objective_done(st, s) then return end
+            risen.emit("modkit.objective", MOD_ID, q, s.step)
+        end
+        s.step, s.entered = s.step + 1, false
+        if st.kind == "outcome" then
+            s.done, s.result = true, st.result
+        end
+        set_qstate(q, s)   -- first the state, then the effects
+        if st.kind == "log" then
+            risen.quest.add_log(q, st.text)
+        elseif st.kind == "reward" then
+            give_reward(st)
+        elseif st.kind == "outcome" then
+            if st.log then risen.quest.add_log(q, st.log) end
+            if st.result == "success" then risen.quest.succeed(q)
+            elseif st.result == "fail" then risen.quest.fail(q)
+            else risen.quest.close(q) end
+            risen.emit("modkit.quest_done", MOD_ID, q, st.result)
+            if st.next_quest then M.start_quest(st.next_quest) end
+            return
+        end
+    end
+end
+
+-- starts a quest of the mod (once per savegame when it has a flow)
+function M.start_quest(q)
+    if flows[q] then
+        if qstate(q) then return end
+        set_qstate(q, { step = 1 })
+    end
+    risen.quest.open(q)
+    risen.quest.run(q)
+    risen.emit("modkit.quest_started", MOD_ID, q)
+    advance(q)
+end
+
+local function each_running(fn)
+    for q, f in pairs(flows) do
+        local s = qstate(q)
+        if s and not s.done then
+            local st = f.steps[s.step]
+            if st then fn(q, f, s, st) end
+        end
+    end
+end
+
+local function triggers(kind, match)
+    for q, f in pairs(flows) do
+        if f.trigger and f.trigger.kind == kind and not qstate(q) and match(f.trigger) then M.start_quest(q) end
+    end
+end
+
+local function install_flow_events()
+    risen.on("inventory.changed", function(owner, template, delta)
+        if not (owner and owner:is_player()) then return end
+        if delta > 0 then triggers("item", function(t) return t.item == template end) end
+        each_running(function(q, _, _, st)
+            if st.objective == "items" and st.item == template then advance(q) end
+        end)
+    end)
+    risen.on("entity.died", function(entity)
+        local name = entity and entity:name()
+        local tpl = entity and entity:template()
+        local tname = tpl and tpl:name()
+        local function hit(target) return target == name or target == tname end
+        triggers("kill", function(t) return hit(t.target) end)
+        each_running(function(q, _, s, st)
+            if st.objective == "kill" and s.entered and hit(st.target) then
+                s.n = (s.n or 0) + 1
+                set_qstate(q, s)
+                advance(q)
+            end
+        end)
+    end)
+    risen.on("info.finished", function(info)
+        each_running(function(q, _, s, st)
+            if st.objective == "talk" and s.entered and st.info == info then
+                s.talked = true
+                set_qstate(q, s)
+                advance(q)
+            end
+        end)
+    end)
+    risen.on("gamevar.changed", function(name, value)
+        triggers("var", function(t) return t.name == name and value ~= nil and value >= (t.value or 1) end)
+        each_running(function(q, _, _, st)
+            if st.objective == "var" and st.name == name then advance(q) end
+        end)
+    end)
+    risen.on("quest.status_changed", function(quest, status)
+        triggers("quest", function(t) return t.quest == quest and tostring(status):find(t.status or "Success", 1, true) ~= nil end)
+        each_running(function(q, _, _, st)
+            if st.objective == "quest" and st.quest == quest then advance(q) end
+        end)
+    end)
+    risen.on("world.ready", function(mode)
+        if mode == "new" then triggers("game_start", function() return true end) end
+        each_running(function(q) advance(q) end)   -- what changed while the world was loading
+    end)
+end
+
 -- what a Quest node of a dialogue does
 function M.quest_action(quest, action)
     if action == "start" then
-        risen.quest.open(quest)
-        risen.quest.run(quest)
-    elseif action == "succeed" then
-        risen.quest.succeed(quest)
-    elseif action == "fail" then
-        risen.quest.fail(quest)
-    elseif action == "cancel" then
-        risen.quest.close(quest)
+        M.start_quest(quest)
+    else
+        local s = flows[quest] and qstate(quest)
+        if s and not s.done then
+            s.done, s.result = true, action
+            set_qstate(quest, s)
+        end
+        if action == "succeed" then
+            risen.quest.succeed(quest)
+        elseif action == "fail" then
+            risen.quest.fail(quest)
+        elseif action == "cancel" then
+            risen.quest.close(quest)
+        end
     end
-    risen.emit("modkit.quest_action", mod and mod.id or "?", quest, action)
+    risen.emit("modkit.quest_action", MOD_ID, quest, action)
 end
 
 local function define_content(id, data)
@@ -101,6 +266,15 @@ end
 
 function M.install(data)
     local id = mod and mod.id or "?"
+    MOD_ID = id
+    local any_flow = false
+    for _, q in ipairs(data.quests or {}) do
+        if q.flow then
+            flows[q.name] = q.flow
+            any_flow = true
+        end
+    end
+    if any_flow then install_flow_events() end
     if nonempty(data.balance) then
         risen.balance.install(data.balance, {
             on_applied = function(when, report)

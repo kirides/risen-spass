@@ -36,15 +36,36 @@ T.plan {
     "the turn-in is offered with the ore",
     "the turn-in takes the ore and succeeds the quest",
     "the parent option opens its sub-options",
+    "saved",
+    "a quest's success starts the follow-up quest",
+    "the follow-up's log entries",
+    "the first kill does not finish it",
+    "the second kill pays the reward and succeeds",
+    "a load rolls the quest back to one kill",
+    "after the load the kill pays once more",
+    "the game-start quest runs",
+    "carrying three potions finishes it and sets the variable",
 }
 
 local npc_ready = {}
+
 risen.on("modkit.npc_ready", function(id, name, reason) if id == "modkit_showcase" then npc_ready[name] = reason end end)
 
 local applied = {}   -- when -> report
 risen.on("modkit.applied", function(id, when, report)
     if id == "modkit_showcase" then applied[when] = report end
 end)
+
+local function save_game()
+    T.wait_until(function() return risen.world.is_save_allowed() end, 30, "saving allowed")
+    local saved = false
+    local h = risen.on("save.after", function(_, ok) saved = ok end)
+    risen.world.quick_save()
+    T.wait_until(function() return saved end, 60, "savegame written")
+    risen.off(h)
+    T.sleep(200)   -- the engine keeps writing after save.after
+    return saved
+end
 
 local function prop(name, set, key)   -- get_property returns the value as text
     local t = risen.template.get(name)
@@ -173,6 +194,51 @@ T.run(function()
         T.sleep(60)
         T.eq("the parent option opens its sub-options", offered(), "MK_Hob_Never,MK_Hob_Pirates")
         choose("MK_Hob_Never")
+
+        -- quest flows: Q_MK_Wolves starts when Q_MK_Ore succeeded (above)
+        T.wait_until(function() return risen.quest.is_running("Q_MK_Wolves") end, 10, "Q_MK_Wolves running")
+        T.expect("a quest's success starts the follow-up quest", risen.quest.is_running("Q_MK_Wolves"))
+        local wq = risen.quest.get("Q_MK_Wolves")
+        T.expect("the follow-up's log entries", wq ~= nil and wq:log_count() >= 2, tostring(wq and wq:log_count()))
+        local function kill_wolf()
+            local p = assert(risen.entity.player())
+            local x, y, z = p:position()
+            local w = assert(risen.npc.spawn("MK_Dire_Wolf", x + 600, y + 20, z + 600, { name = "MK_Test_Wolf_" .. tostring(math.floor(T.elapsed() * 1000)) }))
+            T.sleep(5)
+            risen.script.call("Kill", p, w, 0)   -- the game's own death (Entity:kill() removes without one); a script cannot make the player fight
+            T.sleep(30)
+        end
+        local function wallet()
+            local p = assert(risen.entity.player())
+            local st = risen.npc.stats(p) or {}
+            return risen.item.money(p), risen.item.count(p, "MK_Strong_Potion"), st.experience or 0
+        end
+        kill_wolf()
+        T.expect("the first kill does not finish it", risen.quest.is_running("Q_MK_Wolves"))
+        local gold0, pot0, xp0 = wallet()
+        T.expect("saved", save_game())
+        kill_wolf()
+        local gold1, pot1, xp1 = wallet()
+        T.eq("the second kill pays the reward and succeeds", { tostring(wq:get_property("Status")):find("Success") ~= nil, gold1 - gold0, pot1 - pot0, xp1 - xp0 >= 150 },
+             { true, 50, 1, true })
+        risen.world.quick_load()
+        T.wait_event("session.start", 120, function(m) return m == "load" end)
+        T.sleep(120)
+        wq = risen.quest.get("Q_MK_Wolves")
+        local g2 = wallet()
+        T.eq("a load rolls the quest back to one kill", { risen.quest.is_running("Q_MK_Wolves"), g2 }, { true, gold0 })
+        kill_wolf()
+        local g3, p3 = wallet()
+        T.eq("after the load the kill pays once more", { tostring(wq:get_property("Status")):find("Success") ~= nil, g3 - gold0, p3 - pot0 }, { true, 50, 1 })
+
+        -- Q_MK_Potions started with the new game: done while the player carries three
+        T.expect("the game-start quest runs", risen.quest.is_running("Q_MK_Potions"))
+        local p = assert(risen.entity.player())
+        risen.item.give(p, "MK_Strong_Potion", 3 - risen.item.count(p, "MK_Strong_Potion"))
+        T.sleep(30)
+        local pq = risen.quest.get("Q_MK_Potions")
+        T.eq("carrying three potions finishes it and sets the variable", { tostring(pq and pq:get_property("Status")):find("Success") ~= nil, risen.gamevar.get("MK_Potions_Done") },
+             { true, 1 })
     end
     T.finish()
 end, "modkit")

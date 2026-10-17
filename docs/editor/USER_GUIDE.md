@@ -4,7 +4,7 @@
 world placements) in a desktop application and export an ordinary mod folder that the layer loads. The plan and the state of the stages are in
 [REQUIREMENTS.md](REQUIREMENTS.md); this guide describes what works now.
 
-Contents: [Build and start](#build-and-start) · [First start](#first-start) · [The window](#the-window) · [Items](#items) · [Recipes](#recipes) · [NPCs and monsters](#npcs-and-monsters) · [Dialogues](#dialogues) · [Export](#export) ·
+Contents: [Build and start](#build-and-start) · [First start](#first-start) · [The window](#the-window) · [Items](#items) · [Recipes](#recipes) · [NPCs and monsters](#npcs-and-monsters) · [Dialogues](#dialogues) · [Quests](#quests) · [Export](#export) ·
 [The exported mod](#the-exported-mod) · [Command line](#command-line) · [Limits](#limits)
 
 ## Build and start
@@ -43,6 +43,7 @@ Panels can be dragged, docked and tabbed; **Window > Reset layout** brings back 
 | **Recipes** | new crafting recipes and changes of shipped ones (below) |
 | **NPCs** | NPC and monster templates, and placed NPCs (below) |
 | **Dialogues** | conversations as node graphs (below) |
+| **Quests** | quests and their flow as node graphs (below) |
 | **Problems** | what is wrong with the project (errors block the export, warnings do not); click a line to jump to the object |
 | **Log** | what the editor did, and problems reading the game data |
 | **Settings** | data directory, export folder, UI scale |
@@ -124,8 +125,25 @@ sub-options gets an End by itself (an open conversation blocks saving). The insp
 problem have a red border and the problems are listed under the properties and in the Problems panel.
 
 The quest conditions and item amounts become conditions the engine checks itself; any, not, values of variables and guilds are one Lua condition
-behind them (`risen.cond`, see `docs/LUA_API.md`). Quests are defined from the Quests list of the project (stage E6 adds the quest editor; until then
-a quest has a name, a title, a type and experience).
+behind them (`risen.cond`, see `docs/LUA_API.md`).
+
+## Quests
+
+A quest has a **name** (its id, the key of its state in savegames), a **title** per language (the quest log shows the first language's; the layer
+takes one title), a **type** (Report, Kill, HasItems, ...), the **experience** the engine pays on success and *silent* (no "quest started"
+notification). Its **flow** is a chain on the canvas:
+
+| Node | What it does |
+|---|---|
+| **Start** | how the quest begins: `dialog` (a dialogue's Quest node with *start*), `game_start` (every new game), `item` (the player gets an item), `kill` (a template or a named NPC dies), `var` (a game variable reaches a value), `quest` (another quest reaches a status: quest chains) |
+| **Objective** | waits until it is done: `items` (the player carries N of an item), `kill` (N deaths of a template or a named NPC, counted from the moment the objective begins), `talk` (a dialogue option finished playing), `var`, `quest`; may add a log entry when it begins |
+| **Log entry** | a line in the quest log |
+| **Reward** | experience (through the game's own GiveXP), gold, items, a game variable |
+| **Outcome** | success, failure or cancelled, a log line, and a follow-up quest to start |
+
+Log entries, rewards and the outcome happen the moment the flow reaches them; objectives hold it until the player did them. The progress is part of
+every savegame (a load rolls it back with the game), a reward is never paid twice, a quest with a flow is started once per savegame. A quest without a
+Start node is started, succeeded and failed by its dialogues alone (their Quest nodes). The inspector shows the exported flow.
 
 ## Export
 
@@ -158,7 +176,7 @@ Start the game: the layer loads the mod like any other (it is listed in the Mods
 The runtime applies the data with the layer's savegame-safe calls (`risen.balance.install`: on the first tick and on every session start) and emits
 the event `modkit.applied` (`mod id, when, report`) after every application, and `modkit.npc_ready` (`mod id, NPC name, reason`) whenever a
 placed NPC is in the world, and `modkit.quest_action` (`mod id, quest, action`) after a dialogue line started, succeeded, failed or
-cancelled a quest, so other mods and tests can react. Quests and dialogue options are made on `load.before` and on every session start (the engine
+cancelled a quest, and `modkit.quest_started` / `modkit.objective` / `modkit.quest_done` for quest flows, so other mods and tests can react. Quests and dialogue options are made on `load.before` and on every session start (the engine
 restores their saved state only into objects that exist).
 
 ## Command line
@@ -172,7 +190,8 @@ risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] 
 
 ## Limits
 
-* Items, recipes, NPCs and dialogues so far; the quest editor and the world view follow (REQUIREMENTS.md section 9).
+* Items, recipes, NPCs, dialogues and quests so far; the world view follows (REQUIREMENTS.md section 9).
+* A quest flow is one chain (no branches inside a quest); branch with dialogues and follow-up quests.
 * A dialogue cannot be played through inside the editor yet (DLG-5); test it in the game.
 * A template's shipped loot is not shown (the editor cannot read it offline yet).
 * Icons are offered from the shipped items' icons; a preview of meshes and icons comes with stage E8.
