@@ -5,8 +5,8 @@
 --   dead / knocked-out    the engine's script AutoLoot (the animation-less loot of the game: only what the loot filter InvFilter_Loot lets through)
 --   chests, cupboards,    the same AutoLoot; a locked chest is opened with the key of the inventory first (Status := Unlocked, what the `Unlock` script does)
 --   sarcophagi
--- Declined (nothing happens, the use key still runs the engine's interaction): anything else (traps, quest sarcophagi, mining, doors, living characters,
--- monster trophies), locks that need a lockpick or whose unlocking runs a script, empty containers, targets too far, a weapon drawn or any other player
+-- Dead bodies are the humans', the washed-up bodies of the beach (PreInteract_Player_Loot_Comment) and monster/animal carcasses (their species' can script puts the trophies in).
+-- Declined (nothing happens, the use key still runs the engine's interaction): anything else (traps, quest sarcophagi, mining, doors, living characters), locks that need a lockpick or whose unlocking runs a script, empty containers, targets too far, a weapon drawn or any other player
 -- state than walking around.
 --
 -- Witnesses (`witness_mode`): taking an item or opening a chest/cupboard is theft to the game's NPCs. The animated path calls the engine's perception

@@ -15,7 +15,7 @@ local PLAN_DEFAULT = {
     "ground item: handled as item", "ground item: one stack more", "ground item: events (picked_up, added pickup, destroyed) exactly once", "ground item: no interaction state", "ground item: same events as the engine path",
     "engine path baseline: ZS_Interact states ran",
     "dead human: handled as corpse", "dead human: the club moved, fists and joint stayed", "dead human: same items as the engine's loot window", "dead human: inventory events, one pair per stack",
-    "knocked-out human looted", "living human declined", "witness: a living human nearby does not stop the pick-up (assess mode, no watched area)", "monster corpse declined (trophy)", "door-like object declined", "empty chest declined",
+    "knocked-out human looted", "living human declined", "witness: a living human nearby does not stop the pick-up (assess mode, no watched area)", "monster corpse (wolf) looted", "monster corpse: trophy taken, fist stayed", "monster corpse: same items as the engine's loot window", "monster corpses of other species looted", "washed-up body (Beach_Seaman_Dead) looted", "washed-up body: same items as the engine's loot window", "door-like object declined", "empty chest declined",
     "plain chest looted", "plain chest: items moved and chest empty", "plain chest: same items as the engine path", "chest is not left in an interaction",
     "locked chest without key declined", "locked chest stays locked", "locked chest with key looted", "key chest unlocked and key kept", "quest-script lock declined while locked", "quest-script lock script not run", "chest with unlocked quest-script lock looted",
     "cupboard looted", "sarcophagus looted", "trap sarcophagus declined", "trap sarcophagus: nothing spawned by the quick path", "trap sarcophagus: engine path spawns the skeleton exactly once",
@@ -236,16 +236,57 @@ local function default_phase()
         r.handled and r.assessed == true and r.reacted == false and risen.item.count(p, "It_Apple") == pc.It_Apple + 1, tostring(r.reason) .. " assessed=" .. tostring(r.assessed) .. " reacted=" .. tostring(r.reacted))
     live:kill()
     T.sleep(5)
-    local wolf = spawn_at("Wolf", 250)
-    T.sleep(3)
-    risen.script.call("Kill", p, wolf)
-    wolf:set_state("ZS_Dead")   -- the Kill script alone leaves the corpse in its attack state: it keeps biting
-    wolf:set_frozen(true)
-    T.sleep(10)
+    local function carcass(tpl, dist)
+        local m = spawn_at(tpl, dist)
+        T.sleep(3)
+        risen.script.call("Kill", p, m)
+        m:set_state("ZS_Dead")   -- the Kill script alone leaves the corpse in its attack state: it keeps biting
+        m:set_frozen(true)
+        T.sleep(10)
+        return m
+    end
+    local M0 = { "It_Teeth", "It_Fist_Monster", "It_Meat_Raw", "It_Fur_Wolf" }
+    local wolf = carcass("Wolf", 250)
+    pc = counts(p, M0)
     mark = #rec
     r = try(wolf)
     T.sleep(5)
-    check("monster corpse declined (trophy)", not r.handled and count_ev(mark, "^inventory%.%a+%(PC_Hero") == 0, tostring(r.reason) .. "; " .. table.concat(ev_since(mark, "^inventory%."), " | "))
+    pd = counts(p, M0)
+    check("monster corpse (wolf) looted", r.handled and r.kind == "corpse", tostring(r.reason))
+    check("monster corpse: trophy taken, fist stayed", pd.It_Teeth == pc.It_Teeth + 1 and pd.It_Fist_Monster == pc.It_Fist_Monster,
+        ("teeth %d->%d fist %d->%d; %s"):format(pc.It_Teeth, pd.It_Teeth, pc.It_Fist_Monster, pd.It_Fist_Monster, table.concat(ev_since(mark, "^inventory%."), " | ")))
+    local wolf2 = carcass("Wolf", 250)
+    pc = counts(p, M0)
+    engine_interaction(wolf2, true)
+    pd = counts(p, M0)
+    check("monster corpse: same items as the engine's loot window", pd.It_Teeth == pc.It_Teeth + 1 and pd.It_Fist_Monster == pc.It_Fist_Monster,
+        ("teeth %d->%d fist %d->%d"):format(pc.It_Teeth, pd.It_Teeth, pc.It_Fist_Monster, pd.It_Fist_Monster))
+    local others, bad = {}, {}
+    for _, tpl in ipairs { "Boar", "Gnome" } do
+        local m = carcass(tpl, 260)
+        local r2 = try(m)
+        T.sleep(3)
+        others[#others + 1] = tpl .. "=" .. tostring(r2.handled) .. "/" .. tostring(r2.kind) .. "/" .. tostring(r2.reason)
+        if not (r2.handled and r2.kind == "corpse") then bad[#bad + 1] = tpl end
+    end
+    check("monster corpses of other species looted", #bad == 0, table.concat(others, "; "))
+    local W0 = { "It_Apple", "It_Flute", "It_Fish_Raw", "It_Grog", "It_Ring_Gold" }
+    local sea = carcass("Beach_Seaman_Dead", 230)
+    local sea_stacks = table.concat(stack_names(sea), ",")
+    pc = counts(p, W0)
+    r = try(sea)
+    T.sleep(5)
+    pd = counts(p, W0)
+    local gained = 0
+    for _, n in ipairs(W0) do gained = gained + pd[n] - pc[n] end
+    check("washed-up body (Beach_Seaman_Dead) looted", r.handled and r.kind == "corpse" and gained > 0, tostring(r.reason) .. "; stacks " .. sea_stacks .. "; gained " .. gained)
+    local sea2 = carcass("Beach_Seaman_Dead", 230)
+    pc = counts(p, W0)
+    engine_interaction(sea2, true)
+    pd = counts(p, W0)
+    local gained2 = 0
+    for _, n in ipairs(W0) do gained2 = gained2 + pd[n] - pc[n] end
+    check("washed-up body: same items as the engine's loot window", gained2 == gained, "quick " .. gained .. ", window " .. gained2)
     local bed = spawn_at("Object_Interact_Bed", 200)
     r = try(bed)
     check("door-like object declined", not r.handled, tostring(r.reason))

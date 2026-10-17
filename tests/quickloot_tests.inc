@@ -61,6 +61,11 @@ TEST(quickloot_policy_decides_from_the_interaction_scripts) {
         result.quest_item = kind(it("", "PreInteract_Magic_Item", "Interact_Player_TakeItem"))
         result.corpse = kind(it("CanInteract_Player_Loot", "PreInteract_Player_Loot", "Interact_Player_Loot"))
         result.wolf = kind(it("CanInteract_Player_Wolf", "PreInteract_Player_Loot", "Interact_Player_Loot"))
+        result.boar = kind(it("CanInteract_Player_Boar", "PreInteract_Player_Loot", "Interact_Player_Loot"))
+        result.beach = kind(it("CanInteract_Player_Loot", "PreInteract_Player_Loot_Comment", "Interact_Player_Loot"))
+        result.sara = kind(it("CanInteract_Player_Loot_Sara", "PreInteract_Player_Loot", "Interact_Player_Loot"))
+        result.wolf_post = kind(it("CanInteract_Player_Wolf", "PreInteract_Player_Loot", "Interact_Player_Loot", "Something"))
+        result.wolf_chest = kind(it("CanInteract_Player_Wolf", "PreInteract_Player_Chest", "Interact_Player_Chest"))
         result.chest = kind(it("CanInteract_Player_Chest", "PreInteract_Player_Chest", "Interact_Player_Chest"))
         result.cupboard = kind(it("CanInteract_Player_Cupboard", "PreInteract_Player_Cupboard", "Interact_Player_Cupboard"))
         result.sarcophagus = kind(it("CanInteract_Player_Sarcophagus", "PreInteract_Player_Sarcophagus", "Interact_Player_Sarcophagus"))
@@ -109,7 +114,9 @@ TEST(quickloot_policy_decides_from_the_interaction_scripts) {
     sol::table res = lua["result"];
     const auto get = [&](const char* k) { return res.get<std::string>(k); };
     CHECK(get("item") == "item" && get("corpse") == "corpse" && get("chest") == "container" && get("cupboard") == "container" && get("sarcophagus") == "container");
-    CHECK(get("quest_item") == "-true" && get("wolf") == "-true" && get("titan") == "-true" && get("trap") == "-true" && get("post_script") == "-true" && get("bed") == "-true");
+    CHECK(get("wolf") == "corpse" && get("boar") == "corpse" && get("beach") == "corpse");
+    CHECK(get("sara") == "-true" && get("wolf_post") == "-true" && get("wolf_chest") == "-true");
+    CHECK(get("quest_item") == "-true" && get("titan") == "-true" && get("trap") == "-true" && get("post_script") == "-true" && get("bed") == "-true");
     CHECK(get("choice") == "Interact_Player_Loot" && get("asked") == "CanInteract_Player_Talk,CanInteract_Player_Loot");
     CHECK(get("lock_none") == "none" && get("lock_open") == "open" && get("lock_key") == "key");
     CHECK(get("lock_nokey") == "needs lockpick" && get("lock_notemplate") == "needs lockpick" && get("lock_script") == "needs lockpick");

@@ -52,7 +52,7 @@ shortcuts the ones it knows by script name, [RE.md §31](RE.md) for the evidence
 | Target | Taken when | How | What the animated path does besides |
 |---|---|---|---|
 | ground item | interaction `Interact_Player_TakeItem` (no pre/post script), can script (if any) accepts | `risen.item.pick_up` = `PSInventory::InsertStack`: the same events as the animated one (`entity.destroyed`, `item.picked_up`, `inventory.added` cause `"pickup"`) | take animation, the tutorial hint `takeitem`, the pick-up sparkle (the theft assessment is done by quick loot too) |
-| dead or knocked-out human | `CanInteract_Player_Loot` / `PreInteract_Player_Loot` / `Interact_Player_Loot`, and at least one stack passes the loot filter | the game's script `AutoLoot` (what it uses itself for corpses in water): exactly the stacks the loot window would list (`InvFilter_Loot`), **no** body parts, fists or hidden stacks (`risen.item.loot` takes those), HUD lines by the engine | kneeling and the window; looting bodies is no crime in the game (`AssessPlayerLooting`), so no witness rule |
+| dead or knocked-out human, **monster or animal carcass**, washed-up body of the beach | `CanInteract_Player_Loot` (monsters: the can script of their species, `CanInteract_Player_Wolf`, `_Boar`, `_Gnome`...) / `PreInteract_Player_Loot` (the beach bodies: `PreInteract_Player_Loot_Comment`) / `Interact_Player_Loot`, and at least one stack passes the loot filter | the game's script `AutoLoot` (what it uses itself for corpses in water): exactly the stacks the loot window would list (`InvFilter_Loot`), **no** body parts, fists or hidden stacks (`risen.item.loot` takes those), HUD lines by the engine | kneeling and the window; looting bodies is no crime in the game (`AssessPlayerLooting`), so no witness rule. The species can script of a monster puts the trophies into the corpse the first time it is asked (`It_Teeth`, `It_Meat_Raw`, fur only with the Trophy skill; the engine's own rule, the animated path asks the same script), so they are taken with the rest; the beach bodies' pre script only adds the HUD message `GamestartLoot` (not shown by quick loot) |
 | chest, cupboard, sarcophagus | plain `Chest`/`Cupboard`/`Sarcophagus` interaction without post script, something passes the loot filter | `AutoLoot` on the container; a locked chest with its key in the inventory is unlocked first the way the game's `Unlock` script does it (`gCLock_PS.Status := Unlocked`, the key stays) | walking, kneeling, the lid animation, the window, `Unlock`'s effect (the NPC theft assessment is done by quick loot too; sarcophagi have none in the animated path either) |
 
 **Declined (nothing happens) and why:**
@@ -63,7 +63,8 @@ shortcuts the ones it knows by script name, [RE.md §31](RE.md) for the evidence
 | chests whose unlocking runs a script (`OnLockStatusChanged`, Greg's treasure chests) | the engine's setter runs the script, a property write does not (verified), so a quick unlock would skip a quest event; opened chests of that kind are taken normally |
 | chests that need a lockpick, locked chests without a key | the lockpicking mini-game is an animation and a skill check; the game prints its own reasons when you use the normal key |
 | buried pirate treasure (digging first), mining, doors, levers, beds, benches, stations, tombstones, books | other interaction scripts |
-| living humans, monster corpses (trophies: `CanInteract_Player_Wolf`...) | a living human has `Talk` first; monsters are skinned for trophies |
+| living humans, living monsters | a living human has `Talk` first; a living monster's can script refuses (AI mode not Down/Dead) |
+| bodies with a special loot script (`CanInteract_Player_Loot_Sara`) | unknown script |
 | items whose interaction is not the plain take (quest/burning torch variants), items the can script refuses (e.g. in a slot) | unknown side effects |
 | any target whose first interaction has an unknown, possibly chatty can script | the can script of a door prints "locked": not asked |
 | empty containers | the use key shows the game's "nothing to take" |
@@ -79,7 +80,7 @@ Items taken by quick loot show up exactly like the animated ones to other mods: 
 (`risen.interact.begin` + the loot window's own "take all" script) in the running game:
 
 * items: exact event list of the quick pick-up equals the animated one, no `ZS_Interact_*` state for the quick one (and ~78 frames of it for the baseline);
-* dead and knocked-out human looted, the club moves, fists/joint stay, same items as the loot window; living human, monster corpse, bed declined;
+* dead and knocked-out human looted, the club moves, fists/joint stay, same items as the loot window; wolf, boar and gnome carcasses looted (the trophy moves, the monster fist stays, same items as the loot window), a washed-up beach body (`Beach_Seaman_Dead`) looted like the window does; living human, bed declined;
 * plain chest looted, same inventory events as the window path; locked without key declined and stays locked; with key looted, unlocked, key kept; quest-script lock declined while locked and its script never ran; cupboard, sarcophagus looted; empty chest declined;
 * trap sarcophagus declined, nothing spawned; the animated path of the same sarcophagus spawns the skeleton exactly once (so the effect happens once, by the engine);
 * weapon drawn (real `PS_Melee_Loop` via the simulated middle button) declined, put away works; too far declined; a living human nearby does not stop an item pick-up outside a watched area (assess mode);

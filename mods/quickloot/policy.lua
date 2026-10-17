@@ -12,6 +12,16 @@ M.PLAYER = "gEInteractionType_Interact_Player"
 -- script names (docs/RE.md section 31): the interaction scripts of the plain things
 local ITEM_INTERACT = "Interact_Player_TakeItem"
 local CORPSE = { can = "CanInteract_Player_Loot", pre = "PreInteract_Player_Loot", interact = "Interact_Player_Loot" }
+-- The bodies on the beach of a new game (Beach_Seaman_Dead, Beach_Officer_Dead...) have PreInteract_Player_Loot_Comment: it shows the HUD message "GamestartLoot" and then
+-- runs PreInteract_Player_Loot (decompiled, RE.md section 31): nothing but the message is added.
+local CORPSE_PRE = { PreInteract_Player_Loot = true, PreInteract_Player_Loot_Comment = true }
+-- Monsters and animals carry the same pre/interact scripts but a can script of their species: it asks CanInteract_Player_Loot (AI mode Down or Dead) and, the first
+-- time, puts the trophies into the corpse's inventory (It_Teeth, It_Meat_Raw, and the fur only with the Trophy skill; PSInventory::SetGeneratedPlunder). They are looted like a human.
+local MONSTER_CAN = {}
+for _, species in ipairs { "AshBeast", "Boar", "Brontok", "Chicken", "Cow", "Dragonfly", "Ghul", "GiantBug", "GiantScorpion", "Gnome", "LizardPriest", "LizardScout", "LizardWarrior",
+    "Nautilus", "Ogre", "Pig", "Rotworm", "Skeleton", "Stingrat", "SwampMummy", "Thundertail", "UndeadAshBeast", "Vulture", "Wolf" } do
+    MONSTER_CAN["CanInteract_Player_" .. species] = true
+end
 local CONTAINERS = {
     -- by interact script: which pre script and which can scripts it has when it is a plain container
     Interact_Player_Chest = { pre = "PreInteract_Player_Chest", can = { CanInteract_Player_Chest = true, CanInteract_Player_ChestPirateTreasure = true } },
@@ -33,7 +43,7 @@ function M.kind_of(it)
     if it.interact == ITEM_INTERACT and it.pre == "" and it.post == "" then
         return "item"
     end
-    if it.can == CORPSE.can and it.pre == CORPSE.pre and it.interact == CORPSE.interact and it.post == "" then
+    if (it.can == CORPSE.can or MONSTER_CAN[it.can]) and CORPSE_PRE[it.pre] and it.interact == CORPSE.interact and it.post == "" then
         return "corpse"
     end
     local c = CONTAINERS[it.interact]
