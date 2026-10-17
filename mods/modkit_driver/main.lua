@@ -61,6 +61,8 @@ T.plan {
     "behaviour on a placed NPC with its params, on a template's NPC with the defaults",
     "the behaviour greets the player and hands out its gift",
     "after the load: the behaviour resumes with its saved state",
+    "the active world's name",
+    "a spawn and an NPC of another world stay out of this one",
 }
 
 local spawned, filled = {}, {}
@@ -158,6 +160,10 @@ T.run(function()
     T.wait_until(function() return risen.entity.get("MK_Watcher") ~= nil end, 30, "MK_Watcher made")
     local watcher = risen.entity.get("MK_Watcher")
     T.expect("an NPC stands at his world position", watcher ~= nil and near(watcher, { -31900, 600, -4800 }, 300), watcher and table.concat({ watcher:position() }, " ") or "missing")
+    -- worlds: the showcase has a knife and an NPC that belong to Testlevel_Physics; on the island neither exists
+    T.eq("the active world's name", risen.world.name(), "World")
+    T.expect("a spawn and an NPC of another world stay out of this one", knives_near() == 1 and risen.entity.get("MK_Elsewhere") == nil,
+             ("%d knives near, MK_Elsewhere %s"):format(knives_near(), risen.entity.get("MK_Elsewhere") and "exists" or "absent"))
     -- E12: Entity:pose() of an untouched level object gives what the editor read from the level file
     local sh = risen.entity.by_id(STONEHENGE)
     local shp = sh and sh:pose()

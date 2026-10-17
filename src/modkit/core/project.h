@@ -123,6 +123,7 @@ struct PlacedNpc {
     int version = 1;
     json appear_when, leave_when;  // conditions (condition data of section 7.2; null = always / never)
     std::vector<BehaviorUse> behaviors;
+    std::string world;       // the world he lives in ("" = the project's world, WorldEdits::world): he is only made and kept while it is active
     std::string notes;
 };
 
@@ -169,6 +170,7 @@ struct WorldSpawn {
     Vec3 position{0, 0, 0};
     Vec3 rotation{0, 0, 0};  // yaw, pitch, roll in degrees
     int amount = 1;          // items
+    std::string world;       // "" = the project's world (WorldEdits::world); applied only while this world is active
     std::string notes;
 };
 struct ContainerEdit {
@@ -176,15 +178,17 @@ struct ContainerEdit {
     std::string guid;         // the world entity's id (risen.entity.by_id form)
     std::string entity_name;  // for display
     std::string layer;        // the layer file it came from
+    std::string world;        // the world the entity belongs to ("" = the project's world)
     std::vector<InvItem> items;
 };
 struct EntityRef {
     std::string uid;
     std::string guid, entity_name, layer;
+    std::string world;  // the world the entity belongs to ("" = the project's world)
     std::optional<Vec3> position, rotation;  // moves only
 };
 struct WorldEdits {
-    std::string world = "World";
+    std::string world = "World";  // the default world of everything below and of the placed NPCs (each may name another one)
     std::vector<WorldSpawn> spawns;
     std::vector<ContainerEdit> containers;
     std::vector<EntityRef> removals, moves;
@@ -237,5 +241,7 @@ Project load_project_file(const std::string& path, std::vector<std::string>* war
 void save_project_file(const Project& p, const std::string& path);                                // throws
 
 const char* mode_name(Mode m);
+// the world an entry belongs to: its own, else the project's default (WorldEdits::world, else "World")
+std::string world_of(const Project& p, const std::string& own);
 
 }  // namespace mk

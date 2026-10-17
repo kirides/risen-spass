@@ -189,6 +189,11 @@ gfx::ResourceCache* App::resources() {
 
 std::string App::asset_path(const AssetFile& a) const { return project_file(a.file); }
 
+void App::save_settings() const {
+    // a screenshot / UI test run (--screenshot, --click, --drag) never changes the user's settings
+    if (options.screenshot.empty()) settings.save();
+}
+
 std::string App::project_file(const std::string& file) const {
     const fs::path f = u8(file);
     if (f.is_absolute() || project_path.empty()) return u8str(f);
@@ -349,7 +354,7 @@ void App::open_project(const std::string& path) {
             project_path = path;
             history.reset(project);
             settings.add_recent(path);
-            settings.save();
+            save_settings();
             project_replaced();
             status("Opened " + path);
         } catch (const std::exception& e) {
@@ -418,7 +423,7 @@ bool App::save_project(bool save_as) {
         project_path = path;
         history.mark_saved();
         settings.add_recent(path);
-        settings.save();
+        save_settings();
         update_title();
         status("Saved " + path);
         return true;
@@ -742,7 +747,7 @@ int App::run() {
             ask_discard_ = true;
         }
     }
-    settings.save();
+    save_settings();
     resources_.reset();  // GL objects go before the context
     panels_.clear();
     ImGui_ImplOpenGL3_Shutdown();

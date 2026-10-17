@@ -33,7 +33,7 @@ local reported = {}                  -- warnings already logged for this session
 
 local SPAWN_KEYS = { "hp", "hp_max", "level", "mana", "guild", "group", "peaceful", "state", "items", "equip" }
 local KNOWN = { name = true, template = true, position = true, offset = true, version = true, respawn = true, label = true, define = true,
-                on_ready = true, on_death = true, enabled = true, routine = true }
+                on_ready = true, on_death = true, enabled = true, routine = true, world = true }
 for _, k in ipairs(SPAWN_KEYS) do KNOWN[k] = true end
 
 local function tr(...) local t = api.trace if t and t.enabled("spawn") then t("spawn", ...) end end
@@ -167,7 +167,12 @@ local function wants_respawn(d, rec)
 end
 
 -- `enabled = function() -> bool` of a declaration (risen.spawn.when uses it): while it answers false the NPC is neither created, restored nor replaced.
+-- `world = "World"`: the NPC lives in that world; while another one is active (risen.world.name) he is neither created, restored, replaced nor pruned.
 local function gate_open(d)
+    if d.world ~= nil and api.world and api.world.name then
+        local here = api.world.name()
+        if here ~= nil and here ~= d.world then return false end
+    end
     if d.enabled == nil then return true end
     local ok, res = pcall(d.enabled)
     if not ok then say("error", "'%s' enabled: %s", d.name, tostring(res)) return false end
@@ -400,6 +405,7 @@ function npc.persistent(spec)
     end
     local name = spec.name
     if type(name) ~= "string" or not name:match("^[%w_%-]+$") then return fail("name must be a string of letters, digits, '_' and '-'") end
+    if spec.world ~= nil and (type(spec.world) ~= "string" or spec.world == "") then return fail(("'%s': world must be the name of a world (\"World\")"):format(name)) end
     if type(spec.template) ~= "string" or spec.template == "" then return fail(("'%s': template must be a template name"):format(name)) end
     local pos = spec.position
     if (pos == nil) == (spec.offset == nil) then return fail(("'%s': give exactly one of position (= {x, y, z} or function(player) -> x, y, z) and offset (= {dx, dy, dz} from the player)"):format(name)) end

@@ -231,7 +231,7 @@ private:
             for (auto& w : app.game->worlds())
                 if (ImGui::Selectable(w.c_str(), world_ && world_->name == w) && !loading_.valid()) {
                     app.settings.world = w;
-                    app.settings.save();
+                    app.save_settings();
                     start_load(app, w);
                 }
             ImGui::EndCombo();
@@ -436,12 +436,13 @@ private:
         }
         // the project's placed NPCs with a world position (magenta) and the things it spawns (yellow); the selected one bright
         for (auto& n : app.project.npcs) {
-            if (n.offset) continue;
+            if (n.offset || !here(app, n.world)) continue;
             const glm::vec3 p = to_gl(static_cast<float>(n.position[0]), static_cast<float>(n.position[1]), static_cast<float>(n.position[2]));
             const bool sel = proj_sel_ == n.uid;
             overlay_.box(p + glm::vec3(-40, 0, -40), p + glm::vec3(40, 200, 40), sel ? IM_COL32(255, 200, 255, 255) : IM_COL32(255, 80, 255, 255));
         }
         for (auto& s : app.project.world.spawns) {
+            if (!here(app, s.world)) continue;
             const glm::vec3 p = to_gl(static_cast<float>(s.position[0]), static_cast<float>(s.position[1]), static_cast<float>(s.position[2]));
             const bool sel = proj_sel_ == s.uid;
             overlay_.box(p + glm::vec3(-25, 0, -25), p + glm::vec3(25, 50, 25), sel ? IM_COL32(255, 255, 200, 255) : IM_COL32(250, 220, 60, 255));
@@ -627,8 +628,9 @@ private:
             }
         };
         for (auto& n : app.project.npcs)
-            if (!n.offset) test(n.uid, n.position, 40, 200);
-        for (auto& s : app.project.world.spawns) test(s.uid, s.position, 25, 50);
+            if (!n.offset && here(app, n.world)) test(n.uid, n.position, 40, 200);
+        for (auto& s : app.project.world.spawns)
+            if (here(app, s.world)) test(s.uid, s.position, 25, 50);
         for (auto& m : app.project.world.moves)
             if (m.position) test(m.uid, *m.position, 40, 120);
         if (best.empty()) return false;
@@ -650,6 +652,11 @@ private:
         out = gfx::from_gl(glm::vec3(p) / p.w);
         return true;
     }
+
+    // a project object belongs to the world on screen
+    bool here(const App& app, const std::string& w) const { return world_ && world_of(app.project, w) == world_->name; }
+    // the world a new object gets: "" when the world on screen is the project's world (the default), else its name
+    std::string stamp(const App& app) const { return world_ && world_->name != world_of(app.project, "") ? world_->name : std::string(); }
 
     // the ground under the cursor rounded to a tenth, or nullopt (with a status line) when there is none
     std::optional<Vec3> ground_pos(App& app, float u, float v, int w, int h, const glm::mat4& vp) {
@@ -709,6 +716,7 @@ private:
             if (n.uid == uid) {
                 n.position = pos;
                 n.offset = false;
+                n.world = stamp(app);  // he lives where he was put
                 return after_place(app, n.uid, "Placed " + n.name);
             }
     }
@@ -719,6 +727,7 @@ private:
         nn.template_name = tpl;
         nn.name = ui::unique_template_name(app.project, app.game.get(), ui::name_prefix(app.project) + "_" + tpl);
         nn.position = pos;
+        nn.world = stamp(app);
         app.project.npcs.push_back(nn);
         after_place(app, nn.uid, "Placed " + nn.name + " (a new NPC: name, inventory and routine in the NPCs panel)");
         return nn.uid;
@@ -730,6 +739,7 @@ private:
         sp.position = pos;
         sp.rotation = {std::round(place_yaw_), 0, 0};
         sp.amount = amount;
+        sp.world = stamp(app);
         app.project.world.spawns.push_back(sp);
         after_place(app, sp.uid, "Placed " + tpl);
         settle_auto_ = sp.uid;  // onto the surface with its lowest point once its mesh is loaded
@@ -852,7 +862,7 @@ private:
     void draw_project_meshes(App& app, const glm::mat4& vp, const std::string& skip = {}) {
         mesh_r_.begin(vp, glm::vec3(0.35f, -1.0f, 0.25f));
         for (auto& s : app.project.world.spawns) {
-            if (s.uid == skip) continue;
+            if (s.uid == skip || !here(app, s.world)) continue;
             const std::string mesh = spawn_mesh(app, s);
             if (mesh.empty()) continue;
             const gfx::GpuMesh* m = res_->mesh(mesh);
@@ -989,6 +999,7 @@ private:
                 ch = true;
             }
             if (!n.offset) align_button(n.uid);
+            ch |= ui::world_combo("world##npc", n.world, app);
             if (ImGui::Button("Edit in NPCs")) {
                 const std::string uid = n.uid;
                 app.defer([&app, uid] { app.select_in(kPanelNpcs, uid); });
@@ -1019,6 +1030,10 @@ private:
                 ch = true;
             }
             align_button(s.uid);
+            if (ui::world_combo("world##spawn", s.world, app)) {
+                overlay_dirty_ = true;
+                ch = true;
+            }
             if (ImGui::Button("Remove from the project")) remove = s.uid;
         }
         std::string drop;
@@ -1073,6 +1088,7 @@ private:
                 c.guid = e.guid;
                 c.entity_name = e.name;
                 c.layer = world_->layers[e.layer].name;
+                c.world = stamp(app);
                 c.items.push_back({"It_Gold", 50, false});
                 app.project.world.containers.push_back(c);
                 app.touch();
@@ -1121,6 +1137,7 @@ private:
             r.guid = e.guid;
             r.entity_name = e.name;
             r.layer = world_->layers[e.layer].name;
+            r.world = stamp(app);
             spass::pose::Matrix m;
             std::copy(e.matrix.begin(), e.matrix.end(), m.begin());
             const spass::pose::Angles a = spass::pose::decompose(m);
@@ -1139,6 +1156,7 @@ private:
             r.guid = e.guid;
             r.entity_name = e.name;
             r.layer = world_->layers[e.layer].name;
+            r.world = stamp(app);
             rem.push_back(r);
             app.touch();
         }

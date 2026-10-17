@@ -156,7 +156,7 @@ static Project sample_project() {
     q.xp = 60;
     p.quests.push_back(q);
     p.world.spawns.push_back({"s1", "It_Apple", {1, 2, 3}, {90, 0, 0}, 5, ""});
-    p.world.containers.push_back({"c1", "01234567-89ab-cdef-0123-456789abcdef", "Chest_01", "Harbour_Items.lrent", {{"It_Gold", 50, false}}});
+    p.world.containers.push_back({"c1", "01234567-89ab-cdef-0123-456789abcdef", "Chest_01", "Harbour_Items.lrent", "", {{"It_Gold", 50, false}}});
     EntityRef rm;
     rm.uid = "e1";
     rm.guid = "11111111-2222-3333-4444-555555555555";

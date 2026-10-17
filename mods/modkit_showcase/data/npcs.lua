@@ -9,11 +9,20 @@ return {
         items = { { "MK_Hob_Knife", 1 }, { "It_Apple", 3 } },
         equip = { "MK_Hob_Knife" },
         routine = { at = { dx = 100, dy = 0, dz = 0, kind = "guard", yaw = 90 } },
+        world = "World",
     },
     {
         name = "MK_Watcher",
         template = "Peasant_1_02",
         position = { -31900, 600, -4800 },
         peaceful = true,
+        world = "World",
+    },
+    {
+        name = "MK_Elsewhere",
+        template = "Peasant_1_02",
+        position = { -31800, 600, -4800 },
+        peaceful = true,
+        world = "Testlevel_Physics",
     },
 }

@@ -349,6 +349,7 @@ void import_npcs(Ctx& c, const json& list) {
         n.offset = e.contains("offset");
         for (size_t i = 0; i < 3 && i < pos.size(); ++i) n.position[i] = pos[i].get<double>();
         n.peaceful = e.value("peaceful", true);
+        n.world = e.value("world", std::string());
         opt(e, "guild", n.guild);
         opt(e, "level", n.level);
         opt(e, "hp_max", n.hp_max);
@@ -670,6 +671,7 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
                 const json rot = s.value("rotation", json::array({0, 0, 0}));
                 for (size_t i = 0; i < 3 && i < rot.size(); ++i) ws.rotation[i] = rot[i].get<double>();
                 ws.amount = s.value("amount", 1);
+                ws.world = s.value("world", std::string());
                 p.world.spawns.push_back(ws);
             }
             for (auto& ct : world.value("containers", json::array())) {
@@ -677,6 +679,7 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
                 ce.uid = ct.value("key", std::string()) + new_uid().substr(12);
                 ce.guid = ct.value("id", std::string());
                 ce.entity_name = ct.value("name", std::string());
+                ce.world = ct.value("world", std::string());
                 for (auto& it : ct.value("items", json::array()))
                     if (it.is_array() && !it.empty()) ce.items.push_back({it[0].get<std::string>(), it.size() > 1 ? it[1].get<int>() : 1, false});
                 p.world.containers.push_back(ce);
@@ -692,6 +695,7 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
                     er.uid = m.value("key", std::string()) + new_uid().substr(12);
                     er.guid = m.value("id", std::string());
                     er.entity_name = m.value("name", std::string());
+                    er.world = m.value("world", std::string());
                     if (m.contains("position")) er.position = vec3(m["position"]);
                     if (m.contains("rotation")) er.rotation = vec3(m["rotation"]);
                     (std::string(section) == "removals" ? p.world.removals : p.world.moves).push_back(er);
@@ -731,6 +735,15 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
                 d->behaviors.push_back(use(a));
             }
         }
+        // the project's world is the default: entries in it keep an empty world, like the editor makes them
+        auto def_world = [&](std::string& w) {
+            if (w == world_of(p, "")) w.clear();
+        };
+        for (auto& x : p.npcs) def_world(x.world);
+        for (auto& x : p.world.spawns) def_world(x.world);
+        for (auto& x : p.world.containers) def_world(x.world);
+        for (auto& x : p.world.removals) def_world(x.world);
+        for (auto& x : p.world.moves) def_world(x.world);
         // the languages: English first, then the others in a stable order
         p.mod.languages = {"English"};
         for (auto& l : c.languages)

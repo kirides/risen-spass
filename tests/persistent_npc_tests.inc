@@ -277,3 +277,23 @@ TEST(persistent_npc_removes_a_second_entity_that_carries_the_name) {
     CHECK(run("load_game() risen.npc.spawn('Peasant', 5, 5, 5, { name = 'Hob' }) world.by_name.Hob = world.entities.id2 session('load') "
               "return count('Peasant') .. ',' .. world.by_name.Hob.id") == "1,id1");
 }
+
+TEST(persistent_npc_lives_in_one_world) {
+    sol::state lua;
+    setupPersistentNpcMock(lua);
+    lua.script(R"LUA(
+        here = "World"
+        risen.world = { name = function() return here end }
+        local ok, why = api.npc.persistent({ name = "Island_Bob", template = "Peasant", position = { 1, 2, 3 }, world = "World" })
+        assert(ok, why)
+        assert(api.npc.persistent({ name = "Level_Ann", template = "Peasant", position = { 4, 5, 6 }, world = "Testlevel_Physics" }))
+        bad_ok, bad_why = api.npc.persistent({ name = "Bad", template = "Peasant", position = { 0, 0, 0 }, world = "" })
+        session("new")
+    )LUA");
+    // only the NPC of the active world is made
+    CHECK(lua.script("return world.by_name.Island_Bob ~= nil and world.by_name.Level_Ann == nil").get<bool>());
+    CHECK(lua.script("return bad_ok == nil and tostring(bad_why):find('world must be') ~= nil").get<bool>());
+    // in the other world: Ann is made, Bob is left alone (not pruned, not made again)
+    lua.script("here = 'Testlevel_Physics' local spawned = world.spawned session('load') ann_spawns = world.spawned - spawned");
+    CHECK(lua.script("return world.by_name.Level_Ann ~= nil and ann_spawns == 1 and world.by_name.Island_Bob ~= nil").get<bool>());
+}

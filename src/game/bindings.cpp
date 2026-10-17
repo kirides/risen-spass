@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include "game/abi.h"
+#include "game/events.h"
 #include "game/loc_files.h"
 #include "game/loc_overlay.h"
 #include "game/lua_config.h"
@@ -118,6 +119,12 @@ void bindWorld(sol::state_view lua, sol::table risen) {
             guarded([&] { r = s.world_is_save_allowed(nullptr); });
         }
         return r;
+    });
+    // the active world's name (gCWorld::Activate): edits that belong to one world (a spawn, a placed NPC) check it
+    world.set_function("name", [](sol::this_state ts) -> sol::object {
+        const std::string n = activeWorldName();
+        if (n.empty()) return sol::make_object(ts, sol::lua_nil);
+        return sol::make_object(ts, n);
     });
     risen["world"] = world;
 }

@@ -511,6 +511,32 @@ bool behavior_uses(const char* id, std::vector<BehaviorUse>& uses, App& app) {
     return ch;
 }
 
+bool world_combo(const char* label, std::string& world, App& app) {
+    bool ch = false;
+    const std::string def = world_of(app.project, "");
+    const std::string shown = world.empty() ? def + " (the project's world)" : world;
+    ImGui::SetNextItemWidth(220);
+    if (ImGui::BeginCombo(label, shown.c_str())) {
+        if (ImGui::Selectable((def + " (the project's world)").c_str(), world.empty())) {
+            world.clear();
+            ch = true;
+        }
+        std::vector<std::string> names = app.game ? app.game->worlds() : std::vector<std::string>{};
+        if (!world.empty() && std::find(names.begin(), names.end(), world) == names.end()) names.push_back(world);
+        for (auto& w : names) {
+            if (w == def) continue;
+            if (ImGui::Selectable(w.c_str(), w == world)) {
+                world = w;
+                ch = true;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    help("The world this belongs to: the mod makes it (or changes the entity) only while that world is active. The game's island is \"World\"; "
+         "test levels and worlds of other mods have their own names.");
+    return ch;
+}
+
 TplKind kind_of(const App& app, const std::string& name) {
     std::string n = name;
     for (int depth = 0; depth < 8 && !n.empty(); ++depth) {

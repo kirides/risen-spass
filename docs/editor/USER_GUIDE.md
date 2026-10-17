@@ -210,6 +210,12 @@ The World panel reads a game world from the archives (World, the test levels; th
 every entity of every layer with its name, ID, template, position, facing and bounding box (about 48000 in the main world). The view starts at the
 player's start point.
 
+**Worlds.** Everything you place or change belongs to a world: a spawned item or object, chest items, a moved or removed entity, a placed NPC. It
+gets the world the view shows when you place it (the island is `World`; test levels and the worlds of other mods have their own names), the view
+shows only the project's things of that world, and the inspector (and the NPC editor's *Where*) can change it. The mod makes or changes each thing
+only while its world is active: a mod that adds a world (reached by a teleporter, ...) puts its NPCs and items there, and nothing of it appears on the
+island. "the project's world" is the default (`World`).
+
 * **Move**: hold the right mouse button and look around, W A S D to move, Q / E down / up, Shift faster, the wheel changes the speed (without the right
   button it moves forward and back). **Click** an entity to select it, **F** flies to the selection. A click selects what is drawn under the
   cursor: a mesh by its pixels (what stands in front wins), an entity shown as a box by its box; hidden boxes and the level meshes (unless

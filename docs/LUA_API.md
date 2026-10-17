@@ -669,6 +669,10 @@ risen.npc.persistent_get("MyMod_Hob")   risen.npc.persistent_list()
 * **Changed or missing**: a changed `template` or `version` replaces the saved NPC; a record whose name the mod no longer declares is pruned (its entity is removed) after the first session
   start; a mod that was removed altogether leaves the saved NPCs in the world as ordinary nameless NPCs; a missing template makes the engine drop the entity on load and the NPC `"missing"` (a warning
   is logged once per session) — it is made again as soon as the template exists (the next session start).
+* **One world.** `world = "World"` binds the NPC to a world (`risen.world.name()`): while another world is active he is neither created, restored, replaced nor pruned,
+  so an NPC of a mod's second world never appears on the island and the island's NPCs are left alone there (`risen.spawn.when` passes it on). Verified on the island
+  (an NPC declared for `Testlevel_Physics` is not made there, scenario `modkit`); entering a second world in a running game was not tested (the game has no
+  world change of its own).
 * **Hold back until something happened.** `enabled = function() -> bool` (an option; `risen.spawn.when` sets it) keeps a declaration from creating, restoring or replacing its NPC while it answers false (`handle:state()` is `"disabled"`);
   `handle:ensure()` makes the NPC exist now as declared (creates, restores or re-creates, brings a `remove()`d one back; `nil, reason` while the world is not ready). Conditional spawning is built on both (next section).
 * **Declare while the mod loads.** `define` and the handlers need to exist before a savegame is read. A declaration made later (inside a running session, e.g. a boss when its quest starts) creates or
@@ -1079,6 +1083,7 @@ risen.gamevar.get("Name") -> int|nil                   risen.gamevar.set("Name",
 risen.gamevar.exists("Name")   risen.gamevar.remove("Name")      -- dialogue commands SetGameEvent (value 0) / ClearGameEvent create / remove a variable; event `gamevar.changed`; conditions: `risen.cond.var/event`
 risen.world.is_game_running()  risen.world.new_game()  risen.world.quick_load()
 risen.world.quick_save()  risen.world.auto_save("name")  risen.world.is_save_allowed()
+risen.world.name()     -- the active world: "World" (the island), a test level's or a mod's world; nil before the first one (event world.changed)
 ```
 `new_game`, `quick_load`, `quick_save` and `auto_save` are *requests*: the engine performs them on its next processing step
 (watch `save.after` / `load.after` / `session.start`). `is_save_allowed()` is false while a conversation is open; a save requested then crashed the game when the conversation had run a `Give`

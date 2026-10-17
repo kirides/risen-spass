@@ -973,6 +973,7 @@ local npcApi = {}
 ---@field on_ready? fun(entity: Entity, reason: "spawned"|"restored"|"respawned"|"replaced"|"adopted", handle: PersistentNpc) Called whenever the NPC is in the world after a session start or load. `spawned`: made now for the first time, `restored`: found again in the loaded savegame, `respawned`: a new body for a dead or vanished one, `replaced`: made again because `template`/`version` changed, `adopted`: an entity that already had the name was taken over. Not called for a dead NPC that stays dead.
 ---@field on_death? fun(entity: Entity, killer: Entity|nil, handle: PersistentNpc) Called once when the NPC dies (after `entity.died`).
 ---@field enabled? fun(): boolean While it answers `false` the NPC is neither created, restored nor replaced (what `risen.spawn.when` uses to keep an NPC away until its condition holds).
+---@field world? string The world he lives in (`risen.world.name()`, e.g. `"World"`): while another world is active he is neither created, restored, replaced nor pruned (a mod's NPC of a second world stays out of the island). Default: every world.
 ---@field routine? RoutineSpec A daily routine / post / patrol for the NPC (`risen.npc.set_routine`), applied when the NPC is made and checked on every restore (equal declaration and intact points: nothing happens; a changed declaration or a lost point: replaced). Positions `{ dx, dy, dz }` are relative to the NPC's home. The points go with the NPC when it is removed or replaced.
 
 ---A declared persistent NPC.
@@ -3093,6 +3094,11 @@ local worldApi = {}
 function worldApi.is_game_running() end
 ---@return boolean requested
 function worldApi.new_game() end
+---The name of the active world (`gCWorld::Activate`): `"World"` for the game's island, a test level's or a mod's world name otherwise. `nil` before
+---the first world was activated (the main menu at start-up). The event `world.changed(name)` announces a change.
+---@return string|nil name
+function worldApi.name() end
+
 ---Loads the last quick save.
 ---@return boolean requested
 function worldApi.quick_load() end

@@ -404,6 +404,7 @@ private:
         ch |= ui::lang_text("Label", n.label, app.project.mod.languages);
 
         ui::section("Where");
+        ch |= ui::world_combo("World", n.world, app);
         ch |= ImGui::Checkbox("Offset from the player (when first made in a savegame)", &n.offset);
         float pos[3] = {static_cast<float>(n.position[0]), static_cast<float>(n.position[1]), static_cast<float>(n.position[2])};
         if (ImGui::InputFloat3(n.offset ? "dx dy dz" : "x y z", pos, "%.1f")) {

@@ -306,6 +306,7 @@ json world_data(const Project& p) {
         e["position"] = json::array({s.position[0], s.position[1], s.position[2]});
         if (s.rotation[0] != 0 || s.rotation[1] != 0 || s.rotation[2] != 0) e["rotation"] = json::array({s.rotation[0], s.rotation[1], s.rotation[2]});
         if (s.amount != 1) e["amount"] = s.amount;
+        e["world"] = world_of(p, s.world);  // the runtime applies it only while this world is active
         spawns.push_back(e);
     }
     // entities of the world removed or moved: by their ID, applied on every world.ready (Entity:kill / Entity:set_pose)
@@ -315,6 +316,7 @@ json world_data(const Project& p) {
         e["key"] = r.uid.substr(0, 12);
         e["id"] = r.guid;
         if (!r.entity_name.empty()) e["name"] = r.entity_name;
+        e["world"] = world_of(p, r.world);
         removals.push_back(e);
     }
     for (auto& m : p.world.moves) {
@@ -324,6 +326,7 @@ json world_data(const Project& p) {
         if (!m.entity_name.empty()) e["name"] = m.entity_name;
         if (m.position) e["position"] = json::array({(*m.position)[0], (*m.position)[1], (*m.position)[2]});
         if (m.rotation) e["rotation"] = json::array({(*m.rotation)[0], (*m.rotation)[1], (*m.rotation)[2]});
+        e["world"] = world_of(p, m.world);
         moves.push_back(e);
     }
     for (auto& c : p.world.containers) {
@@ -334,6 +337,7 @@ json world_data(const Project& p) {
         json items = json::array();
         for (auto& i : c.items) items.push_back(json::array({i.item, i.amount}));
         e["items"] = items;
+        e["world"] = world_of(p, c.world);
         containers.push_back(e);
     }
     json w = json::object();
@@ -369,6 +373,7 @@ json npcs_data(const Project& p) {
         if (n.version != 1) e["version"] = n.version;
         if (!n.appear_when.is_null()) e["appear_when"] = n.appear_when;
         if (!n.leave_when.is_null()) e["leave_when"] = n.leave_when;
+        e["world"] = world_of(p, n.world);  // made and kept only while this world is active
         list.push_back(e);
     }
     return list;

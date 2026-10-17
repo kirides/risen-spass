@@ -270,8 +270,16 @@ end
 
 -- ---- world edits: once per savegame -----------------------------------------------------------------------------------------------------------
 local warned = {}
+-- the world an entry belongs to is the active one (risen.world.name; a layer without it, or before the first world: every entry counts)
+local function in_world(world)
+    local here = risen.world.name and risen.world.name()
+    return here == nil or world == nil or world == here
+end
+M.in_world = in_world
+
 local function apply_world(id, w)
     for _, s in ipairs(w.spawns or {}) do
+        if not in_world(s.world) then goto next_spawn end
         local key = "modkit.world.spawn." .. s.key
         local done = risen.save.get(key)
         -- an object (not an item: the player may have picked that up) that is not in the world any more is placed again
@@ -296,10 +304,11 @@ local function apply_world(id, w)
                 risen.log.warn(("%s: cannot spawn %s"):format(id, s.template))
             end
         end
+        ::next_spawn::
     end
     for _, c in ipairs(w.containers or {}) do
         local key = "modkit.world.container." .. c.key
-        if not risen.save.get(key) then
+        if in_world(c.world) and not risen.save.get(key) then
             local ent = risen.entity.by_id(c.id)
             if ent then
                 for _, it in ipairs(c.items or {}) do risen.item.give(ent, it[1], it[2]) end
@@ -314,13 +323,16 @@ local function apply_world(id, w)
     -- removals and moves of the world's own entities: on every world.ready (idempotent; the engine keeps a removal in the savegame, a move only for
     -- save-relevant entities, so both are simply applied again after a load)
     for _, r in ipairs(w.removals or {}) do
+        if not in_world(r.world) then goto next_removals end
         local ent = risen.entity.by_id(r.id)
         if ent then
             ent:kill()
             risen.emit("modkit.world_removed", id, r.key, r.id)
         end
+        ::next_removals::
     end
     for _, m in ipairs(w.moves or {}) do
+        if not in_world(m.world) then goto next_moves end
         local ent = risen.entity.by_id(m.id)
         if ent then
             local spec = {}
@@ -337,6 +349,7 @@ local function apply_world(id, w)
             warned["move." .. m.key] = true
             risen.log.warn(("%s: no entity %s (%s) in this world"):format(id, m.id, tostring(m.name)))
         end
+        ::next_moves::
     end
 end
 
@@ -407,6 +420,8 @@ function M.install(data)
     for _, n in ipairs(data.npcs or {}) do
         local spec = npc_spec(id, n, nil)
         local ok, why
+        -- he belongs to one world: nothing of him is made, restored or replaced while another one is active
+        spec.world = n.world
         if n.appear_when or n.leave_when then
             spec.when = M.cond(n.appear_when) or risen.cond.fn(function() return true end)
             spec.despawn_when = M.cond(n.leave_when)

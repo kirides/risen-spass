@@ -40,6 +40,7 @@ Hook<bool (*)(void*, const void*, void*)> g_load;
 Hook<void (*)(void*, int)> g_sessionStart;
 Hook<void (*)(void*)> g_sessionStop;
 Hook<bool (*)(void*)> g_worldActivate;
+std::string g_activeWorld;  // game thread only
 Hook<bool (*)(void*, const int*, bool, bool)> g_questStatus;
 Hook<bool (*)(void*, void*)> g_npcKilled;
 Hook<bool (*)(void*, void*)> g_npcDefeated;
@@ -207,6 +208,7 @@ bool detourWorldActivate(void* self) {
             name = out.take();
         }
     });
+    g_activeWorld = name;
     spdlog::info("world: activated '{}'", name);
     fire("world.changed", name);
     return ok;
@@ -298,5 +300,7 @@ void installEventHooks() {
     installInventoryEventHooks();
     installEntityEventHooks();
 }
+
+std::string activeWorldName() { return g_activeWorld; }
 
 }  // namespace spass::game

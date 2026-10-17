@@ -105,6 +105,7 @@ public:
     void toggle_sound(const std::string& ref);
 
     void touch() { history.touch(); }  // a panel changed `project`
+    void save_settings() const;         // writes `settings` (not in a screenshot / UI test run)
     void status(const std::string& text);  // the status bar line
     template <class T>
     T* panel() {

@@ -24,6 +24,8 @@ void reportNpcKilled(void* victim);
 void reportNpcDefeated(void* victim);
 // Forgets what entity_events.cpp remembers about the world (died entities, cheat kills): session start/stop, load.
 void resetEntityEvents();
+// The name of the world gCWorld::Activate made the active one last ("World", "Testlevel_Physics", a mod's world); empty before the first activation.
+std::string activeWorldName();
 
 // The hook that lets NPC templates be cloned while a world is loaded (docs/RE.md section 25). (lua_template.cpp)
 void installTemplateHooks();

@@ -37,6 +37,9 @@ bool condition_list(const char* id, json& cond, App& app, const char* none_label
 // are stored), remove; attach from a combo or by dropping a behaviour of the Behaviours panel on the section
 bool behavior_uses(const char* id, std::vector<BehaviorUse>& uses, App& app);
 
+// the world an NPC or a world edit belongs to: the game's worlds (and the current value); "" = the project's world, shown as "<name> (project)"
+bool world_combo(const char* label, std::string& world, App& app);
+
 // the kind of a template name: the game's kind; a new template of the project has the kind of its base (items Item, recipes Recipe, NPC templates
 // Npc when the base is unknown); Other when nothing knows the name
 TplKind kind_of(const App& app, const std::string& name);

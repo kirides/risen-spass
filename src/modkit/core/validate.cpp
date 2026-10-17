@@ -317,6 +317,14 @@ void check_behaviors(Ctx& c) {
     for (auto& t : c.p.npc_templates) check_uses("NPCs", t.uid, t.name, t.behaviors);
 }
 
+// a world name: one of the game's (with the game data), else a warning (another mod's world can be meant)
+void check_world_name(Ctx& c, const char* A, const std::string& uid, const std::string& subj, const std::string& own) {
+    if (own.empty() || !c.g || c.g->worlds().empty()) return;
+    const auto& ws = c.g->worlds();
+    if (std::find(ws.begin(), ws.end(), own) == ws.end())
+        c.add(Severity::Warning, A, uid, subj, "the world '" + own + "' is not one of the game's (" + std::to_string(ws.size()) + " worlds): a world of another mod?");
+}
+
 void check_placed_npcs(Ctx& c) {
     std::map<std::string, int> seen;
     for (auto& n : c.p.npcs) {
@@ -334,6 +342,7 @@ void check_placed_npcs(Ctx& c) {
         if (n.hp_max && *n.hp_max < 1) c.add(Severity::Error, A, n.uid, subj, "hit points must be 1 or more");
         if (n.version < 1) c.add(Severity::Error, A, n.uid, subj, "the version must be 1 or more");
         check_choice(c, A, n.uid, subj, n.guild, "guild", guild_names());
+        check_world_name(c, A, n.uid, subj, n.world);
         if (!n.appear_when.is_null()) check_condition(c, A, n.uid, subj, n.appear_when);
         if (!n.leave_when.is_null()) check_condition(c, A, n.uid, subj, n.leave_when);
         for (auto& i : n.items) {

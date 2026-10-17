@@ -268,6 +268,7 @@ json entity_ref_json(const EntityRef& e) {
     o["guid"] = e.guid;
     put_str(o, "entity_name", e.entity_name);
     put_str(o, "layer", e.layer);
+    put_str(o, "world", e.world);
     if (e.position) o["position"] = vec3(*e.position);
     if (e.rotation) o["rotation"] = vec3(*e.rotation);
     return o;
@@ -278,6 +279,7 @@ EntityRef entity_ref_from(const Reader& r, const json& e) {
     r.get(e, "guid", x.guid);
     r.get(e, "entity_name", x.entity_name);
     r.get(e, "layer", x.layer);
+    r.get(e, "world", x.world);
     Vec3 v;
     if (get_vec3(r, e, "position", v)) x.position = v;
     if (get_vec3(r, e, "rotation", v)) x.rotation = v;
@@ -443,6 +445,7 @@ json to_json(const Project& p) {
         if (!x.appear_when.is_null()) o["appear_when"] = x.appear_when;
         if (!x.leave_when.is_null()) o["leave_when"] = x.leave_when;
         if (!x.behaviors.empty()) o["behaviors"] = behavior_uses(x.behaviors);
+        put_str(o, "world", x.world);
         put_str(o, "notes", x.notes);
         npcs.push_back(o);
     }
@@ -485,6 +488,7 @@ json to_json(const Project& p) {
         o["position"] = vec3(s.position);
         if (s.rotation != Vec3{0, 0, 0}) o["rotation"] = vec3(s.rotation);
         if (s.amount != 1) o["amount"] = s.amount;
+        put_str(o, "world", s.world);
         put_str(o, "notes", s.notes);
         spawns.push_back(o);
     }
@@ -496,6 +500,7 @@ json to_json(const Project& p) {
         o["guid"] = c.guid;
         put_str(o, "entity_name", c.entity_name);
         put_str(o, "layer", c.layer);
+        put_str(o, "world", c.world);
         o["items"] = inv_items(c.items);
         containers.push_back(o);
     }
@@ -672,6 +677,7 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
         r.get(e, "appear_when", x.appear_when);
         r.get(e, "leave_when", x.leave_when);
         get_behavior_uses(r, e, x.behaviors);
+        r.get(e, "world", x.world);
         r.get(e, "notes", x.notes);
         return x;
     });
@@ -706,6 +712,7 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
             get_vec3(r2, e, "position", s.position);
             get_vec3(r2, e, "rotation", s.rotation);
             r2.get(e, "amount", s.amount);
+            r2.get(e, "world", s.world);
             r2.get(e, "notes", s.notes);
             return s;
         });
@@ -715,6 +722,7 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
             r2.get(e, "guid", c.guid);
             r2.get(e, "entity_name", c.entity_name);
             r2.get(e, "layer", c.layer);
+            r2.get(e, "world", c.world);
             get_inv_items(r2, e, "items", c.items);
             return c;
         });
@@ -738,6 +746,11 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
     if (auto e = j.find("editor"); e != j.end() && e->is_object()) p.editor = *e;
     if (auto e = j.find("extra_balance"); e != j.end() && e->is_object()) p.extra_balance = *e;
     return p;
+}
+
+std::string world_of(const Project& p, const std::string& own) {
+    if (!own.empty()) return own;
+    return p.world.world.empty() ? std::string("World") : p.world.world;
 }
 
 std::string dump_project(const Project& p) { return to_json(p).dump(2) + "\n"; }

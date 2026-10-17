@@ -217,6 +217,19 @@
           }
         }
       ]
+    },
+    {
+      "uid": "e15e0e15e0e14b1d9e2a3b4c5d6e7f81",
+      "name": "MK_Elsewhere",
+      "template": "Peasant_1_02",
+      "position": [
+        -31800.0,
+        600.0,
+        -4800.0
+      ],
+      "peaceful": true,
+      "world": "Testlevel_Physics",
+      "notes": "lives in the test level: never made on the island"
     }
   ],
   "dialogs": [
@@ -1011,6 +1024,17 @@
           0.0,
           0.0
         ]
+      },
+      {
+        "uid": "f00dfeedcafe4b1d9e2a3b4c5d6e7f80",
+        "template": "MK_Hob_Knife",
+        "position": [
+          -31950.0,
+          620.0,
+          -4500.0
+        ],
+        "world": "Testlevel_Physics",
+        "notes": "belongs to the test level: must not appear on the island"
       }
     ],
     "containers": [

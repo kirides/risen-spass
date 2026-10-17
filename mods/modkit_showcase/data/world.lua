@@ -6,12 +6,20 @@ return {
             key = "326ecf3611c6",
             template = "MK_Hob_Knife",
             position = { -31950, 620, -4650 },
+            world = "World",
         },
         {
             key = "7a3c1e5b9d2f",
             template = "Object_Interact_Bench_Outdoor",
             position = { -32250, 600, -4450 },
             rotation = { 45, 0, 0 },
+            world = "World",
+        },
+        {
+            key = "f00dfeedcafe",
+            template = "MK_Hob_Knife",
+            position = { -31950, 620, -4500 },
+            world = "Testlevel_Physics",
         },
     },
     containers = {
@@ -20,6 +28,7 @@ return {
             id = "2c2c2522-cdad-4dba-aba1-12a5e2054790",
             name = "Object_Interact_Animated_Chest_Medium",
             items = { { "MK_Strong_Potion", 2 }, { "It_Gold", 77 } },
+            world = "World",
         },
     },
     removals = {
@@ -27,6 +36,7 @@ return {
             key = "8b4d2f6c0e3a",
             id = "01c4332e-efae-459f-9098-ae6c71dbd23d",
             name = "Obj_LS_Torch_Ground_01",
+            world = "World",
         },
     },
     moves = {
@@ -36,6 +46,7 @@ return {
             name = "Obj_Nat_Stone_Shape_02_Small_L01",
             position = { -31910, 655, -3777 },
             rotation = { 33, 0, 0 },
+            world = "World",
         },
     },
 }
