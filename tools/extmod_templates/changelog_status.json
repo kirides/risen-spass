@@ -256,6 +256,6 @@
   "item": "Wind strength (WeatherStates)",
   "status": "generated",
   "needs": "",
-  "note": "WeatherStates.g3ws as a loose file (the engine reads it at start): the wind power of the 8 weather states 0.55-0.70 -> 0.30, everything else equal (byte comparison with the game's file); frame-to-frame screenshot comparisons were too noisy (camera, intro) to show the sway: not judged by eye"
+  "note": "WeatherStates.g3ws as a loose file (the engine reads it at start): the wind power of the 8 weather states 0.55-0.70 -> 0.30, everything else equal (byte comparison with the game's file); frame-to-frame screenshot comparisons (16 shots 0.2 s apart, same scene, with the game's wind and with 0.3) are noisy (lighting changes, camera) but point the expected way: median difference of the foliage half 2.7-3.2 with the game's wind, 2.5 with the mod's; not conclusive, not judged by eye"
  }
 ]
