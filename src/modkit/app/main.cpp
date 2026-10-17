@@ -101,6 +101,8 @@ int main(int argc, char** argv) {
         if (a == "--data") opts.data_dir = next("a directory");
         else if (a == "--game-dir") opts.game_dir = next("a directory");
         else if (a == "--play") opts.play = true;
+        else if (a == "--palette") opts.palette = next("a query");
+        else if (a == "--wizard") opts.wizard = next("fetch, weapon or trader");
         else if (a == "--screenshot") opts.screenshot = next("a file name");
         else if (a == "--frames") opts.frames = std::max(2, std::atoi(next("a number").c_str()));
         else if (a == "--panel") opts.panel = next("a panel title");

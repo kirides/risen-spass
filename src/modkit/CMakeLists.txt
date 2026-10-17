@@ -51,12 +51,14 @@ add_library(modkit_core STATIC
     core/play.cpp
     core/project.cpp
     core/quest.cpp
+    core/search.cpp
     core/lua_writer.cpp
     core/mesh.cpp
     core/settings.cpp
     core/spells.cpp
     core/tpl_inventory.cpp
     core/validate.cpp
+    core/wizards.cpp
     core/world.cpp
     "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp"
 )
@@ -91,9 +93,11 @@ add_executable(risen-modkit
     app/os_open.cpp
     app/editor_util.cpp
     app/node_canvas.cpp
+    app/palette.cpp
     app/pickers.cpp
     app/prop_editor.cpp
     app/widgets.cpp
+    app/wizards.cpp
     app/panels/assets_panel.cpp
     app/panels/behaviors_panel.cpp
     app/panels/browser_panel.cpp

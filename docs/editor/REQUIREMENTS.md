@@ -62,6 +62,8 @@ IDs are referenced by the stages (section 9). **M** = must for the stage that im
 | SPELL-1 S | Spells panel: changes of the shipped spells and new spells (`spells`, `new_spells`). |
 | NPC-6 S | NPC groups panel: selector (group path, Lua pattern, names) with the list of what it matches, relative changes (`npc_groups`). |
 | QST-5 S | Quest branches: an Either / or node whose paths each start with an Objective; the first one completed decides the path. |
+| EDT-1 S | Command palette (Ctrl+P): one search over project objects, the game's templates, panels and commands. |
+| EDT-2 S | Wizards for common jobs (fetch quest, new weapon with recipe, trader with stock) that generate ordinary, editable content. |
 | APP-6 S | Native file dialogs (nativefiledialog-extended); fallback: ImGui path input when the platform has no dialog service. |
 
 ### 3.2 Game data (stage E1)
@@ -334,7 +336,9 @@ Each stage ends with a usable feature (or the base the next stage needs), is ver
 
 | **E18** Quest branches | the Either / or node: `race` / `stop` steps, runtime version 8, import from data files rebuilds the branches | QST-5 | **done** (unit tests `quest_branch_*` incl. a run of the generated runtime against a stand-in API: both ways announced, progress per path, the first objective decides, a reward once, a load rolls back; live: the linear showcase flows still pass, 60/60 of scenario `modkit`) |
 
-Planned next (the roadmap of 2026-10-17, one stage each, in this order): **E19** actors (`._xmac`) in the World view and glTF/OBJ to `._xmsh` (AST-4); **E20** command palette (Ctrl+P) and wizards (fetch quest, trader NPC, new weapon + recipe).
+| **E20** Palette and wizards | the command palette (Ctrl+P: project objects, shipped templates, panels, commands; `core/search.*`) and the Wizards menu (fetch quest, weapon with recipe, trader with stock; `core/wizards.*`, `app/wizards.*`) | EDT-1, EDT-2 | **done** (unit tests `search_*`, `wizard_*`: what a wizard makes compiles, is played through by the dialogue simulator and validates against the game data; screenshots checked; the trader's `DoTrade` was not tried in a real trade) |
+
+Still open from the roadmap of 2026-10-17: **E19** actors (`._xmac`) in the World view and glTF/OBJ to `._xmsh` (AST-4).
 
 Order rationale: E0-E2 give a usable tool with a real mod at the end of E2; E3-E6 add the other content kinds on the same export pipeline; the world (E7-E8) is independent
 of the content editors and needs format work; placement (E10) needs both; E11/E12 need engine-side work and verification.

@@ -300,6 +300,22 @@ The Browser and the item editor show a turning preview of a template's mesh (dra
 * The export writes them into `data\world.lua`; the runtime spawns and fills on `world.ready` and remembers it in the savegame's mod data, so a load never
   spawns or fills twice; a spawned object is marked for the savegame (objects are not by themselves).
 
+## Command palette and wizards
+
+**Ctrl+P** (Edit > Command palette) opens one search box over everything: the objects of the project (items, recipes, NPC templates and placed NPCs, dialogues, quests, spells,
+NPC groups, behaviours, asset files), **the game's templates** (a hit opens it in the Browser), the panels and the editor's commands (Play, Export, Save, the wizards). Type
+words in any order (`hob knife`), Up / Down choose, Enter opens, Esc closes. Without text it lists the commands and panels.
+
+The **Wizards** menu makes common things from a short form; what it makes is ordinary content you can edit afterwards (and Ctrl+Z takes it back):
+
+* **Fetch quest**: an NPC asks for items. Makes the quest (Start, Objective *items*, Objective *talk*, Reward, Outcome) and two options for the NPC's dialogue (it extends the
+  NPC's dialogue when there is one): the first offers the job once and starts the quest, the second turns the items in while the quest runs and the player carries them
+  (the NPC takes them), which completes the *talk* objective and pays the reward.
+* **New weapon with a recipe**: an item cloned from a shipped one (damage, value, requirements) and the recipe item that crafts it (station, ingredients, skills, known
+  from the start or found).
+* **Trader with stock**: a placed NPC with his own template (`gCDialog_PS.TradeEnabled` on, so the shipped template stays as it is), the stock in his inventory and a
+  dialogue option that runs the `DoTrade` command. He is made in front of the player when the game first makes him. **Not tried in a real trade yet**: test him with Play.
+
 ## Play and the game's errors
 
 Set the **game folder** (the Risen folder with `bin\Risen.exe` and the mod layer) in **Window > Settings > Play**, choose what the game does at start

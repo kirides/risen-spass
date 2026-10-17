@@ -15,6 +15,8 @@
 
 #include "app/audio.h"
 #include "app/icons.h"
+#include "app/palette.h"
+#include "app/wizards.h"
 #include "app/panels/panels.h"
 #include "app/render/resources.h"
 #include "core/export.h"
@@ -336,6 +338,20 @@ void App::play() {
     }
 }
 
+void App::open_palette() {
+    if (palette_) palette_->open();
+}
+
+void App::open_wizard(WizardKind kind) {
+    if (wizards_) wizards_->open(kind);
+}
+
+std::vector<std::string> App::panel_titles() const {
+    std::vector<std::string> v;
+    for (auto& p : panels_) v.push_back(p->title());
+    return v;
+}
+
 void App::draw_export_modal() {
     if (export_open_) {
         ImGui::OpenPopup("Export mod");
@@ -528,8 +544,9 @@ void App::setup_default_layout(unsigned int dockspace_id) {
 
 void App::handle_shortcuts() {
     ImGuiIO& io = ImGui::GetIO();
-    if (io.WantTextInput) return;  // let text fields have their own undo
     const bool ctrl = io.KeyCtrl || io.KeySuper;
+    if (ctrl && ImGui::IsKeyPressed(ImGuiKey_P, false)) open_palette();
+    if (io.WantTextInput) return;  // let text fields have their own undo
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_Z, false)) {
         if (io.KeyShift) {
             if (history.redo(project)) project_replaced();
@@ -578,6 +595,14 @@ void App::draw_menu() {
     if (ImGui::BeginMenu("Edit")) {
         if (ImGui::MenuItem("Undo", "Ctrl+Z", false, history.can_undo()) && history.undo(project)) project_replaced();
         if (ImGui::MenuItem("Redo", "Ctrl+Y", false, history.can_redo()) && history.redo(project)) project_replaced();
+        ImGui::Separator();
+        if (ImGui::MenuItem("Command palette...", "Ctrl+P")) open_palette();
+        ImGui::EndMenu();
+    }
+    if (ImGui::BeginMenu("Wizards")) {
+        if (ImGui::MenuItem("Fetch quest...")) open_wizard(WizardKind::FetchQuest);
+        if (ImGui::MenuItem("New weapon with a recipe...")) open_wizard(WizardKind::Weapon);
+        if (ImGui::MenuItem("Trader with stock...")) open_wizard(WizardKind::Trader);
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("Window")) {
@@ -678,12 +703,16 @@ void App::draw_modals() {
 }
 
 void App::draw_frame() {
+    if (!palette_) palette_ = std::make_unique<CommandPalette>();
+    if (!wizards_) wizards_ = std::make_unique<WizardUi>();
     refresh_problems();
     poll_game_log();
     ui::set_icon_source(resources(), game.get(), &project);
     refresh_assets();  // cheap when nothing changed; follows undo, open, import
     handle_shortcuts();
     draw_menu();
+    wizards_->draw(*this);
+    palette_->draw(*this);
     const ImGuiViewport* vp = ImGui::GetMainViewport();
     // the dock space leaves room for the status bar
     ImGui::SetNextWindowPos(vp->WorkPos);
@@ -775,6 +804,9 @@ int App::run() {
     while (!glfwWindowShouldClose(window_)) {
         glfwPollEvents();
         poll_loader();
+        if (frame_ == 6 && palette_ && !options.palette.empty()) palette_->open_with(options.palette == "-" ? std::string() : options.palette);
+        if (frame_ == 6 && wizards_ && !options.wizard.empty())
+            open_wizard(options.wizard == "weapon" ? WizardKind::Weapon : options.wizard == "trader" ? WizardKind::Trader : WizardKind::FetchQuest);
         if (options.play && !game_loading()) {
             options.play = false;
             play();

@@ -27,12 +27,18 @@ namespace gfx {
 class ResourceCache;
 }
 class AudioPlayer;
+class CommandPalette;
+class WizardUi;
+
+enum class WizardKind { None, FetchQuest, Weapon, Trader };  // app/wizards.h
 
 struct AppOptions {
     std::string project;     // open this project at start
     std::string data_dir;    // overrides the setting
     std::string game_dir;    // overrides the Play setting (the Risen folder)
     bool play = false;       // --play: Play once the game data is loaded (a test of the Play button)
+    std::string palette;     // --palette TEXT: open the command palette with this query (screenshots)
+    std::string wizard;      // --wizard fetch|weapon|trader: open that wizard (screenshots)
     std::string screenshot;  // render `frames` frames, save the window as PNG, exit
     int frames = 10;
     std::string panel;       // focus this panel (screenshots)
@@ -127,6 +133,9 @@ public:
     // Play: export into <game folder>'s bin\spass\mods, then start the game windowed or let a running one hot-reload the mod
     void play();
     void request_export() { export_open_ = true; }
+    void open_palette();                  // Ctrl+P
+    void open_wizard(WizardKind kind);    // the Wizards menu
+    std::vector<std::string> panel_titles() const;  // every panel, for the command palette
     void defer(std::function<void()> fn) { deferred_.push_back(std::move(fn)); }  // run after the frame (structural edits)
 
     // project file actions (with the unsaved-changes prompt where needed)
@@ -168,6 +177,8 @@ private:
     const gfx::ResourceCache* assets_res_ = nullptr;
     const GameData* resources_game_ = nullptr;
     double problems_time_ = -1;
+    std::unique_ptr<CommandPalette> palette_;
+    std::unique_ptr<WizardUi> wizards_;
     LogTail game_log_;
     std::vector<GameLogLine> game_log_lines_;
     std::vector<Problem> game_problems_;

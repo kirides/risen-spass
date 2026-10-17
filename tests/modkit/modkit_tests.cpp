@@ -337,6 +337,7 @@ TEST(gamedata_real_archives) {
 #include "inventory_tests.inc"
 #include "spell_tests.inc"
 #include "quest_branch_tests.inc"
+#include "wizard_tests.inc"
 #include "dialog_sim_tests.inc"
 
 int main(int argc, char** argv) {
