@@ -205,6 +205,11 @@ a visual verification path (screen capture of the D3D9 window is black: hook `Pr
 * **Worlds (2026-10-17):** world edits and placed NPCs of risen-modkit and `risen.npc.persistent{ world = }` only act in their world (`risen.world.name()`, the name
   `gCWorld::Activate` reported). Verified on the island only: content declared for `Testlevel_Physics` stays out of `World`. Open: entering a second world in a running
   game (the game has no world change; a mod world would need `gCProject` / `gCWorld::Activate` driven by the layer: RE first), and whether `world.ready` fires after such a change.
+* Full suite 2026-10-17 (52 scenarios, `-Parallel 4`, 28 min): 39 passed at once; the 13 failures all passed on a rerun (`-Parallel 3`). Intermittent:
+  `options` (phase `language`) ended with a fast fail `0xC0000409` (no crash banner) and the slot's next nine scenarios ended within a second without a
+  result (the child script, not the game: "path not found" for a mod folder that exists); `quickloot` hit "type RisenWin already exists" in the child
+  PowerShell; `ex_voice` "explicit ogg file" saw the line still speaking; `recipes` timed out walking to the station. Open: the fast fail of `options`,
+  and a fresh PowerShell per scenario child after a crash.
 * Scenario `modkit` failed once under three parallel games (2026-10-17): "a load rolls the quest back to one kill" saw the state before the quick load; alone it passes
   (60/60). The check reads the wallet 120 frames after `session.start` of the load: probably too early under load.
 * Hardening crashed once (2026-10-17) in the engine (`SharedBase.dll+0x62f50`, a null read under `Script_Game.dll` / `Game.dll` frames, nothing of the layer on the stack) right after
