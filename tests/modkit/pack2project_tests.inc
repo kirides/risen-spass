@@ -414,3 +414,119 @@ TEST(pack2project_world_changes_from_layers) {
     CHECK(export_mod(broken, u8str(dir2), eo).ok);
     CHECK(!verify_world_edits(pairs, u8str(dir2)).empty());
 }
+
+// ---- --classic: the mod's changes are what differs from the CLASSIC game; what differs from the baseline only because classic and Enhanced differ is not applied --------
+
+namespace {
+
+// a made-up infos file: sets in sequence, one record per info (gCInfo.Name starts it); `give` = the Give command's Amount (0 = none), `knows` = PlayerKnows conditions in order
+p2m::Bytes infos_file(const std::vector<std::tuple<std::string, int, std::vector<std::string>>>& infos) {
+    return make_tpl("compiled_infos", guid_bytes(9), guid_bytes(109), [&](TplBuilder& b) {
+        for (const auto& [name, give, knows] : infos) {
+            b.set("gCInfo");
+            b.str("Name", name);
+            b.lng("ConditionType", 3);
+            b.set("gCInfoCommandSay");
+            b.str("Speaker", "player");
+            if (give) {
+                b.set("gCInfoCommandGive");
+                b.str("Entity1", "Esteban");
+                b.lng("Amount", give);
+            }
+            for (const std::string& k : knows) {
+                b.set("gCInfoConditionPlayerKnows");
+                b.str("PlayerKnows", k);
+            }
+        }
+    });
+}
+
+}  // namespace
+
+TEST(pack2mod_classic_three_way) {
+    const fs::path root = temp_dir("p2p_classic");
+    register_pack2mod_project_writer();
+    // Enhanced (the baseline): It_Sword damage 18 (rebalanced), It_Spear gold 95 (changed); classic: 15 / 90; the mod (made against classic): sword value 75 (the author), the
+    // spear as classic has it (noise), a new axe (the author), an old item Enhanced removed (noise)
+    write_bytes(root / "enh/data/common/templates.pak",
+                p2m::build_pak({{"Items/Weapons/It_Sword.tple", item_tpl("It_Sword", 1, 1, 50, 18, {{7, 10}}, "It_Wpn_Sword.xmsh"), true},
+                                {"Items/Weapons/It_Spear.tple", item_tpl("It_Spear", 2, 2, 95, 30, {{7, 40}}, "It_Wpn_Spear.xmsh"), true}}));
+    write_bytes(root / "cla/data/common/templates.pak",
+                p2m::build_pak({{"Items/Weapons/It_Sword.tple", item_tpl("It_Sword", 1, 1, 50, 15, {{7, 10}}, "It_Wpn_Sword.xmsh"), true},
+                                {"Items/Weapons/It_Spear.tple", item_tpl("It_Spear", 2, 2, 90, 30, {{7, 40}}, "It_Wpn_Spear.xmsh"), true},
+                                {"Items/Weapons/It_Old.tple", item_tpl("It_Old", 6, 1, 5, 5, {}, "It_Wpn_Old.xmsh"), true}}));
+    write_bytes(root / "mod/common/templates.p00",
+                p2m::build_pak({{"It_Sword.tple", item_tpl("It_Sword", 1, 1, 75, 15, {{7, 10}}, "It_Wpn_Sword.xmsh"), true},
+                                {"It_Spear.tple", item_tpl("It_Spear", 2, 2, 90, 30, {{7, 40}}, "It_Wpn_Spear.xmsh"), true},
+                                {"It_Old.tple", item_tpl("It_Old", 6, 1, 5, 5, {}, "It_Wpn_Old.xmsh"), true},
+                                {"It_Axe.tple", item_tpl("It_Axe", 5, 1, 120, 33, {{7, 25}}, "It_Wpn_Axe.xmsh"), true}}));
+    // strings: a row the author changed, a row only classic and Enhanced differ in, a row whose quote marks the mod's spreadsheet lost
+    auto tab = [&](std::vector<std::pair<std::string, std::vector<std::string>>> rows) { return p2m::build_tab({"German_Text", "English_Text"}, rows); };
+    write_bytes(root / "enh/data/compiled/strings.pak",
+                p2m::build_pak({{"items.tab", tab({{"FO_It_Sword", {"Schwert", "Sword"}}, {"FO_Other", {"Anderes", "Other!"}}, {"FO_Q", {"Sag \"hi\"", "Say \"hi\""}}}), true}}));
+    write_bytes(root / "cla/data/compiled/strings.pak",
+                p2m::build_pak({{"items.tab", tab({{"FO_It_Sword", {"Schwert", "Sword"}}, {"FO_Other", {"Anderes", "Other"}}, {"FO_Q", {"Sag \"hi\"", "Say \"hi\""}}}), true}}));
+    write_bytes(root / "mod/compiled/strings.p00",
+                p2m::build_pak({{"items.tab", tab({{"FO_It_Sword", {"Langschwert", "Longsword"}}, {"FO_Other", {"Anderes", "Other"}}, {"FO_Q", {"Sag hi", "Say hi"}}}), false}}));
+    // resources: one the mod carries from classic where Enhanced changed it (noise), one the author changed, one new
+    write_bytes(root / "enh/data/common/materials.pak", p2m::build_pak({{"Mat/Old._xmat", "enhanced", true}, {"Mat/Chg._xmat", "same", true}}));
+    write_bytes(root / "cla/data/common/materials.pak", p2m::build_pak({{"Mat/Old._xmat", "classic", true}, {"Mat/Chg._xmat", "same", true}}));
+    write_bytes(root / "mod/common/materials.p00", p2m::build_pak({{"Old._xmat", "classic", false}, {"Chg._xmat", "author", false}, {"New._xmat", "new", false}}));
+    // dialogue infos: I_1 the author raised the gold and put a condition in front; I_2 only classic and Enhanced differ; I_3 a classic info Enhanced removed
+    write_bytes(root / "enh/data/compiled/library.pak", p2m::build_pak({{"compiled_infos.bin", infos_file({{"I_1", 100, {"A"}}, {"I_2", 50, {}}}), true}}));
+    write_bytes(root / "cla/data/compiled/library.pak", p2m::build_pak({{"compiled_infos.bin", infos_file({{"I_1", 100, {"A"}}, {"I_2", 100, {}}, {"I_3", 7, {}}}), true}}));
+    write_bytes(root / "mod/compiled/library.p00", p2m::build_pak({{"compiled_infos.bin", infos_file({{"I_1", 400, {"New", "A"}}, {"I_2", 100, {}}, {"I_3", 7, {}}}), false}}));
+
+    auto run = [&](std::vector<std::string> args, std::string* text = nullptr) {
+        std::vector<const char*> argv{"risen-pack2mod"};
+        for (auto& a : args) argv.push_back(a.c_str());
+        std::ostringstream out, err;
+        const int rc = p2m::pack2mod_main(static_cast<int>(argv.size()), argv.data(), out, err);
+        if (text) *text = out.str() + err.str();
+        return rc;
+    };
+    const std::string mod_in = u8str(root / "mod"), enh = u8str(root / "enh/data"), cla = u8str(root / "cla/data");
+    std::string text;
+
+    // without --classic everything that differs from Enhanced is carried (the converter's old behaviour)
+    CHECK_EQ(run({mod_in, "--baseline", enh, "--out", u8str(root / "plain")}, &text), 0);
+    const std::string plain_items = read_text(root / "plain/data/items.lua");
+    CHECK(plain_items.find("It_Spear") != std::string::npos && plain_items.find("damage = 15") != std::string::npos);
+
+    // with it: only the author's changes
+    const int crc = run({mod_in, "--baseline", enh, "--classic", cla, "--out", u8str(root / "out"), "--project", u8str(root / "proj" / "c.rmk.json"), "--verify", "--id", "classic"}, &text);
+    if (crc != 0) std::printf("%s\n", text.c_str());
+    CHECK_EQ(crc, 0);
+    const std::string items = read_text(root / "out/data/items.lua");
+    CHECK(items.find("It_Sword = {") != std::string::npos && items.find("value = 75") != std::string::npos);
+    CHECK(items.find("damage") == std::string::npos);        // the sword's 15 is classic's number, Enhanced's 18 stays
+    CHECK(items.find("It_Spear") == std::string::npos);      // the spear's 90 is classic's too
+    const std::string nw = read_text(root / "out/data/new_items.lua");
+    CHECK(nw.find("It_Axe = {") != std::string::npos && nw.find("It_Old") == std::string::npos);  // a classic template Enhanced removed is not the author's
+    const std::string en = read_text(root / "out/strings/all.csv");
+    CHECK(en.find("FO_It_Sword;Longsword") != std::string::npos && en.find("FO_Other") == std::string::npos && en.find("FO_Q") == std::string::npos);
+    CHECK(fs::exists(root / "out/assets/Chg._xmat") && fs::exists(root / "out/assets/New._xmat") && !fs::exists(root / "out/assets/Old._xmat"));
+    const std::string dialog = read_text(root / "out/data/dialog.lua");
+    CHECK(dialog.find("info = \"I_1\"") != std::string::npos && dialog.find("kind = \"command\"") != std::string::npos && dialog.find("old = \"100\", new = \"400\"") != std::string::npos);
+    CHECK(dialog.find("kind = \"add_condition\"") != std::string::npos && dialog.find("class = \"PlayerKnows\"") != std::string::npos && dialog.find("new = \"New\"") != std::string::npos);
+    CHECK(dialog.find("I_2") == std::string::npos && dialog.find("I_3") == std::string::npos);  // classic-vs-Enhanced noise and a classic info
+    const std::string manifest = read_text(root / "out/manifest.json");
+    CHECK(manifest.find("against_classic") != std::string::npos && manifest.find("of them only classic-vs-Enhanced differences (not applied)") != std::string::npos);
+    const std::string report = read_text(root / "out/report.md");
+    CHECK(report.find("## Against the classic game") != std::string::npos && report.find("identical to the classic game's (not carried)") != std::string::npos &&
+          report.find("only typographic artefacts") != std::string::npos && report.find("classic infos (not carried)") != std::string::npos);
+    // the project holds the same: verified equal to the mod, the property edits as the shipped dialogue edit of I_1
+    CHECK(text.find("verified: export equals the converted mod") != std::string::npos);
+    Project p = load_project_file(u8str(root / "proj" / "c.rmk.json"));
+    const ItemDef* sword = p.item("It_Sword");
+    CHECK(sword && sword->value == 75 && !sword->damage.has_value() && !p.item("It_Spear") && !p.item("It_Old") && p.item("It_Axe"));
+    CHECK_EQ(p.dialog_edits.size(), size_t(1));
+    if (p.dialog_edits.size() == 1) {
+        const DialogEdit& e = p.dialog_edits[0];
+        CHECK(e.info == "I_1" && e.ops.size() == 2 && e.ops[0].kind == "command" && e.ops[0].index == 2 && e.ops[0].name == "Amount" && e.ops[0].old_value == "100" && e.ops[0].new_value == "400");
+        CHECK(e.ops[1].kind == "add_condition" && e.ops[1].cls == "PlayerKnows" && e.ops[1].name == "PlayerKnows" && e.ops[1].new_value == "New");
+    }
+    // a bad --classic folder is refused
+    CHECK_EQ(run({mod_in, "--baseline", enh, "--classic", u8str(root / "nothing"), "--out", u8str(root / "x")}, &text), 1);
+    CHECK(text.find("--classic must be the classic game's data directory") != std::string::npos);
+}

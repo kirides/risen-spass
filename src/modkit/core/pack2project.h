@@ -31,18 +31,22 @@ struct Pack2ProjectReport {
     std::map<std::string, std::map<std::string, std::string>> leftover_strings;  // language -> id -> text
     // what a comparison with the layer mod must not expect in the project: whole templates, and single settings ("Template|key")
     std::set<std::string> missing_templates, missing_settings;
+    std::map<std::string, int> classic;  // --classic: what the world layers say (moves against Enhanced, against the classic game)
 };
 
 // a world layer of the game and the mod's version of it (already parsed; the tests build them by hand)
 struct LayerPair {
     std::string name;  // "Harbour_Town_NPC_01"
-    GFile base, mod;   // base without entities = the game has no such layer
+    GFile base, mod;   // base without entities = the game has no such layer (with --classic: the classic game's layer)
+    GFile enhanced;    // with --classic: the baseline's (Enhanced's) layer, to count the differences that are the classic game's own
+    bool has_enhanced = false;
 };
 // what the mod's layers do to the world: entities moved (by entity ID), removed, added (spawned from their creator template)
 struct WorldChanges {
     std::vector<EntityRef> moves, removals;
     std::vector<WorldSpawn> spawns;
     int new_npcs = 0, skipped_template = 0, scale_changes = 0;
+    std::vector<float> move_distance;  // game units (100 = 1 m) each move covers, in the order of `moves`
 };
 WorldChanges world_changes(const std::vector<LayerPair>& layers, const std::map<std::string, std::string>& template_guids);
 std::vector<LayerPair> parse_layer_pairs(const p2m::ProjectInput& in, std::vector<std::string>& problems);

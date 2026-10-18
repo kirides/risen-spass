@@ -13,6 +13,7 @@ const char* kUsage =
     "usage: risen-pack2mod <mod folder | archive files...> --baseline <Risen data dir> (--out <mods/name> | --project <file.rmk.json>) [options]\n"
     "\n"
     "  --baseline DIR     the user's own Risen data directory (holds common/*.pak and compiled/*.pak); read only\n"
+    "  --classic DIR      the classic game's data directory (read only): a mod made against it changes only what differs from IT; the differences between classic and the baseline are not applied\n"
     "  --out DIR          the mod folder to write (replaced on a rerun; refuses a non-empty folder this tool did not create)\n"
     "  --id ID            mod id (default: made from the folder name)         --name TEXT   display name\n"
     "  --combat MODE      changelog (oldest volume with a combat table, default) | shipped (newest) | off\n"
@@ -43,6 +44,7 @@ int pack2mod_main(int argc, const char* const* argv, std::ostream& out, std::ost
         const std::string key = a.substr(0, a.find('='));
         if (key == "-h" || key == "--help" || key == "/?") { out << kUsage; return 0; }
         else if (key == "--baseline") { if (!value(o.baseline)) return 1; }
+        else if (key == "--classic") { if (!value(o.classic)) return 1; }
         else if (key == "--out") { if (!value(o.out)) return 1; }
         else if (key == "--id") { if (!value(o.id)) return 1; }
         else if (key == "--name") { if (!value(o.name)) return 1; }

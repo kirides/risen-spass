@@ -10,6 +10,25 @@ namespace p2m {
 
 namespace {
 std::string write_text_crlf(const std::string& s) { return replace_all(s, "\n", "\r\n"); }
+
+// a text without what the mod's spreadsheet export loses or changes: quote characters (straight, curly, backtick, acute, the replacement character), case and
+// white space. Two texts equal in this form differ only by such an artefact, not by what the author wrote.
+std::string loose_text(const std::string& in) {
+    std::string s = in;
+    for (const char* q : {"\"", "'", "`", "\xC2\xB4", "\xEF\xBF\xBD", "\xE2\x80\x98", "\xE2\x80\x99", "\xE2\x80\x9C", "\xE2\x80\x9D"}) s = replace_all(s, q, "");
+    std::string out;
+    bool space = false;
+    for (unsigned char c : s) {
+        if (c == ' ' || c == '\n' || c == '\r' || c == '\t') {
+            space = !out.empty();
+            continue;
+        }
+        if (space) out += ' ';
+        space = false;
+        out += static_cast<char>(c >= 'A' && c <= 'Z' ? c + 32 : c);
+    }
+    return out;
+}
 }  // namespace
 
 StringsResult gen_strings(Ctx& ctx, Data& d, const std::set<std::string>& wanted, bool with_combat, bool all_rows) {
@@ -17,6 +36,15 @@ StringsResult gen_strings(Ctx& ctx, Data& d, const std::set<std::string>& wanted
     std::unordered_map<std::string, TabTable> vt;
     for (const std::string& k : d.base_compiled.order)
         if (ends_with(k, ".tab")) vt[k] = read_tab(d.base_compiled.files[k].read());
+    std::unordered_map<std::string, TabTable> ct;  // the classic game's tables (--classic)
+    if (d.has_classic)
+        for (const std::string& k : d.classic_compiled.order)
+            if (ends_with(k, ".tab")) {
+                try {
+                    ct[k] = read_tab(d.classic_compiled.files[k].read());
+                } catch (const Error&) {
+                }
+            }
     std::set<std::string> lang_set;
     std::vector<std::string> lang_order;
     for (const std::string& k : d.mod_compiled.sorted_keys()) {
@@ -43,6 +71,44 @@ StringsResult gen_strings(Ctx& ctx, Data& d, const std::set<std::string>& wanted
         int skipped_changed = 0, applied_new = 0, applied_changed = 0;
         for (const std::string& rid : mt.ids) {
             const bool isnew = !vr.has(rid);
+            if (d.has_classic) {
+                // three-way: a text the mod has and Enhanced has not (or has otherwise) is the author's when it differs from the classic game's text too
+                static const TabTable none;
+                const auto cit = ct.find(k);
+                const TabTable& cr = cit == ct.end() ? none : cit->second;
+                bool differs_enh = false, author = false, any = false, artefact = false;
+                for (size_t c = 1; c < mt.columns.size(); ++c) {
+                    const std::string& col = mt.columns[c];
+                    if (!ends_with(col, "_Text")) continue;
+                    const std::string lang = col.substr(0, col.size() - 5);
+                    const auto t = norm_cell(mt.rows.at(rid)[c - 1]);
+                    if (!t) continue;
+                    const std::string* eold = vr.cell(rid, col);
+                    if (!isnew && norm_cell(eold ? *eold : std::string()) == t) continue;
+                    differs_enh = true;
+                    const std::string* cold = cr.cell(rid, col);
+                    if (cr.has(rid)) {
+                        const auto cn = norm_cell(cold ? *cold : std::string());
+                        if (cn == t) continue;
+                        if (cn && loose_text(*cn) == loose_text(*t)) {
+                            artefact = true;
+                            continue;
+                        }
+                    }
+                    if (loose_text(*t).empty() || *t == "-0") continue;  // a spreadsheet's placeholder
+                    author = true;
+                    R.rows[lang][rid] = *t;
+                    any = true;
+                    if (lang == "English") R.counts[k + (isnew ? " new rows" : " changed rows")]++;
+                }
+                (void)any;
+                if (differs_enh) {
+                    ctx.classic["string rows the mod differs from Enhanced in"]++;
+                    ctx.classic[author ? "string rows: of them author changes (carried)" : artefact ? "string rows: of them only typographic artefacts of the mod's table (not applied)" : "string rows: of them only classic-vs-Enhanced differences (not applied)"]++;
+                    if (isnew) ctx.classic["string rows: of them rows Enhanced does not have"]++;
+                }
+                continue;
+            }
             if (only != ctx.profile.string_only_rows.end()) {
                 if (!only->second.count(rid)) continue;
             } else if (!isnew && !changed_all) {

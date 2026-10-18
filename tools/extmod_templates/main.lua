@@ -144,8 +144,39 @@ local function set_props(inf, idx, props)
     return true
 end
 
+-- property edits of a shipped info (the converter's `changes`, only with --classic): a value changed where the info still has the old one, a condition appended
+local function apply_info_ops(inf, ops, bad)
+    local n, appended = 0, {}
+    for _, op in ipairs(ops) do
+        local ok, why = false, nil
+        if op.kind == "info" then
+            if tostring(inf:get_property(op.name)) == op.old then ok = inf:set_property(op.name, op.new) else why = "it has another value" end
+        elseif op.kind == "command" then
+            if inf:get_command_property(op.index, op.name) == op.old then ok = inf:set_command_property(op.index, op.name, op.new) else why = "it has another value" end
+        elseif op.kind == "condition" then
+            if inf:get_condition_property(op.index, op.name) == op.old then ok = inf:set_condition_property(op.index, op.name, op.new) else why = "it has another value" end
+        elseif op.kind == "add_condition" then
+            local idx = appended[op.index]
+            if not idx then
+                idx = inf:add_condition(op.class)
+                appended[op.index] = idx
+            end
+            ok = idx and inf:set_condition_property(idx, op.name, op.new)
+        end
+        if ok then n = n + 1 else bad(op, why) end
+    end
+    return n
+end
+
 local function stage_dialog()
-    local c = { xp_added = 0, xp_changed = 0, trade_infos = 0, trade_entries = 0 }
+    local c = { xp_added = 0, xp_changed = 0, trade_infos = 0, trade_entries = 0, ops = 0 }
+    for _, ch in ipairs(DLG.changes or {}) do
+        local inf = risen.dialog.get(ch.info)
+        if not inf then fail(true, "dialogue edit", ch.info, "no such dialogue info")
+        else
+            c.ops = c.ops + apply_info_ops(inf, ch.ops, function(op, why) fail(true, "dialogue edit", ch.info .. " " .. op.kind .. " " .. op.name, why or "cannot be set") end)
+        end
+    end
     for _, e in ipairs(DLG.xp.add) do
         local inf = risen.dialog.get(e.info)
         if not inf then fail(true, "xp", e.info, "no such dialogue info")

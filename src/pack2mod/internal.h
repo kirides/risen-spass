@@ -106,6 +106,9 @@ struct Ctx {
     std::map<std::string, std::map<int, std::string>> enums;
     std::vector<std::string> skills;  // index = gESkill number, "" = unknown
     std::map<std::string, int> stats;
+    // --classic: per category how many differences of the mod from the baseline are the classic game's own (noise) and how many the author's (docs/PACK2MOD.md)
+    std::map<std::string, int> classic;
+    std::vector<std::string> classic_notes;
     Profile profile;
 
     Ctx();
@@ -116,6 +119,9 @@ struct Ctx {
 
 struct Data {
     Layered base_common, base_compiled;
+    Layered classic_common, classic_compiled;  // --classic: the game the mod was made against (empty without)
+    bool has_classic = false;
+    std::unordered_map<std::string, Template> cla;  // the classic game's templates by entity name
     Layered mod_common, mod_compiled;
     std::vector<std::string> van_order;  // internal template names in first-insertion order
     std::unordered_map<std::string, Template> van;
@@ -127,6 +133,9 @@ struct Data {
     std::vector<std::unique_ptr<Pak>> paks;
 
     Layered& base(const std::string& kind) { return kind == "common" ? base_common : base_compiled; }
+    Layered& classic(const std::string& kind) { return kind == "common" ? classic_common : classic_compiled; }
+    // what the mod's changes are measured against: the classic game when given, else the baseline
+    Layered& reference(const std::string& kind) { return has_classic ? classic(kind) : base(kind); }
     Layered& layers(const std::string& kind) { return kind == "common" ? mod_common : mod_compiled; }
     std::vector<std::string> mod_sorted() const;
     std::vector<std::string> van_sorted() const;
@@ -136,6 +145,8 @@ struct Data {
 std::unordered_map<std::string, std::string> known_names(const Data& d);
 
 Flat flat_typed(const Template& t, const std::unordered_map<std::string, std::string>& guid);
+// the baseline's properties with the author's changes (mod != classic) of the mod applied: see items.cpp
+Flat rebase_on_baseline(const Flat& enh, const Flat& cla, const Flat& mod);
 std::vector<Elem> arrays_of(const Flat& P, const std::string& prefix);
 LVal to_lval(const Val& v);
 
@@ -184,7 +195,8 @@ std::optional<std::string> resolve_name(Ctx& ctx, const std::unordered_map<std::
 
 struct DialogResult {
     LVal data = LVal::dict();
-    int xp = 0, trade_entries = 0, infos_other = 0;
+    LVal changes = LVal::list();  // --classic: property edits of shipped infos (dialog.lua `changes`)
+    int xp = 0, trade_entries = 0, infos_other = 0, property_infos = 0;
     std::vector<std::string> notes;
 };
 DialogResult gen_dialog(Ctx& ctx, Data& d);

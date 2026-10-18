@@ -9,12 +9,14 @@
 
 .PARAMETER Mod       The folder with the mod's .pNN archives.
 .PARAMETER Baseline  The Risen data directory (the user's own game; read only).
+.PARAMETER Classic   The classic game's data directory (read only; default: the Steam install). With it the converter measures the mod's changes against the classic game.
 .PARAMETER Instance  The parallel test copy to use (default 5: B:\DevDrive\risen-test5).
 #>
 param(
     [string]$Mod = 'B:\TMP\Risen_Extended_Mod',
     [string]$Baseline = 'B:\DevDrive\risen-test\data',
     [string]$Work = 'B:\TMP\p2p-live',
+    [string]$Classic = 'B:\SteamLibrary\steamapps\common\Risen Classic 2009\data',
     [int]$Instance = 5,
     [string]$Config = 'RelWithDebInfo'
 )
@@ -31,7 +33,9 @@ if (-not (Test-Path $Mod) -or -not (Test-Path (Join-Path $Baseline 'common')) -o
 Remove-Item $Work -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $Work | Out-Null
 $project = Join-Path $Work 'proj\extproj.rmk.json'
-& $exe $Mod --baseline $Baseline --project $project --profile $profile --id extproj | Select-Object -Last 2 | ForEach-Object { Write-Host "   $_" }
+$more = @()
+if (Test-Path (Join-Path $Classic 'common')) { $more = @('--classic', $Classic) } else { Write-Host '   (no classic game: converting against the baseline alone)' }
+& $exe $Mod --baseline $Baseline @more --project $project --profile $profile --id extproj | Select-Object -Last 2 | ForEach-Object { Write-Host "   $_" }
 if ($LASTEXITCODE -ne 0) { throw 'risen-pack2mod failed' }
 $target = Join-Path $repo 'mods\extproj'
 Remove-Item $target -Recurse -Force -ErrorAction SilentlyContinue

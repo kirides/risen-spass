@@ -14,6 +14,7 @@ namespace p2m {
 struct Options {
     std::vector<std::string> inputs;  // a mod folder (searched recursively for *.pNN / *.pak) or archive files
     std::string baseline;             // the user's own Risen data directory (data/common/*.pak, data/compiled/*.pak)
+    std::string classic;              // --classic DIR: the classic game's data directory (read only): the mod's own changes are what differs from IT, not from the baseline
     std::string out;                  // output mod directory
     std::string id;                   // mod id (default: made from the folder name)
     std::string name;                 // display name (default: "<id> (converted)")
@@ -49,6 +50,7 @@ struct Issue {  // something the converter could not convert (Unconverted of the
 struct WorldLayerFile {
     std::string name;  // bare file name
     std::string base, mod;
+    std::string enhanced;  // with --classic: the baseline's (Enhanced's) layer, `base` being the classic game's ("" = none or not given)
 };
 
 struct ProjectInput {
@@ -57,6 +59,7 @@ struct ProjectInput {
     std::string project_file, project_dir;      // absolute, UTF-8
     std::string mod_dir;                        // the layer mod written by the same run ("" = none): --verify compares with it
     bool verify = false;
+    bool has_classic = false;                   // --classic was given: `base` of a world layer is the classic game's, the mod's changes are real ones
     bool world_edits = false;                   // carry the moved / removed / added world entities (they cannot be told from the classic base's own differences)
     // exactly the tables written to data/*.lua of the layer mod
     LVal items, new_items, recipes_edit, recipes_new, patches, dialog, world;

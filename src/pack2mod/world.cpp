@@ -171,12 +171,14 @@ WorldResult gen_world(Ctx& ctx, Data& d) {
         for (const std::string& g : d.van[n].guids) wguid.emplace(g, n);
     for (const std::string& n : d.mod_order)
         for (const std::string& g : d.mod[n].guids) wguid.emplace(g, n);
+    for (const auto& [n, t] : d.cla)
+        for (const std::string& g : t.guids) wguid.emplace(g, n);
     struct Work { std::string key, base_path; const LFile* mod; const LFile* base; };
     std::vector<Work> work;
     for (const std::string& key : d.mod_common.sorted_keys()) {
         if (!ends_with(key, ".lrent")) continue;
         const LFile& m = d.mod_common.files[key];
-        const LFile* b = d.base_common.find(key);
+        const LFile* b = d.reference("common").find(key);  // the classic game's layer when it is given
         if (!b) {
             ctx.bad("world", m.e->path, "world layer of the mod that the game does not have: new placements are not translated", "tool");
             continue;

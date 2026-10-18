@@ -10,7 +10,6 @@
 namespace p2m {
 
 AssetsResult gen_assets(Ctx& ctx, Data& d, const std::string& out_dir, bool copy) {
-    (void)ctx;
     AssetsResult R;
     std::set<std::string> names;
     for (const char* kind : {"common", "compiled"}) {
@@ -25,6 +24,16 @@ AssetsResult gen_assets(Ctx& ctx, Data& d, const std::string& out_dir, bool copy
             if (bk && bk->read() == data) {
                 ++R.identical;
                 continue;
+            }
+            if (d.has_classic) {
+                // a resource the mod carries unchanged from the classic game where Enhanced has another one: the classic game's own difference, not the author's
+                const LFile* ck = d.classic(kind).find(key);
+                ctx.classic["resource files the mod differs from Enhanced in"]++;
+                if (ck && ck->read() == data) {
+                    ctx.classic["resource files: of them identical to the classic game's (not carried)"]++;
+                    continue;
+                }
+                ctx.classic[ck ? "resource files: of them changed from the classic game (carried)" : "resource files: of them new, the classic game has no such file (carried)"]++;
             }
             if (!names.insert(lower(bare)).second) R.duplicates.push_back(bare);
             (other ? R.replaced : R.added).push_back(bare);
@@ -53,6 +62,14 @@ CombatResult gen_combat(Ctx& ctx, Data& d, const std::string& out_dir) {
     // oldest and newest volume that ships the table: "changelog" and "shipped"
     const std::vector<LFile>& hist = h->second;
     const CsDoc base = parse_combat(bk->read());
+    CsDoc classic_doc;  // --classic: the table the mod was made against
+    std::map<std::string, const CsSpecies*> classic_by;
+    if (d.has_classic)
+        if (const LFile* ck = d.classic_compiled.find("compiled_combatspecies.bin")) {
+            classic_doc = parse_combat(ck->read());
+            for (const CsSpecies& sp : classic_doc.species) classic_by[sp.name] = &sp;
+        }
+    const bool three_way = !classic_by.empty();
     R.present = true;
     for (int variant = 0; variant < 2; ++variant) {
         const LFile& pick = variant == 0 ? hist.front() : hist.back();
@@ -68,25 +85,49 @@ CombatResult gen_combat(Ctx& ctx, Data& d, const std::string& out_dir) {
             if (m == mod_by.end()) continue;
             std::vector<std::string> what;
             const CsSpecies& ms = *m->second;
-            if (!cs_equal(sp.styles, ms.styles)) { sp.styles = ms.styles; what.push_back("styles (" + std::to_string(ms.styles.size()) + ")"); }
-            if (!cs_equal(sp.moves, ms.moves)) { sp.moves = ms.moves; what.push_back("moves (" + std::to_string(ms.moves.size()) + ")"); }
-            if (!cs_equal(sp.ais, ms.ais)) { sp.ais = ms.ais; what.push_back("ais (" + std::to_string(ms.ais.size()) + ")"); }
+            // three-way with --classic: a part of the species is the author's when the mod's differs from the classic game's; the rest stays as Enhanced has it
+            const auto cit = classic_by.find(sp.name);
+            const CsSpecies* cs = three_way && cit != classic_by.end() ? cit->second : nullptr;
+            const bool noise_possible = three_way;
+            auto author = [&](bool same_as_classic) { return !noise_possible || !cs || !same_as_classic; };
+            if (!cs_equal(sp.styles, ms.styles)) {
+                if (author(cs && cs_equal(cs->styles, ms.styles))) { sp.styles = ms.styles; what.push_back("styles (" + std::to_string(ms.styles.size()) + ")"); }
+                else if (variant == 0) ctx.classic["combat species parts equal to the classic game's (not applied)"]++;
+            }
+            if (!cs_equal(sp.moves, ms.moves)) {
+                if (author(cs && cs_equal(cs->moves, ms.moves))) { sp.moves = ms.moves; what.push_back("moves (" + std::to_string(ms.moves.size()) + ")"); }
+                else if (variant == 0) ctx.classic["combat species parts equal to the classic game's (not applied)"]++;
+            }
+            if (!cs_equal(sp.ais, ms.ais)) {
+                if (author(cs && cs_equal(cs->ais, ms.ais))) { sp.ais = ms.ais; what.push_back("ais (" + std::to_string(ms.ais.size()) + ")"); }
+                else if (variant == 0) ctx.classic["combat species parts equal to the classic game's (not applied)"]++;
+            }
             for (CsProp& p : sp.obj.props) {
                 for (const CsProp& q : ms.obj.props) {
                     if (q.n != p.n) continue;
                     if (!cs_equal(q.v, p.v)) {
-                        p.v = q.v;
-                        what.push_back("property " + p.n);
+                        bool same = false;
+                        if (cs)
+                            for (const CsProp& c : cs->obj.props)
+                                if (c.n == p.n) same = cs_equal(c.v, q.v);
+                        if (author(same)) {
+                            p.v = q.v;
+                            what.push_back("property " + p.n);
+                        } else if (variant == 0) {
+                            ctx.classic["combat species parts equal to the classic game's (not applied)"]++;
+                        }
                     }
                     break;
                 }
             }
+            if (variant == 0 && !what.empty() && three_way) ctx.classic["combat species with author changes (carried)"]++;
             if (!what.empty()) cv.changed.emplace_back(sp.name, std::move(what));
         }
         cv.data = write_combat(res);
         const CsDoc check = parse_combat(cv.data);
         for (const CsSpecies& sp : check.species) {
             const auto m = mod_by.find(sp.name);
+            if (three_way) continue;  // what is equal to the classic game's is left as Enhanced has it on purpose
             if (m != mod_by.end() && (!cs_equal(sp.styles, m->second->styles) || !cs_equal(sp.moves, m->second->moves) || !cs_equal(sp.ais, m->second->ais)))
                 ctx.warn.push_back("combat table: species " + sp.name + " differs from the mod's after writing");
         }
