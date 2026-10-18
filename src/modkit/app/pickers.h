@@ -18,6 +18,15 @@ bool asset_picker(const char* label, std::string& name, const GameData* game, co
 // a quest id: the project's quests first, then every quest of the game (compiled_quests.bin) with its English title; free text is accepted too
 // (a name nobody knows is shown in orange). `exclude`: a project quest left out (the quest being edited).
 bool quest_picker(const char* label, std::string& name, App& app, const std::string& exclude = {}, float width = 0);
+// A shipped dialogue info of the game by name: type to filter, the list shows name, speaker, quest and the first line it says (English), and the
+// filter matches all of those. Free text is accepted (a name the game does not know is shown in orange).
+bool info_picker(const char* label, std::string& name, App& app, float width = 0);
+// The name of an NPC of the world (the entity name risen.entity.get takes): every NPC entity of the loaded world and the project's placed NPCs; starts
+// loading the world when it is not there.
+bool npc_name_picker(const char* label, std::string& name, App& app, float width = 0);
+// The ID of a world entity (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx): the list is filtered to the entities that carry `name_filter` (empty = all NPCs of the
+// world; the typed filter then matches name, template, layer and ID). When an entity is picked `name` is set to its name if `name` is not null.
+bool entity_id_picker(const char* label, std::string& guid, App& app, const std::string& name_filter, std::string* name = nullptr, float width = 0);
 // a label for a template name: the project's label, else the game's English label, else ""
 std::string label_of(const App& app, const std::string& name);
 

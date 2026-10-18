@@ -2,7 +2,9 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <functional>
+#include <future>
 #include <memory>
 #include <optional>
 #include <mutex>
@@ -99,6 +101,10 @@ public:
     std::vector<TemplateAction> template_actions;
     // the loaded game world (the World panel loads it; placement and the pickers of NPC names use it)
     std::shared_ptr<const World> world;
+    // starts loading the world in the background when nothing has (the pickers of NPC names and entity IDs need it without the World panel having been opened);
+    // `world` is set when it is done. No effect while a load runs or the world is there.
+    void request_world();
+    bool world_loading() const { return world_future_.valid(); }
     // meshes and textures of the game for the 3D views (made with the game data; nullptr without)
     gfx::ResourceCache* resources();
     // tells the 3D views about the project's asset files (every frame; `reload` reads files that changed on disk again)
@@ -191,6 +197,7 @@ private:
     bool import_open_ = false;
     // game data loader
     void poll_loader();
+    std::future<std::shared_ptr<World>> world_future_;
     std::thread loader_;
     std::atomic<bool> loader_done_{false}, loader_cancel_{false};
     std::mutex loader_mu_;

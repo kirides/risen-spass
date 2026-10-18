@@ -12,6 +12,8 @@
 
 #include <algorithm>
 #include <cstring>
+#include <unordered_map>
+#include <functional>
 
 namespace mk::ui {
 
@@ -115,6 +117,181 @@ bool template_picker(const char* label, std::string& name, const GameData* game,
     }
     ImGui::PopID();
     return changed;
+}
+
+namespace {
+
+// the shared look of the lookup fields: a text field that takes free text and an arrow that opens a filterable list; `rows` fills the list for the typed
+// filter (called again only when the filter changed), `known` says whether the current value is one of the choices
+struct LookupRow {
+    std::string value, a, b, c;  // the value a pick sets, then three display columns
+};
+
+bool lookup_field(const char* label, std::string& value, const char* hint, float width, bool known, const char* unknown_tip,
+                  const std::function<void(const std::string& filter, std::vector<LookupRow>& out)>& rows, float col_a, float col_b, float col_c) {
+    bool changed = false;
+    ImGui::PushID(label);
+    if (!known) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.65f, 0.3f, 1));
+    ImGui::SetNextItemWidth(width > 0 ? width : ImGui::CalcItemWidth() - ImGui::GetFrameHeight() - ImGui::GetStyle().ItemInnerSpacing.x);
+    changed |= ImGui::InputTextWithHint("##value", hint, &value);
+    if (!known) {
+        ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", unknown_tip);
+    }
+    ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+    static std::string filter, cached_for;
+    static std::vector<LookupRow> list;
+    static bool dirty = true;
+    if (ImGui::ArrowButton("##open", ImGuiDir_Down)) {
+        filter.clear();
+        dirty = true;
+        ImGui::OpenPopup("##pick");
+    }
+    visible_label(label);
+    if (ImGui::BeginPopup("##pick")) {
+        if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+        ImGui::SetNextItemWidth(420);
+        if (ImGui::InputTextWithHint("##filter", "filter: any part of the name, owner, quest, text ...", &filter)) dirty = true;
+        if (dirty || cached_for != label) {
+            list.clear();
+            rows(filter, list);
+            cached_for = label;
+            dirty = false;
+        }
+        ImGui::TextDisabled("%zu matches", list.size());
+        ImGui::BeginChild("##list", ImVec2(col_c > 0 ? col_c + 260 : col_b + 240, 380));
+        ImGuiListClipper clip;
+        clip.Begin(static_cast<int>(list.size()));
+        while (clip.Step())
+            for (int i = clip.DisplayStart; i < clip.DisplayEnd; ++i) {
+                const LookupRow& r = list[static_cast<size_t>(i)];
+                if (ImGui::Selectable((r.value + "##" + std::to_string(i)).c_str(), r.value == value)) {
+                    value = r.value;
+                    changed = true;
+                    dirty = true;
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine(col_a);
+                ImGui::TextDisabled("%s", r.a.c_str());
+                ImGui::SameLine(col_b);
+                ImGui::TextDisabled("%s", r.b.c_str());
+                if (col_c > 0) {
+                    ImGui::SameLine(col_c);
+                    ImGui::TextDisabled("%s", r.c.c_str());
+                }
+            }
+        ImGui::EndChild();
+        ImGui::EndPopup();
+    }
+    ImGui::PopID();
+    return changed;
+}
+
+std::string clip_text(std::string s, size_t n) {
+    for (char& c : s)
+        if (c == '\n' || c == '\r') c = ' ';
+    if (s.size() > n) s = s.substr(0, n) + "...";
+    return s;
+}
+
+// distinct NPC entities of the world by name
+struct NpcName {
+    std::string name, template_name, layer;
+    size_t count = 0;
+};
+std::vector<NpcName> world_npc_names(const World& w) {
+    std::vector<NpcName> out;
+    std::unordered_map<std::string, size_t> at;
+    for (const WorldEntity& e : w.entities) {
+        if (!e.npc || e.name.empty()) continue;
+        auto it = at.find(e.name);
+        if (it == at.end()) {
+            at[e.name] = out.size();
+            out.push_back({e.name, e.template_name, w.layers[e.layer].name, 1});
+        } else {
+            ++out[it->second].count;
+        }
+    }
+    return out;
+}
+
+}  // namespace
+
+bool info_picker(const char* label, std::string& name, App& app, float width) {
+    const GameData* g = app.game.get();
+    bool known = name.empty();
+    if (g)
+        for (auto& i : g->infos())
+            if (i.name == name) {
+                known = true;
+                break;
+            }
+    auto rows = [g](const std::string& filter, std::vector<LookupRow>& out) {
+        if (!g) return;
+        for (auto& i : g->infos()) {
+            const std::string line = g->info_text(i.name);
+            if (!icontains(i.name, filter) && !icontains(i.owner, filter) && !icontains(i.quest, filter) && !icontains(line, filter)) continue;
+            out.push_back({i.name, i.owner.empty() ? "-" : i.owner, i.quest.empty() ? "-" : i.quest, clip_text(line, 90)});
+        }
+    };
+    const bool ch = lookup_field(label, name, "dialogue info (FILLERX2_00029)", width, known, "No dialogue info of the game has this name", rows, 190, 300, 480);
+    if (g && !name.empty() && ImGui::IsItemHovered() && known) {
+        const std::string line = g->info_text(name);
+        if (!line.empty()) ImGui::SetTooltip("%s", clip_text(line, 200).c_str());
+    }
+    return ch;
+}
+
+bool npc_name_picker(const char* label, std::string& name, App& app, float width) {
+    if (!app.world) app.request_world();
+    bool known = name.empty();
+    if (app.world)
+        for (const WorldEntity& e : app.world->entities)
+            if (e.npc && e.name == name) {
+                known = true;
+                break;
+            }
+    for (auto& n : app.project.npcs)
+        if (n.name == name) known = true;
+    const World* w = app.world.get();
+    const Project* p = &app.project;
+    auto rows = [w, p](const std::string& filter, std::vector<LookupRow>& out) {
+        for (auto& n : p->npcs)
+            if (!n.name.empty() && (icontains(n.name, filter) || icontains(n.template_name, filter))) out.push_back({n.name, "(project)", n.template_name, ""});
+        if (!w) return;
+        for (const NpcName& n : world_npc_names(*w)) {
+            if (!icontains(n.name, filter) && !icontains(n.template_name, filter) && !icontains(n.layer, filter)) continue;
+            out.push_back({n.name, n.count > 1 ? std::to_string(n.count) + " in the world" : "1 in the world", n.template_name, n.layer});
+        }
+    };
+    if (!app.world) ImGui::BeginDisabled();
+    const bool ch = lookup_field(label, name, app.world ? "NPC name" : "loading the world...", width, known || !app.world,
+                                 "No NPC with this name in the world or the project", rows, 230, 380, 560);
+    if (!app.world) ImGui::EndDisabled();
+    return ch;
+}
+
+bool entity_id_picker(const char* label, std::string& guid, App& app, const std::string& name_filter, std::string* name, float width) {
+    if (!app.world) app.request_world();
+    const World* w = app.world.get();
+    const bool known = guid.empty() || !w || w->by_guid(guid) != nullptr;
+    const std::string wanted = p2m::lower(name_filter);
+    auto rows = [w, wanted](const std::string& filter, std::vector<LookupRow>& out) {
+        if (!w) return;
+        for (const WorldEntity& e : w->entities) {
+            if (wanted.empty() ? !e.npc : p2m::lower(e.name) != wanted) continue;
+            char pos[64];
+            std::snprintf(pos, sizeof pos, "%.0f %.0f %.0f", e.x(), e.y(), e.z());
+            const std::string layer = w->layers[e.layer].name;
+            if (!icontains(e.guid, filter) && !icontains(e.name, filter) && !icontains(e.template_name, filter) && !icontains(layer, filter)) continue;
+            out.push_back({e.guid, e.name, layer, std::string(pos) + (e.template_name.empty() ? "" : "   " + e.template_name)});
+        }
+    };
+    const bool ch = lookup_field(label, guid, w ? "entity ID" : "loading the world...", width, known, "No entity of the world has this ID", rows, 300, 460, 640);
+    if (ch && name && w)
+        if (const WorldEntity* e = w->by_guid(guid))
+            if (e->name != *name) *name = e->name;
+    return ch;
 }
 
 bool quest_picker(const char* label, std::string& name, App& app, const std::string& exclude, float width) {

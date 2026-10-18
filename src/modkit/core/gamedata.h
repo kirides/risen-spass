@@ -28,6 +28,24 @@ struct GameQuest {
     bool silent = false;
 };
 
+// one command or condition of a dialogue info: its class without the "gCInfoCommand" / "gCInfoCondition" prefix and the values it has, as text
+struct InfoMember {
+    std::string cls;  // "Say", "GiveXP", "PlayerKnows" ...
+    std::vector<std::pair<std::string, std::string>> props;
+};
+
+// a dialogue info of the game (compiled_infos.bin): what a modder needs to find the one to edit
+struct GameInfo {
+    std::string name;    // "FILLERX2_00941": how the dialogue data and risen.dialog.get know it
+    std::string owner;   // the NPC that speaks it ("Pallas"; "sh" = the player)
+    std::string quest;   // the quest it belongs to ("" = none)
+    std::string parent;  // the info it answers ("" = a top level info)
+    std::vector<std::pair<std::string, std::string>> props;  // the info's own values (Name, Owner, Quest, ConditionType, StartChapter ...)
+    // its commands and its conditions in order: the numbers risen.dialog's command / condition functions take are positions in these lists (1-based). A run of
+    // properties is one member; a new one starts when the class changes or a property repeats (the reading of risen-pack2mod's property edits).
+    std::vector<InfoMember> commands, conditions;
+};
+
 struct TemplateInfo {
     std::string name;   // the entity name the engine knows (RE.md section 48)
     std::string file;   // the file name without .tple
@@ -89,6 +107,16 @@ public:
     // the game's own quests, sorted by name (empty when compiled_quests.bin is missing or unreadable)
     const std::vector<GameQuest>& quests() const { return quests_; }
     const GameQuest* quest(const std::string& name) const;  // case-insensitive
+    // the game's dialogue infos (compiled_infos.bin), sorted by name; empty when the file is missing or unreadable. The first line an info says is
+    // `info_text(name)` (infos.tab).
+    const std::vector<GameInfo>& infos() const { return infos_; }
+    // the first line an info says (infos.tab: the row of the info with the lowest "Order"), "" when it says nothing or the table has no such row
+    std::string info_text(const std::string& info, const std::string& language = "English") const;
+    const GameInfo* info(const std::string& name) const;  // by name, case-insensitive; nullptr when the game has none
+    // the classes of commands / conditions the game's infos use, with the property names each has (in the order they appear), for "add a condition" and the
+    // property lookups
+    const std::map<std::string, std::vector<std::string>>& command_classes() const { return command_classes_; }
+    const std::map<std::string, std::vector<std::string>>& condition_classes() const { return condition_classes_; }
     // the shipped GUI images (compiled_imagelists.bin): icon name -> rectangle of a texture; empty when the file is missing or unreadable
     const ImageCatalog& images() const { return images_; }
     // world projects: names of the folders below common/projects that hold a .wrl
@@ -115,6 +143,9 @@ private:
     std::map<std::string, std::vector<AssetEntry>> assets_;
     std::vector<std::string> worlds_;
     std::vector<GameQuest> quests_;
+    std::vector<GameInfo> infos_;
+    std::map<std::string, std::vector<std::string>> command_classes_, condition_classes_;
+    std::unordered_map<std::string, std::string> info_first_line_;  // info name -> id of its first row in infos.tab
     ImageCatalog images_;
     p2m::Ctx ctx_;
     double load_seconds_ = 0;

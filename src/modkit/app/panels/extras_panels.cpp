@@ -195,6 +195,47 @@ private:
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------
+// ---- lookups of the property edits of a shipped info ------------------------------------------------------------------------------------------------
+// "Name = value" of a property as a short line
+std::string prop_line(const std::pair<std::string, std::string>& p) {
+    std::string v = p.second;
+    if (v.size() > 48) v = v.substr(0, 48) + "...";
+    return p.first + " = " + v;
+}
+
+// "3  Say  Speaker = Sara, Listener = ..." the line a command or condition of an info has in the index list
+std::string member_line(size_t i, const mk::InfoMember& m) {
+    std::string s = std::to_string(i + 1) + "  " + m.cls;
+    for (size_t k = 0; k < m.props.size() && k < 2; ++k) s += (k ? ", " : "   ") + prop_line(m.props[k]);
+    return s;
+}
+
+// a combo over `choices` (shown text, value) with a filter; returns true and sets `pick` when one was chosen. `current` is the text on the closed combo.
+bool choice_combo(const char* id, const std::string& current, const char* hint, float width, const std::vector<std::pair<std::string, std::string>>& choices,
+                  std::string& pick) {
+    bool picked = false;
+    ImGui::SetNextItemWidth(width);
+    if (ImGui::BeginCombo(id, current.empty() ? hint : current.c_str(), ImGuiComboFlags_HeightLarge)) {
+        static std::string filter;
+        if (ImGui::IsWindowAppearing()) {
+            filter.clear();
+            ImGui::SetKeyboardFocusHere();
+        }
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::InputTextWithHint("##f", "filter", &filter);
+        const std::string f = p2m::lower(filter);
+        for (const auto& c : choices) {
+            if (!f.empty() && p2m::lower(c.first).find(f) == std::string::npos) continue;
+            if (ImGui::Selectable((c.first + "##" + c.second).c_str(), c.second == current)) {
+                pick = c.second;
+                picked = true;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    return picked;
+}
+
 class ShippedDialogsPanel : public Panel {
 public:
     const char* title() const override { return kPanelShippedDialogs; }
@@ -270,8 +311,9 @@ private:
         if (DialogEdit* x = find_by_uid(p.dialog_edits, sel_)) {
             bool ch = false;
             ImGui::PushItemWidth(std::min(420.0f, ImGui::GetContentRegionAvail().x * 0.6f));
-            ch |= ui::input_text("Info", x->info);
-            ui::help("The name of a shipped dialogue info, as the game's dialogue data and risen.dialog.get know it (\"FILLERX2_00029\").");
+            ch |= ui::info_picker("Info", x->info, app);
+            ui::help("The name of a shipped dialogue info, as the game's dialogue data and risen.dialog.get know it (\"FILLERX2_00029\"). Type to search the "
+                     "game's dialogue infos by name, speaker, quest or the words of the first line; the arrow opens the list.");
             ImGui::PopItemWidth();
             ui::section("XP reward");
             ch |= ui::opt_int("Add a reward", x->xp_add, nullptr, 50);
@@ -298,38 +340,88 @@ private:
                 }
             }
             ui::section("Property edits");
-            ImGui::TextDisabled("Change a value of the info, one of its commands or conditions where it still has the old one; or append a condition. Applied before the XP edits.");
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+            ImGui::TextWrapped("Change a value of the info, one of its commands or conditions where it still has the old one; or append a condition. Pick the command or condition from what the info has, then its property: the current value is filled in as the old value. Applied before the XP edits.");
+            ImGui::PopStyleColor();
             {
                 static const std::vector<std::string> kinds = {"info", "command", "condition", "add_condition"};
                 int drop_op = -1;
+                const GameInfo* gi = app.game ? app.game->info(x->info) : nullptr;
                 for (size_t i = 0; i < x->ops.size(); ++i) {
                     InfoOp& op = x->ops[i];
                     ImGui::PushID(1000 + static_cast<int>(i));
                     ImGui::SetNextItemWidth(130);
                     ch |= ui::combo("##kind", op.kind, kinds, false);
-                    if (op.kind != "info") {
+                    // the member the edit is about: a command or condition of the info (a list of what it has), or the class of a condition to append
+                    const std::vector<mk::InfoMember>* list = gi ? (op.kind == "command" ? &gi->commands : op.kind == "condition" ? &gi->conditions : nullptr) : nullptr;
+                    const mk::InfoMember* member = nullptr;
+                    if (op.kind == "command" || op.kind == "condition") {
                         ImGui::SameLine();
-                        ImGui::SetNextItemWidth(60);
-                        if (ImGui::InputInt("##index", &op.index, 0, 0)) {
-                            op.index = std::max(0, op.index);
-                            ch = true;
+                        if (list && !list->empty()) {
+                            std::vector<std::pair<std::string, std::string>> choices;
+                            for (size_t k = 0; k < list->size(); ++k) choices.push_back({member_line(k, (*list)[k]), std::to_string(k + 1)});
+                            const bool in_range = op.index >= 1 && static_cast<size_t>(op.index) <= list->size();
+                            std::string pick;
+                            if (choice_combo("##member", in_range ? member_line(static_cast<size_t>(op.index - 1), (*list)[static_cast<size_t>(op.index - 1)]) : std::string(),
+                                             op.kind == "command" ? "which command" : "which condition", 330, choices, pick)) {
+                                op.index = std::atoi(pick.c_str());
+                                ch = true;
+                            }
+                            if (in_range) member = &(*list)[static_cast<size_t>(op.index - 1)];
+                        } else {
+                            ImGui::SetNextItemWidth(60);
+                            if (ImGui::InputInt("##index", &op.index, 0, 0)) {
+                                op.index = std::max(0, op.index);
+                                ch = true;
+                            }
                         }
                     }
                     if (op.kind == "add_condition") {
                         ImGui::SameLine();
-                        ImGui::SetNextItemWidth(130);
-                        ch |= ImGui::InputTextWithHint("##class", "class", &op.cls);
+                        std::vector<std::pair<std::string, std::string>> choices;
+                        if (app.game)
+                            for (const auto& [cls, names] : app.game->condition_classes()) choices.push_back({cls + "   (" + std::to_string(names.size()) + " properties)", cls});
+                        std::string pick;
+                        if (choice_combo("##class", op.cls, "condition class", 220, choices, pick)) {
+                            op.cls = pick;
+                            ch = true;
+                        }
                     }
-                    ImGui::SameLine();
-                    ImGui::SetNextItemWidth(120);
-                    ch |= ImGui::InputTextWithHint("##pname", "property", &op.name);
+                    // the property: what the chosen member (or the info itself) has, with its current value; choosing one also fills in the old value
+                    {
+                        ImGui::SameLine();
+                        std::vector<std::pair<std::string, std::string>> choices;
+                        const std::vector<std::pair<std::string, std::string>>* have = nullptr;
+                        if (op.kind == "info" && gi) have = &gi->props;
+                        else if (member) have = &member->props;
+                        if (have)
+                            for (const auto& pv : *have) choices.push_back({prop_line(pv), pv.first});
+                        else if (op.kind == "add_condition" && app.game) {
+                            const auto& cc = app.game->condition_classes();
+                            if (auto it = cc.find(op.cls); it != cc.end())
+                                for (const std::string& n : it->second) choices.push_back({n, n});
+                        }
+                        std::string pick;
+                        if (!choices.empty()) {
+                            if (choice_combo("##pname", op.name, "property", 250, choices, pick)) {
+                                op.name = pick;
+                                if (have && op.kind != "add_condition")
+                                    for (const auto& pv : *have)
+                                        if (pv.first == pick) op.old_value = pv.second;
+                                ch = true;
+                            }
+                        } else {
+                            ImGui::SetNextItemWidth(160);
+                            ch |= ImGui::InputTextWithHint("##pname", "property", &op.name);
+                        }
+                    }
                     if (op.kind != "add_condition") {
                         ImGui::SameLine();
-                        ImGui::SetNextItemWidth(110);
+                        ImGui::SetNextItemWidth(120);
                         ch |= ImGui::InputTextWithHint("##old", "old value", &op.old_value);
                     }
                     ImGui::SameLine();
-                    ImGui::SetNextItemWidth(130);
+                    ImGui::SetNextItemWidth(140);
                     ch |= ImGui::InputTextWithHint("##new", "new value", &op.new_value);
                     ImGui::SameLine();
                     if (ImGui::SmallButton("x")) drop_op = static_cast<int>(i);
@@ -354,8 +446,7 @@ private:
             for (size_t i = 0; i < x->refills.size(); ++i) {
                 Refill& r = x->refills[i];
                 ImGui::PushID(static_cast<int>(i));
-                ImGui::SetNextItemWidth(130);
-                ch |= ImGui::InputTextWithHint("##trader", "trader", &r.trader);
+                ch |= ui::npc_name_picker("##trader", r.trader, app, 200);
                 ImGui::SameLine();
                 ch |= ui::template_picker("##item", r.item, app.game.get(), {TplKind::Item, TplKind::Recipe}, ui::project_item_names(p), 260);
                 ImGui::SameLine();
@@ -420,10 +511,29 @@ private:
         if (TeacherLimit* x = find_by_uid(p.teachers, tsel_)) {
             bool ch = false;
             ImGui::PushItemWidth(std::min(420.0f, ImGui::GetContentRegionAvail().x * 0.6f));
-            ch |= ui::input_text("NPC", x->entity_name);
-            ui::help("For display: the NPC's entity name.");
-            ch |= ui::input_text("Entity ID", x->guid);
-            ui::help("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx: the ID of the placed NPC in the world (risen.entity.by_id).");
+            const std::string name_before = x->entity_name;
+            if (ui::npc_name_picker("NPC", x->entity_name, app)) {
+                ch = true;
+                // a name that only one entity of the world carries brings its ID along; the ID list below is filtered to the name
+                if (app.world && x->entity_name != name_before) {
+                    std::string only;
+                    size_t n = 0;
+                    for (const WorldEntity& e : app.world->entities)
+                        if (e.npc && e.name == x->entity_name) {
+                            only = e.guid;
+                            ++n;
+                        }
+                    if (n == 1) x->guid = only;
+                    else if (n > 1) {
+                        const WorldEntity* cur = app.world->by_guid(x->guid);
+                        if (!cur || cur->name != x->entity_name) x->guid.clear();
+                    }
+                }
+            }
+            ui::help("The NPC's entity name: type to search the NPCs of the loaded world (and the project's placed NPCs). A name that exists once fills in the ID.");
+            ch |= ui::entity_id_picker("Entity ID", x->guid, app, x->entity_name, &x->entity_name);
+            ui::help("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx: the ID of the placed NPC in the world (risen.entity.by_id). The list holds the entities that carry the NPC name "
+                     "above (several NPCs share a name, e.g. guards), with their layer and position; with no name it lists every NPC of the world.");
             ch |= ui::combo("Skill", x->skill, skill_names(app.game.get()), false);
             ImGui::SetNextItemWidth(140);
             if (ImGui::InputInt("Limit", &x->max)) {

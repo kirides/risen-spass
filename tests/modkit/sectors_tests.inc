@@ -43,3 +43,47 @@ TEST(world_sectors_start_state_and_triggers) {
     CHECK(chapter);
     CHECK(dialogue);
 }
+
+TEST(game_data_lists_the_dialogue_infos) {
+    auto g = game_data();
+    if (!g) {
+        std::printf("  (skipped: no --data)\n");
+        return;
+    }
+    const auto& infos = g->infos();
+    std::printf("  %zu dialogue infos\n", infos.size());
+    CHECK(infos.size() > 4000);
+    const mk::GameInfo* patty = nullptr;
+    for (auto& i : infos)
+        if (i.name == "PANKRATZX2_00610") patty = &i;
+    CHECK(patty != nullptr);
+    if (patty) {
+        CHECK_EQ(patty->owner, std::string("Patty"));
+        CHECK_EQ(patty->quest, std::string("Patty_FollowToGregsCasketChest"));
+    }
+    // sorted by name, the first line of a spoken info is in infos.tab
+    for (size_t i = 1; i < infos.size(); ++i)
+        if (p2m::lower(infos[i - 1].name) > p2m::lower(infos[i].name)) {
+            CHECK(false);
+            break;
+        }
+    size_t with_text = 0;
+    for (auto& i : infos) with_text += !g->info_text(i.name).empty();
+    std::printf("  %zu of them have a line in infos.tab\n", with_text);
+    CHECK(with_text > 4000);
+    // commands and conditions with their values: the sector command of an info is the first command of the Druid info
+    const mk::GameInfo* druid = g->info("filLERx2_00941");  // case-insensitive
+    CHECK(druid != nullptr);
+    if (druid) {
+        bool sector = false;
+        for (auto& c : druid->commands)
+            if (c.cls == "SetSectorStatus")
+                for (auto& pv : c.props) sector |= pv.first == "SectorName" && pv.second == "Druid_Outdoor_Story_LizardHunter_Off";
+        CHECK(sector);
+        CHECK(!druid->props.empty() && druid->props[0].first == "Name");
+    }
+    CHECK(g->command_classes().count("Say") == 1 && g->command_classes().count("GiveXP") == 1);
+    CHECK(g->condition_classes().count("PlayerKnows") == 1);
+    const auto& say = g->command_classes().at("Say");
+    CHECK(std::find(say.begin(), say.end(), "Speaker") != say.end());
+}

@@ -161,6 +161,10 @@ void App::load_game_data() {
 }
 
 void App::poll_loader() {
+    if (world_future_.valid() && world_future_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        std::shared_ptr<World> w = world_future_.get();
+        if (w && !world) world = w;
+    }
     if (!loader_.joinable() || !loader_done_) return;
     loader_.join();
     std::lock_guard<std::mutex> lock(loader_mu_);
@@ -172,6 +176,20 @@ void App::poll_loader() {
     } else if (!loader_error_.empty()) {
         status("Cannot read the game data: " + loader_error_);
     }
+}
+
+void App::request_world() {
+    if (world || world_future_.valid() || !game) return;
+    std::shared_ptr<const GameData> g = game;
+    const std::string name = settings.world.empty() ? std::string("World") : settings.world;
+    world_future_ = std::async(std::launch::async, [g, name]() -> std::shared_ptr<World> {
+        try {
+            return load_world(*g, name);
+        } catch (const std::exception& e) {
+            log_error(std::string("world: ") + e.what());
+            return nullptr;
+        }
+    });
 }
 
 void App::status(const std::string& text) {

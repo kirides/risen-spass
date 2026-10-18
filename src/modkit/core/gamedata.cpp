@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
 #include <cstring>
 #include <cstdint>
 #include <set>
@@ -249,6 +250,23 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
                 if (fresh) gd->languages_.push_back(lang);
                 col_lang.push_back(it->second);
             }
+            // infos.tab: a row is one spoken line; its "Info" column names the info it belongs to and "Order" its place in it
+            if (p2m::ends_with(p2m::lower(k), "infos.tab")) {
+                const int ci = tab.column_index("Info"), co = tab.column_index("Order");
+                std::unordered_map<std::string, long> best;
+                for (const std::string& id : tab.ids) {
+                    const auto& cells = tab.rows.at(id);
+                    if (ci < 0 || static_cast<size_t>(ci) >= cells.size() || cells[static_cast<size_t>(ci)].empty()) continue;
+                    long order = 0;
+                    if (co >= 0 && static_cast<size_t>(co) < cells.size()) order = std::strtol(cells[static_cast<size_t>(co)].c_str(), nullptr, 10);
+                    const std::string& info = cells[static_cast<size_t>(ci)];
+                    auto it = best.find(info);
+                    if (it == best.end() || order < it->second) {
+                        best[info] = order;
+                        gd->info_first_line_[info] = id;
+                    }
+                }
+            }
             for (const std::string& id : tab.ids) {
                 auto& cells = tab.rows.at(id);
                 auto& dst = gd->texts_[id];
@@ -306,6 +324,67 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
     std::sort(gd->quests_.begin(), gd->quests_.end(), [](const GameQuest& a, const GameQuest& b) { return p2m::lower(a.name) < p2m::lower(b.name); });
     log_info("game data: " + std::to_string(gd->quests_.size()) + " quests");
 
+    // ---- the game's dialogue infos (compiled_infos.bin): the gCInfo records with their commands and conditions
+    for (const std::string& k : gd->compiled_.order) {
+        if (!p2m::ends_with(p2m::lower(k), "compiled_infos.bin")) continue;
+        try {
+            const p2m::Template t = p2m::parse_template(gd->compiled_.files.at(k).read());
+            auto text_of = [&](const p2m::Val& v) -> std::string {
+                if (v.is_str()) {
+                    if (v.s.size() == 33 && v.s[0] == '@') {
+                        const auto g = gd->guid_names_.find(v.s);
+                        return g == gd->guid_names_.end() ? v.s : g->second;
+                    }
+                    return v.s;
+                }
+                return v.repr();
+            };
+            GameInfo* cur = nullptr;
+            InfoMember* open = nullptr;
+            std::set<std::string> seen;
+            int open_kind = 0;
+            for (const p2m::Prop& p : t.props) {
+                if (p.pset == "gCInfo") {
+                    open = nullptr;
+                    if (p.name == "Name" && p.value.is_str()) {
+                        gd->infos_.push_back({});
+                        cur = &gd->infos_.back();
+                        cur->name = p.value.s;
+                    }
+                    if (!cur) continue;
+                    cur->props.emplace_back(p.name, text_of(p.value));
+                    if (!p.value.is_str()) continue;
+                    if (p.name == "Owner") cur->owner = p.value.s;
+                    else if (p.name == "Quest") cur->quest = p.value.s;
+                    else if (p.name == "Parent") cur->parent = p.value.s;
+                    continue;
+                }
+                const int kind = p2m::starts_with(p.pset, "gCInfoCommand") ? 1 : p2m::starts_with(p.pset, "gCInfoCondition") ? 2 : 0;
+                if (!kind || !cur) {
+                    open = nullptr;
+                    continue;
+                }
+                const std::string cls = p.pset.substr(kind == 1 ? 13 : 15);
+                auto& list = kind == 1 ? cur->commands : cur->conditions;
+                if (!open || open_kind != kind || list.back().cls != cls || seen.count(p.name)) {
+                    list.push_back({cls, {}});
+                    open = &list.back();
+                    open_kind = kind;
+                    seen.clear();
+                }
+                seen.insert(p.name);
+                open->props.emplace_back(p.name, text_of(p.value));
+                auto& names = (kind == 1 ? gd->command_classes_ : gd->condition_classes_)[cls];
+                if (std::find(names.begin(), names.end(), p.name) == names.end()) names.push_back(p.name);
+            }
+        } catch (const std::exception& e) {
+            log_warn(std::string("compiled_infos.bin skipped: ") + e.what());
+        }
+        break;
+    }
+    std::sort(gd->infos_.begin(), gd->infos_.end(), [](const GameInfo& a, const GameInfo& b) { return p2m::lower(a.name) < p2m::lower(b.name); });
+    log_info("game data: " + std::to_string(gd->infos_.size()) + " dialogue infos");
+
     // ---- the shipped icons (compiled_imagelists.bin, docs/RE.md section 51): image name -> rectangle of a texture
     for (const std::string& k : gd->compiled_.order) {
         if (!p2m::ends_with(p2m::lower(k), "compiled_imagelists.bin")) continue;
@@ -351,6 +430,17 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
 std::string GameData::template_by_guid(const std::string& at_hex) const {
     const auto it = guid_names_.find(p2m::lower(at_hex));
     return it == guid_names_.end() ? std::string() : it->second;
+}
+
+std::string GameData::info_text(const std::string& info, const std::string& language) const {
+    const auto it = info_first_line_.find(info);
+    return it == info_first_line_.end() ? std::string() : text(it->second, language);
+}
+
+const GameInfo* GameData::info(const std::string& name) const {
+    const std::string key = p2m::lower(name);
+    const auto it = std::lower_bound(infos_.begin(), infos_.end(), key, [](const GameInfo& a, const std::string& k) { return p2m::lower(a.name) < k; });
+    return it != infos_.end() && p2m::lower(it->name) == key ? &*it : nullptr;
 }
 
 const TemplateInfo* GameData::tpl(const std::string& name) const {
