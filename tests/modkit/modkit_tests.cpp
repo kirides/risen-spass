@@ -29,11 +29,18 @@
 #include "core/lua_writer.h"
 #include "core/mesh.h"
 #include "core/log.h"
+#include "core/pack2project.h"
 #include "core/paths.h"
 #include "core/project.h"
 #include "core/quest.h"
 #include "core/validate.h"
 #include "core/world.h"
+#include "pack2mod/convert.h"
+#include "pack2mod/internal.h"
+#include "pack2mod/lua_emit.h"
+#include "pack2mod/pak.h"
+#include "pack2mod/tab.h"
+#include "pack2mod/tple.h"
 #include "pack2mod/util.h"
 
 #include <luajit/lua.hpp>
@@ -345,6 +352,7 @@ TEST(gamedata_real_archives) {
 #include "sectors_tests.inc"
 #include "genome_tests.inc"
 #include "dialog_sim_tests.inc"
+#include "pack2project_tests.inc"
 #include "chronicle_tests.inc"
 
 int main(int argc, char** argv) {

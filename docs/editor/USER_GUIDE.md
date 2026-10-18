@@ -384,6 +384,11 @@ Start the game: the layer loads the mod like any other (it is listed in the Mods
 
 Command line: `risen-modkit --import <mod folder> --save project.rmk.json [--from-data]`.
 
+**A Risen mod's archives** (`.p00` / `.pak` volumes, e.g. the Risen Extended Mod) become a project with `risen-pack2mod <mod folder> --baseline <Risen data> --project my_mod\my_mod.rmk.json`
+(then **File > Open**): the changed and new items, the recipes, monster actor swaps, container fills, texts in every language and the loose meshes, textures and actors, ready to edit; the
+Problems panel shows the editor's checks (stock textures the mod replaces are warnings). What an editor project cannot hold (XP and trader edits of shipped dialogue lines, teacher limits, ...)
+stays in the project folder's `unmapped\` and is listed in its `report.md`. [PACK2MOD.md](../PACK2MOD.md) "Editor project" has the table of what ends up where.
+
 ## The exported mod
 
 ```

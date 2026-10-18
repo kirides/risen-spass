@@ -6,10 +6,16 @@
 #include <vector>
 
 #include "pack2mod/convert.h"
+#ifdef P2M_WITH_MODKIT
+#include "core/pack2project.h"
+#endif
 
 // wmain: Windows hands the command line as UTF-16, the tool works in UTF-8
 int wmain(int argc, wchar_t** wargv) {
     SetConsoleOutputCP(CP_UTF8);
+#ifdef P2M_WITH_MODKIT
+    mk::register_pack2mod_project_writer();  // --project: the editor's project model is linked in
+#endif
     std::vector<std::string> args;
     for (int i = 0; i < argc; ++i) {
         const int n = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1, nullptr, 0, nullptr, nullptr);

@@ -230,6 +230,7 @@ The re-implementation of the Risen Extended Mod ([EXTENDED_MOD_ANALYSIS.md](EXTE
 
 ```powershell
 .\build\RelWithDebInfo\risen-pack2mod.exe B:\TMP\Risen_Extended_Mod --baseline B:\DevDrive\risen-test\data --out mods\risen_extended --profile tools\pack2mod\profiles\risen_extended.json   # the C++ converter (7 s, docs/PACK2MOD.md); then copy tools\extmod_templates\check.lua and play.lua into the mod (test files)
+.\scripts\pack2project-check.ps1                                                                                                              # --out + --project + --verify on the same mod, then the editor's validation and export of the project (docs/PACK2MOD.md "Editor project")
 .\scripts\pack2mod-golden.ps1 [-Combat changelog|shipped|off]                                                                                  # C++ tool vs the Python oracle below: identical but two explained differences
 python -I tools/extmod_gen.py --mod B:\TMP\Risen_Extended_Mod --baseline B:\DevDrive\risen-test\data --out mods\risen_extended   # ~15 s, deterministic; --no-assets skips the 108 MB copy
 python -I tools/extmod_enums.py --log <spass.log of mods/itemdump> --baseline B:\DevDrive\risen-test\data                         # engine enum names (gEItemHoldType_...) -> tools/extmod_enums.json
