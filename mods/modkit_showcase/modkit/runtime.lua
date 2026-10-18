@@ -212,7 +212,9 @@ local function each_objective(fn)
             fn(q, st, s, s)
         elseif st.kind == "race" and s.gates then
             for _, idx in ipairs(st.paths) do
-                local g = s.gates[tostring(idx)]
+                local gates = s.gates
+                if not gates then break end   -- an earlier path just decided: the flow went on and dropped the gates
+                local g = gates[tostring(idx)]
                 if g then fn(q, f.steps[idx], g, s) end
             end
         end
