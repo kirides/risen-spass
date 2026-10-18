@@ -23,7 +23,7 @@
 --   "modkit.quest_started" (mod id, quest), "modkit.objective" (mod id, quest, step), "modkit.quest_done" (mod id, quest, result) for quest flows
 --   "modkit.world_spawned" (mod id, key, entity), "modkit.container_filled" (mod id, key, container), "modkit.world_removed" (mod id, key, entity id),
 --   "modkit.world_moved" (mod id, key, entity) for the world edits
-local M = { VERSION = 9 }
+local M = { VERSION = 10 }
 
 local unpack = table.unpack or unpack
 local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
@@ -368,6 +368,7 @@ local function apply_world(id, w)
             local ent = risen.entity.by_id(c.id)
             if ent then
                 for _, it in ipairs(c.items or {}) do risen.item.give(ent, it[1], it[2]) end
+                for _, name in ipairs(c.equip or {}) do risen.item.equip(ent, name) end   -- what an NPC wears or holds
                 risen.save.set(key, true)
                 risen.emit("modkit.container_filled", id, c.key, ent)
             elseif not warned[key] then
