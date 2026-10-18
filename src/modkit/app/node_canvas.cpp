@@ -162,8 +162,10 @@ bool NodeCanvas::draw(const std::string& key, Graph& g, const Summary& summary) 
     Ctx& c = ctx(key);
     ed::SetCurrentEditor(c.ed);
     bool changed = false;
+    // inside Begin the canvas already maps ImGui's mouse position into canvas space: take it in screen space before
+    const ImVec2 mouse_screen = ImGui::GetMousePos();
     ed::Begin("##canvas");
-    const ImVec2 mouse_canvas = ed::ScreenToCanvas(ImGui::GetMousePos());
+    const ImVec2 mouse_canvas = ed::ScreenToCanvas(mouse_screen);
 
     // positions the model changed (new nodes, undo) go into the editor
     for (auto& n : g.nodes) {
