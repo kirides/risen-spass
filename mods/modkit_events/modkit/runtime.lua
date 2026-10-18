@@ -10,7 +10,9 @@
 --             into objects that exist) and on every session.start (a new game removes runtime quests); the quest actions of the dialogue lines
 --             are scripts (risen.script.define) defined once at load time. A quest with a flow is started by a dialogue or a trigger (an item, a kill,
 --             a game variable, another quest, the start of a game) and walks its steps from the engine's events
---   world     entities spawned at a position and items put into containers of the world (by entity ID), once per savegame on world.ready
+--   patches   free property edits of any template (risen.template.patch), applied like the balance data
+--   dialog_edits  XP rewards and trader refills on shipped dialogue infos (risen.dialog.get / add_command), chapter 1's stock at the start of a new game
+--   world     teaching limits of placed NPCs (risen.npc.set_teach_limit), entities spawned at a position and items put into containers of the world (by entity ID), once per savegame on world.ready
 --   assets    the icon image lists (risen.assets.load_icons) registered on the first tick, before the balance data makes the items that use them
 --
 --   layers    groups of the NPCs, world spawns and container fills above that are switched on and off as a whole (modkit/layers.lua, optional)
@@ -23,7 +25,7 @@
 --   "modkit.quest_started" (mod id, quest), "modkit.objective" (mod id, quest, step), "modkit.quest_done" (mod id, quest, result) for quest flows
 --   "modkit.world_spawned" (mod id, key, entity), "modkit.container_filled" (mod id, key, container), "modkit.world_removed" (mod id, key, entity id),
 --   "modkit.world_moved" (mod id, key, entity) for the world edits
-local M = { VERSION = 10 }
+local M = { VERSION = 11 }
 
 local unpack = table.unpack or unpack
 local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
@@ -410,6 +412,145 @@ local function apply_world(id, w)
     end
 end
 
+-- ---- patches of any template: risen.template.patch, applied like the balance data (first tick, then with the live entities on every session.start) ----
+local function patch_one(id, e, instances, report)
+    local ok, err = risen.template.patch(e.template, e.properties or {}, { instances = instances })
+    if ok then return 1 end
+    -- one property at a time, so a single bad property costs only itself
+    local n = 0
+    local sets = {}
+    for set in pairs(e.properties or {}) do sets[#sets + 1] = set end
+    table.sort(sets)
+    for _, set in ipairs(sets) do
+        local props = {}
+        for name in pairs(e.properties[set]) do props[#props + 1] = name end
+        table.sort(props)
+        for _, name in ipairs(props) do
+            local ok2, err2 = risen.template.patch(e.template, { [set] = { [name] = e.properties[set][name] } }, { instances = instances })
+            if ok2 then n = n + 1
+            elseif report then risen.log.warn(("%s: patch %s.%s.%s: %s"):format(id, e.template, set, name, tostring(err2 or err))) end
+        end
+    end
+    return n
+end
+
+local function install_patches(id, patches)
+    local function run(instances, report)
+        local n = 0
+        for _, e in ipairs(patches) do n = n + patch_one(id, e, instances, report) end
+        return n
+    end
+    local first = true
+    risen.on("tick", function()
+        if not first then return end
+        first = false
+        risen.log.info(("%s: template patches: %d properties written"):format(id, run(false, true)))
+        risen.emit("modkit.patched", id, "first tick")
+    end)
+    risen.on("session.start", function(mode)
+        run(true, false)
+        risen.emit("modkit.patched", id, "session.start (" .. tostring(mode) .. ")")
+    end)
+end
+
+-- ---- edits of shipped dialogue infos (docs/RE.md section 44): an XP reward added or changed, trader refills; once per process ------------------------
+local function set_command_props(inf, idx, props)
+    for k, v in pairs(props) do
+        if not inf:set_command_property(idx, k, tostring(v)) then return false, k end
+    end
+    return true
+end
+
+local function install_dialog_edits(id, edits)
+    local done = false
+    risen.on("tick", function()
+        if done then return end
+        done = true
+        local c = { xp_added = 0, xp_changed = 0, refills = 0 }
+        for _, e in ipairs(edits) do
+            local inf = risen.dialog.get(e.info)
+            if not inf then
+                risen.log.warn(("%s: dialogue edit %s: no such dialogue info"):format(id, e.info))
+            else
+                if e.xp_add then
+                    local idx = inf:add_command("GiveXP")
+                    if idx and set_command_props(inf, idx, { Amount = e.xp_add }) then c.xp_added = c.xp_added + 1
+                    else risen.log.warn(("%s: dialogue edit %s: cannot add GiveXP"):format(id, e.info)) end
+                end
+                if e.xp_old and e.xp_new then
+                    local changed = false
+                    for i = 1, inf:command_count() do
+                        if inf:get_command_property(i, "Amount") == tostring(e.xp_old) then
+                            changed = inf:set_command_property(i, "Amount", tostring(e.xp_new))
+                            break
+                        end
+                    end
+                    if changed then c.xp_changed = c.xp_changed + 1
+                    else risen.log.warn(("%s: dialogue edit %s: the XP command with %s was not found"):format(id, e.info, tostring(e.xp_old))) end
+                end
+                for _, r in ipairs(e.refills or {}) do
+                    local idx = inf:add_script_command()
+                    local ok = idx and inf:set_script(idx, "OnTradeInfo_RefillTradeItems")
+                    if ok then ok = set_command_props(inf, idx, { Self = r.trader, Other = r.item, OtherType = "gEOtherType_TemplateEntity", Param = r.count }) end
+                    if ok then c.refills = c.refills + 1
+                    else risen.log.warn(("%s: dialogue edit %s: cannot add the refill of %s for %s"):format(id, e.info, r.item, r.trader)) end
+                end
+            end
+        end
+        risen.log.info(("%s: dialogue edits: %d XP rewards, %d XP changes, %d refills"):format(id, c.xp_added, c.xp_changed, c.refills))
+        risen.emit("modkit.dialog_edits", id, c)
+    end)
+    -- the engine runs the chapter infos at the chapter changes; chapter 1's stock is also handed out when a new game starts (the traders sell it from the beginning)
+    local stock = {}
+    for _, e in ipairs(edits) do
+        if e.chapter == 1 then for _, r in ipairs(e.refills or {}) do stock[#stock + 1] = r end end
+    end
+    if #stock == 0 then return end
+    local var = "MODKIT_STOCK_" .. id:upper()
+    risen.on("world.ready", function(mode)
+        if mode ~= "new" or (risen.gamevar.get(var) or 0) ~= 0 then return end
+        risen.gamevar.set(var, 1)
+        local n, bad = 0, 0
+        for _, r in ipairs(stock) do
+            local ok = false
+            local t, p = risen.entity.get(r.trader), risen.entity.player()
+            if t and p then
+                local x, y, z = p:position()
+                local e = risen.entity.spawn(r.item, (x or 0) + 100, (y or 0) + 10, z or 0)
+                if e then
+                    ok = pcall(function() risen.script.call("OnTradeInfo_RefillTradeItems", t, e, r.count) end)
+                    e:kill()
+                end
+            end
+            if ok then n = n + 1 else bad = bad + 1 end
+        end
+        risen.log.info(("%s: chapter 1 trader stock: %d refills, %d failed"):format(id, n, bad))
+        risen.emit("modkit.stock", id, n, bad)
+    end)
+end
+
+-- ---- teaching limits of placed NPCs: on every world.ready (writing the limit into the entity is idempotent) ---------------------------------------------
+local function apply_teachers(id, list)
+    for _, t in ipairs(list) do
+        if in_world(t.world) then
+            local e = risen.entity.by_id(t.id)
+            local enum = risen.balance.skill_enum(t.skill)
+            local key = "teacher." .. tostring(t.id) .. "." .. tostring(t.skill)
+            if e and enum then
+                local ok, err = risen.npc.set_teach_limit(e, enum, t.max)
+                if ok then risen.emit("modkit.teacher", id, t.id, t.skill, t.max)
+                elseif not warned[key] then
+                    warned[key] = true
+                    risen.log.warn(("%s: teaching limit of %s (%s): %s"):format(id, tostring(t.name or t.id), tostring(t.skill), tostring(err)))
+                end
+            elseif not warned[key] then
+                warned[key] = true
+                risen.log.warn(("%s: teaching limit of %s (%s): %s"):format(id, tostring(t.name or t.id), tostring(t.skill), e and "unknown skill" or "no such entity in this world"))
+            end
+        end
+    end
+end
+
 function M.install(data)
     local id = mod and mod.id or "?"
     MOD_ID = id
@@ -453,6 +594,8 @@ function M.install(data)
             end,
         })
     end
+    if nonempty(data.patches) then install_patches(id, data.patches) end
+    if nonempty(data.dialog_edits) then install_dialog_edits(id, data.dialog_edits) end
     for _, a in ipairs((data.dialogs or {}).quest_actions or {}) do
         risen.script.define(a.script, function() M.quest_action(a.quest, a.action) return 0 end)
     end
@@ -469,6 +612,7 @@ function M.install(data)
             end)
         end
     end
+    if nonempty(w.teachers) then risen.on("world.ready", function() apply_teachers(id, w.teachers) end) end
     -- behaviours: the scripts first (risen.behavior.define), then the attachments; an NPC that is not in the world yet gets his when he appears
     local b = data.behaviors or {}
     for _, s in ipairs(b.scripts or {}) do

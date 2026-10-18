@@ -56,6 +56,8 @@ public:
         ImGui::BulletText("%zu spells, %zu NPC groups", p.spells.size(), p.npc_groups.size());
         ImGui::BulletText("%zu NPC templates, %zu placed NPCs", p.npc_templates.size(), p.npcs.size());
         ImGui::BulletText("%zu dialogues, %zu quests", p.dialogs.size(), p.quests.size());
+        ImGui::BulletText("%zu template patches, %zu string rows, %zu shipped dialogue edits, %zu teacher limits", p.patches.size(), p.strings.size(), p.dialog_edits.size(),
+                          p.teachers.size());
         ImGui::BulletText("%zu world spawns, %zu containers, %zu removals, %zu moves", p.world.spawns.size(), p.world.containers.size(), p.world.removals.size(),
                           p.world.moves.size());
         ImGui::BulletText("%zu asset files", p.assets.size());

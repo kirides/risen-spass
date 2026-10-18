@@ -22,6 +22,100 @@ namespace mk {
 
 namespace {
 
+// the requirement / modifier list of an item: "replace the list" + rows in the engine's order (up / down), the modifier's mode (add, set, max, percent), remove,
+// and an add combo. The list is stored as maps plus the order and the modes (ItemDef), so a plain list stays a plain { Skill = amount } table in the export.
+bool skill_list(const char* label, ItemDef& it, bool modifiers, const IntMap& shipped, const std::vector<std::string>& skills, const char* help_text) {
+    std::optional<IntMap>& m = modifiers ? it.modifies : it.requirements;
+    bool changed = false;
+    ImGui::PushID(label);
+    bool on = m.has_value();
+    if (ImGui::Checkbox(label, &on)) {
+        if (on) {
+            m = shipped;
+            (modifiers ? it.modifier_order : it.requirement_order).clear();
+            if (modifiers) it.modifier_modes.clear();
+        } else {
+            m.reset();
+            (modifiers ? it.modifier_order : it.requirement_order).clear();
+            if (modifiers) it.modifier_modes.clear();
+        }
+        changed = true;
+    }
+    ui::help(help_text);
+    if (m) {
+        std::vector<SkillEntry> list = modifiers ? modifier_entries(it) : requirement_entries(it);
+        static const std::vector<std::string> modes = {"add", "set", "max", "percent"};
+        int remove = -1, up = -1;
+        bool edited = false;
+        ImGui::Indent();
+        if (ImGui::BeginTable("##skills", modifiers ? 5 : 4, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH)) {
+            ImGui::TableSetupColumn("skill", ImGuiTableColumnFlags_WidthStretch, 3);
+            ImGui::TableSetupColumn("amount", ImGuiTableColumnFlags_WidthStretch, 2);
+            if (modifiers) ImGui::TableSetupColumn("mode", ImGuiTableColumnFlags_WidthStretch, 2);
+            ImGui::TableSetupColumn("order", ImGuiTableColumnFlags_WidthFixed, 22);
+            ImGui::TableSetupColumn("x", ImGuiTableColumnFlags_WidthFixed, 24);
+            for (size_t i = 0; i < list.size(); ++i) {
+                SkillEntry& e = list[i];
+                ImGui::PushID(static_cast<int>(i));
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(e.skill.c_str());
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                if (ImGui::InputInt("##v", &e.amount)) edited = true;
+                if (modifiers) {
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    if (ui::combo("##mode", e.mode, modes, false)) edited = true;
+                }
+                ImGui::TableNextColumn();
+                if (i > 0 && ImGui::SmallButton("^")) up = static_cast<int>(i);
+                ImGui::TableNextColumn();
+                if (ImGui::SmallButton("x")) remove = static_cast<int>(i);
+                ImGui::PopID();
+            }
+            ImGui::EndTable();
+        }
+        if (up > 0) {
+            std::swap(list[static_cast<size_t>(up)], list[static_cast<size_t>(up) - 1]);
+            edited = true;
+        }
+        if (remove >= 0) {
+            list.erase(list.begin() + remove);
+            edited = true;
+        }
+        ImGui::SetNextItemWidth(200);
+        if (ImGui::BeginCombo("##add", "add...", ImGuiComboFlags_HeightLarge)) {
+            for (auto& s : skills) {
+                if (std::any_of(list.begin(), list.end(), [&](const SkillEntry& e) { return e.skill == s; })) continue;
+                if (ImGui::Selectable(s.c_str())) {
+                    list.push_back({s, 1, "add"});
+                    edited = true;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::Unindent();
+        if (edited) {
+            if (modifiers) set_modifier_entries(it, list);
+            else set_requirement_entries(it, list);
+            changed = true;
+        }
+    } else {
+        std::string s;
+        for (auto& [k, v] : shipped) s += (s.empty() ? "" : ", ") + k + " " + std::to_string(v);
+        ImGui::SameLine();
+        ImGui::TextDisabled("shipped: %s", s.empty() ? "none" : s.c_str());
+    }
+    ImGui::PopID();
+    return changed;
+}
+
+}  // namespace
+
+namespace {
+
 class ItemsPanel : public Panel {
 public:
     const char* title() const override { return kPanelItems; }
@@ -224,10 +318,10 @@ private:
 
         ui::section("Requirements and effects");
         const auto skills = skill_names(g);
-        ch |= ui::opt_skills("Replace requirements", it.requirements, shipped.requirements, skills,
-                         "What the player needs to equip or use the item (attributes, combat skills, ...). Only the player is held to them.");
-        ch |= ui::opt_skills("Replace modifiers", it.modifies, shipped.modifies, skills,
-                         "What the item adds while worn or when used: HitPoints for a potion, ProtEdge for armour, ...");
+        ch |= skill_list("Replace requirements", it, false, shipped.requirements, skills,
+                         "What the player needs to equip or use the item (attributes, combat skills, ...). Only the player is held to them. The order of the list is kept (^ moves a row up).");
+        ch |= skill_list("Replace modifiers", it, true, shipped.modifies, skills,
+                         "What the item adds while worn or when used: HitPoints for a potion, ProtEdge for armour, ... Modes: add (default), set (to the value), max (to the maximum), percent (of the maximum).");
 
         ui::section("Kind");
         ch |= ui::opt_enum("Use type", it.use_type, enum_names(g, "gEItemUseType"), shipped.use_type);

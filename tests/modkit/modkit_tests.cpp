@@ -353,6 +353,7 @@ TEST(gamedata_real_archives) {
 #include "genome_tests.inc"
 #include "dialog_sim_tests.inc"
 #include "pack2project_tests.inc"
+#include "extras_tests.inc"
 #include "chronicle_tests.inc"
 
 int main(int argc, char** argv) {

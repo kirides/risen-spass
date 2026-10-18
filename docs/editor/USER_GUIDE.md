@@ -308,6 +308,22 @@ The Browser and the item editor show a turning preview of a template's mesh (dra
 * The export writes them into `data\world.lua`; the runtime spawns and fills on `world.ready` and remembers it in the savegame's mod data, so a load never
   spawns or fills twice; a spawned object is marked for the savegame (objects are not by themselves).
 
+## Patches, strings, shipped dialogues and teachers
+
+Four small panels for what no other panel owns (a converted Risen mod uses all of them; [PACK2MOD.md](../PACK2MOD.md)):
+
+* **Patches**: write properties of any template of the game (or of your own new templates): the range of a light, a projectile's flight, an item's sort value. Add a patch (or use *Patch this
+  template's properties* in the Browser), choose the template and add properties like on the Items panel's *Other properties* (values are typed like the game's: numbers, text, true / false, vectors as
+  `x; y; z`). The mod applies them when the game starts and again with every world that loads. A property set the template lacks cannot be added.
+* **Strings**: text rows of the game's string tables that belong to no item, recipe or NPC of the project (a button's label, a document, a changed line): an id and a text per language. The first
+  language is the fallback; a row without a text in it is shown only in the languages that have one.
+* **Shipped dialogues**, tab *Dialogue edits*: add commands to a dialogue info of the game: an XP reward (added, or an existing amount changed) and **trader refills** (what a trader gets when the
+  info runs: the chapter infos restock the traders; chapter 1's refills are also given when a new game starts). The new dialogues of the *Dialogues* tab are separate.
+* **Shipped dialogues**, tab *Teacher limits*: how far a placed NPC teaches a skill (his entity ID from the World panel, the skill, the highest value).
+
+Items: the requirement and modifier lists keep their **order** (the ^ button moves a row up) and each modifier has a **mode**: *add* (default), *set* (to the value), *max* (to the skill's maximum),
+*percent* (of the maximum).
+
 ## Command palette and wizards
 
 **Ctrl+P** (Edit > Command palette) opens one search box over everything: the objects of the project (items, recipes, NPC templates and placed NPCs, dialogues, quests, spells,

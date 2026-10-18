@@ -34,7 +34,8 @@ local function kind_of(tpl)
     return "other", have
 end
 
--- `name` / `description`: a string (every language) or { English = "...", German = "..." } -> same | nil, problem
+-- `name` / `description`: a string (every language) or { English = "...", German = "...", default = "..." } -> same | nil, problem
+-- (`default` is the text of every language the table does not name)
 local function text_spec(v, key)
     if v == nil then return nil end
     if type(v) == "string" and v ~= "" then return v end
@@ -55,7 +56,10 @@ local function set_text(key, spec)
     if type(spec) == "string" then
         risen.loc.set(key, spec)
     else
-        for lang, text in pairs(spec) do risen.loc.set(key, text, lang) end
+        -- `default` is set without a language (every language); the named languages win over it whatever the order
+        for lang, text in pairs(spec) do
+            if lang == "default" then risen.loc.set(key, text) else risen.loc.set(key, text, lang) end
+        end
     end
 end
 

@@ -20,6 +20,10 @@ json balance_spec(const Project& p);
 json npcs_data(const Project& p);  // data/npcs.lua: the persistent NPC declarations
 json quests_data(const Project& p);  // data/quests.lua: the quests (risen.quest.define) and their flow
 json world_data(const Project& p);   // data/world.lua: things spawned into the world and items added to containers, once per savegame
+// a text per language as the export writes it into a spec (a string, or a table with `default`); the tests use it
+json text_value_export(const Text& t, const std::vector<std::string>& languages);
+json patches_data(const Project& p);        // data/patches.lua: free property edits of templates (risen.template.patch), in project order
+json dialog_edits_data(const Project& p);   // data/dialog_edits.lua: edits of shipped dialogue infos (XP rewards, trader refills)
 json behaviors_data(const Project& p);  // data/behaviors.lua: the behaviour scripts (modules) and their attachments to NPCs and templates
 // the file of a behaviour inside the exported mod: "behaviors/<name>.lua" (dots and dashes become _, require() reads dots as folders)
 std::string behavior_module_file(const std::string& name);
