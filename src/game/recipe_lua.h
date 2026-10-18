@@ -55,6 +55,7 @@ end
 
 local shipped_names   -- every shipped template with a gCRecipe_PS (computed once: the shipped set never changes)
 local made = {}       -- recipes this layer created: name -> true
+local planned_recipes = {}   -- the new_recipes of the spec being validated: a recipe may name another one of them (the smithing stages consume and make each other), itself included
 
 local function all_names()
     if not shipped_names then
@@ -221,7 +222,7 @@ end
 
 -- ---- validating specs ----------------------------------------------------------------------------------------------------------------------
 local function item_exists(name)
-    if tmpl.exists(name) then return true end
+    if tmpl.exists(name) or planned_recipes[name] then return true end
     return tmpl.is_planned ~= nil and tmpl.is_planned(name) == true
 end
 
@@ -421,6 +422,10 @@ for _, k in ipairs(NEW_KEYS) do NEW_KEY[k] = true end
 local function new_recipes_section(data, _)
     local jobs, problems = {}, {}
     if type(data) ~= "table" then return jobs, { "new_recipes: expected a table { NewRecipeName = { station = \"anvil\", ingredients = ..., result = ... } }" } end
+    for name in pairs(data) do
+        if type(name) == "string" then planned_recipes[name] = true end
+    end
+    local makers = {}   -- creates every recipe's template first: a recipe's result and ingredients may be another new recipe
     for _, name in ipairs(sorted_keys(data)) do
         local entry = data[name]
         local what = "new_recipes." .. tostring(name)
@@ -471,15 +476,19 @@ local function new_recipes_section(data, _)
                     for _, k in ipairs(sorted_keys(entry)) do keys[#keys + 1] = tostring(k) end
                     local summary = {}
                     for _, e in ipairs(parts.ingredients) do summary[#summary + 1] = ("%dx %s"):format(e.count, e.item) end
+                    local function make(opts)
+                        local ov = {}
+                        for k, v in pairs(over) do ov[k] = v end
+                        ov.properties = {}
+                        for set, props in pairs(parts.properties or {}) do ov.properties[set] = props end
+                        if next(ov.properties) == nil then ov.properties = nil end
+                        return tmpl.create(name, entry.base or BASE_DEFAULT, ov, { instances = opts.instances })
+                    end
+                    makers[#makers + 1] = make
                     jobs[#jobs + 1] = {
                         label = ("new recipe %s (%s: %s -> %s)"):format(name, STATION_OF[parts.station] or "?", table.concat(summary, " + "), parts.result.item),
                         run = function(opts)
-                            local ov = {}
-                            for k, v in pairs(over) do ov[k] = v end
-                            ov.properties = {}
-                            for set, props in pairs(parts.properties or {}) do ov.properties[set] = props end
-                            if next(ov.properties) == nil then ov.properties = nil end
-                            local t, err = tmpl.create(name, entry.base or BASE_DEFAULT, ov, { instances = opts.instances })
+                            local t, err = make(opts)
                             if not t then return nil, err end
                             local ok, werr, n = write_parts(name, { station = parts.station, ingredients = parts.ingredients, skills = parts.skills, result = parts.result }, opts)
                             if not ok then return nil, werr end
@@ -489,6 +498,18 @@ local function new_recipes_section(data, _)
                 end
             end
         end
+    end
+    if #makers > 1 then
+        table.insert(jobs, 1, {
+            label = ("new recipe templates (%d)"):format(#makers),
+            run = function(opts)
+                for _, make in ipairs(makers) do
+                    local t, err = make(opts)
+                    if not t then return nil, err end
+                end
+                return true, nil, 0
+            end,
+        })
     end
     return jobs, problems
 end
