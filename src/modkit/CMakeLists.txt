@@ -16,7 +16,9 @@ find_path(MINIAUDIO_INCLUDE_DIRS "miniaudio.h" REQUIRED)
 
 # The generic Lua part of every exported mod is embedded (like pack2mod's main.lua).
 set(MK_EMBED_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/lua/runtime.lua|kMkRuntimeLua")
+    "${CMAKE_CURRENT_SOURCE_DIR}/lua/runtime.lua|kMkRuntimeLua"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lua/events.lua|kMkEventsLua"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lua/layers.lua|kMkLayersLua")
 set(MK_EMBED_SRC "")
 foreach(_entry IN LISTS MK_EMBED_FILES)
     string(REPLACE "|" ";" _parts "${_entry}")
@@ -39,6 +41,7 @@ add_library(modkit_core STATIC
     core/catalog.cpp
     core/dialog.cpp
     core/dialog_sim.cpp
+    core/events.cpp
     core/export.cpp
     core/gamedata.cpp
     core/gamelog.cpp
@@ -47,6 +50,7 @@ add_library(modkit_core STATIC
     core/image.cpp
     core/imagelist.cpp
     core/import.cpp
+    core/layers.cpp
     core/log.cpp
     core/paths.cpp
     core/play.cpp
@@ -97,6 +101,7 @@ add_executable(risen-modkit
     app/dragdrop.cpp
     app/os_open.cpp
     app/editor_util.cpp
+    app/event_ui.cpp
     app/node_canvas.cpp
     app/palette.cpp
     app/pickers.cpp
@@ -110,6 +115,8 @@ add_executable(risen-modkit
     app/panels/dialogs_panel.cpp
     app/panels/items_panel.cpp
     app/panels/problems_panel.cpp
+    app/panels/events_panel.cpp
+    app/panels/layers_panel.cpp
     app/panels/quests_panel.cpp
     app/panels/recipes_panel.cpp
     app/panels/log_panel.cpp

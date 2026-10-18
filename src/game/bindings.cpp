@@ -169,6 +169,7 @@ void registerBindings() {
     rt.addBinding(bindInteractExtras);  // after bindRecipe: risen.interact.focus/info/...
     rt.addBinding(bindInput);           // risen.input
     rt.addBinding(bindHud);
+    rt.addBinding(bindSectors);  // after bindWorld: risen.world.set_sector / sector_enabled / sectors
     rt.addBinding(bindGui);             // risen.gui (M16)             // risen.hud
     rt.addBinding(bindOptions);          // risen.options: the options menu of the mod manager
     rt.addModBinding(bindConfigModApi);  // risen.config(defaults) reads <mod dir>/config.toml (and the choices made in the options menu)

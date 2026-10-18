@@ -57,6 +57,7 @@ void bindGui(sol::state_view lua, sol::table risen);
 
 // risen.hud.* (lua_hud.cpp): the HUD game log and item log.
 void bindHud(sol::state_view lua, sol::table risen);
+void bindSectors(sol::state_view lua, sol::table risen);  // risen.world.set_sector / sector_enabled / sectors
 
 // The `calls` and `hud` trace channels (call_trace.cpp): installCallTrace needs Engine.dll/Game.dll, installHudTrace Script.dll (after PostInitialize).
 void installCallTrace(const std::string& scriptFilter);

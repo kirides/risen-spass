@@ -538,6 +538,38 @@ json to_json(const Project& p) {
         quests.push_back(o);
     }
     j["quests"] = quests;
+    if (!p.events.empty()) {
+        json evs = json::array();
+        for (auto& x : p.events) {
+            json o = json::object();
+            o["uid"] = x.uid;
+            o["name"] = x.name;
+            if (!x.enabled) o["enabled"] = false;
+            o["graph"] = graph_json(x.graph);
+            put_str(o, "notes", x.notes);
+            evs.push_back(o);
+        }
+        j["events"] = evs;
+    }
+
+    if (!p.layers.empty()) {
+        json ls = json::array();
+        for (auto& x : p.layers) {
+            json o = json::object();
+            o["uid"] = x.uid;
+            o["name"] = x.name;
+            put_text(o, "label", x.label);
+            o["enabled"] = x.enabled;
+            if (!x.enable_when.is_null()) o["enable_when"] = x.enable_when;
+            if (!x.disable_when.is_null()) o["disable_when"] = x.disable_when;
+            if (!x.npcs.empty()) o["npcs"] = x.npcs;
+            if (!x.spawns.empty()) o["spawns"] = x.spawns;
+            if (!x.containers.empty()) o["containers"] = x.containers;
+            put_str(o, "notes", x.notes);
+            ls.push_back(o);
+        }
+        j["layers"] = ls;
+    }
 
     json w = json::object();
     w["world"] = p.world.world;
@@ -815,6 +847,29 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
         r.get(e, "type", x.type);
         r.get(e, "xp", x.xp);
         r.get(e, "silent", x.silent);
+        get_graph(r, e, x.graph);
+        r.get(e, "notes", x.notes);
+        return x;
+    });
+    read_list(j, "layers", p.layers, warnings, [](const Reader& r, const json& e) {
+        LayerDef x;
+        r.get_uid(e, x.uid);
+        r.get(e, "name", x.name);
+        r.get(e, "label", x.label);
+        r.get(e, "enabled", x.enabled);
+        r.get(e, "enable_when", x.enable_when);
+        r.get(e, "disable_when", x.disable_when);
+        r.get(e, "npcs", x.npcs);
+        r.get(e, "spawns", x.spawns);
+        r.get(e, "containers", x.containers);
+        r.get(e, "notes", x.notes);
+        return x;
+    });
+    read_list(j, "events", p.events, warnings, [](const Reader& r, const json& e) {
+        EventGraphDef x;
+        r.get_uid(e, x.uid);
+        r.get(e, "name", x.name);
+        r.get(e, "enabled", x.enabled);
         get_graph(r, e, x.graph);
         r.get(e, "notes", x.notes);
         return x;

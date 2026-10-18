@@ -40,5 +40,7 @@ struct ExportResult {
 ExportResult export_mod(const Project& p, const std::string& out_dir, const ExportOptions& opts);
 
 std::string runtime_lua();  // the embedded modkit/runtime.lua
+std::string layers_lua();   // the embedded modkit/layers.lua (exported with the mod layers)
+std::string events_lua();   // the embedded modkit/events.lua (exported with the event graphs)
 
 }  // namespace mk

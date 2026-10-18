@@ -151,6 +151,38 @@ IDs are referenced by the stages (section 9). **M** = must for the stage that im
 | AST-3 S | Custom images: PNG/TGA/JPG -> `._ximg` (DDS A8R8G8B8 or DXT inside the GR01 container); icons -> an icon atlas + `.ximl` image list (`risen.assets.load_icons`). |
 | AST-4 B | Custom meshes from authoring formats (glTF, OBJ, FBX through assimp) -> `._xmsh` + `._xmat`. Needs a writer of the MS02 container that the engine accepts (verified in the game, section 10). |
 
+### 3.11 Events and triggers (stage E21)
+
+A visual event system for game designers: the **Events** tab holds *event graphs*, node graphs on the same canvas as dialogues and quests. A graph starts at a **trigger node**
+(something happens in the game), walks along its links through **condition**, **flow** and **action** nodes, and ends. Example:
+`[On chapter 3] -> [Condition: variable intro_done = 0] -> [Set variable intro_done = 1] -> [HUD message "Chapter 3"] -> [End]`.
+
+| ID | Requirement |
+|---|---|
+| EVT-1 M | Project model `EventGraphDef { uid, name, enabled, graph, notes }` (`Project::events`), persisted in the project file (`events`), edited in the Events tab: list of graphs, canvas, palette / context menu by group (Triggers, Conditions, Flow, Actions), inspector per node (table-driven from one field list per node type), undo / redo through the project history like the other panels. |
+| EVT-2 M | Triggers (start nodes, one output): `on_session` (new game / load / any), `on_chapter`, `on_kill` (template or unique name), `on_move` (player moved >= N m, N >= 1), `on_area` (player enters / leaves a sphere around a point or a named entity), `on_quest` (quest status), `on_item` (picked up / dropped / equipped / unequipped / added / removed / consumed), `on_dialogue` (option finished), `on_time` (clock reaches hh:mm), `on_variable` (a variable changed, with comparison), `on_timer` (every / after N seconds of play), `on_signal` (another graph's Send signal). |
+| EVT-3 M | Conditions (the *Condition* flow node has a `then` and an `else` output and tests a list of checks combined with all / any, optionally negated): variable compare, quest status, item count, chapter, player level, skill, NPC alive / dead, guild, game event, time of day window, player in area, random chance. Chaining condition nodes gives nested and / or. |
+| EVT-4 M | Actions: set / add / clear variable (game variable or mod save variable), spawn / remove NPC, give / take item, give XP, start / succeed / fail / cancel quest, quest log, HUD message (`{var}` placeholders), play sound, teleport the player, set chapter, set time, heal / hurt, run a script by name, send signal, write to the log. |
+| EVT-5 M | Flow: Condition, Once (only the first pass per savegame), Count gate (the N-th pass), Cooldown, Delay (game seconds, survives save / load), Repeat N, Sequence (outputs 1..4 in order), End. An output with several links runs them all (parallel), top to bottom. |
+| EVT-6 M | State: variables are game variables (`risen.gamevar`, integers, visible to dialogue and quest conditions) or mod variables in `risen.save` (numbers); Once / Count / Cooldown / pending Delays also live in `risen.save`, so a quick load rolls them back together with the world and nothing fires twice or is lost. |
+| EVT-7 M | **Movement debounce:** `on_move` / `on_area` consume player positions through one pure filter (`movement_step` in `modkit/events.lua`): a sample is produced only when the player is >= 1 m (100 units) away from the last sample; rotation and smaller movement never produce one; enter / leave of areas are judged on samples only. Unit-tested without the game. |
+| EVT-8 M | Validation (Problems panel and the node's red border): a graph needs a trigger; a trigger without a link, nodes no trigger reaches, required fields empty, unknown quest / item / template / NPC, loops without a Delay (error), `on_move` below 1 m. Export refuses what validation marks as error. |
+| EVT-9 M | Export `data/events.lua` (plain data, one entry per graph with its nodes, their data and outputs) + `modkit/events.lua` (the runtime module, written only when the project has event graphs; its pure-Lua parts are tested with LuaJIT); import from the data files rebuilds identical graphs (positions kept), the project file round trip is exact. |
+| EVT-10 S | Layer additions only where cheap: none are needed (chapter changes, movement and time of day are polled per frame by the runtime). "On interact" and "enable a world sector" have no layer event / API and are not offered. |
+
+### 3.12 Mod layers (stage E21)
+
+A mod layer is a named group of the project's placed NPCs, world spawns and container fills that is switched on and off as a whole, like the game's story sectors
+(`X.sec` + `X.lrent`, `EnabledOnStartup`, switched by `World::SetSectorStatus`, RE.md section 55).
+
+| ID | Requirement |
+|---|---|
+| LAY-1 M | Project model `LayerDef { uid, name, label, enabled (at start), enable_when, disable_when, npcs[], spawns[], containers[] }` (`Project::layers`, project file `layers`); an object belongs to one layer. The Layers panel lists the layers, edits members (pickers over the objects not yet in a layer), and draws a plan (x / z, one colour per layer, ring = off at start, tooltip with the object and its layer). |
+| LAY-2 M | Switching: `enable_when` / `disable_when` are condition sets (the checks of the Condition node: chapter, quest, variable, item, NPC dead, area ...); the first time one holds the layer switches (once per savegame, looked at about twice a second). The event graphs switch it with the **Layer** node (enable / disable / toggle) and ask it with the **Layer is on / off** check. |
+| LAY-3 M | Runtime (`modkit/layers.lua`): state in `risen.save` (`modkit.layer.<name>`, absent = `enabled`), rolled back by a load; members carry a `layer` field in `data/npcs.lua` / `data/world.lua`: an NPC becomes a tracking `risen.spawn.when` rule (made while the layer is on, removed when it goes off, a new body each time it comes back, his own appear / leave conditions still apply), a world spawn is made when the layer is on and taken away when it goes off, a container fill happens once, the first time the layer is on. Nothing is doubled after a quick load. |
+| LAY-4 M | **Game sectors:** the layer API `risen.world.set_sector(name, enabled)`, `sector_enabled(name)`, `sectors()` (World::SetSectorStatus / gCSector::IsEnabled); the Events editor has a **Game sector** action and a check, with a picker over the game's sectors read from `projects/World/**.sec` (`core/layers.*` `stock_sectors`; 289 sectors, 21 start off). |
+| LAY-5 S | Open: the layer members are not drawn in the World view (that panel belongs to another work stream; the Layers panel's plan stands in for it), containers have no position in the plan, and a layer cannot hold template edits or items placed through the balance data. |
+
 ### 3.10 Export and import (stages E2 onwards, E9)
 
 | ID | Requirement |
@@ -293,6 +325,22 @@ to bottom by their position on the canvas. The flow is exported as one flat list
 each path's first step, the path's own steps follow right after the race step) and a path that does not end in an Outcome is closed by `{ kind = "stop" }`, so the runtime
 never runs on into the next path. Paths do not join (a node reached twice is an error). The runtime (`modkit/runtime.lua` version 8) keeps one counter table per gate in
 the quest's state (`s.gates["<step>"] = { n, talked }`), looks at all gates on every event, and the first gate whose objective is done sets `s.step` to the step after it.
+### 7.5 Event graphs -> `data/events.lua` (E21)
+
+Each graph becomes `{ name, key, enabled, nodes = { { id, type, pos = { x, y }, <the node's fields>, outs = { next = { "id", ... } } }, ... } }`; `id` is the first 10 hex digits of the node uid (stable,
+the key of the Once / Count / Cooldown state in `risen.save`: `modkit.ev.<graph key>.<id>`), `outs` names the targets per output pin (`next`, `then`, `else`, `1`..`4`, `again`, `body`, `done`),
+ordered top to bottom by the target's position. `modkit/events.lua` registers one handler per trigger kind used by any graph, evaluates conditions at once, runs action nodes through the layer's API, keeps
+a step budget per run (no endless loops) and the pending delays in `risen.save` (`modkit.ev.pending`, a clock in `modkit.ev.clock` that only advances while the world runs).
+Movement and areas: see EVT-7. Mod events for tests: `"modkit.event"` (mod id, graph name, node id, trigger kind) when a trigger starts a graph, `"modkit.event_node"` (mod id, graph name, node id, node type) per executed node.
+
+### 7.6 Mod layers -> `data/layers.lua` (E21)
+
+`data/layers.lua` is a list of `{ name, enabled, enable_when?, disable_when? }` (condition sets are `{ mode, negate, tests = { { kind = "chapter", op = ">=", value = 2 }, ... } }`, the same data the
+Condition node of an event graph has). Members are not listed there: every member names its layer (`layer = "Siege"` in `data/npcs.lua` entries and in the `spawns` / `containers` of
+`data/world.lua`), so the import rebuilds the membership from the data files alone. `modkit/runtime.lua` (version 9) requires `modkit/layers.lua` and `modkit/events.lua` when `layers` is given:
+NPC rules use `layers.cond(name)` (a `risen.cond.fn` re-evaluated on `modkit.layer_changed`), `apply_world` consults `layers.enabled(name)` and runs again on every layer change.
+Mod event for tests: `"modkit.layer_changed"` (name, enabled).
+
 ## 8. Testing and verification
 
 1. **Unit tests** (`modkit_tests`, runs in CI without game data): project JSON round trip, undo/redo, validation rules, Lua writer determinism, export of the example
@@ -341,6 +389,8 @@ Each stage ends with a usable feature (or the base the next stage needs), is ver
 | **E19a** 3D model import (AST-4) | OBJ / glTF / GLB -> `._xmsh`: the writer `core/meshwrite.*` (byte-exact against a shipped mesh, RE.md section 53), the readers `core/model_import.*`, the Assets panel's **Import 3D model...**, `--convert-model`, the probe mods `meshprobe` / `meshprobe_shots` (scenario `meshprobe`) | AST-4 | **done** (unit tests `meshwrite_*`, `model_import_*`; live: the engine loaded the mesh and drew it textured, and the first winding was found wrong from the pictures and fixed; the handedness default is inferred) |
 
 | **E19b** Actors in the World view | `core/actor.*` reads the EMotion FX actor inside `._xmac` (RE.md section 54); the World view draws monsters, animals and humans as their textured bind pose (T-position) instead of boxes; humans and ogres are assembled from skeleton, armour and head parts | WLD-3 | **done** (unit tests `actor_*`, `world_monsters_have_actors`: 107 of 111 actors (five stored big endian), 1253 of 1306 monsters, `world_humans_are_assembled_from_parts`: all 246 NPCs with body and head; Sara and Gyrger checked in pictures of the world view; the humans wear a stand-in head, the real one is not in the data; SpeedTrees stay boxes) |
+
+| **E21** Events, triggers, layers and sectors | the Events tab (event graphs: triggers, conditions, flow, actions; `core/events.*`, `lua/events.lua`), the Layers panel (mod layers, `core/layers.*`, `lua/layers.lua`), export `data/events.lua` / `data/layers.lua` + `modkit/events.lua` / `layers.lua`, import, validation, movement debounce, `risen.world.set_sector / sector_enabled / sectors` | EVT-1..10, LAY-1..5 | **done** (unit tests `events_*`, `layers_*`: the example graph, every node kind, validation, project and data round trips, the movement filter in C++ and Lua, the generated Lua run against a stand-in API (chapter -> variable, once, delays that survive a load, signals, movement per metre, areas, layers switched by condition and graph); live scenario `evlive` (23 checks): chapter 3 sets the variable, movement fires once per metre and never for turning, a layer's NPC appears / goes / is not doubled by a quick load, a graph switches a game sector and the lizard scouts of `Monastery_Story_LizardAttack_Off` appear; screenshots of both panels checked; EVT-10 open: no interact event, no World view tag) |
 
 All of the roadmap of 2026-10-17 is done (E13 to E20).
 

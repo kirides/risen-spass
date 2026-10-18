@@ -31,9 +31,10 @@ struct NodeTypeDef {
     unsigned color;  // header colour, 0xAARRGGBB
     std::vector<PinDef> pins;
     const PinDef* pin(const std::string& name) const;
+    const char* group = "";  // the create menu's submenu (event graphs)
 };
 
-enum class GraphKind { Dialog, Quest };
+enum class GraphKind { Dialog, Quest, Event };
 
 const std::vector<NodeTypeDef>& node_types(GraphKind k);
 const NodeTypeDef* node_type(GraphKind k, const std::string& type);

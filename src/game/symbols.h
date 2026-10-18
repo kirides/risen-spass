@@ -74,6 +74,15 @@
     X(world_quick_save, L"Script.dll", "?QuickSave@World@@QEAAXXZ", void (*)(void* self), false) \
     X(world_auto_save, L"Script.dll", "?AutoSave@World@@QEAAXAEBVbCString@@@Z", void (*)(void* self, const void* name), false) \
     X(world_is_save_allowed, L"Script.dll", "?IsSaveAllowed@World@@QEBA_NXZ", bool (*)(const void* self), false) \
+    /* ---- sectors (docs/RE.md section 55): World::SetSectorStatus -> gCWorld::GetSector -> gCSector::Enable --------------------------- */ \
+    X(world_set_sector_status, L"Script.dll", "?SetSectorStatus@World@@QEAA_NAEBVbCString@@_N@Z", bool (*)(void* self, const void* name, bool on), false) \
+    X(gcworld_current, L"Game.dll", "?GetCurrentWorld@gCWorld@@SAPEAV1@XZ", void* (*)(), false) \
+    X(gcworld_get_sector, L"Game.dll", "?GetSector@gCWorld@@QEAAPEAVgCSector@@AEBVbCString@@@Z", void* (*)(void* world, const void* name), false) \
+    X(gcworld_sector_count, L"Game.dll", "?GetSectorCount@gCWorld@@QEBAHXZ", int (*)(const void* world), false) \
+    X(gcworld_sector_at, L"Game.dll", "?GetSectorAt@gCWorld@@QEAAPEAVgCSector@@H@Z", void* (*)(void* world, int index), false) \
+    X(gcsector_is_enabled, L"Game.dll", "?IsEnabled@gCSector@@QEBA_NXZ", bool (*)(const void* sector), false) \
+    X(gcsector_enabled_on_startup, L"Game.dll", "?GetEnabledOnStartup@gCSector@@QEBAAEB_NXZ", const bool* (*)(const void* sector), false) \
+    X(proc_file_base_name, L"Engine.dll", "?GetFileBaseName@eCProcessibleElement@@QEBA?AVbCString@@XZ", void* (*)(const void* self, void* ret), false) \
     X(gamevar_get, L"Script.dll", "?GetGameVariable@InfoSystem@@SA_NAEBVbCString@@AEAH@Z", bool (*)(const void*, int*), true) \
     X(gamevar_set, L"Script.dll", "?SetGameVariable@InfoSystem@@SA_NAEBVbCString@@H@Z", bool (*)(const void*, int), true) \
     X(ent_get_entity, L"Script.dll", "?GetEntity@Entity@@SA?AV1@VbCString@@@Z", void* (*)(void* ret, void* byValueName), true) \

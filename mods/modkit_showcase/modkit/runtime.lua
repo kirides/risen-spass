@@ -13,6 +13,9 @@
 --   world     entities spawned at a position and items put into containers of the world (by entity ID), once per savegame on world.ready
 --   assets    the icon image lists (risen.assets.load_icons) registered on the first tick, before the balance data makes the items that use them
 --
+--   layers    groups of the NPCs, world spawns and container fills above that are switched on and off as a whole (modkit/layers.lua, optional)
+--   events    the event graphs (modkit/events.lua, optional; installed by main.lua after this module)
+--
 -- Events for other mods and tests:
 --   "modkit.applied"   (mod id, when, report) after every application of the balance data (when = "first tick", "session.start (new)", ...)
 --   "modkit.npc_ready" (mod id, npc name, reason) whenever a placed NPC is in the world (reason as risen.npc.persistent's on_ready)
@@ -20,7 +23,7 @@
 --   "modkit.quest_started" (mod id, quest), "modkit.objective" (mod id, quest, step), "modkit.quest_done" (mod id, quest, result) for quest flows
 --   "modkit.world_spawned" (mod id, key, entity), "modkit.container_filled" (mod id, key, container), "modkit.world_removed" (mod id, key, entity id),
 --   "modkit.world_moved" (mod id, key, entity) for the world edits
-local M = { VERSION = 8 }
+local M = { VERSION = 9 }
 
 local unpack = table.unpack or unpack
 local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
@@ -320,6 +323,18 @@ local function apply_world(id, w)
         if not in_world(s.world) then goto next_spawn end
         local key = "modkit.world.spawn." .. s.key
         local done = risen.save.get(key)
+        if s.layer and not (M.layers and M.layers.enabled(s.layer)) then
+            -- the layer is off: what it made is taken away again (made anew when it comes back), nothing new is made
+            if done then
+                if type(done) == "string" then
+                    local e = risen.entity.by_id(done)
+                    if e then e:kill() end
+                end
+                risen.save.remove(key)
+                risen.save.remove(key .. ".object")
+            end
+            goto next_spawn
+        end
         -- an object (not an item: the player may have picked that up) that is not in the world any more is placed again
         if done and risen.save.get(key .. ".object") and type(done) == "string" and not risen.entity.by_id(done) then
             risen.log.info(("%s: %s (%s) is missing after the load: placed again"):format(id, s.template, done))
@@ -346,7 +361,7 @@ local function apply_world(id, w)
     end
     for _, c in ipairs(w.containers or {}) do
         local key = "modkit.world.container." .. c.key
-        if in_world(c.world) and not risen.save.get(key) then
+        if in_world(c.world) and not risen.save.get(key) and not (c.layer and not (M.layers and M.layers.enabled(c.layer))) then
             local ent = risen.entity.by_id(c.id)
             if ent then
                 for _, it in ipairs(c.items or {}) do risen.item.give(ent, it[1], it[2]) end
@@ -394,6 +409,15 @@ end
 function M.install(data)
     local id = mod and mod.id or "?"
     MOD_ID = id
+    -- layers first: NPC rules and world edits ask them
+    local layers
+    if nonempty(data.layers) then
+        layers = require("modkit.layers")
+        local events = require("modkit.events")
+        events.set_runtime(M)
+        layers.install(data.layers, events)
+        M.layers = layers
+    end
     local any_flow = false
     for _, q in ipairs(data.quests or {}) do
         if q.flow then
@@ -435,6 +459,11 @@ function M.install(data)
     local w = data.world or {}
     if nonempty(w.spawns) or nonempty(w.containers) or nonempty(w.removals) or nonempty(w.moves) then
         risen.on("world.ready", function() apply_world(id, w) end)
+        if layers then
+            risen.on("modkit.layer_changed", function()
+                if risen.entity.player() then apply_world(id, w) end
+            end)
+        end
     end
     -- behaviours: the scripts first (risen.behavior.define), then the attachments; an NPC that is not in the world yet gets his when he appears
     local b = data.behaviors or {}
@@ -460,7 +489,15 @@ function M.install(data)
         local ok, why
         -- he belongs to one world: nothing of him is made, restored or replaced while another one is active
         spec.world = n.world
-        if n.appear_when or n.leave_when then
+        if n.layer and layers then
+            -- a member of a layer: made while the layer is on, removed when it goes off (a new body each time it comes back)
+            local own = M.cond(n.appear_when)
+            local on = layers.cond(n.layer)
+            spec.when = own and risen.cond.all({ on, own }) or on
+            spec.despawn_when = M.cond(n.leave_when)
+            spec.once = false
+            ok, why = risen.spawn.when(spec)
+        elseif n.appear_when or n.leave_when then
             spec.when = M.cond(n.appear_when) or risen.cond.fn(function() return true end)
             spec.despawn_when = M.cond(n.leave_when)
             ok, why = risen.spawn.when(spec)

@@ -201,6 +201,28 @@ struct QuestDef {
     std::string notes;
 };
 
+// a mod layer (core/layers.h): a named group of placed NPCs, world spawns and container fills, switched on and off as a whole
+struct LayerDef {
+    std::string uid;
+    std::string name;  // letters, digits, _ : the key of its state in savegames
+    Text label;
+    bool enabled = true;           // on when a game starts
+    json enable_when, disable_when;  // condition sets (core/events.h): the first time one holds, the layer switches (null = never by itself)
+    std::vector<std::string> npcs;        // placed NPCs by unique name
+    std::vector<std::string> spawns;      // WorldSpawn uids
+    std::vector<std::string> containers;  // ContainerEdit uids
+    std::string notes;
+};
+
+// an event graph (core/events.h): triggers -> conditions, flow, actions
+struct EventGraphDef {
+    std::string uid;
+    std::string name;  // shown in the editor; the runtime's key of the graph is made of the uid
+    bool enabled = true;
+    Graph graph;
+    std::string notes;
+};
+
 struct WorldSpawn {
     std::string uid;
     std::string template_name;
@@ -255,6 +277,8 @@ struct Project {
     std::vector<PlacedNpc> npcs;
     std::vector<DialogDef> dialogs;
     std::vector<QuestDef> quests;
+    std::vector<EventGraphDef> events;
+    std::vector<LayerDef> layers;
     WorldEdits world;
     std::vector<AssetFile> assets;
     std::vector<BehaviorScript> behaviors;
