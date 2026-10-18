@@ -100,3 +100,34 @@ TEST(import_keeps_unknown_sections) {
     // not a mod
     CHECK(!import_mod(u8str(temp_dir("import_none"))).ok);
 }
+
+TEST(container_equip_exports_and_imports) {
+    // an NPC's inventory (a container edit by entity id) can mark what he wears: the export lists it in `equip`, the runtime equips it, the import reads it back
+    Project p = load_showcase();
+    ContainerEdit c;
+    c.uid = "0123456789abcdef0123456789abcdef";
+    c.guid = "11111111-2222-3333-4444-555555555555";
+    c.entity_name = "Guard_01";
+    c.items = {{"It_1H_Sword_Rusty", 1, true}, {"It_Apple", 3, false}};
+    p.world.containers.push_back(c);
+    const json w = world_data(p);
+    const json& e = w["containers"].back();
+    CHECK(e.contains("equip") && e["equip"].size() == 1 && e["equip"][0] == "It_1H_Sword_Rusty");
+    CHECK_EQ(e["items"].size(), size_t(2));
+    const auto files = render_mod(p);
+    CHECK(files.at("modkit/runtime.lua").find("risen.item.equip(ent, name)") != std::string::npos);
+    const fs::path dir = temp_dir("contequip") / "m";
+    ExportOptions o;
+    o.project_dir = showcase_dir();
+    CHECK(export_mod(p, u8str(dir), o).ok);
+    const ImportResult r = import_mod(u8str(dir), true);
+    CHECK(r.ok);
+    const ContainerEdit* back = nullptr;
+    for (auto& x : r.project.world.containers)
+        if (x.guid == c.guid) back = &x;
+    CHECK(back != nullptr);
+    if (back) {
+        CHECK_EQ(back->items.size(), size_t(2));
+        CHECK(back->items[0].equip && !back->items[1].equip);
+    }
+}

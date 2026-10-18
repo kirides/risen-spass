@@ -795,8 +795,15 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
                 ce.guid = ct.value("id", std::string());
                 ce.entity_name = ct.value("name", std::string());
                 ce.world = ct.value("world", std::string());
+                std::set<std::string> equip;
+                if (ct.contains("equip") && ct["equip"].is_array())
+                    for (auto& x : ct["equip"])
+                        if (x.is_string()) equip.insert(x.get<std::string>());
                 for (auto& it : ct.value("items", json::array()))
-                    if (it.is_array() && !it.empty()) ce.items.push_back({it[0].get<std::string>(), it.size() > 1 ? it[1].get<int>() : 1, false});
+                    if (it.is_array() && !it.empty()) {
+                        const std::string item = it[0].get<std::string>();
+                        ce.items.push_back({item, it.size() > 1 ? it[1].get<int>() : 1, equip.count(item) != 0});
+                    }
                 p.world.containers.push_back(ce);
             }
             auto vec3 = [](const json& a) {

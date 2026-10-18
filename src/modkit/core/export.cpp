@@ -420,9 +420,13 @@ json world_data(const Project& p) {
         e["key"] = c.uid.substr(0, 12);
         e["id"] = c.guid;
         if (!c.entity_name.empty()) e["name"] = c.entity_name;
-        json items = json::array();
-        for (auto& i : c.items) items.push_back(json::array({i.item, i.amount}));
+        json items = json::array(), equip = json::array();
+        for (auto& i : c.items) {
+            items.push_back(json::array({i.item, i.amount}));
+            if (i.equip) equip.push_back(i.item);  // an NPC's inventory: what he wears or holds (the runtime equips it after giving it)
+        }
         e["items"] = items;
+        if (!equip.empty()) e["equip"] = equip;
         e["world"] = world_of(p, c.world);
         if (const LayerDef* l = layer_of_container(p, c.uid)) e["layer"] = l->name;
         containers.push_back(e);
