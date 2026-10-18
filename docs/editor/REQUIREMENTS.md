@@ -192,6 +192,7 @@ A mod layer is a named group of the project's placed NPCs, world spawns and cont
 | EXP-3 M | The exported mod uses the layer's declarative API only; numbers that the layer validates (template names, skills, commands) are validated by the editor too, so a mod that exports cleanly loads cleanly. |
 | IMP-1 B | Import an exported mod: read `modkit/project.json` (exact round trip). |
 | IMP-2 B | Import without `project.json` or after hand edits of `data/*.lua`: evaluate the data files in a sandboxed LuaJIT state (they are plain tables) and map them back to the project model; anything that does not map is reported and kept as "raw Lua" for re-export. |
+| IMP-3 S | `risen-pack2mod --project FILE.rmk.json` writes a converted Risen mod's archives as a project (items changed and new, recipes, NPC / projectile template edits, container fills with equip marks, texts per language, assets in the project's `assets/`); what has no place in the model stays in `unmapped/` and is listed; `--verify` exports the project again and compares it with the layer mod of the same run (`core/pack2project.*`, docs/PACK2MOD.md "Editor project"). |
 
 ## 4. Non-functional requirements
 
