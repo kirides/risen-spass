@@ -105,6 +105,7 @@ struct Ctx {
     std::vector<std::string>& warn;
     std::map<std::string, Text> strings;  // id -> per language (strings/*.csv)
     std::set<std::string> languages;
+    std::set<std::string> used;           // lower-case ids of the rows an object took as its label (the rest become the project's free string rows)
 };
 
 std::string code_language(const std::string& code) {
@@ -150,6 +151,28 @@ json text_json(const Text& t) {
 template <class T>
 void opt(const json& e, const char* k, std::optional<T>& out) {
     if (e.contains(k) && !e[k].is_null()) out = e[k].get<T>();
+}
+
+// a requirement / modifier list of the export: { Skill = amount }, { Skill = { amount =, mode = } } or a list of { skill =, amount =, mode = } (kept in order)
+std::vector<SkillEntry> skill_entries(const json& v) {
+    std::vector<SkillEntry> out;
+    auto entry = [&](const std::string& skill, const json& amount, const json& mode) {
+        SkillEntry e;
+        e.skill = skill;
+        if (amount.is_number()) e.amount = static_cast<int>(std::lround(amount.get<double>()));
+        if (mode.is_string()) e.mode = mode.get<std::string>();
+        out.push_back(e);
+    };
+    if (v.is_array()) {
+        for (auto& x : v)
+            if (x.is_object()) entry(x.value("skill", std::string()), x.contains("amount") ? x["amount"] : json(), x.contains("mode") ? x["mode"] : json());
+    } else if (v.is_object()) {
+        for (auto& [k, x] : v.items()) {
+            if (x.is_object()) entry(k, x.contains("amount") ? x["amount"] : json(), x.contains("mode") ? x["mode"] : json());
+            else entry(k, x, json());
+        }
+    }
+    return out;
 }
 
 IntMap int_map(const json& v) {
@@ -203,14 +226,15 @@ void import_balance(Ctx& c, const json& b) {
         }
     auto label = [&](const std::string& id) {
         auto it = c.strings.find(id);
+        if (it != c.strings.end()) c.used.insert(p2m::lower(id));
         return it == c.strings.end() ? Text{} : it->second;
     };
     auto item_fields = [&](ItemDef& d, const json& e) {
         opt(e, "value", d.value);
         opt(e, "damage", d.damage);
         opt(e, "mana_cost", d.mana_cost);
-        if (e.contains("requires")) d.requirements = int_map(e["requires"]);
-        if (e.contains("modifies")) d.modifies = int_map(e["modifies"]);
+        if (e.contains("requires")) set_requirement_entries(d, skill_entries(e["requires"]));
+        if (e.contains("modifies")) set_modifier_entries(d, skill_entries(e["modifies"]));
         opt(e, "use_type", d.use_type);
         opt(e, "category", d.category);
         opt(e, "mesh", d.mesh);
@@ -454,7 +478,10 @@ void import_npcs(Ctx& c, const json& list) {
         n.version = e.value("version", 1);
         if (e.contains("appear_when")) n.appear_when = e["appear_when"];
         if (e.contains("leave_when")) n.leave_when = e["leave_when"];
-        if (auto it = c.strings.find("FO_" + n.name); it != c.strings.end()) n.label = it->second;
+        if (auto it = c.strings.find("FO_" + n.name); it != c.strings.end()) {
+            n.label = it->second;
+            c.used.insert(p2m::lower("FO_" + n.name));
+        }
         c.p.npcs.push_back(n);
     }
 }
@@ -771,6 +798,26 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
         if (npcs.is_array()) import_npcs(c, npcs);
         if (quests.is_array()) import_quests(c, quests);
         if (dialogs.is_object()) import_dialogs(c, dialogs);
+        if (const json patches = data("patches.lua"); patches.is_array())
+            for (auto& e : patches) {
+                TemplatePatch x;
+                x.uid = new_uid();
+                x.template_name = e.value("template", std::string());
+                x.properties = props_of(e);
+                p.patches.push_back(x);
+            }
+        if (const json edits = data("dialog_edits.lua"); edits.is_array())
+            for (auto& e : edits) {
+                DialogEdit x;
+                x.uid = new_uid();
+                x.info = e.value("info", std::string());
+                opt(e, "xp_add", x.xp_add);
+                opt(e, "xp_old", x.xp_old);
+                opt(e, "xp_new", x.xp_new);
+                opt(e, "chapter", x.chapter);
+                for (auto& rf : e.value("refills", json::array())) x.refills.push_back({rf.value("trader", std::string()), rf.value("item", std::string()), rf.value("count", 1)});
+                p.dialog_edits.push_back(x);
+            }
         if (const json events = data("events.lua"); events.is_array())
             for (auto& e : events) p.events.push_back(event_graph_from_data(e));
         if (const json layers = data("layers.lua"); layers.is_array())
@@ -805,6 +852,16 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
                         ce.items.push_back({item, it.size() > 1 ? it[1].get<int>() : 1, equip.count(item) != 0});
                     }
                 p.world.containers.push_back(ce);
+            }
+            for (auto& tl : world.value("teachers", json::array())) {
+                TeacherLimit x;
+                x.uid = new_uid();
+                x.guid = tl.value("id", std::string());
+                x.entity_name = tl.value("name", std::string());
+                x.skill = tl.value("skill", std::string());
+                x.max = tl.value("max", 100);
+                x.world = tl.value("world", std::string());
+                p.teachers.push_back(x);
             }
             auto vec3 = [](const json& a) {
                 Vec3 v{0, 0, 0};
@@ -883,6 +940,16 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
         for (auto& x : p.world.containers) def_world(x.world);
         for (auto& x : p.world.removals) def_world(x.world);
         for (auto& x : p.world.moves) def_world(x.world);
+        for (auto& x : p.teachers) def_world(x.world);
+        // string rows no object took as its label stay as free rows of the project
+        for (auto& [id, text] : c.strings)
+            if (!c.used.count(p2m::lower(id))) {
+                StringRow s;
+                s.uid = new_uid();
+                s.id = id;
+                s.text = text;
+                p.strings.push_back(s);
+            }
         // the languages: English first, then the others in a stable order
         p.mod.languages = {"English"};
         for (auto& l : c.languages)

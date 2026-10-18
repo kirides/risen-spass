@@ -25,6 +25,9 @@ std::unique_ptr<Panel> make_behaviors_panel();
 std::unique_ptr<Panel> make_conversation_panel();
 std::unique_ptr<Panel> make_spells_panel();
 std::unique_ptr<Panel> make_npc_groups_panel();
+std::unique_ptr<Panel> make_patches_panel();
+std::unique_ptr<Panel> make_strings_panel();
+std::unique_ptr<Panel> make_shipped_dialogs_panel();
 
 // window titles, used for the default docking layout
 inline constexpr const char* kPanelMod = "Mod";
@@ -45,5 +48,8 @@ inline constexpr const char* kPanelBehaviors = "Behaviours";
 inline constexpr const char* kPanelConversation = "Conversation";
 inline constexpr const char* kPanelSpells = "Spells";
 inline constexpr const char* kPanelNpcGroups = "NPC groups";
+inline constexpr const char* kPanelPatches = "Patches";
+inline constexpr const char* kPanelStrings = "Strings";
+inline constexpr const char* kPanelShippedDialogs = "Shipped dialogues";
 
 }  // namespace mk

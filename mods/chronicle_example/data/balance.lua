@@ -10,10 +10,15 @@ return {
     new_items = {
         MKC_Chronicle_Blade = {
             base = "It_1H_Sword",
-            name = { English = "Chronicler's Blade", German = "Klinge des Chronisten" },
+            name = {
+                English = "Chronicler's Blade",
+                German = "Klinge des Chronisten",
+                default = "Chronicler's Blade",
+            },
             description = {
                 English = "A sword forged from the ink of an old story.",
                 German = "Ein Schwert, geschmiedet aus der Tinte einer alten Geschichte.",
+                default = "A sword forged from the ink of an old story.",
             },
             value = 420,
             damage = 36,
@@ -22,20 +27,26 @@ return {
         },
         MKC_Chronicle_Tablet = {
             base = "It_Stoneplate",
-            name = { English = "Chronicle Tablet", German = "Chronikplatte" },
+            name = { English = "Chronicle Tablet", German = "Chronikplatte", default = "Chronicle Tablet" },
             description = {
                 English = "A fragment of the Ashen Chronicle.",
                 German = "Ein Bruchstueck der Aschechronik.",
+                default = "A fragment of the Ashen Chronicle.",
             },
             value = 25,
             mesh = "MKC_Tablet.xmsh",
         },
         MKC_Tide_Amulet = {
             base = "It_Am_HP",
-            name = { English = "Amulet of the Ashen Tide", German = "Amulett der Aschegezeiten" },
+            name = {
+                English = "Amulet of the Ashen Tide",
+                German = "Amulett der Aschegezeiten",
+                default = "Amulet of the Ashen Tide",
+            },
             description = {
                 English = "The Chronicle's last page, worn around the neck.",
                 German = "Die letzte Seite der Chronik, um den Hals getragen.",
+                default = "The Chronicle's last page, worn around the neck.",
             },
             value = 1500,
             modifies = { HitPoints = 150 },
@@ -43,21 +54,41 @@ return {
         },
         MKC_Tide_Key = {
             base = "It_Stoneplate",
-            name = { English = "Key of the Tide", German = "Schluessel der Gezeiten" },
-            description = { English = "It hums when the tide rises.", German = "Er summt, wenn die Flut steigt." },
+            name = {
+                English = "Key of the Tide",
+                German = "Schluessel der Gezeiten",
+                default = "Key of the Tide",
+            },
+            description = {
+                English = "It hums when the tide rises.",
+                German = "Er summt, wenn die Flut steigt.",
+                default = "It hums when the tide rises.",
+            },
             value = 0,
         },
         MKC_Tide_Potion = {
             base = "It_Po_Health_02",
-            name = { English = "Tide Draught", German = "Gezeitentrank" },
-            description = { English = "Tastes of salt and ash.", German = "Schmeckt nach Salz und Asche." },
+            name = { English = "Tide Draught", German = "Gezeitentrank", default = "Tide Draught" },
+            description = {
+                English = "Tastes of salt and ash.",
+                German = "Schmeckt nach Salz und Asche.",
+                default = "Tastes of salt and ash.",
+            },
             value = 90,
             modifies = { HitPoints = 160 },
         },
         MKC_Warlord_Axe = {
             base = "It_Axe_Waraxe",
-            name = { English = "Ash Warlord's Axe", German = "Axt des Aschekriegsherrn" },
-            description = { English = "Still warm from the camp fire.", German = "Noch warm vom Lagerfeuer." },
+            name = {
+                English = "Ash Warlord's Axe",
+                German = "Axt des Aschekriegsherrn",
+                default = "Ash Warlord's Axe",
+            },
+            description = {
+                English = "Still warm from the camp fire.",
+                German = "Noch warm vom Lagerfeuer.",
+                default = "Still warm from the camp fire.",
+            },
             value = 650,
             damage = 52,
             requires = { Strength = 35 },
@@ -69,10 +100,12 @@ return {
             name = {
                 English = "Smithing plan: Chronicler's Blade",
                 German = "Schmiedeplan: Klinge des Chronisten",
+                default = "Smithing plan: Chronicler's Blade",
             },
             description = {
                 English = "Maren's plan: a blade that remembers.",
                 German = "Marens Plan: eine Klinge, die sich erinnert.",
+                default = "Maren's plan: a blade that remembers.",
             },
             station = "anvil",
             ingredients = {
@@ -84,7 +117,11 @@ return {
             skills = { Smith = 1 },
         },
         MKC_Recipe_Tide_Potion = {
-            name = { English = "Alchemy plan: Tide Draught", German = "Alchemieplan: Gezeitentrank" },
+            name = {
+                English = "Alchemy plan: Tide Draught",
+                German = "Alchemieplan: Gezeitentrank",
+                default = "Alchemy plan: Tide Draught",
+            },
             station = "alchemy",
             ingredients = {
                 { item = "It_Plant_Health_01", count = 2 },
@@ -102,7 +139,7 @@ return {
     new_npcs = {
         MKC_Ash_Raider_T = {
             base = "Skeleton",
-            name = { English = "Ash Raider", German = "Aschepluenderer" },
+            name = { English = "Ash Raider", German = "Aschepluenderer", default = "Ash Raider" },
             hp_max = 260,
             level = 11,
             damage_mult = 1.2,
@@ -110,7 +147,7 @@ return {
         },
         MKC_Ash_Warlord_T = {
             base = "Skeleton_BDDon_Boss",
-            name = { English = "Ash Warlord", German = "Aschekriegsherr" },
+            name = { English = "Ash Warlord", German = "Aschekriegsherr", default = "Ash Warlord" },
             hp_max = 1400,
             level = 20,
             damage_mult = 1.6,
@@ -118,14 +155,18 @@ return {
         },
         MKC_Maren_T = {
             base = "Peasant_Female_1_01",
-            name = { English = "Maren the Chronicler", German = "Maren die Chronistin" },
+            name = {
+                English = "Maren the Chronicler",
+                German = "Maren die Chronistin",
+                default = "Maren the Chronicler",
+            },
             hp_max = 220,
             level = 4,
             guild = "Cit",
         },
         MKC_Smuggler_T = {
             base = "Peasant_1_03",
-            name = { English = "Smuggler", German = "Schmuggler" },
+            name = { English = "Smuggler", German = "Schmuggler", default = "Smuggler" },
             hp_max = 260,
             level = 8,
             guild = "Cit",
@@ -134,7 +175,11 @@ return {
         },
         MKC_Tide_Lord_T = {
             base = "LizardWarrior_EliteBoss_01",
-            name = { English = "Lord of the Tide", German = "Herr der Gezeiten" },
+            name = {
+                English = "Lord of the Tide",
+                German = "Herr der Gezeiten",
+                default = "Lord of the Tide",
+            },
             hp_max = 3200,
             level = 28,
             damage_mult = 1.4,
@@ -149,10 +194,11 @@ return {
         MKC_Ember_Whisper = {
             base = "Fireball",
             forms = { "crystal", "scroll" },
-            name = { English = "Ember Whisper", German = "Glutfluestern" },
+            name = { English = "Ember Whisper", German = "Glutfluestern", default = "Ember Whisper" },
             description = {
                 English = "A quiet fireball that burns longer.",
                 German = "Ein leiser Feuerball, der laenger brennt.",
+                default = "A quiet fireball that burns longer.",
             },
             value = 300,
             mana_cost = 16,

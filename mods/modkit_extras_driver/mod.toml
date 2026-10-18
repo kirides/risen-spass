@@ -1,0 +1,7 @@
+id          = "modkit_extras_driver"
+name        = "risen-modkit extras driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Development aid: checks the exported examples/modkit/extras.rmk.json (mods/modkit_extras) as the risen.test scenario extras."
+main        = "main.lua"
+requires    = ["modkit_extras"]

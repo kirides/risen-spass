@@ -349,7 +349,7 @@ A mod can add **new item and NPC/monster templates** at runtime: a clone of an e
 so everything that refers to a template -- `risen.entity.spawn`, `risen.npc.spawn`, `risen.item.give`, `loot`, dialogue `Give` commands (`Item = "My_Sword"`), inventory stacks, savegames -- accepts it.
 ```lua
 local sword = assert(risen.template.create("Spass_Flame_Sword", "It_1H_Sword", {   -- Template | nil, reason ; second result: created now (true) or overrides re-applied (false)
-    name = { English = "Flame Tongue", German = "Flammenzunge" },       -- label: localization id FO_Spass_Flame_Sword (a string = every language)
+    name = { English = "Flame Tongue", German = "Flammenzunge" },       -- label: localization id FO_Spass_Flame_Sword (a string = every language; a `default = "..."` entry serves the languages the table does not name)
     description = "A sword that feels warm to the touch.",              -- ITEMDESC_Spass_Flame_Sword (items)
     value = 900, damage = 55, requires = { Strength = 25 }, modifies = { Strength = 5 },   -- the settings of the `items` section
     mesh = "It_Wpn_1H_Club.xmsh", icon = "ic_it_1h_club",              -- another existing weapon's mesh and inventory icon

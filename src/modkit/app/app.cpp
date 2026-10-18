@@ -112,6 +112,9 @@ App::App(AppOptions opts) : options(std::move(opts)) {
     panels_.push_back(make_world_panel());
     panels_.push_back(make_assets_panel());
     panels_.push_back(make_behaviors_panel());
+    panels_.push_back(make_patches_panel());
+    panels_.push_back(make_strings_panel());
+    panels_.push_back(make_shipped_dialogs_panel());
     panels_.push_back(make_problems_panel());
     panels_.push_back(make_log_panel());
     panels_.push_back(make_settings_panel());
@@ -540,7 +543,7 @@ void App::setup_default_layout(unsigned int dockspace_id) {
     ImGui::DockBuilderDockWindow(kPanelBrowser, left);
     ImGui::DockBuilderDockWindow(kPanelLog, bottom);
     ImGui::DockBuilderDockWindow("Problems", bottom);
-    for (const char* t : {"Items", "Recipes", "NPCs", kPanelNpcGroups, kPanelSpells, "Dialogues", kPanelConversation, "Quests", kPanelEvents, kPanelLayers, "World", kPanelAssets, kPanelBehaviors, kPanelSettings}) ImGui::DockBuilderDockWindow(t, center);
+    for (const char* t : {"Items", "Recipes", "NPCs", kPanelNpcGroups, kPanelSpells, "Dialogues", kPanelConversation, "Quests", kPanelEvents, kPanelLayers, "World", kPanelAssets, kPanelBehaviors, kPanelPatches, kPanelStrings, kPanelShippedDialogs, kPanelSettings}) ImGui::DockBuilderDockWindow(t, center);
     ImGui::DockBuilderFinish(dockspace_id);
 }
 

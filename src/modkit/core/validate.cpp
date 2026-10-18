@@ -122,6 +122,12 @@ void check_items(Ctx& c) {
         }
         if (it.requirements) check_skills(c, A, it.uid, subj, *it.requirements, "requirements");
         if (it.modifies) check_skills(c, A, it.uid, subj, *it.modifies, "modifiers");
+        for (auto& [skill, mode] : it.modifier_modes) {
+            static const char* modes[] = {"add", "set", "max", "percent"};
+            if (std::find(std::begin(modes), std::end(modes), mode) == std::end(modes))
+                c.add(Severity::Error, A, it.uid, subj, "modifier " + skill + ": unknown mode '" + mode + "' (valid: add, set, max, percent)");
+            if (it.modifies && !it.modifies->count(skill)) c.add(Severity::Warning, A, it.uid, subj, "a mode is kept for the skill " + skill + ", which is not among the modifiers");
+        }
         check_enum(c, A, it.uid, subj, it.use_type, "gEItemUseType");
         check_enum(c, A, it.uid, subj, it.category, "gEItemCategory");
         if (it.mesh && !it.mesh->empty() && !c.asset_known(*it.mesh))
@@ -752,6 +758,71 @@ void check_world(Ctx& c) {
             c.add(Severity::Error, A, ct.uid, ct.entity_name.empty() ? ct.guid : ct.entity_name, "items are added to a container the mod removes");
 }
 
+// free string rows, template patches, edits of shipped dialogue infos and teaching limits
+void check_extras(Ctx& c) {
+    const std::string first = c.p.mod.languages.empty() ? std::string() : c.p.mod.languages.front();
+    std::map<std::string, int> ids;
+    for (auto& s : c.p.strings) {
+        const char* A = "Strings";
+        const std::string subj = s.id.empty() ? "(unnamed row)" : s.id;
+        if (s.id.empty()) c.add(Severity::Error, A, s.uid, subj, "a string row needs an id");
+        else if (s.id.find(';') != std::string::npos || s.id.find('"') != std::string::npos || s.id.find('\n') != std::string::npos)
+            c.add(Severity::Error, A, s.uid, subj, "an id must not contain ; \" or a line break (strings/*.csv)");
+        else if (++ids[p2m::lower(s.id)] == 2) c.add(Severity::Error, A, s.uid, subj, "the project has this string id twice (ids are not case sensitive)");
+        if (s.text.empty()) c.add(Severity::Warning, A, s.uid, subj, "the row has no text");
+        else if (!first.empty() && !s.text.count(first)) c.add(Severity::Warning, A, s.uid, subj, "no text in " + first + ", the fallback language: the other languages show their own texts only");
+        for (auto& [lang, t] : s.text)
+            if (std::find(c.p.mod.languages.begin(), c.p.mod.languages.end(), lang) == c.p.mod.languages.end())
+                c.add(Severity::Warning, A, s.uid, subj, "a text in " + lang + ", which is no language of the mod (it is exported anyway)");
+        // an object's own label wins over a free row of the same id
+        for (auto& it : c.p.items) {
+            const std::string low = p2m::lower(s.id);
+            if (!it.label.empty() && low == p2m::lower("FO_" + it.name)) c.add(Severity::Warning, A, s.uid, subj, "the label of the item " + it.name + " has this id and wins");
+            if (!it.description.empty() && low == p2m::lower("ITEMDESC_" + it.name)) c.add(Severity::Warning, A, s.uid, subj, "the description of the item " + it.name + " has this id and wins");
+        }
+    }
+    std::map<std::string, int> seen;
+    for (auto& x : c.p.patches) {
+        const char* A = "Patches";
+        const std::string subj = x.template_name.empty() ? "(no template)" : x.template_name;
+        if (x.template_name.empty()) {
+            c.add(Severity::Error, A, x.uid, subj, "choose the template to patch");
+            continue;
+        }
+        if (++seen[p2m::lower(x.template_name)] == 2) c.add(Severity::Warning, A, x.uid, subj, "this template is patched twice: both patches are applied, the later one wins on a shared property");
+        const TemplateInfo* t = c.g ? c.g->tpl(x.template_name) : nullptr;
+        if (c.g && !t && !c.is_project_template(x.template_name)) c.add(Severity::Error, A, x.uid, subj, "no template of the game or the project has this name");
+        if (x.properties.empty()) c.add(Severity::Warning, A, x.uid, subj, "the patch changes nothing");
+        // a project's own new template has the sets of its base: not checked here
+        check_properties(c, A, x.uid, subj, x.properties, t);
+    }
+    std::map<std::string, int> infos;
+    for (auto& x : c.p.dialog_edits) {
+        const char* A = "Shipped dialogues";
+        const std::string subj = x.info.empty() ? "(no info)" : x.info;
+        if (x.info.empty()) c.add(Severity::Error, A, x.uid, subj, "choose the shipped dialogue info to edit");
+        else if (++infos[x.info] == 2) c.add(Severity::Warning, A, x.uid, subj, "this info is edited twice: both edits are applied");
+        if (x.xp_add && x.xp_old) c.add(Severity::Error, A, x.uid, subj, "an XP reward is either added or changed, not both");
+        if (x.xp_old.has_value() != x.xp_new.has_value()) c.add(Severity::Error, A, x.uid, subj, "a changed XP reward needs the old and the new amount");
+        for (auto v : {x.xp_add, x.xp_new})
+            if (v && *v < 0) c.add(Severity::Error, A, x.uid, subj, "an XP reward must not be negative");
+        if (!x.xp_add && !x.xp_new && x.refills.empty()) c.add(Severity::Warning, A, x.uid, subj, "the edit changes nothing");
+        for (auto& r : x.refills) {
+            if (r.trader.empty()) c.add(Severity::Error, A, x.uid, subj, "a refill needs the trader's name");
+            if (r.item.empty() || !item_known(c, r.item)) c.add(Severity::Error, A, x.uid, subj, "refill item '" + r.item + "' is no item of the game or the project");
+            if (r.count < 0) c.add(Severity::Error, A, x.uid, subj, "a refill count must not be negative");
+        }
+    }
+    for (auto& t : c.p.teachers) {
+        const char* A = "Shipped dialogues";
+        const std::string subj = !t.entity_name.empty() ? t.entity_name : t.guid;
+        if (t.guid.size() != 36) c.add(Severity::Error, A, t.uid, subj, "the NPC's entity ID is not xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx");
+        if (!c.skills.empty() && !c.skills.count(t.skill)) c.add(Severity::Error, A, t.uid, subj, "unknown skill '" + t.skill + "'");
+        if (t.max < 0) c.add(Severity::Error, A, t.uid, subj, "the limit must not be negative");
+        if (c.w && !t.guid.empty() && !c.w->by_guid(t.guid)) c.add(Severity::Warning, A, t.uid, subj, "no entity with this ID in the loaded world");
+    }
+}
+
 void check_assets(Ctx& c) {
     const char* A = "Assets";
     std::map<std::string, int> names;
@@ -825,6 +896,7 @@ std::vector<Problem> validate(const Project& p, const GameData* game, const Worl
     check_behaviors(c);
     check_dialogs(c);
     check_world(c);
+    check_extras(c);
     check_assets(c);
     return out;
 }

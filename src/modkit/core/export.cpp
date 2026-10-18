@@ -67,20 +67,27 @@ std::string toml_list(const std::vector<std::string>& v) {
 std::string csv_field(const std::string& s) { return "\"" + p2m::replace_all(s, "\"", "\"\"") + "\""; }
 
 // a text per language for the layer: one string when the project has one language, else { English = ..., German = ... }
+// A text only in the first language is one string (every language). Otherwise a table { English = ..., German = ... } with `default` = the first language's
+// text, the layer's fallback for the languages the table does not name (the csv path does the same with all.csv); without a first-language text there is no
+// fallback: the other languages show their own texts only.
 json text_value(const Text& t, const std::vector<std::string>& languages) {
     if (t.empty()) return nullptr;
-    if (languages.size() <= 1 || t.size() == 1) {
-        const std::string first = languages.empty() ? std::string() : languages.front();
+    const std::string first = languages.empty() ? std::string() : languages.front();
+    if (languages.size() <= 1) {
         auto it = t.find(first);
         return it != t.end() ? json(it->second) : json(t.begin()->second);
     }
+    if (t.size() == 1 && t.begin()->first == first) return t.begin()->second;
     json o = json::object();
     for (auto& l : languages)
         if (auto it = t.find(l); it != t.end()) o[l] = it->second;
     for (auto& [l, s] : t)
         if (!o.contains(l)) o[l] = s;
+    if (auto it = t.find(first); it != t.end() && t.size() > 1) o["default"] = it->second;
     return o;
 }
+
+
 
 json props_json(const PropEdits& p) {
     json o = json::object();
@@ -104,6 +111,24 @@ json int_map(const IntMap& m) {
     return o;
 }
 
+// requirements and modifiers: the plain { Skill = amount } table, or (order or modes to keep) the list the layer takes: { { skill =, amount =, mode = }, ... }
+json requirement_json(const ItemDef& d) {
+    if (d.requirement_order.empty()) return int_map(*d.requirements);
+    json a = json::array();
+    for (auto& e : requirement_entries(d)) a.push_back(json{{"skill", e.skill}, {"amount", e.amount}});
+    return a;
+}
+json modifier_json(const ItemDef& d) {
+    if (d.modifier_order.empty() && d.modifier_modes.empty()) return int_map(*d.modifies);
+    json a = json::array();
+    for (auto& e : modifier_entries(d)) {
+        json o = json{{"skill", e.skill}, {"amount", e.amount}};
+        if (e.mode != "add") o["mode"] = e.mode;
+        a.push_back(o);
+    }
+    return a;
+}
+
 // ingredients as a list (keeps the order the modder chose): { { item = "It_IronOre", count = 2 }, ... }
 json ingredients(const std::vector<Ingredient>& v) {
     json a = json::array();
@@ -117,6 +142,8 @@ json ingredients(const std::vector<Ingredient>& v) {
 }
 
 }  // namespace
+
+json text_value_export(const Text& t, const std::vector<std::string>& languages) { return text_value(t, languages); }
 
 json balance_spec(const Project& p) {
     json spec = json::object();
@@ -133,8 +160,8 @@ json balance_spec(const Project& p) {
             put(e, "value", it->value);
             put(e, "damage", it->damage);
             put(e, "mana_cost", it->mana_cost);
-            if (it->requirements) e["requires"] = int_map(*it->requirements);
-            if (it->modifies) e["modifies"] = int_map(*it->modifies);
+            if (it->requirements) e["requires"] = requirement_json(*it);
+            if (it->modifies) e["modifies"] = modifier_json(*it);
             put(e, "use_type", it->use_type);
             put(e, "category", it->category);
             // a shipped item's mesh, icon and material are plain properties (the named settings exist only for new templates)
@@ -171,8 +198,8 @@ json balance_spec(const Project& p) {
             put(e, "value", it->value);
             put(e, "damage", it->damage);
             put(e, "mana_cost", it->mana_cost);
-            if (it->requirements) e["requires"] = int_map(*it->requirements);
-            if (it->modifies) e["modifies"] = int_map(*it->modifies);
+            if (it->requirements) e["requires"] = requirement_json(*it);
+            if (it->modifies) e["modifies"] = modifier_json(*it);
             put(e, "use_type", it->use_type);
             put(e, "category", it->category);
             put(e, "mesh", it->mesh);
@@ -436,7 +463,47 @@ json world_data(const Project& p) {
     w["containers"] = containers;
     if (!removals.empty()) w["removals"] = removals;
     if (!moves.empty()) w["moves"] = moves;
+    // teaching limits of placed NPCs: applied on every world.ready (risen.npc.set_teach_limit writes into the entity, idempotent)
+    json teachers = json::array();
+    for (auto& t : p.teachers) {
+        json e = json::object();
+        e["id"] = t.guid;
+        if (!t.entity_name.empty()) e["name"] = t.entity_name;
+        e["skill"] = t.skill;
+        e["max"] = t.max;
+        e["world"] = world_of(p, t.world);
+        teachers.push_back(e);
+    }
+    if (!teachers.empty()) w["teachers"] = teachers;
     return w;
+}
+
+json patches_data(const Project& p) {
+    json list = json::array();
+    for (auto& x : p.patches) {
+        json e = json::object();
+        e["template"] = x.template_name;
+        if (json pj = props_json(x.properties); !pj.empty()) e["properties"] = pj;
+        list.push_back(e);
+    }
+    return list;
+}
+
+json dialog_edits_data(const Project& p) {
+    json list = json::array();
+    for (auto& x : p.dialog_edits) {
+        json e = json::object();
+        e["info"] = x.info;
+        put(e, "xp_add", x.xp_add);
+        put(e, "xp_old", x.xp_old);
+        put(e, "xp_new", x.xp_new);
+        put(e, "chapter", x.chapter);
+        json refills = json::array();
+        for (auto& r : x.refills) refills.push_back(json{{"trader", r.trader}, {"item", r.item}, {"count", r.count}});
+        if (!refills.empty()) e["refills"] = refills;
+        list.push_back(e);
+    }
+    return list;
 }
 
 namespace {
@@ -507,6 +574,11 @@ std::map<std::string, Text> string_rows(const Project& p) {
     }
     for (auto& n : p.npc_templates)
         if (n.mode == Mode::Edit && !n.label.empty()) rows["FO_" + n.name] = n.label;
+    // free text rows come first: the labels of the objects above win when an id is in both
+    std::map<std::string, Text> own;
+    for (auto& s : p.strings)
+        if (!s.id.empty() && !s.text.empty()) own[s.id] = s.text;
+    for (auto& [id, t] : own) rows.emplace(id, t);
     // a placed NPC's label is the text of FO_<unique name> (risen.npc.persistent's `label` sets one text for every language)
     for (auto& n : p.npcs)
         if (!n.label.empty()) rows["FO_" + n.name] = n.label;
@@ -593,6 +665,8 @@ std::map<std::string, std::string> render_mod(const Project& p) {
                     "    dialogs = require(\"data.dialogs\"),\n"
                     "    world = require(\"data.world\"),\n"
                     "    assets = require(\"data.assets\"),\n" +
+                    (p.patches.empty() ? std::string() : std::string("    patches = require(\"data.patches\"),\n")) +
+                    (p.dialog_edits.empty() ? std::string() : std::string("    dialog_edits = require(\"data.dialog_edits\"),\n")) +
                     (p.layers.empty() ? std::string() : std::string("    layers = require(\"data.layers\"),\n")) +
                     "    behaviors = require(\"data.behaviors\"),\n"
                     "})\n" +
@@ -619,6 +693,10 @@ std::map<std::string, std::string> render_mod(const Project& p) {
         f["data/dialogs.lua"] = data_file("Dialogue options: risen.dialog.create in this order (parents first), on load.before and on every session.start; the quest actions their lines call.", dialogs);
     }
     f["data/world.lua"] = data_file("World edits: entities spawned and items put into containers once per savegame (on world.ready; risen.save remembers what was done); entities of the world removed or moved (by id, on every world.ready).", world_data(p));
+    if (!p.patches.empty())
+        f["data/patches.lua"] = data_file("Template patches: free property edits of templates (risen.template.patch), applied on the first tick and again with the live entities on every session.start.", patches_data(p));
+    if (!p.dialog_edits.empty())
+        f["data/dialog_edits.lua"] = data_file("Edits of shipped dialogue infos at run time: XP rewards and trader refills (risen.dialog.get / add_command), once per process; chapter 1 refills also when a new game starts.", dialog_edits_data(p));
     f["data/behaviors.lua"] = data_file("Behaviours: the scripts in behaviors/ (risen.behavior.define) and the NPCs and templates they are attached to (risen.behavior.attach / attach_template).",
                                         behaviors_data(p));
     f["modkit/runtime.lua"] = runtime_lua();
@@ -638,12 +716,12 @@ std::map<std::string, std::string> render_mod(const Project& p) {
     const auto rows = string_rows(p);
     if (!rows.empty() && !m.languages.empty()) {
         const std::string& first = m.languages.front();
-        auto table = [&](const std::string& lang, bool fallback) {
+        auto table = [&](const std::string& lang, bool) {
             std::string s = "# Generated by risen-modkit. One id;\"text\" per line.\nid;text\n";
             size_t n = 0;
             for (auto& [id, t] : rows) {
                 auto it = t.find(lang);
-                if (it == t.end() && fallback && !t.empty()) it = t.begin();
+                // the fallback is the first language's text only: a row that has no text in it stays in its own language file
                 if (it == t.end()) continue;
                 s += id + ";" + csv_field(it->second) + "\n";
                 ++n;

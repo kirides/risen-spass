@@ -9,8 +9,12 @@ return {
     new_items = {
         MK_Hob_Knife = {
             base = "It_1H_Machete",
-            name = { English = "Hob's Knife", German = "Hobs Messer" },
-            description = { English = "Hob made it himself.", German = "Hob hat es selbst gemacht." },
+            name = { English = "Hob's Knife", German = "Hobs Messer", default = "Hob's Knife" },
+            description = {
+                English = "Hob made it himself.",
+                German = "Hob hat es selbst gemacht.",
+                default = "Hob made it himself.",
+            },
             value = 250,
             damage = 20,
             requires = { Strength = 12 },
@@ -18,7 +22,11 @@ return {
         },
         MK_Strong_Potion = {
             base = "It_Po_Health_01",
-            name = { English = "Strong Healing Draught", German = "Starker Heiltrank" },
+            name = {
+                English = "Strong Healing Draught",
+                German = "Starker Heiltrank",
+                default = "Strong Healing Draught",
+            },
             value = 120,
             modifies = { HitPoints = 120 },
         },
@@ -26,7 +34,11 @@ return {
     recipes = { It_1H_Steel_Hot = { skills = { Smith = 1 } } },
     new_recipes = {
         MK_Recipe_Hob_Knife = {
-            name = { English = "Smithing plan: Hob's Knife", German = "Schmiedeplan: Hobs Messer" },
+            name = {
+                English = "Smithing plan: Hob's Knife",
+                German = "Schmiedeplan: Hobs Messer",
+                default = "Smithing plan: Hob's Knife",
+            },
             station = "anvil",
             ingredients = { { item = "It_1H_Machete", count = 1 }, { item = "It_IronOre", count = 2 } },
             result = "MK_Hob_Knife",
@@ -38,14 +50,18 @@ return {
     new_npcs = {
         MK_Dire_Wolf = {
             base = "Wolf",
-            name = { English = "Dire Wolf", German = "Schreckenswolf" },
+            name = { English = "Dire Wolf", German = "Schreckenswolf", default = "Dire Wolf" },
             hp_max = 500,
             level = 10,
             damage_mult = 1.5,
         },
         MK_Hob_T = {
             base = "Peasant_1_01",
-            name = { English = "Hob the Tinkerer", German = "Hob der Tüftler" },
+            name = {
+                English = "Hob the Tinkerer",
+                German = "Hob der Tüftler",
+                default = "Hob the Tinkerer",
+            },
             hp_max = 300,
             level = 5,
             guild = "Cit",

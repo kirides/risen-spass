@@ -1,0 +1,145 @@
+{
+  "format": "risen-modkit-project",
+  "format_version": 1,
+  "mod": {
+    "id": "modkit_extras",
+    "name": "risen-modkit extras example",
+    "version": "1.0.0",
+    "author": "risen-spass",
+    "description": "The editor's patches, free string rows, shipped dialogue edits, teaching limits and ordered modifier lists with modes (docs/editor/REQUIREMENTS.md EXT-1..5), checked in the game by mods/modkit_extras_driver.",
+    "languages": [
+      "English",
+      "German"
+    ]
+  },
+  "items": [
+    {
+      "uid": "e0000000000000000000000000000001",
+      "mode": "new",
+      "name": "MKX_Ring",
+      "base": "It_Ri_DEX_Small",
+      "label": {
+        "English": "Ring of the Extras",
+        "German": "Ring der Extras"
+      },
+      "requires": {
+        "Axe": 1,
+        "Dexterity": 20,
+        "Strength": 30
+      },
+      "requires_order": [
+        "Strength",
+        "Dexterity",
+        "Axe"
+      ],
+      "modifies": {
+        "Dexterity": 3,
+        "ProtEdge": 5,
+        "Strength": 20
+      },
+      "modifies_order": [
+        "ProtEdge",
+        "Strength",
+        "Dexterity"
+      ],
+      "modifies_modes": {
+        "Dexterity": "set",
+        "Strength": "percent"
+      }
+    }
+  ],
+  "item_groups": [],
+  "recipes": [],
+  "npc_templates": [],
+  "npcs": [],
+  "dialogs": [],
+  "quests": [],
+  "world": {
+    "world": "World",
+    "spawns": [],
+    "containers": [],
+    "removals": [],
+    "moves": []
+  },
+  "assets": [],
+  "strings": [
+    {
+      "uid": "e0000000000000000000000000000011",
+      "id": "MKX_TEST_BUTTON",
+      "text": {
+        "English": "Quest map",
+        "German": "Questkarte"
+      }
+    },
+    {
+      "uid": "e0000000000000000000000000000012",
+      "id": "MKX_TEST_DOC",
+      "text": {
+        "English": "line one\r\nline two"
+      }
+    },
+    {
+      "uid": "e0000000000000000000000000000013",
+      "id": "MKX_ONLY_GERMAN",
+      "text": {
+        "German": "Nur deutsch"
+      },
+      "notes": "no English text: English players get nothing, not the German text"
+    }
+  ],
+  "patches": [
+    {
+      "uid": "e0000000000000000000000000000021",
+      "template": "It_Cast_Light",
+      "properties": {
+        "eCPointLight_PS": {
+          "Range": 1500
+        }
+      }
+    },
+    {
+      "uid": "e0000000000000000000000000000022",
+      "template": "It_Apple",
+      "properties": {
+        "gCItem_PS": {
+          "SortValue": 777
+        }
+      }
+    }
+  ],
+  "dialog_edits": [
+    {
+      "uid": "e0000000000000000000000000000031",
+      "info": "FILLERX2_00029",
+      "xp_add": 40
+    },
+    {
+      "uid": "e0000000000000000000000000000032",
+      "info": "FILLERX2_00646",
+      "xp_old": 10,
+      "xp_new": 150
+    },
+    {
+      "uid": "e0000000000000000000000000000033",
+      "info": "KALVERAMX2B_00460",
+      "chapter": 4,
+      "refills": [
+        [
+          "Oscar",
+          "It_Helmet_Leather",
+          1
+        ]
+      ]
+    }
+  ],
+  "teachers": [
+    {
+      "uid": "e0000000000000000000000000000041",
+      "guid": "3d71aefb-0ee1-47bd-9b11-02fec2149ef1",
+      "entity_name": "Sam",
+      "skill": "Dexterity",
+      "max": 150
+    }
+  ],
+  "editor": {}
+}

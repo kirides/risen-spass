@@ -35,6 +35,14 @@ struct ModInfo {
     std::vector<std::string> load_after, requires_mods;
 };
 
+// One entry of a requirement or modifier list as the engine keeps it (gCSkillValue): the skill, the amount and for modifiers how it is applied.
+// ItemDef stores the amounts as skill -> number maps; the order of the engine's list and the modes other than "add" are kept next to them (below).
+struct SkillEntry {
+    std::string skill;
+    int amount = 0;
+    std::string mode = "add";  // modifiers: add | set | max | percent (the layer's names: risen.balance.modes())
+};
+
 struct ItemDef {
     std::string uid;
     Mode mode = Mode::New;
@@ -43,10 +51,21 @@ struct ItemDef {
     Text label, description;
     std::optional<int> value, damage, mana_cost, material;
     std::optional<IntMap> requirements, modifies;  // present = replaces the template's list (an empty map clears it)
+    // the order of the lists and the modifier modes: a map has neither. Skills in `*_order` come first in that order, the others follow alphabetically; a skill
+    // without an entry in `modifier_modes` is added ("add"). Empty = alphabetical, all "add" (the export then writes plain { Skill = amount } tables).
+    std::vector<std::string> requirement_order, modifier_order;
+    std::map<std::string, std::string> modifier_modes;
     std::optional<std::string> use_type, category, mesh, icon;
     PropEdits properties;
     std::string notes;
 };
+
+// the lists in their order, with modes (skills of the maps only)
+std::vector<SkillEntry> requirement_entries(const struct ItemDef& d);
+std::vector<SkillEntry> modifier_entries(const struct ItemDef& d);
+// replace a list by entries: amounts into the map, order and modes only where they differ from the defaults; a skill twice keeps its last entry
+void set_requirement_entries(struct ItemDef& d, const std::vector<SkillEntry>& entries);
+void set_modifier_entries(struct ItemDef& d, const std::vector<SkillEntry>& entries);
 
 struct ItemGroup {
     std::string uid;
@@ -260,6 +279,48 @@ struct BehaviorScript {
     std::string file;  // path relative to the project file
 };
 
+// a text row of its own (an id of a string table that no object of the project owns): the per-language texts of strings/*.csv
+struct StringRow {
+    std::string uid;
+    std::string id;  // "HUD2_Btn_LogInfoMap": matched case-insensitively by the engine
+    Text text;
+    std::string notes;
+};
+
+// a free property edit of any template (risen.template.patch): the settings that no panel has a field for, e.g. the range of a light, a projectile's flight
+struct TemplatePatch {
+    std::string uid;
+    std::string template_name;
+    PropEdits properties;
+    std::string notes;
+};
+
+// a trader entry a shipped dialogue info refills: RunScript OnTradeInfo_RefillTradeItems (docs/RE.md section 44)
+struct Refill {
+    std::string trader, item;
+    int count = 1;
+};
+// an edit of a shipped dialogue info at run time: an XP reward added (xp_add) or changed (xp_old -> xp_new) and trader refills; `chapter` is the chapter
+// whose info it is (1: its refills are also handed out when a new game starts)
+struct DialogEdit {
+    std::string uid;
+    std::string info;  // the shipped info's name ("FILLERX2_00029")
+    std::optional<int> xp_add, xp_old, xp_new;
+    std::vector<Refill> refills;
+    std::optional<int> chapter;
+    std::string notes;
+};
+
+// the teaching limit of a placed NPC (risen.npc.set_teach_limit): the highest value he brings the player's skill to
+struct TeacherLimit {
+    std::string uid;
+    std::string guid;         // the NPC's world entity ID (risen.entity.by_id form)
+    std::string entity_name;  // for display
+    std::string skill;        // "Strength", "Dexterity", ...
+    int max = 100;
+    std::string world;        // the world he belongs to ("" = the project's world)
+};
+
 struct AssetFile {
     std::string uid;
     std::string file;  // path relative to the project file
@@ -282,6 +343,10 @@ struct Project {
     WorldEdits world;
     std::vector<AssetFile> assets;
     std::vector<BehaviorScript> behaviors;
+    std::vector<StringRow> strings;
+    std::vector<TemplatePatch> patches;
+    std::vector<DialogEdit> dialog_edits;
+    std::vector<TeacherLimit> teachers;
     json editor = json::object();  // editor-only state (notes, view settings); exported with project.json
     // balance sections the editor has no panel for (spells, new_spells, npc_groups, ... of an imported mod): written into data/balance.lua as they are
     json extra_balance = json::object();

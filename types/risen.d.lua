@@ -426,7 +426,7 @@ local templateApi = {}
 ---the keys of `BalanceItem`, an NPC/monster base those of `BalanceNpc`; every other base only `name`, `description`, `mesh`, `icon`, `material` and `properties`.
 ---@class TemplateOverrides: BalanceItem, BalanceNpc
 ---@field base? string Only in a balancing section: the template to clone.
----@field name? string|table<string,string> Label shown for the item/NPC (localization id `FO_<name>`): one text for every language or `{ English = "...", German = "..." }`.
+---@field name? string|table<string,string> Label shown for the item/NPC (localization id `FO_<name>`): one text for every language or `{ English = "...", German = "..." }`; a `default = "..."` entry is the text of the languages the table does not name.
 ---@field description? string|table<string,string> Item description (`ITEMDESC_<name>`), same forms. Items only.
 ---@field mesh? string Mesh of an item (`eCMesh_PS.MeshFileName`, `"It_Wpn_1H_Club.xmsh"`) or the actor file of an NPC (`eCAnimation_PS.ResourceFilePath`, `"Ani_Boar_Monster_Boar.xac"`). The file has to exist in the game archives or in a mounted asset directory (`risen.assets`), otherwise the request is refused (`check_assets = false` skips the check).
 ---@field icon? string Inventory icon of an item (`gCItem_PS.IconImage`): the name of a registered GUI bitmap, `"ic_it_1h_club"` / `"IC_It_1H_Club"` or one a mod registered (`risen.assets.load_icons`, `risen.assets.load_bitmap`). Checked like `mesh`.

@@ -1,5 +1,6 @@
 #include "core/project.h"
 
+#include <algorithm>
 #include <random>
 #include <stdexcept>
 
@@ -61,6 +62,59 @@ const PlacedNpc* Project::npc(const std::string& name) const {
     for (auto& x : npcs)
         if (x.name == name) return &x;
     return nullptr;
+}
+
+// ---- skill lists --------------------------------------------------------------------------------------------------------------------------------------
+namespace {
+std::vector<std::string> ordered_skills(const IntMap& m, const std::vector<std::string>& order) {
+    std::vector<std::string> out;
+    for (auto& s : order)
+        if (m.count(s) && std::find(out.begin(), out.end(), s) == out.end()) out.push_back(s);
+    for (auto& [k, v] : m)
+        if (std::find(out.begin(), out.end(), k) == out.end()) out.push_back(k);
+    return out;
+}
+// the order to remember: nothing when it is the alphabetical one
+std::vector<std::string> order_to_keep(const std::vector<SkillEntry>& entries) {
+    std::vector<std::string> order;
+    for (auto& e : entries)
+        if (std::find(order.begin(), order.end(), e.skill) == order.end()) order.push_back(e.skill);
+    if (std::is_sorted(order.begin(), order.end())) order.clear();
+    return order;
+}
+}  // namespace
+
+std::vector<SkillEntry> requirement_entries(const ItemDef& d) {
+    std::vector<SkillEntry> out;
+    if (!d.requirements) return out;
+    for (auto& s : ordered_skills(*d.requirements, d.requirement_order)) out.push_back({s, d.requirements->at(s), "add"});
+    return out;
+}
+std::vector<SkillEntry> modifier_entries(const ItemDef& d) {
+    std::vector<SkillEntry> out;
+    if (!d.modifies) return out;
+    for (auto& s : ordered_skills(*d.modifies, d.modifier_order)) {
+        auto m = d.modifier_modes.find(s);
+        out.push_back({s, d.modifies->at(s), m == d.modifier_modes.end() ? std::string("add") : m->second});
+    }
+    return out;
+}
+void set_requirement_entries(ItemDef& d, const std::vector<SkillEntry>& entries) {
+    IntMap m;
+    for (auto& e : entries) m[e.skill] = e.amount;
+    d.requirements = m;
+    d.requirement_order = order_to_keep(entries);
+}
+void set_modifier_entries(ItemDef& d, const std::vector<SkillEntry>& entries) {
+    IntMap m;
+    d.modifier_modes.clear();
+    for (auto& e : entries) {
+        m[e.skill] = e.amount;
+        if (e.mode != "add" && !e.mode.empty()) d.modifier_modes[e.skill] = e.mode;
+        else d.modifier_modes.erase(e.skill);
+    }
+    d.modifies = m;
+    d.modifier_order = order_to_keep(entries);
 }
 
 // ---- JSON helpers ---------------------------------------------------------------------------------------------------------------------------------------
@@ -338,6 +392,9 @@ json to_json(const Project& p) {
         put(o, "mana_cost", x.mana_cost);
         put(o, "requires", x.requirements);
         put(o, "modifies", x.modifies);
+        if (!x.requirement_order.empty()) o["requires_order"] = x.requirement_order;
+        if (!x.modifier_order.empty()) o["modifies_order"] = x.modifier_order;
+        if (!x.modifier_modes.empty()) o["modifies_modes"] = x.modifier_modes;
         put(o, "use_type", x.use_type);
         put(o, "category", x.category);
         put(o, "mesh", x.mesh);
@@ -614,6 +671,64 @@ json to_json(const Project& p) {
         assets.push_back(o);
     }
     j["assets"] = assets;
+    if (!p.strings.empty()) {
+        json a = json::array();
+        for (auto& s : p.strings) {
+            json o = json::object();
+            o["uid"] = s.uid;
+            o["id"] = s.id;
+            put_text(o, "text", s.text);
+            put_str(o, "notes", s.notes);
+            a.push_back(o);
+        }
+        j["strings"] = a;
+    }
+    if (!p.patches.empty()) {
+        json a = json::array();
+        for (auto& x : p.patches) {
+            json o = json::object();
+            o["uid"] = x.uid;
+            o["template"] = x.template_name;
+            put_props(o, x.properties);
+            put_str(o, "notes", x.notes);
+            a.push_back(o);
+        }
+        j["patches"] = a;
+    }
+    if (!p.dialog_edits.empty()) {
+        json a = json::array();
+        for (auto& x : p.dialog_edits) {
+            json o = json::object();
+            o["uid"] = x.uid;
+            o["info"] = x.info;
+            put(o, "xp_add", x.xp_add);
+            put(o, "xp_old", x.xp_old);
+            put(o, "xp_new", x.xp_new);
+            put(o, "chapter", x.chapter);
+            if (!x.refills.empty()) {
+                json rs = json::array();
+                for (auto& r : x.refills) rs.push_back(json::array({r.trader, r.item, r.count}));
+                o["refills"] = rs;
+            }
+            put_str(o, "notes", x.notes);
+            a.push_back(o);
+        }
+        j["dialog_edits"] = a;
+    }
+    if (!p.teachers.empty()) {
+        json a = json::array();
+        for (auto& x : p.teachers) {
+            json o = json::object();
+            o["uid"] = x.uid;
+            o["guid"] = x.guid;
+            put_str(o, "entity_name", x.entity_name);
+            o["skill"] = x.skill;
+            o["max"] = x.max;
+            put_str(o, "world", x.world);
+            a.push_back(o);
+        }
+        j["teachers"] = a;
+    }
     if (!p.behaviors.empty()) {
         json bs = json::array();
         for (auto& b : p.behaviors) bs.push_back(json{{"uid", b.uid}, {"name", b.name}, {"file", b.file}});
@@ -668,6 +783,9 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
         r.get(e, "mana_cost", x.mana_cost);
         r.get(e, "requires", x.requirements);
         r.get(e, "modifies", x.modifies);
+        r.get(e, "requires_order", x.requirement_order);
+        r.get(e, "modifies_order", x.modifier_order);
+        r.get(e, "modifies_modes", x.modifier_modes);
         r.get(e, "use_type", x.use_type);
         r.get(e, "category", x.category);
         r.get(e, "mesh", x.mesh);
@@ -914,6 +1032,49 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
         r.get(e, "name", b.name);
         r.get(e, "file", b.file);
         return b;
+    });
+    read_list(j, "strings", p.strings, warnings, [](const Reader& r, const json& e) {
+        StringRow s;
+        r.get_uid(e, s.uid);
+        r.get(e, "id", s.id);
+        r.get(e, "text", s.text);
+        r.get(e, "notes", s.notes);
+        return s;
+    });
+    read_list(j, "patches", p.patches, warnings, [](const Reader& r, const json& e) {
+        TemplatePatch x;
+        r.get_uid(e, x.uid);
+        r.get(e, "template", x.template_name);
+        get_props(r, e, x.properties);
+        r.get(e, "notes", x.notes);
+        return x;
+    });
+    read_list(j, "dialog_edits", p.dialog_edits, warnings, [](const Reader& r, const json& e) {
+        DialogEdit x;
+        r.get_uid(e, x.uid);
+        r.get(e, "info", x.info);
+        r.get(e, "xp_add", x.xp_add);
+        r.get(e, "xp_old", x.xp_old);
+        r.get(e, "xp_new", x.xp_new);
+        r.get(e, "chapter", x.chapter);
+        if (auto it = e.find("refills"); it != e.end() && it->is_array())
+            for (auto& rf : *it) {
+                if (rf.is_array() && rf.size() >= 2 && rf[0].is_string() && rf[1].is_string())
+                    x.refills.push_back({rf[0].get<std::string>(), rf[1].get<std::string>(), rf.size() > 2 && rf[2].is_number_integer() ? rf[2].get<int>() : 1});
+                else r.warn("a refill is not [trader, item, count]");
+            }
+        r.get(e, "notes", x.notes);
+        return x;
+    });
+    read_list(j, "teachers", p.teachers, warnings, [](const Reader& r, const json& e) {
+        TeacherLimit x;
+        r.get_uid(e, x.uid);
+        r.get(e, "guid", x.guid);
+        r.get(e, "entity_name", x.entity_name);
+        r.get(e, "skill", x.skill);
+        r.get(e, "max", x.max);
+        r.get(e, "world", x.world);
+        return x;
     });
     if (auto e = j.find("editor"); e != j.end() && e->is_object()) p.editor = *e;
     if (auto e = j.find("extra_balance"); e != j.end() && e->is_object()) p.extra_balance = *e;
