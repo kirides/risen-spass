@@ -14,7 +14,7 @@ Docs: `docs/RE.md` (reverse-engineering findings, by section), `docs/LUA_API.md`
    `python tools/check_luadefs.py` (fails when the two sides differ) and type-check the example mods:
    `cd mods && lua-language-server --check . --configpath .luarc.json --checklevel Warning`. New events go into the `risen.on`
    overloads and the events table in `docs/LUA_API.md`.
-2. **Never touch the real game install** (`B:\SteamLibrary\steamapps\common\Risen`). Test only in the isolated copy
+2. **Never touch the real game installs**: Risen Enhanced, the 64-bit baseline (`B:\SteamLibrary\steamapps\common\Risen`), and Risen Classic 2009, the 32-bit original (`B:\SteamLibrary\steamapps\common\Risen Classic 2009`, read-only reference for comparisons). Test only in the isolated copy
    `B:\DevDrive\risen-test`, **always windowed** (the user does not want a fullscreen game taking over the screen).
 3. **Commit at milestones**: small, reviewable commits once a feature is built *and* verified (live in the game where it
    touches the engine). Do not let changes pile up. Commit trailers come from the session's attribution reminder.
