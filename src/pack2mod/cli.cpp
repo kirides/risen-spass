@@ -21,6 +21,7 @@ const char* kUsage =
     "  --strings all      apply every differing string row, not only new rows and rows of converted items\n"
     "  --no-assets        do not copy the loose resource files    --no-world   skip dialogue / world extraction\n"
     "  --project FILE     also (or instead of --out) write the result as a risen-modkit project (FILE.rmk.json in its own folder; needs a build with the modkit feature)\n"
+    "  --world-edits      with --project: also carry moved / removed / added world entities (the mod's layers differ from the game's in more than the mod's own edits)\n"
     "  --verify           with --out and --project: export the project again and compare it with the converted mod\n"
     "  --list             list the archives and every file (new / changed / same) and stop\n"
     "  --dry-run          analyse and print the summary, write nothing\n"
@@ -53,6 +54,7 @@ int pack2mod_main(int argc, const char* const* argv, std::ostream& out, std::ost
         else if (key == "--no-world") o.no_world = true;
         else if (key == "--project") { if (!value(o.project)) return 1; }
         else if (key == "--verify") o.verify = true;
+        else if (key == "--world-edits") o.world_edits = true;
         else if (key == "--list") o.list = true;
         else if (key == "--dry-run") o.dry_run = true;
         else if (a.compare(0, 2, "--") == 0) { err << "error: unknown option " << a << "\n\n" << kUsage; return 1; }

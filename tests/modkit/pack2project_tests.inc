@@ -2,6 +2,8 @@
 // converted layer mod, and the whole command line path on synthetic archives. No game data and no mod content: everything is made up here.
 // Included by modkit_tests.cpp.
 
+#include "common/pose.h"
+#include "core/genome.h"
 #include "../p2m_fixture.inc"
 
 namespace {
@@ -35,6 +37,8 @@ p2m::ProjectInput made_up_input() {
     in.name = "Made up (converted)";
     in.items = lval_of(json::parse(R"({
         "It_Mace": { "requires": [] },
+        "It_Charm": { "requires": [ { "skill": "Strength", "amount": 30 }, { "skill": "Dexterity", "amount": 20 }, { "skill": "Axe", "amount": 1 } ],
+                      "modifies": [ { "skill": "ProtEdge", "amount": 5 }, { "skill": "HitPoints", "amount": 50, "mode": "set" }, { "skill": "Strength", "amount": 10, "mode": "percent" } ] },
         "It_Ring": { "modifies": [ { "skill": "Strength", "amount": 2, "mode": "mult" } ], "value": 10 },
         "It_Sword": { "value": 75, "damage": 20,
                       "requires": [ { "skill": "Strength", "amount": 12 }, { "skill": "Strength", "amount": 15 } ],
@@ -66,7 +70,7 @@ p2m::ProjectInput made_up_input() {
         "teachers": [ { "id": "aaaaaaaa-0000-4000-8000-000000000003", "name": "Teacher", "skill": "Smith", "max": 3, "old": 2 } ] })"));
     in.languages = {"English", "German", "French"};
     in.strings["English"] = {{"FO_It_Axe", "Axe"}, {"ITEMDESC_It_Axe", "A big axe"}, {"FO_IT_SWORD", "Longsword"}, {"ITEMDESC_It_Plan", "Plan\r\nsecond line"}, {"HUD_Other", "Other"}};
-    in.strings["German"] = {{"FO_It_Axe", "Axt"}, {"HUD_Other", "Anderes"}};
+    in.strings["German"] = {{"FO_It_Axe", "Axt"}, {"HUD_Other", "Anderes"}, {"ONLY_DE", "Nur deutsch"}};
     in.assets = {"It_Wpn_Axe._xmsh", "Plan._xmsh", "compiled_combatspecies.bin"};
     return in;
 }
@@ -118,15 +122,25 @@ TEST(pack2project_maps_the_converters_tables) {
     CHECK(sword->icon == std::string("ic_sword") && sword->material == 2);
     CHECK(sword->properties.at("gCItem_PS").at("SortValue") == 400 && !sword->properties.at("gCItem_PS").count("IconImage") && !sword->properties.count("eCMesh_PS"));
     CHECK(mace->requirements && mace->requirements->empty());  // "clear the list" stays "clear the list"
-    // a modifier with another mode than "add" has no place in the editor's skill -> number map: reported, not guessed
+    // the engine's order and the modes are kept (a plain list stays plain)
+    const ItemDef* charm = nullptr;
+    for (auto& i : p.items)
+        if (i.name == "It_Charm") charm = &i;
+    CHECK(charm != nullptr);
+    if (charm) {
+        CHECK((charm->requirement_order == std::vector<std::string>{"Strength", "Dexterity", "Axe"}));
+        CHECK((charm->modifier_order == std::vector<std::string>{"ProtEdge", "HitPoints", "Strength"}) && charm->modifier_modes.at("HitPoints") == "set" && charm->modifier_modes.at("Strength") == "percent");
+        CHECK(sword->requirement_order.empty() && sword->modifier_modes.empty());
+    }
+    // a mode the engine does not have is reported, not guessed
     CHECK(!ring->modifies && ring->value == 10);
     bool ring_reported = false;
     for (auto& e : rep.unmapped) ring_reported = ring_reported || (e.name == "It_Ring" && e.reason.find("mult") != std::string::npos);
     CHECK(ring_reported && rep.missing_settings.count("It_Ring|modifies") == 1);
-    // texts: matched case-insensitively like the engine, English made explicit for the languages without a row (new templates only)
+    // texts: matched case-insensitively like the engine; a language without a row has none (the export's `default` serves it)
     CHECK(sword->label.at("English") == "Longsword" && sword->label.size() == 1);
     CHECK(axe->mode == Mode::New && axe->base == "It_Sword" && axe->mesh == std::string("It_Wpn_Axe.xmsh") && axe->material == 3);
-    CHECK(axe->label.at("German") == "Axt" && axe->label.at("French") == "Axe" && axe->description.at("English") == "A big axe");
+    CHECK(axe->label.at("German") == "Axt" && axe->label.size() == 2 && axe->description.at("English") == "A big axe" && axe->description.size() == 1);
 
     // a new item that is a recipe item becomes one new recipe; a shipped item turned into a recipe is given at the start
     const RecipeDef* plan = nullptr;
@@ -146,14 +160,17 @@ TEST(pack2project_maps_the_converters_tables) {
     }
     for (auto& i : p.items) CHECK(i.name != "It_Plan");
 
-    // template patches: a monster's actor, the three Frost projectiles as one spell edit; no game data means the others stay unmapped
+    // template patches: a monster's actor, the three Frost projectiles as one spell edit; every other patch is a patch of the project
     CHECK_EQ(p.npc_templates.size(), size_t(1));
     CHECK(p.npc_templates[0].mode == Mode::Edit && p.npc_templates[0].name == "Lizard_X" && p.npc_templates[0].mesh == std::string("Ani_X.xac"));
     CHECK(p.npc_templates[0].properties.empty());
     CHECK_EQ(p.spells.size(), size_t(1));
     CHECK(p.spells[0].name == "Frost" && p.spells[0].damage == json(5));
-    CHECK(rep.leftover_patches.contains("It_Cast_Light") && rep.leftover_patches.contains("It_Projectile_Fireball_S0") && !rep.leftover_patches.contains("It_Projectile_Frost_S0"));
-    CHECK(rep.missing_templates.count("It_Cast_Light") == 1);
+    CHECK_EQ(p.patches.size(), size_t(2));  // It_Cast_Light, and the Fireball level whose siblings' numbers are unknown without game data
+    for (auto& x : p.patches) {
+        CHECK(x.template_name == "It_Cast_Light" || x.template_name == "It_Projectile_Fireball_S0");
+        if (x.template_name == "It_Cast_Light") CHECK(x.properties.at("eCPointLight_PS").at("Range") == 1500);
+    }
 
     // the world: the fill of a container with the equipment of the same entity merged, equipment of an NPC as a fill with the equip mark
     CHECK_EQ(p.world.containers.size(), size_t(2));
@@ -165,8 +182,21 @@ TEST(pack2project_maps_the_converters_tables) {
         CHECK(chest->layer == "Farm.lrent" && chest->items.size() == 2 && !chest->items[0].equip && chest->items[1].item == "It_Ring" && chest->items[1].equip);
         CHECK(guard->items.size() == 1 && guard->items[0].item == "It_Sword" && guard->items[0].equip);
     }
-    CHECK(rep.leftover_dialog.contains("trade") && rep.leftover_teachers.size() == 1);
-    CHECK(rep.leftover_strings.at("English").count("HUD_Other") == 1 && rep.leftover_strings.at("English").count("FO_It_Axe") == 0 && rep.leftover_strings.at("English").count("FO_IT_SWORD") == 0);
+    // edits of shipped dialogue infos (one per info) and the teaching limit
+    CHECK_EQ(p.dialog_edits.size(), size_t(2));
+    for (auto& e : p.dialog_edits) {
+        if (e.info == "I_Xp") CHECK(e.xp_add == 5 && e.refills.empty());
+        if (e.info == "I_Trade") CHECK(e.chapter == 2 && e.refills.size() == 1 && e.refills[0].trader == "Oscar" && e.refills[0].item == "It_Axe" && e.refills[0].count == 1);
+    }
+    CHECK(p.teachers.size() == 1 && p.teachers[0].skill == "Smith" && p.teachers[0].max == 3 && p.teachers[0].guid == "aaaaaaaa-0000-4000-8000-000000000003" && p.teachers[0].entity_name == "Teacher");
+    // free string rows: what no object took, one row per id with every language
+    CHECK_EQ(p.strings.size(), size_t(2));
+    for (auto& s : p.strings) {
+        if (s.id == "HUD_Other") CHECK(s.text.at("English") == "Other" && s.text.at("German") == "Anderes");
+        else if (s.id == "ONLY_DE") CHECK(s.text.size() == 1 && s.text.count("German") == 1);
+        else CHECK(false);
+    }
+    CHECK(rep.leftover_strings.empty() && rep.leftover_dialog.empty());
     CHECK_EQ(p.assets.size(), size_t(3));
     CHECK(p.assets[0].file == "assets/It_Wpn_Axe._xmsh" && p.assets[0].kind == "mesh" && p.assets[2].kind == "other");
 
@@ -175,6 +205,8 @@ TEST(pack2project_maps_the_converters_tables) {
     std::vector<std::string> warnings;
     CHECK_EQ(dump_project(project_from_json(json::parse(text), &warnings)), text);
     CHECK(warnings.empty() && p.editor.contains("pack2mod") && p.editor["pack2mod"]["not_mapped"].size() == rep.unmapped.size());
+    // what is still not mapped is the mode the engine does not have
+    CHECK_EQ(rep.unmapped.size(), size_t(1));
 }
 
 TEST(pack2project_export_equals_the_converted_mod) {
@@ -279,11 +311,16 @@ TEST(pack2project_command_line_end_to_end) {
         CHECK(axe->requirements && axe->requirements->at("Strength") == 25 && axe->label.at("German") == "Axt");
     }
     CHECK_EQ(p.assets.size(), size_t(2));
-    // the row that belongs to no object of the project is kept in unmapped/ and listed
-    CHECK(fs::exists(root / "out/proj/unmapped/strings/all.csv"));
-    CHECK(read_text(root / "out/proj/unmapped/strings/all.csv").find("FO_Spear") != std::string::npos);
+    // the row that belongs to no object of the project is a free string row of the project
+    CHECK_EQ(p.strings.size(), size_t(1));
+    if (!p.strings.empty()) {
+        CHECK(p.strings[0].id == "FO_Spear");
+        CHECK(p.strings[0].text.count("English") == 1 && p.strings[0].text.at("English") == "Lance" && p.strings[0].text.at("German") == "Lanze");
+        CHECK(!fs::exists(root / "out/proj/unmapped"));
+    }
     const std::string report = read_text(root / "out/proj/report.md");
-    CHECK(report.find("## Editor project") != std::string::npos && report.find("Not representable in the project") != std::string::npos && report.find("string rows") != std::string::npos);
+    CHECK(report.find("## Editor project") != std::string::npos && report.find("Everything the converter produced has a place in the project") != std::string::npos &&
+          report.find("Strings (rows no object owns)") != std::string::npos);
     // the editor validates what the converter wrote: no error
     {
         const auto problems = validate(p, nullptr);
@@ -314,4 +351,66 @@ TEST(pack2project_command_line_end_to_end) {
     CHECK_EQ(run({mod_in, "--baseline", data, "--project", u8str(root / "none" / "n.rmk.json")}, &text), 1);
     CHECK(text.find("modkit feature") != std::string::npos && !fs::exists(root / "none"));
     register_pack2mod_project_writer();
+}
+
+// moved, removed and added entities of hand-built layers (no archive: the parser's output is made by hand)
+static GEntity layer_entity(const std::string& id_hex_tail, const std::string& name, float x, float y, float z, float yaw_deg, const std::string& creator = std::string()) {
+    GEntity e;
+    e.id = "@0000000000000000000000000" + id_hex_tail;  // 33 characters: "@" + 32 hex
+    e.name = name;
+    e.creator = creator;
+    e.matrix = spass::pose::compose(x, y, z, spass::pose::Angles{yaw_deg, 0, 0});
+    return e;
+}
+
+TEST(pack2project_world_changes_from_layers) {
+    LayerPair L;
+    L.name = "Test_NPC_01";
+    L.base.layer = L.mod.layer = true;
+    L.base.entities = {layer_entity("0000001", "root", 0, 0, 0, 0), layer_entity("0000002", "Guard", 100, 0, 200, 90), layer_entity("0000003", "Gone", 5, 5, 5, 0),
+                       layer_entity("0000004", "Still", 7, 0, 7, 45), layer_entity("0000005", "Turned", 9, 0, 9, 0)};
+    L.base.entities[0].name = "DRE";
+    L.mod.entities = {layer_entity("0000001", "root", 0, 0, 0, 0), layer_entity("0000002", "Guard", 150, 0, 260, 180), layer_entity("0000004", "Still", 7, 0, 7, 45),
+                      layer_entity("0000005", "Turned", 9, 0, 9, 30),
+                      layer_entity("0000006", "New_Chest", 1, 2, 3, 270, "@11111111111111111111111111111111"), layer_entity("0000007", "Orphan", 1, 1, 1, 0, "@22222222222222222222222222222222")};
+    L.mod.entities[0].name = "DRE";
+    const std::map<std::string, std::string> guids = {{"@11111111111111111111111111111111", "Object_Chest_Test"}};
+    const WorldChanges wc = world_changes({L}, guids);
+    CHECK_EQ(wc.moves.size(), size_t(2));  // Guard moved and turned, Turned only turned; Still stays
+    CHECK_EQ(wc.removals.size(), size_t(1));
+    CHECK_EQ(wc.spawns.size(), size_t(1));
+    CHECK_EQ(wc.skipped_template, 1);  // the entity whose creator no template has
+    if (wc.moves.size() == 2 && wc.removals.size() == 1 && wc.spawns.size() == 1) {
+        CHECK(wc.moves[0].entity_name == "Guard" && wc.moves[0].position && (*wc.moves[0].position)[0] == 150 && (*wc.moves[0].rotation)[0] == 180);
+        CHECK(wc.moves[1].entity_name == "Turned" && std::fabs((*wc.moves[1].rotation)[0] - 30) < 0.01);
+        CHECK(wc.moves[0].layer == "Test_NPC_01" && wc.moves[0].guid.size() == 36);
+        CHECK(wc.removals[0].entity_name == "Gone");
+        CHECK(wc.spawns[0].template_name == "Object_Chest_Test" && wc.spawns[0].position[2] == 3 && std::fabs(wc.spawns[0].rotation[0] - 270) < 0.01);
+    }
+    // the project: carried only on request (the converted mod's layers also differ from the game's where the mod did nothing)
+    p2m::ProjectInput in = made_up_input();
+    in.template_guids = guids;
+    Pack2ProjectReport off, on;
+    const std::vector<LayerPair> pairs{L};
+    const Project p_off = project_from_pack2mod(in, nullptr, off, &pairs);
+    CHECK(p_off.world.moves.empty() && p_off.world.removals.empty() && p_off.world.spawns.empty());
+    bool noted = false;
+    for (auto& e : off.unmapped) noted = noted || (e.area == "World" && e.name.find("2 moved, 1 removed, 1 added") != std::string::npos && e.reason.find("--world-edits") != std::string::npos);
+    CHECK(noted);
+    in.world_edits = true;
+    Project p_on = project_from_pack2mod(in, nullptr, on, &pairs);
+    p_on.assets.clear();  // the files are not here
+    CHECK(p_on.world.moves.size() == 2 && p_on.world.removals.size() == 1 && p_on.world.spawns.size() == 1);
+    // the export's world.lua is checked against the layers: the moves recompose the mod's matrices
+    const fs::path dir = temp_dir("p2p_world") / "m";
+    ExportOptions eo;
+    CHECK(export_mod(p_on, u8str(dir), eo).ok);
+    const auto bad = verify_world_edits(pairs, u8str(dir));
+    for (auto& d : bad) std::printf("  difference: %s\n", d.c_str());
+    CHECK(bad.empty());
+    Project broken = p_on;
+    (*broken.world.moves[0].position)[0] += 40;
+    const fs::path dir2 = temp_dir("p2p_world2") / "m";
+    CHECK(export_mod(broken, u8str(dir2), eo).ok);
+    CHECK(!verify_world_edits(pairs, u8str(dir2)).empty());
 }

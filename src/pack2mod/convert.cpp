@@ -766,6 +766,7 @@ int run_convert(const Options& o, std::ostream& log, Counts* counts_out) {
         in.project_dir = proj_s;
         in.mod_dir = writing ? out_s : std::string();
         in.verify = o.verify;
+        in.world_edits = o.world_edits;
         in.items = items.items;
         in.new_items = nw.items;
         in.recipes_edit = nw.recipes;
@@ -775,6 +776,20 @@ int run_convert(const Options& o, std::ostream& log, Counts* counts_out) {
         in.world = wld.data;
         in.languages = str.languages;
         in.strings = str.rows;
+        if (!o.no_world) {
+            for (const std::string& key : d.mod_common.sorted_keys()) {
+                if (!ends_with(key, ".lrent")) continue;
+                const LFile& m = d.mod_common.files[key];
+                const LFile* b = d.base_common.find(key);
+                WorldLayerFile w;
+                w.name = bare_name(m.e->path);
+                w.mod = m.read();
+                if (b) w.base = b->read();
+                if (w.base != w.mod) in.world_layers.push_back(std::move(w));
+            }
+            for (const auto& [g, n] : d.guid) in.template_guids[g] = n;
+            for (const std::string& n : d.mod_order) in.template_files.push_back(n);
+        }
         in.assets = assets.added;
         in.assets.insert(in.assets.end(), assets.replaced.begin(), assets.replaced.end());
         in.assets.insert(in.assets.end(), extra_assets.begin(), extra_assets.end());

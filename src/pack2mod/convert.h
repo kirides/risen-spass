@@ -26,6 +26,7 @@ struct Options {
     bool strings_all = false;         // apply every differing string row (default: new rows + rows of converted entities)
     bool no_world = false;            // skip dialogue / world extraction
     std::string project;              // --project FILE.rmk.json: also (or only) write the result as a risen-modkit project (needs the modkit build feature)
+    bool world_edits = false;         // --world-edits: carry the moved / removed / added entities of the changed world layers into the project (docs/PACK2MOD.md)
     bool verify = false;              // --verify: export that project again and compare it with the converted mod (needs --out and --project)
 };
 
@@ -44,17 +45,27 @@ struct Issue {  // something the converter could not convert (Unconverted of the
     std::string kind, name, reason, needs;
 };
 
+// a world layer (`*.lrent`) the mod changes: the game's file ("" = the game has no such layer) and the mod's newest one
+struct WorldLayerFile {
+    std::string name;  // bare file name
+    std::string base, mod;
+};
+
 struct ProjectInput {
     std::string id, name;                       // the mod's identity (as in mod.toml)
     std::string baseline;                       // the game's data directory (the writer loads it to classify templates and to validate the result)
     std::string project_file, project_dir;      // absolute, UTF-8
     std::string mod_dir;                        // the layer mod written by the same run ("" = none): --verify compares with it
     bool verify = false;
+    bool world_edits = false;                   // carry the moved / removed / added world entities (they cannot be told from the classic base's own differences)
     // exactly the tables written to data/*.lua of the layer mod
     LVal items, new_items, recipes_edit, recipes_new, patches, dialog, world;
     std::vector<std::string> languages;                                        // English first
     std::map<std::string, std::map<std::string, std::string>> strings;         // language -> string id -> text (the rows of strings/*.csv)
     std::vector<std::string> assets;                                           // bare file names written to <project_dir>/assets
+    std::vector<WorldLayerFile> world_layers;                                  // the changed world layers: moved / removed / new entities are read from them
+    std::map<std::string, std::string> template_guids;                         // "@" + 32 hex -> template name, the game's and the mod's templates
+    std::vector<std::string> template_files;                                   // names of the mod's templates (the creator of a new entity may be one of them)
     std::vector<Issue> unconverted;
     std::vector<std::string> warnings, notes;
 };
