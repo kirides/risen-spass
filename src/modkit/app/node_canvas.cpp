@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <set>
 
 namespace ed = ax::NodeEditor;
 
@@ -178,10 +179,12 @@ bool NodeCanvas::draw(const std::string& key, Graph& g, const Summary& summary) 
     }
 
     // nodes
+    std::set<std::string> drawn_now;
     for (auto& n : g.nodes) {
         const NodeTypeDef* t = node_type(kind_, n.type);
         if (!t) continue;
         const int id = node_id(c, n.uid);
+        drawn_now.insert(n.uid);
         const bool marked = marked_.count(n.uid) != 0;
         if (marked) ed::PushStyleColor(ed::StyleColor_NodeBorder, ImVec4(1, 0.35f, 0.3f, 1));
         ed::BeginNode(id);
@@ -398,7 +401,11 @@ bool NodeCanvas::draw(const std::string& key, Graph& g, const Summary& summary) 
     }
     ed::Resume();
 
-    if (!c.focus.empty()) {
+    // a node made this frame is only known to the editor once it was drawn: the request waits for the next frame
+    const bool focus_pending = !c.focus.empty() && g.find(c.focus) && !drawn_now.count(c.focus);
+    if (focus_pending) {
+        // keep c.focus
+    } else if (!c.focus.empty()) {
         auto it = c.node_ids.find(c.focus);
         if (it != c.node_ids.end()) {
             ed::SelectNode(it->second);
