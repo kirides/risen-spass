@@ -69,6 +69,24 @@ TEST(export_golden_showcase) {
     CHECK(files.at("modkit/runtime.lua").find("modkit.applied") != std::string::npos);
 }
 
+TEST(export_is_independent_of_key_and_template_order) {
+    // found by the chronicle round trip: a patrol with `kind` after `points`, and behaviours on templates in another order than by name, must export
+    // exactly what an import (which reads Lua tables back sorted) exports again
+    Project p = load_showcase();
+    p.npcs[0].routine = json::parse(R"({"patrol":{"points":[{"dx":0,"dy":0,"dz":0},{"dx":100,"dy":0,"dz":0}],"kind":"guard"}})");
+    Project q = p;
+    q.npcs[0].routine = json::parse(R"({"patrol":{"kind":"guard","points":[{"dz":0,"dy":0,"dx":0},{"dz":0,"dy":0,"dx":100}]}})");
+    CHECK_EQ(render_mod(p).at("data/npcs.lua"), render_mod(q).at("data/npcs.lua"));
+    NpcTemplateDef z = p.npc_templates[0], a = p.npc_templates[0];
+    z.uid = "z", z.name = "Z_Tpl", z.behaviors = {{"greeter", json::object()}};
+    a.uid = "a", a.name = "A_Tpl", a.behaviors = {{"greeter", json::object()}};
+    Project r = p;
+    r.npc_templates = {z, a};
+    Project s = p;
+    s.npc_templates = {a, z};
+    CHECK_EQ(render_mod(r).at("data/behaviors.lua"), render_mod(s).at("data/behaviors.lua"));
+}
+
 TEST(export_balance_spec) {
     Project p = load_showcase();
     const json b = balance_spec(p);
