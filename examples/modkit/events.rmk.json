@@ -1,0 +1,575 @@
+{
+  "format": "risen-modkit-project",
+  "format_version": 1,
+  "mod": {
+    "id": "modkit_events",
+    "name": "Events example",
+    "version": "1.0.0",
+    "author": "risen-modkit",
+    "description": "Event graphs: chapter, movement, kills, signals, area.",
+    "languages": [
+      "English",
+      "German"
+    ]
+  },
+  "events": [
+    {
+      "uid": "69e38d880f9c0fbf774c39d8ecc39193",
+      "name": "Chapter hello",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "17844d99c19b5228642915f945caeee7",
+            "type": "on_chapter",
+            "pos": [
+              0,
+              0
+            ],
+            "data": {
+              "chapter": 3
+            }
+          },
+          {
+            "uid": "9a51ea55dd80643f162e1c4d98f829ed",
+            "type": "condition",
+            "pos": [
+              340,
+              0
+            ],
+            "data": {
+              "mode": "all",
+              "negate": false,
+              "tests": [
+                {
+                  "kind": "var",
+                  "scope": "game",
+                  "name": "mkev_chapter_seen",
+                  "op": "==",
+                  "value": 0
+                }
+              ]
+            }
+          },
+          {
+            "uid": "72a826b7177e3752271a9da2f1c15d0e",
+            "type": "set_variable",
+            "pos": [
+              700,
+              -40
+            ],
+            "data": {
+              "scope": "game",
+              "name": "mkev_chapter_seen",
+              "op": "set",
+              "value": 1
+            }
+          },
+          {
+            "uid": "ab796adeafd1a4f55207fec299f8d200",
+            "type": "hud_message",
+            "pos": [
+              1040,
+              -40
+            ],
+            "data": {
+              "text": {
+                "English": "Chapter {chapter} has begun",
+                "German": "Kapitel {chapter} hat begonnen"
+              },
+              "style": "note"
+            }
+          },
+          {
+            "uid": "79ab7a5477f00929c7d4b23406d1e370",
+            "type": "end",
+            "pos": [
+              1380,
+              -40
+            ],
+            "data": {}
+          },
+          {
+            "uid": "2135049b2694c93f2e932ac710becc80",
+            "type": "log",
+            "pos": [
+              700,
+              160
+            ],
+            "data": {
+              "text": "chapter message already shown"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "d699c242297c56baa1f30d9c95a357f4",
+            "from": [
+              "17844d99c19b5228642915f945caeee7",
+              "next"
+            ],
+            "to": [
+              "9a51ea55dd80643f162e1c4d98f829ed",
+              "in"
+            ]
+          },
+          {
+            "uid": "e655eb86515961a4cbad586fe820255b",
+            "from": [
+              "9a51ea55dd80643f162e1c4d98f829ed",
+              "then"
+            ],
+            "to": [
+              "72a826b7177e3752271a9da2f1c15d0e",
+              "in"
+            ]
+          },
+          {
+            "uid": "1c6509a70a0df12abef43e0d1c5809ef",
+            "from": [
+              "72a826b7177e3752271a9da2f1c15d0e",
+              "next"
+            ],
+            "to": [
+              "ab796adeafd1a4f55207fec299f8d200",
+              "in"
+            ]
+          },
+          {
+            "uid": "dc81fb852ca92eb3f52a4e1081426adc",
+            "from": [
+              "ab796adeafd1a4f55207fec299f8d200",
+              "next"
+            ],
+            "to": [
+              "79ab7a5477f00929c7d4b23406d1e370",
+              "in"
+            ]
+          },
+          {
+            "uid": "0ea379fd2ce5fcfa365a9b89190485bc",
+            "from": [
+              "9a51ea55dd80643f162e1c4d98f829ed",
+              "else"
+            ],
+            "to": [
+              "2135049b2694c93f2e932ac710becc80",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "The example of the editor's help: on chapter 3, once, set a variable and say so."
+    },
+    {
+      "uid": "db6ea77c7cd8a86b17014c3b688fd1a1",
+      "name": "Walking",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "197c2b1c6ad8c453aee9a4ee60dcd545",
+            "type": "on_move",
+            "pos": [
+              0,
+              0
+            ],
+            "data": {
+              "min_m": 1
+            }
+          },
+          {
+            "uid": "1fc6f4fe7c04bfc7bcf226e624f4ade3",
+            "type": "set_variable",
+            "pos": [
+              340,
+              0
+            ],
+            "data": {
+              "scope": "save",
+              "name": "mkev_moves",
+              "op": "add",
+              "value": 1
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "fe55d8a6b5856f1e3cac2366a8124750",
+            "from": [
+              "197c2b1c6ad8c453aee9a4ee60dcd545",
+              "next"
+            ],
+            "to": [
+              "1fc6f4fe7c04bfc7bcf226e624f4ade3",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "Fires once per metre the player moves, never for turning."
+    },
+    {
+      "uid": "3d41dc6c7e9652503e7a7d48f95fa907",
+      "name": "Wolf hunter",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "5f0a65566b91333643fb2425d5e885b9",
+            "type": "on_kill",
+            "pos": [
+              0,
+              0
+            ],
+            "data": {
+              "target": "Wolf",
+              "by_player": true
+            }
+          },
+          {
+            "uid": "995b8a87e40ce4b21054abbaad02e309",
+            "type": "set_variable",
+            "pos": [
+              340,
+              0
+            ],
+            "data": {
+              "scope": "save",
+              "name": "mkev_wolves",
+              "op": "add",
+              "value": 1
+            }
+          },
+          {
+            "uid": "258cb05708e83ba6bfc05152ff7ca616",
+            "type": "count",
+            "pos": [
+              700,
+              0
+            ],
+            "data": {
+              "n": 3,
+              "repeat": false
+            }
+          },
+          {
+            "uid": "e0059d716d4914bd0ea5d28c023b9c30",
+            "type": "give_xp",
+            "pos": [
+              1040,
+              -60
+            ],
+            "data": {
+              "amount": 100
+            }
+          },
+          {
+            "uid": "6ce4a2fbfc46f36d41f9c36cc14b67d6",
+            "type": "hud_message",
+            "pos": [
+              1040,
+              60
+            ],
+            "data": {
+              "text": {
+                "English": "Three wolves less!",
+                "German": "Drei Wölfe weniger!"
+              },
+              "style": "experience"
+            }
+          },
+          {
+            "uid": "0562931a2ccd73b68d37ed927c0a298b",
+            "type": "send_signal",
+            "pos": [
+              1380,
+              0
+            ],
+            "data": {
+              "name": "wolf_hunter_done"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "3f61ca3f31bf62255400201c4554fe44",
+            "from": [
+              "5f0a65566b91333643fb2425d5e885b9",
+              "next"
+            ],
+            "to": [
+              "995b8a87e40ce4b21054abbaad02e309",
+              "in"
+            ]
+          },
+          {
+            "uid": "69b0fe6458f71df809dab121220c5d8f",
+            "from": [
+              "995b8a87e40ce4b21054abbaad02e309",
+              "next"
+            ],
+            "to": [
+              "258cb05708e83ba6bfc05152ff7ca616",
+              "in"
+            ]
+          },
+          {
+            "uid": "f476df1c741cdf2a45761e5d1d61ba75",
+            "from": [
+              "258cb05708e83ba6bfc05152ff7ca616",
+              "next"
+            ],
+            "to": [
+              "e0059d716d4914bd0ea5d28c023b9c30",
+              "in"
+            ]
+          },
+          {
+            "uid": "593d81eb72e5c291dca6a6759f79f3a9",
+            "from": [
+              "258cb05708e83ba6bfc05152ff7ca616",
+              "next"
+            ],
+            "to": [
+              "6ce4a2fbfc46f36d41f9c36cc14b67d6",
+              "in"
+            ]
+          },
+          {
+            "uid": "c2bc87ac3850fe37c32f99fb59e54148",
+            "from": [
+              "6ce4a2fbfc46f36d41f9c36cc14b67d6",
+              "next"
+            ],
+            "to": [
+              "0562931a2ccd73b68d37ed927c0a298b",
+              "in"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "59d12680844b373fa3256ed6bdd6c6a6",
+      "name": "Hunter reward",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "7a3f53f4ef7ae54ef729f9b7d0a2ce62",
+            "type": "on_signal",
+            "pos": [
+              0,
+              0
+            ],
+            "data": {
+              "name": "wolf_hunter_done"
+            }
+          },
+          {
+            "uid": "df726cc376b37b02a31583867e9282c4",
+            "type": "once",
+            "pos": [
+              340,
+              0
+            ],
+            "data": {}
+          },
+          {
+            "uid": "ac5ce3ed225e2bb9d1d2117f48694b86",
+            "type": "delay",
+            "pos": [
+              700,
+              -60
+            ],
+            "data": {
+              "seconds": 5
+            }
+          },
+          {
+            "uid": "0f9d589b066f56c9a1dc2491bf814f1d",
+            "type": "give_item",
+            "pos": [
+              1040,
+              -60
+            ],
+            "data": {
+              "item": "It_Apple",
+              "count": 3,
+              "show": true
+            }
+          },
+          {
+            "uid": "122fb167c271b2703cb6c3c651619d93",
+            "type": "log",
+            "pos": [
+              700,
+              80
+            ],
+            "data": {
+              "text": "reward already given"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "2219ff74dd1253a2fa0ccbad4b3a1841",
+            "from": [
+              "7a3f53f4ef7ae54ef729f9b7d0a2ce62",
+              "next"
+            ],
+            "to": [
+              "df726cc376b37b02a31583867e9282c4",
+              "in"
+            ]
+          },
+          {
+            "uid": "1890c74319fc7d711551d41bf5513e49",
+            "from": [
+              "df726cc376b37b02a31583867e9282c4",
+              "next"
+            ],
+            "to": [
+              "ac5ce3ed225e2bb9d1d2117f48694b86",
+              "in"
+            ]
+          },
+          {
+            "uid": "624bdd2f94b8080e6c1f33c9c2e4fb05",
+            "from": [
+              "ac5ce3ed225e2bb9d1d2117f48694b86",
+              "next"
+            ],
+            "to": [
+              "0f9d589b066f56c9a1dc2491bf814f1d",
+              "in"
+            ]
+          },
+          {
+            "uid": "2e58e17ed1ad515c27cd2e48a501fd35",
+            "from": [
+              "df726cc376b37b02a31583867e9282c4",
+              "again"
+            ],
+            "to": [
+              "122fb167c271b2703cb6c3c651619d93",
+              "in"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "dc2eebfcbdaa7cc5d7859a2207d6cad4",
+      "name": "Dawn market",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "ed10fc0c391960ad4408798712097b96",
+            "type": "on_area",
+            "pos": [
+              0,
+              0
+            ],
+            "data": {
+              "at": "point",
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "radius": 20,
+              "on": "enters"
+            }
+          },
+          {
+            "uid": "9a163c4c490f951aebe05cdb64d9d71a",
+            "type": "condition",
+            "pos": [
+              340,
+              0
+            ],
+            "data": {
+              "mode": "all",
+              "negate": false,
+              "tests": [
+                {
+                  "kind": "time",
+                  "from": 6,
+                  "to": 10
+                },
+                {
+                  "kind": "quest",
+                  "quest": "Q_Missing",
+                  "status": "Running"
+                }
+              ]
+            }
+          },
+          {
+            "uid": "1cbd06bb1540a7665e929734a173160f",
+            "type": "spawn_npc",
+            "pos": [
+              700,
+              -60
+            ],
+            "data": {
+              "template": "Peasant_1_01",
+              "name": "",
+              "at": "near_player",
+              "x": 300,
+              "y": 0,
+              "z": 0,
+              "peaceful": true
+            }
+          },
+          {
+            "uid": "20d4f2189afef06f6ada84f4fb9b5bad",
+            "type": "hud_message",
+            "pos": [
+              1040,
+              -60
+            ],
+            "data": {
+              "text": {
+                "English": "A trader opens his stall",
+                "German": "Ein Haendler baut seinen Stand auf"
+              },
+              "style": "note"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "49401b89ee029bc278216be9df2302b5",
+            "from": [
+              "ed10fc0c391960ad4408798712097b96",
+              "next"
+            ],
+            "to": [
+              "9a163c4c490f951aebe05cdb64d9d71a",
+              "in"
+            ]
+          },
+          {
+            "uid": "959a4351b2ab21a84e19c5a614d1130d",
+            "from": [
+              "9a163c4c490f951aebe05cdb64d9d71a",
+              "then"
+            ],
+            "to": [
+              "1cbd06bb1540a7665e929734a173160f",
+              "in"
+            ]
+          },
+          {
+            "uid": "c7db33197db0e865563be486d1c9b32d",
+            "from": [
+              "1cbd06bb1540a7665e929734a173160f",
+              "next"
+            ],
+            "to": [
+              "20d4f2189afef06f6ada84f4fb9b5bad",
+              "in"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

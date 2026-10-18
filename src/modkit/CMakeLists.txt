@@ -110,6 +110,7 @@ add_executable(risen-modkit
     app/panels/dialogs_panel.cpp
     app/panels/items_panel.cpp
     app/panels/problems_panel.cpp
+    app/panels/events_panel.cpp
     app/panels/quests_panel.cpp
     app/panels/recipes_panel.cpp
     app/panels/log_panel.cpp

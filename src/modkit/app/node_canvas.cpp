@@ -107,7 +107,16 @@ bool NodeCanvas::create_menu(Graph& g, double x, double y, std::string* created)
     const PinDef* fp = from ? node_type(kind_, from->type)->pin(pending_pin_) : nullptr;
     ImGui::TextDisabled(fp ? "Create and link" : "Create");
     ImGui::Separator();
+    // node types with a group (event graphs) are offered in one submenu per group, in the order of first appearance
+    std::vector<std::string> groups;
+    for (auto& t : node_types(kind_))
+        if (t.group[0] && std::find(groups.begin(), groups.end(), t.group) == groups.end()) groups.push_back(t.group);
+    for (size_t gi = 0; gi < std::max<size_t>(groups.size(), 1); ++gi) {
+        const bool grouped = !groups.empty();
+        bool open_group = !grouped || ImGui::BeginMenu(groups[gi].c_str());
+        if (!open_group) continue;
     for (auto& t : node_types(kind_)) {
+        if (grouped && groups[gi] != t.group) continue;
         if (fp) {
             bool fits = false;
             for (auto& p : t.pins) fits |= p.kind == fp->kind && p.input != fp->input;
@@ -128,6 +137,8 @@ bool NodeCanvas::create_menu(Graph& g, double x, double y, std::string* created)
             }
         }
         if (ImGui::IsItemHovered() && t.help) ImGui::SetTooltip("%s", t.help);
+    }
+        if (grouped) ImGui::EndMenu();
     }
     return made;
 }
