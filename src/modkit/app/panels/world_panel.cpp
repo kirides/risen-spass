@@ -159,10 +159,17 @@ public:
         draw_layers();
         ImGui::EndChild();
         ImGui::SameLine();
-        const float inspector_w = 340;
-        ImGui::BeginChild("##view", ImVec2(ImGui::GetContentRegionAvail().x - inspector_w - 8, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
+        // the inspector's width can be dragged at the splitter between it and the view
+        const float split_w = 6, spacing = ImGui::GetStyle().ItemSpacing.x;
+        const float avail_w = ImGui::GetContentRegionAvail().x;
+        inspector_w_ = std::clamp(inspector_w_, 200.0f, std::max(200.0f, avail_w - 2 * spacing - split_w - 300.0f));
+        ImGui::BeginChild("##view", ImVec2(avail_w - inspector_w_ - split_w - 2 * spacing, 0), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
         draw_view(app);
         ImGui::EndChild();
+        ImGui::SameLine();
+        ImGui::InvisibleButton("##inspector_split", ImVec2(split_w, ImGui::GetContentRegionAvail().y));
+        if (ImGui::IsItemHovered() || ImGui::IsItemActive()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+        if (ImGui::IsItemActive()) inspector_w_ -= ImGui::GetIO().MouseDelta.x;
         ImGui::SameLine();
         ImGui::BeginChild("##inspector", ImVec2(0, 0), ImGuiChildFlags_Borders);
         draw_inspector(app);
@@ -407,16 +414,21 @@ private:
 
     // what switches a sector on (or off): the dialogue infos and game scripts of core/sectors.h
     static void draw_sector_triggers(const SectorInfo& s) {
-        ImGui::Text("Sector %s", s.name.c_str());
-        ImGui::TextDisabled(s.enabled_on_startup ? "on when a game starts" : "OFF when a game starts: its entities are not in the world yet");
+        ImGui::TextWrapped("Sector %s", s.name.c_str());
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+        ImGui::TextWrapped("%s", s.enabled_on_startup ? "on when a game starts" : "OFF when a game starts: its entities are not in the world yet");
+        ImGui::PopStyleColor();
         if (s.triggers.empty()) {
             if (!s.enabled_on_startup) ImGui::TextWrapped("Nothing in the game switches it on (the demo's or an unused story sector).");
             return;
         }
         for (const SectorTrigger& t : s.triggers) {
-            ImGui::BulletText("%s by %s %s", t.enable ? "switched ON" : "switched OFF", t.kind == SectorTrigger::Dialogue ? "dialogue info" : "script", t.what.c_str());
+            ImGui::Bullet();
+            ImGui::TextWrapped("%s by %s %s", t.enable ? "switched ON" : "switched OFF", t.kind == SectorTrigger::Dialogue ? "dialogue info" : "script", t.what.c_str());
             ImGui::Indent();
-            ImGui::TextDisabled("%s", t.detail.c_str());
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+            ImGui::TextWrapped("%s", t.detail.c_str());
+            ImGui::PopStyleColor();
             ImGui::Unindent();
         }
     }
@@ -1281,7 +1293,9 @@ private:
         if (selected_ >= world_->entities.size()) {
             ImGui::TextWrapped("Click an entity in the view, or find one by name.");
             ImGui::Spacing();
-            ImGui::TextDisabled("Colours: the kind of the entity's template (see Show). Magenta: the project's placed NPCs.");
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+            ImGui::TextWrapped("Colours: the kind of the entity's template (see Show). Magenta: the project's placed NPCs. Drag the thin bar left of this panel to change its width.");
+            ImGui::PopStyleColor();
             return;
         }
         const WorldEntity& e = world_->entities[selected_];
@@ -1362,6 +1376,7 @@ private:
     std::string loading_name_ = "World";
     bool tried_ = false;
     std::vector<char> layer_on_;
+    float inspector_w_ = 340;  // width of the inspector column (dragged at the splitter)
     bool hide_gated_ = false;  // entities of sectors that start switched off
     bool kinds_[kTplKindCount] = {true, true, true, true, true, true, false, false, false, false};
     bool show_level_ = false;
