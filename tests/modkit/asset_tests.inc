@@ -33,6 +33,21 @@ static std::string test_wav(int ms) {
     return w + pcm;
 }
 
+TEST(loose_data_files_are_known) {
+    CHECK(is_loose_data_file("compiled_combatspecies.bin") && is_loose_data_file("dir/Compiled_CombatSpecies.BIN") && is_loose_data_file("WeatherStates.g3ws"));
+    CHECK(!is_loose_data_file("notes.txt") && !is_loose_data_file("X._xmsh"));
+    Project p;
+    p.assets.push_back({"a1", "assets/compiled_combatspecies.bin", "other"});
+    p.assets.push_back({"a2", "assets/readme.txt", "other"});
+    int unknown = 0;
+    for (auto& x : validate(p, nullptr))
+        if (x.area == std::string("Assets") && x.message.find("not a resource the engine loads") != std::string::npos) {
+            ++unknown;
+            CHECK(x.subject == "readme.txt");
+        }
+    CHECK_EQ(unknown, 1);
+}
+
 TEST(asset_kinds) {
     CHECK_EQ(asset_kind("a/b/X._xmsh"), std::string("mesh"));
     CHECK_EQ(asset_kind("X._XMAT"), std::string("material"));

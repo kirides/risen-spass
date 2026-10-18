@@ -31,6 +31,8 @@ bool is_raw_audio(const std::string& file) {
 
 bool is_compiled_sound(const std::string& file) { return ext_of(file) == "._xsnd"; }
 
+bool is_loose_data_file(const std::string& file) { return p2m::lower(p2m::bare_name(file)) == "compiled_combatspecies.bin" || ext_of(file) == ".g3ws"; }
+
 std::string asset_kind(const std::string& file) {
     const std::string e = ext_of(file);
     if (e == "._xmsh") return "mesh";
