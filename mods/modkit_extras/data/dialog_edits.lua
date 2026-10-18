@@ -8,4 +8,27 @@ return {
         chapter = 4,
         refills = { { trader = "Oscar", item = "It_Helmet_Leather", count = 1 } },
     },
+    {
+        info = "PANKRATZX2_00964",
+        ops = { { kind = "command", index = 4, name = "Amount", old = "100", new = "400" } },
+    },
+    {
+        info = "FILLERX2_00743",
+        ops = {
+            { kind = "command", index = 4, name = "Item", old = "It_Bow_Cole", new = "It_Apple" },
+            { kind = "condition", index = 2, name = "Item", old = "It_Bow_Cole", new = "It_Apple" },
+        },
+    },
+    {
+        info = "PANKRATZX2_00736",
+        ops = {
+            {
+                kind = "add_condition",
+                index = 99,
+                class = "PlayerKnows",
+                name = "PlayerKnows",
+                new = "Ursegor_FindGraves",
+            },
+        },
+    },
 }

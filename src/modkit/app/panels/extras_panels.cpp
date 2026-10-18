@@ -297,6 +297,56 @@ private:
                     if (ImGui::InputInt("to##xp", &n)) ch = true, x->xp_new = n;
                 }
             }
+            ui::section("Property edits");
+            ImGui::TextDisabled("Change a value of the info, one of its commands or conditions where it still has the old one; or append a condition. Applied before the XP edits.");
+            {
+                static const std::vector<std::string> kinds = {"info", "command", "condition", "add_condition"};
+                int drop_op = -1;
+                for (size_t i = 0; i < x->ops.size(); ++i) {
+                    InfoOp& op = x->ops[i];
+                    ImGui::PushID(1000 + static_cast<int>(i));
+                    ImGui::SetNextItemWidth(130);
+                    ch |= ui::combo("##kind", op.kind, kinds, false);
+                    if (op.kind != "info") {
+                        ImGui::SameLine();
+                        ImGui::SetNextItemWidth(60);
+                        if (ImGui::InputInt("##index", &op.index, 0, 0)) {
+                            op.index = std::max(0, op.index);
+                            ch = true;
+                        }
+                    }
+                    if (op.kind == "add_condition") {
+                        ImGui::SameLine();
+                        ImGui::SetNextItemWidth(130);
+                        ch |= ImGui::InputTextWithHint("##class", "class", &op.cls);
+                    }
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(120);
+                    ch |= ImGui::InputTextWithHint("##pname", "property", &op.name);
+                    if (op.kind != "add_condition") {
+                        ImGui::SameLine();
+                        ImGui::SetNextItemWidth(110);
+                        ch |= ImGui::InputTextWithHint("##old", "old value", &op.old_value);
+                    }
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(130);
+                    ch |= ImGui::InputTextWithHint("##new", "new value", &op.new_value);
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("x")) drop_op = static_cast<int>(i);
+                    ImGui::PopID();
+                }
+                if (drop_op >= 0) {
+                    x->ops.erase(x->ops.begin() + drop_op);
+                    ch = true;
+                }
+                if (ImGui::SmallButton("+ property edit")) {
+                    InfoOp op;
+                    op.kind = "command";
+                    op.index = 1;
+                    x->ops.push_back(op);
+                    ch = true;
+                }
+            }
             ui::section("Trader refills");
             ch |= ui::opt_int("Chapter", x->chapter, nullptr, 1);
             ui::help("The chapter the info belongs to. Refills of chapter 1 are also handed out when a new game starts (the traders sell them from the beginning).");

@@ -300,6 +300,15 @@ struct Refill {
     std::string trader, item;
     int count = 1;
 };
+// one property edit of a shipped info: a value of the info itself, of one of its commands or conditions (1-based index in their lists) that is changed where it
+// still has the old value, or a condition appended to the info's condition sequence (`add_condition`: its class, e.g. "PlayerKnows", and one property per row)
+struct InfoOp {
+    std::string kind;  // info | command | condition | add_condition
+    int index = 0;     // command / condition: its place in the list; add_condition: the place the new condition takes (rows of one condition share it)
+    std::string cls;   // add_condition: the condition class without the "gCInfoCondition" prefix
+    std::string name;  // the property
+    std::string old_value, new_value;
+};
 // an edit of a shipped dialogue info at run time: an XP reward added (xp_add) or changed (xp_old -> xp_new) and trader refills; `chapter` is the chapter
 // whose info it is (1: its refills are also handed out when a new game starts)
 struct DialogEdit {
@@ -307,6 +316,7 @@ struct DialogEdit {
     std::string info;  // the shipped info's name ("FILLERX2_00029")
     std::optional<int> xp_add, xp_old, xp_new;
     std::vector<Refill> refills;
+    std::vector<InfoOp> ops;  // property edits, applied before the XP edits
     std::optional<int> chapter;
     std::string notes;
 };

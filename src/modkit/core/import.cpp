@@ -816,6 +816,9 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
                 opt(e, "xp_new", x.xp_new);
                 opt(e, "chapter", x.chapter);
                 for (auto& rf : e.value("refills", json::array())) x.refills.push_back({rf.value("trader", std::string()), rf.value("item", std::string()), rf.value("count", 1)});
+                for (auto& op : e.value("ops", json::array()))
+                    x.ops.push_back({op.value("kind", std::string()), op.value("index", 0), op.value("class", std::string()), op.value("name", std::string()), op.value("old", std::string()),
+                                     op.value("new", std::string())});
                 p.dialog_edits.push_back(x);
             }
         if (const json events = data("events.lua"); events.is_array())

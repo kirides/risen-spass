@@ -806,7 +806,15 @@ void check_extras(Ctx& c) {
         if (x.xp_old.has_value() != x.xp_new.has_value()) c.add(Severity::Error, A, x.uid, subj, "a changed XP reward needs the old and the new amount");
         for (auto v : {x.xp_add, x.xp_new})
             if (v && *v < 0) c.add(Severity::Error, A, x.uid, subj, "an XP reward must not be negative");
-        if (!x.xp_add && !x.xp_new && x.refills.empty()) c.add(Severity::Warning, A, x.uid, subj, "the edit changes nothing");
+        if (!x.xp_add && !x.xp_new && x.refills.empty() && x.ops.empty()) c.add(Severity::Warning, A, x.uid, subj, "the edit changes nothing");
+        for (auto& op : x.ops) {
+            static const char* kinds[] = {"info", "command", "condition", "add_condition"};
+            if (std::find(std::begin(kinds), std::end(kinds), op.kind) == std::end(kinds)) c.add(Severity::Error, A, x.uid, subj, "property edit: unknown kind '" + op.kind + "'");
+            if (op.name.empty()) c.add(Severity::Error, A, x.uid, subj, "a property edit needs the property's name");
+            if ((op.kind == "command" || op.kind == "condition") && op.index < 1) c.add(Severity::Error, A, x.uid, subj, "a " + op.kind + " edit needs the place (1 = the first) of the " + op.kind);
+            if (op.kind == "add_condition" && op.cls.empty()) c.add(Severity::Error, A, x.uid, subj, "an added condition needs its class (PlayerKnows, ItemAmount, ...)");
+            if (op.kind != "add_condition" && op.old_value.empty()) c.add(Severity::Warning, A, x.uid, subj, "the edit of " + op.name + " has no old value: it is applied only where the value is empty");
+        }
         for (auto& r : x.refills) {
             if (r.trader.empty()) c.add(Severity::Error, A, x.uid, subj, "a refill needs the trader's name");
             if (r.item.empty() || !item_known(c, r.item)) c.add(Severity::Error, A, x.uid, subj, "refill item '" + r.item + "' is no item of the game or the project");

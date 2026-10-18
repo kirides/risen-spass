@@ -705,6 +705,20 @@ json to_json(const Project& p) {
             put(o, "xp_old", x.xp_old);
             put(o, "xp_new", x.xp_new);
             put(o, "chapter", x.chapter);
+            if (!x.ops.empty()) {
+                json os = json::array();
+                for (auto& op : x.ops) {
+                    json e = json::object();
+                    e["kind"] = op.kind;
+                    if (op.index) e["index"] = op.index;
+                    put_str(e, "class", op.cls);
+                    e["name"] = op.name;
+                    put_str(e, "old", op.old_value);
+                    e["new"] = op.new_value;
+                    os.push_back(e);
+                }
+                o["ops"] = os;
+            }
             if (!x.refills.empty()) {
                 json rs = json::array();
                 for (auto& r : x.refills) rs.push_back(json::array({r.trader, r.item, r.count}));
@@ -1057,6 +1071,17 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
         r.get(e, "xp_old", x.xp_old);
         r.get(e, "xp_new", x.xp_new);
         r.get(e, "chapter", x.chapter);
+        if (auto it = e.find("ops"); it != e.end() && it->is_array())
+            for (auto& op : *it) {
+                InfoOp x2;
+                r.get(op, "kind", x2.kind);
+                r.get(op, "index", x2.index);
+                r.get(op, "class", x2.cls);
+                r.get(op, "name", x2.name);
+                r.get(op, "old", x2.old_value);
+                r.get(op, "new", x2.new_value);
+                x.ops.push_back(x2);
+            }
         if (auto it = e.find("refills"); it != e.end() && it->is_array())
             for (auto& rf : *it) {
                 if (rf.is_array() && rf.size() >= 2 && rf[0].is_string() && rf[1].is_string())

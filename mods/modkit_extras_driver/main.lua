@@ -18,6 +18,9 @@ T.plan {
     "an XP reward is added to a shipped info",
     "an XP reward is changed on a shipped info",
     "a trader refill is added to a shipped info",
+    "a command value of a shipped info is changed",
+    "a template reference of a command and of a condition is changed",
+    "a condition is appended to a shipped info",
     "the teaching limit of a placed NPC is written",
     "the patches are written again on every session start",
 }
@@ -72,6 +75,17 @@ T.run(function()
     local chap = risen.dialog.get("KALVERAMX2B_00460")
     local idx = chap and last_command_with(chap, "Other", "It_Helmet_Leather")
     T.expect("a trader refill is added to a shipped info", idx ~= nil and chap:get_command_property(idx, "Self") == "Oscar", tostring(idx))
+
+    T.section("property edits of shipped infos")
+    local esteban = risen.dialog.get("PANKRATZX2_00964")
+    T.expect("a command value of a shipped info is changed", esteban and esteban:get_command_property(4, "Amount") == "400", esteban and tostring(esteban:get_command_property(4, "Amount")) or "no info")
+    local cole = risen.dialog.get("FILLERX2_00743")
+    local cmd_item = cole and cole:get_command_property(4, "Item")
+    local cond_item = cole and cole:get_condition_property(2, "Item")
+    T.expect("a template reference of a command and of a condition is changed", cmd_item == "It_Apple" and cond_item == "It_Apple", tostring(cmd_item) .. " / " .. tostring(cond_item))
+    local graves = risen.dialog.get("PANKRATZX2_00736")
+    local last = graves and graves:condition_count() or 0
+    T.expect("a condition is appended to a shipped info", last > 0 and graves:get_condition_property(last, "PlayerKnows") == "Ursegor_FindGraves", "conditions " .. tostring(last))
 
     T.section("teachers")
     local sam = risen.entity.by_id("3d71aefb-0ee1-47bd-9b11-02fec2149ef1")
