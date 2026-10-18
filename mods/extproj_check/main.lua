@@ -15,6 +15,8 @@ T.plan {
     "an XP reward is added to a shipped info",
     "an XP reward is changed on a shipped info",
     "the refills are on the chapter 1 info",
+    "the author's property edits of shipped infos are applied",
+    "an entity the author moved stands where the mod puts it",
     "a teaching limit is raised",
     "a chest of the world holds the mod's items",
     "no errors logged",
@@ -61,6 +63,19 @@ T.run(function()
     T.expect("the refills are on the chapter 1 info", chap and last_command_with(chap, "Other", "It_Helmet_Leather") ~= nil, "")
 
     T.section("world")
+    local esteban = risen.dialog.get("PANKRATZX2_00964")
+    local graves = risen.dialog.get("PANKRATZX2_00736")
+    local cole = risen.dialog.get("FILLERX2_00743")
+    local last = graves and graves:condition_count() or 0
+    T.expect("the author's property edits of shipped infos are applied",
+        esteban and esteban:get_command_property(4, "Amount") == "400" and last > 0 and graves:get_condition_property(last, "PlayerKnows") == "Ursegor_FindGraves" and
+            cole and cole:get_command_property(4, "Item") == "It_Bow_Cole_01",
+        ("amount %s, conditions %d, give %s"):format(esteban and tostring(esteban:get_command_property(4, "Amount")) or "?", last, cole and tostring(cole:get_command_property(4, "Item")) or "?"))
+    local brogar = risen.entity.by_id("c685f868-bfd1-439c-8c25-1b0627f9daaa")
+    local bx, by, bz
+    if brogar then bx, by, bz = brogar:position() end
+    local dist = bx and math.sqrt((bx + 27325.77) ^ 2 + (bz - 34831.31) ^ 2) or -1
+    T.expect("an entity the author moved stands where the mod puts it", dist >= 0 and dist < 400, "distance " .. tostring(dist))
     local sam = risen.entity.by_id("3d71aefb-0ee1-47bd-9b11-02fec2149ef1")
     local limit
     for _, e in ipairs(sam and risen.npc.teach_skills(sam) or {}) do

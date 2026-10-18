@@ -357,28 +357,110 @@ LVal recipe_lua(const RecipeInfo& r) {
 
 // ---------------------------------------------------------------------------------------------- existing items
 
+namespace {
+
+std::string base_key_of(const std::string& k) { return k.substr(0, k.find('#')); }
+// "gCItem_PS.RequiredSkills[]" for an array member's key, "" for a plain property
+std::string array_prefix_of(const std::string& k) {
+    const std::string b = base_key_of(k);
+    const size_t p = b.find("[]");
+    return p == std::string::npos ? std::string() : b.substr(0, p + 2);
+}
+std::vector<std::pair<std::string, Val>> array_seq(const Flat& F, const std::string& pre) {
+    std::vector<std::pair<std::string, Val>> v;
+    for (size_t i = 0; i < F.size(); ++i)
+        if (array_prefix_of(F.keys[i]) == pre) v.emplace_back(base_key_of(F.keys[i]), F.vals[i]);
+    return v;
+}
+bool seq_same(const std::vector<std::pair<std::string, Val>>& a, const std::vector<std::pair<std::string, Val>>& b) {
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); ++i)
+        if (a[i].first != b[i].first || !val_eq(norm_val(&a[i].second), norm_val(&b[i].second))) return false;
+    return true;
+}
+
+// the keys at which two property lists differ (the stage's rule: no runtime state, no re-save noise)
+std::vector<std::string> diff_keys_of(const Flat& a, const Flat& b) {
+    std::vector<std::string> out, keys = a.keys;
+    for (const std::string& k : b.keys)
+        if (!a.has(k)) keys.push_back(k);
+    for (const std::string& k : keys) {
+        const Val* va = a.get(k);
+        const Val* vb = b.get(k);
+        if (!differs(va, vb)) continue;
+        if (val_eq(norm_val(va), norm_val(vb))) continue;
+        if (is_noise(k) || is_skip_set(k)) continue;
+        out.push_back(k);
+    }
+    return out;
+}
+
+}  // namespace
+
+// The mod's template seen against the classic game it was made for: the baseline's template (Enhanced) with only the properties the AUTHOR changed (mod != classic)
+// replaced by the mod's values. Whatever the mod has just because it is classic (and Enhanced changed) stays as Enhanced has it. Arrays (requirement lists, ...) are
+// taken whole from the mod when the mod's list differs from the classic one, else from the baseline.
+Flat rebase_on_baseline(const Flat& enh, const Flat& cla, const Flat& mod) {
+    Flat out;
+    std::set<std::string> done;
+    auto author = [&](const std::string& k) {
+        const Val* vm = mod.get(k);
+        if (!vm) return false;
+        const Val* vc = cla.get(k);
+        return !vc || !val_eq(norm_val(vc), norm_val(vm));
+    };
+    auto block = [&](const std::string& pre) {
+        const bool changed = !seq_same(array_seq(cla, pre), array_seq(mod, pre));
+        const Flat& src = changed ? mod : enh;
+        for (size_t i = 0; i < src.size(); ++i)
+            if (array_prefix_of(src.keys[i]) == pre) out.put(src.keys[i], src.vals[i], src.types[i]);
+    };
+    for (size_t i = 0; i < enh.size(); ++i) {
+        const std::string& k = enh.keys[i];
+        const std::string pre = array_prefix_of(k);
+        if (!pre.empty()) {
+            if (done.insert(pre).second) block(pre);
+        } else if (author(k)) {
+            out.put(k, *mod.get(k), *mod.type_of(k));
+        } else {
+            out.put(k, enh.vals[i], enh.types[i]);
+        }
+    }
+    for (size_t i = 0; i < mod.size(); ++i) {
+        const std::string& k = mod.keys[i];
+        const std::string pre = array_prefix_of(k);
+        if (!pre.empty()) {
+            if (done.insert(pre).second) block(pre);
+        } else if (!enh.has(k) && author(k)) {
+            out.put(k, mod.vals[i], mod.types[i]);
+        }
+    }
+    return out;
+}
+
 ItemsResult gen_items(Ctx& ctx, Data& d) {
     ItemsResult R;
     for (const std::string& name : d.mod_sorted()) {
         const auto vit = d.van.find(name);
         if (vit == d.van.end()) continue;
         const Flat a = flat_typed(vit->second, d.guid);
-        const Flat b = flat_typed(d.mod.at(name), d.guid);
+        Flat b = flat_typed(d.mod.at(name), d.guid);
         const std::string& path = d.vdir[name];
-        std::vector<std::string> diffkeys;
-        {
-            std::vector<std::string> keys = a.keys;
-            for (const std::string& k : b.keys)
-                if (!a.has(k)) keys.push_back(k);
-            for (const std::string& k : keys) {
-                const Val* va = a.get(k);
-                const Val* vb = b.get(k);
-                if (!differs(va, vb)) continue;
-                if (val_eq(norm_val(va), norm_val(vb))) continue;
-                if (is_noise(k) || is_skip_set(k)) continue;
-                diffkeys.push_back(k);
+        if (d.has_classic) {
+            // three-way: what differs from the baseline AND from the classic game is the author's; the rest is the classic game's own difference
+            const size_t enh_diffs = diff_keys_of(a, b).size();
+            const auto cit = d.cla.find(name);
+            if (cit != d.cla.end()) b = rebase_on_baseline(a, flat_typed(cit->second, d.guid), b);
+            const size_t author_diffs = diff_keys_of(a, b).size();
+            if (enh_diffs) {
+                ctx.classic["shipped templates the mod differs from Enhanced in"]++;
+                ctx.classic[author_diffs ? "shipped templates: of them with author changes (carried)" : "shipped templates: of them only classic-vs-Enhanced differences (not applied)"]++;
+                ctx.classic["property differences from Enhanced"] += static_cast<int>(enh_diffs);
+                ctx.classic["  author changes among them (carried)"] += static_cast<int>(author_diffs);
+                if (cit == d.cla.end()) ctx.classic["  templates the classic game does not have (compared with Enhanced)"]++;
             }
         }
+        std::vector<std::string> diffkeys = diff_keys_of(a, b);
         if (diffkeys.empty()) {
             ctx.stats["identical (re-saved only)"]++;
             continue;
@@ -527,6 +609,16 @@ NewResult gen_new(Ctx& ctx, Data& d) {
     const std::map<std::string, std::pair<std::string, std::string>>& result_fix = ctx.profile.recipe_result_fix;
     for (const std::string& name : d.mod_sorted()) {
         if (d.van.count(name)) continue;
+        if (d.has_classic && d.cla.count(name)) {
+            // a classic template Enhanced does not have: the mod carries it because it is classic, not because the author made it
+            ctx.classic["templates the mod has that Enhanced lacks"]++;
+            ctx.classic["new templates: of them classic templates (not carried)"]++;
+            continue;
+        }
+        if (d.has_classic) {
+            ctx.classic["templates the mod has that Enhanced lacks"]++;
+            ctx.classic["new templates: of them new in the mod (carried)"]++;
+        }
         const Flat m = flat_typed(d.mod.at(name), d.guid);
         if (!m.has("gCItem_PS.UseType")) {
             ctx.bad("template", name, "not an item template (new NPCs / other templates are not converted by the tool)", "engine");

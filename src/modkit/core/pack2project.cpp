@@ -559,6 +559,14 @@ private:
                     rep_.counts["XP rewards changed"]++;
                 }
             }
+            for (auto& ch : dialog.value("changes", json::array())) {
+                DialogEdit& x = edit_of(ch.value("info", std::string()));
+                for (auto& op : ch.value("ops", json::array())) {
+                    x.ops.push_back({op.value("kind", std::string()), as_int(op.value("index", json(0))).value_or(0), op.value("class", std::string()), op.value("name", std::string()),
+                                     op.value("old", std::string()), op.value("new", std::string())});
+                    rep_.counts["property edits of shipped infos"]++;
+                }
+            }
             for (auto& t : dialog.value("trade", json::array())) {
                 DialogEdit& x = edit_of(t.value("info", std::string()));
                 if (t.contains("chapter") && t["chapter"].is_number()) x.chapter = as_int(t["chapter"]);
@@ -589,9 +597,39 @@ private:
             parsed = parse_layer_pairs(in_, problems);
             for (auto& why : problems) unmapped("World", "a world layer", why);
         }
-        WorldChanges wc = world_changes(layers_ ? *layers_ : parsed, in_.template_guids);
+        const std::vector<LayerPair>& pairs = layers_ ? *layers_ : parsed;
+        WorldChanges wc = world_changes(pairs, in_.template_guids);
         const size_t n = wc.moves.size() + wc.removals.size() + wc.spawns.size();
-        if (n && !in_.world_edits) {
+        if (in_.has_classic) {
+            // the same layers against Enhanced: what differs there but not from the classic game is the classic game's own difference
+            std::vector<LayerPair> vs_enh;
+            for (const LayerPair& L : pairs)
+                if (L.has_enhanced) {
+                    LayerPair x;
+                    x.name = L.name;
+                    x.base = L.enhanced;
+                    x.mod = L.mod;
+                    vs_enh.push_back(std::move(x));
+                }
+            const WorldChanges we = world_changes(vs_enh, in_.template_guids);
+            rep_.classic["world entities moved, removed or added against Enhanced"] = static_cast<int>(we.moves.size() + we.removals.size() + we.spawns.size());
+            rep_.classic["  of them by the author (against the classic game; carried)"] = static_cast<int>(n);
+            rep_.classic["  moved"] = static_cast<int>(wc.moves.size());
+            int turned = 0, under1m = 0, under10m = 0, over10m = 0;
+            for (float dd : wc.move_distance) {
+                if (dd < 0.05f) ++turned;
+                else if (dd < 100) ++under1m;
+                else if (dd < 1000) ++under10m;
+                else ++over10m;
+            }
+            rep_.classic["    only turned (the position is the same)"] = turned;
+            rep_.classic["    moved by less than 1 m"] = under1m;
+            rep_.classic["    moved by 1 to 10 m"] = under10m;
+            rep_.classic["    moved by 10 m or more"] = over10m;
+            rep_.classic["  removed"] = static_cast<int>(wc.removals.size());
+            rep_.classic["  added"] = static_cast<int>(wc.spawns.size());
+        }
+        if (n && !in_.world_edits && !in_.has_classic) {
             // The mod's layers are the classic game's files: where they differ from Enhanced's the data cannot tell the author's own edits from the base's
             // differences (the Extended Mod's changelog names no moves, but 141 NPCs of its NPC layers stand elsewhere than in Enhanced). Counted, not carried.
             rep_.counts["world entity differences (not carried)"] = static_cast<int>(n);
@@ -663,6 +701,10 @@ std::vector<LayerPair> parse_layer_pairs(const p2m::ProjectInput& in, std::vecto
         try {
             if (!L.base.empty()) pr.base = parse_genome(L.base);
             pr.mod = parse_genome(L.mod);
+            if (!L.enhanced.empty()) {
+                pr.enhanced = parse_genome(L.enhanced);
+                pr.has_enhanced = true;
+            }
         } catch (const std::exception& e) {
             problems.push_back(L.name + " could not be read: " + e.what());
             continue;
@@ -694,6 +736,9 @@ WorldChanges world_changes(const std::vector<LayerPair>& layers, const std::map<
                     r.position = Vec3{e.matrix[12], e.matrix[13], e.matrix[14]};
                     r.rotation = angles_of(e);
                     wc.moves.push_back(r);
+                    wc.move_distance.push_back(std::sqrt((e.matrix[12] - it->second->matrix[12]) * (e.matrix[12] - it->second->matrix[12]) +
+                                                         (e.matrix[13] - it->second->matrix[13]) * (e.matrix[13] - it->second->matrix[13]) +
+                                                         (e.matrix[14] - it->second->matrix[14]) * (e.matrix[14] - it->second->matrix[14])));
                 }
                 if (scaled) ++wc.scale_changes;
                 continue;
@@ -908,6 +953,10 @@ DialogOps legacy_dialog_ops(const fs::path& mod) {
         for (auto& e : d["xp"].value("add", json::array())) ops[e.value("info", std::string())].insert("xp+" + canon(e.value("amount", json(0))));
         for (auto& e : d["xp"].value("change", json::array())) ops[e.value("info", std::string())].insert("xp " + canon(e.value("old", json(0))) + ">" + canon(e.value("new", json(0))));
     }
+    for (auto& ch : d.value("changes", json::array()))
+        for (auto& op : ch.value("ops", json::array()))
+            ops[ch.value("info", std::string())].insert("op " + op.value("kind", std::string()) + " " + canon(op.value("index", json(0))) + " " + op.value("class", std::string()) + " " +
+                                                         op.value("name", std::string()) + " " + op.value("old", std::string()) + ">" + op.value("new", std::string()));
     for (auto& t : d.value("trade", json::array())) {
         auto& o = ops[t.value("info", std::string())];
         if (t.contains("chapter") && t["chapter"].is_number()) o.insert("chapter " + canon(t["chapter"]));
@@ -925,6 +974,9 @@ DialogOps export_dialog_ops(const fs::path& dir) {
         if (e.contains("xp_add")) o.insert("xp+" + canon(e["xp_add"]));
         if (e.contains("xp_old") && e.contains("xp_new")) o.insert("xp " + canon(e["xp_old"]) + ">" + canon(e["xp_new"]));
         if (e.contains("chapter") && e["chapter"].is_number()) o.insert("chapter " + canon(e["chapter"]));
+        for (auto& op : e.value("ops", json::array()))
+            o.insert("op " + op.value("kind", std::string()) + " " + canon(op.value("index", json(0))) + " " + op.value("class", std::string()) + " " + op.value("name", std::string()) + " " +
+                     op.value("old", std::string()) + ">" + op.value("new", std::string()));
         for (auto& r : e.value("refills", json::array())) o.insert("refill " + r.value("trader", std::string()) + " " + r.value("item", std::string()) + " x" + canon(r.value("count", json(1))));
     }
     return ops;
@@ -1323,6 +1375,7 @@ p2m::ProjectResult write_pack2mod_project(const p2m::ProjectInput& in, std::ostr
                               {"XP rewards added", "Shipped dialogues (dialogue edits)"},
                               {"XP rewards changed", "Shipped dialogues (dialogue edits)"},
                               {"trader refills", "Shipped dialogues (dialogue edits)"},
+                              {"property edits of shipped infos", "Shipped dialogues (property edits)"},
                               {"teacher limits", "Shipped dialogues (teacher limits)"},
                               {"asset files", "Assets"},
                               {"string rows used", "labels and descriptions of the objects above (Languages: project)"},
@@ -1335,6 +1388,11 @@ p2m::ProjectResult write_pack2mod_project(const p2m::ProjectInput& in, std::ostr
     } else {
         md << "### Not representable in the project\n\nListed here with the reason (anything that was kept as data is in `unmapped/`); the editor's export does not apply these.\n\n| Area | What | Why |\n|---|---|---|\n";
         for (auto& e : rep.unmapped) md << "| " << md_cell(e.area) << " | " << md_cell(e.name) << " | " << md_cell(e.reason) << " |\n";
+        md << "\n";
+    }
+    if (!rep.classic.empty()) {
+        md << "### World layers against the classic game\n\n| Category | Count |\n|---|---:|\n";
+        for (auto& [k, v] : rep.classic) md << "| " << md_cell(k) << " | " << v << " |\n";
         md << "\n";
     }
     md << "### Editor validation" << (game ? "" : " (without game data)") << "\n\n" << errors << " error(s), " << warnings << " warning(s).\n\n";
@@ -1381,6 +1439,11 @@ p2m::ProjectResult write_pack2mod_project(const p2m::ProjectInput& in, std::ostr
     json un = json::array();
     for (auto& e : rep.unmapped) un.push_back(json{{"area", e.area}, {"name", e.name}, {"reason", e.reason}});
     man["not_mapped"] = un;
+    if (!rep.classic.empty()) {
+        json cl = json::object();
+        for (auto& [k, v] : rep.classic) cl[k] = v;
+        man["world_against_classic"] = cl;
+    }
     man["validation"] = json{{"game_data", game != nullptr}, {"errors", errors}, {"warnings", warnings}};
     if (verified)
         man["verify"] = json{{"differences", diff.size()}, {"templates", cmp.templates}, {"settings", cmp.settings}, {"texts", cmp.texts}, {"container_fills", cmp.fills}, {"asset_files", cmp.assets},

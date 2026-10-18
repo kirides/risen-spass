@@ -151,7 +151,7 @@ Discovery discover(const Options& o) {
 
 // ---------------------------------------------------------------------------------------------- loading
 
-void load_baseline(Data& d, const std::string& dir, Ctx& ctx) {
+void load_baseline(Data& d, const std::string& dir, Ctx& ctx, bool classic = false) {
     for (const char* kind : {"common", "compiled"}) {
         const fs::path kd = from_u8(dir) / kind;
         std::vector<fs::path> paks;
@@ -165,7 +165,7 @@ void load_baseline(Data& d, const std::string& dir, Ctx& ctx) {
             auto open_add = [&](const fs::path& f, const std::string& label) {
                 try {
                     d.paks.push_back(Pak::open(path_u8(f)));
-                    d.base(kind).add(label, d.paks.back().get());
+                    (classic ? d.classic(kind) : d.base(kind)).add(label, d.paks.back().get());
                 } catch (const Error& e) {
                     ctx.warn.push_back(std::string("baseline archive skipped: ") + e.what());
                 }
@@ -206,8 +206,20 @@ void load_templates(Data& d) {
         d.mlabel[n] = lf.label;
         d.mod[n] = std::move(t);
     }
+    if (d.has_classic)
+        for (const std::string& k : d.classic_common.order) {
+            if (!ends_with(k, ".tple")) continue;
+            try {
+                Template t = parse_template(d.classic_common.files[k].read());
+                const std::string n = t.base_name();
+                d.cla[n] = std::move(t);
+            } catch (const Error&) {
+            }
+        }
     for (const std::string& n : d.van_order)
         for (const std::string& g : d.van[n].guids) d.guid.emplace(g, n);
+    for (const auto& [n, t] : d.cla)
+        for (const std::string& g : t.guids) d.guid.emplace(g, n);  // a classic-only template is still known by its GUID
     for (const std::string& n : d.mod_order)
         for (const std::string& g : d.mod[n].guids) d.guid[g] = n;
 }
@@ -280,6 +292,10 @@ int run_convert(const Options& o, std::ostream& log, Counts* counts_out) {
         return 1;
     }
     if (!o.list && o.out.empty() && o.project.empty()) { log << "error: --out <mod folder> or --project <file.rmk.json> is required (or use --list)\n"; return 1; }
+    if (!o.classic.empty() && (!fs::is_directory(from_u8(o.classic) / "common") || !fs::is_directory(from_u8(o.classic) / "compiled"))) {
+        log << "error: --classic must be the classic game's data directory (it holds common\\*.pak and compiled\\*.pak)\n";
+        return 1;
+    }
     if (o.verify && (o.out.empty() || o.project.empty())) { log << "error: --verify compares the project with the converted mod: give --out and --project\n"; return 1; }
     if (o.combat != "changelog" && o.combat != "shipped" && o.combat != "off") { log << "error: --combat is changelog, shipped or off\n"; return 1; }
 
@@ -330,6 +346,11 @@ int run_convert(const Options& o, std::ostream& log, Counts* counts_out) {
     Data d;
     load_baseline(d, o.baseline, ctx);
     log << "baseline: " << d.base_common.files.size() << " common and " << d.base_compiled.files.size() << " compiled files\n";
+    if (!o.classic.empty()) {
+        d.has_classic = true;
+        load_baseline(d, o.classic, ctx, true);
+        log << "classic game: " << d.classic_common.files.size() << " common and " << d.classic_compiled.files.size() << " compiled files (the mod's changes are measured against it)\n";
+    }
     std::vector<std::string> arc_notes;
     for (const ArcRef& a : disc.archives) {
         try {
@@ -623,6 +644,12 @@ int run_convert(const Options& o, std::ostream& log, Counts* counts_out) {
     manifest.set("weather", std::move(weather_j));
     manifest.set("assets", std::move(assets_j));
     manifest.set("unconverted", std::move(unconv));
+    if (d.has_classic) {
+        LVal cl = LVal::dict(true);
+        for (const auto& [k, v] : ctx.classic) cl.set(k, LVal::integer(v));
+        manifest.set("against_classic", std::move(cl));
+        manifest.set("against_classic_notes", str_list_lval(ctx.classic_notes));
+    }
     manifest.set("warnings", str_list_lval(ctx.warn));
     manifest.set("notes", str_list_lval(ctx.notes));
     {
@@ -668,6 +695,14 @@ int run_convert(const Options& o, std::ostream& log, Counts* counts_out) {
             rep << "| " << md_escape(list) << " | " << md_escape(reason) << " | tool |\n";
         }
         rep << "\n`Needs`: `engine` = the layer has no API for it, `author` = the mod's own data is incomplete or wrong, `tool` = not translated by risen-pack2mod (yet).\n\n";
+    }
+    if (d.has_classic) {
+        rep << "## Against the classic game\n\nThe mod was made against the classic game; `--classic` makes its own changes what differs from the classic data. What differs from Enhanced "
+               "only because classic and Enhanced differ is **not applied**.\n\n| Category | Count |\n|---|---:|\n";
+        for (const auto& [k, v] : ctx.classic) rep << "| " << md_escape(k) << " | " << v << " |\n";
+        rep << "\n";
+        for (const std::string& n : ctx.classic_notes) rep << "* " << n << "\n";
+        rep << "\n";
     }
     if (!ctx.warn.empty()) {
         rep << "## Warnings\n\n";
@@ -767,6 +802,7 @@ int run_convert(const Options& o, std::ostream& log, Counts* counts_out) {
         in.mod_dir = writing ? out_s : std::string();
         in.verify = o.verify;
         in.world_edits = o.world_edits;
+        in.has_classic = d.has_classic;
         in.items = items.items;
         in.new_items = nw.items;
         in.recipes_edit = nw.recipes;
@@ -780,12 +816,14 @@ int run_convert(const Options& o, std::ostream& log, Counts* counts_out) {
             for (const std::string& key : d.mod_common.sorted_keys()) {
                 if (!ends_with(key, ".lrent")) continue;
                 const LFile& m = d.mod_common.files[key];
-                const LFile* b = d.base_common.find(key);
+                const LFile* b = d.reference("common").find(key);
                 WorldLayerFile w;
                 w.name = bare_name(m.e->path);
                 w.mod = m.read();
                 if (b) w.base = b->read();
-                if (w.base != w.mod) in.world_layers.push_back(std::move(w));
+                if (d.has_classic)
+                    if (const LFile* e = d.base_common.find(key)) w.enhanced = e->read();
+                if (w.base != w.mod || (!w.enhanced.empty() && w.enhanced != w.mod)) in.world_layers.push_back(std::move(w));
             }
             for (const auto& [g, n] : d.guid) in.template_guids[g] = n;
             for (const std::string& n : d.mod_order) in.template_files.push_back(n);
@@ -830,6 +868,7 @@ int run_convert(const Options& o, std::ostream& log, Counts* counts_out) {
     log << "items changed " << C.items_changed << ", new items " << C.new_items << ", recipe items " << C.recipes_edited << " + " << C.recipes_new << ", patches "
         << C.template_patches << ", XP " << C.xp_infos << ", trade entries " << C.trade_entries << ", containers " << C.containers << ", teacher limits "
         << C.teacher_limits << ", assets " << (C.assets_new + C.assets_replaced) << " (" << C.assets_new << " new, " << C.assets_replaced << " replaced)\n";
+    for (const auto& [k, v] : ctx.classic) log << "classic: " << k << ": " << v << "\n";
     log << "not converted: " << C.unconverted << " entries, warnings: " << C.warnings << ", " << secs << " s\n";
     return 0;
 }
