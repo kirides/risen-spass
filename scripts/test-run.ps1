@@ -62,6 +62,9 @@ param(
     # text language the game starts with (ConfigUser.xml <Language SubtitleLanguage>, what Settings > Game options > Text language + Apply writes): English by default, so a scenario that switched it
     # never leaks into the next run
     [string]$TextLanguage = 'English',
+    # leave the game's sound on: by default the run is MUTED (ConfigUser.xml <Audio><Volume> all 0, the sound system itself keeps running so
+    # scenarios that start sounds or speech still work); use -Audio when a scenario or a person has to hear something
+    [switch]$Audio,
     [switch]$WaitForResult,
     [int]$StallSeconds = 90,
     [int]$DeadlineSeconds = -1,
@@ -244,6 +247,12 @@ try {
         }
         if ($TextLanguage -notmatch '^[A-Za-z]+$') { throw "-TextLanguage must be a language name such as German, not '$TextLanguage'" }
         $new = [regex]::Replace($new, '(SubtitleLanguage=")[^"]*(")', "`${1}$TextLanguage`$2")
+        # sound: the element this script adds is replaced/removed on every run (a run never inherits the volume of an earlier one)
+        $new = [regex]::Replace($new, '(?s)\s*<Audio\b[^>]*>.*?</Audio>', '')
+        if (-not $Audio) {
+            $mute = '<Audio><Volume Ambient="0" Effect="0" Master="0" Music="0" Speech="0"></Volume></Audio>'
+            $new = $new.Replace('</Engine>', "`t$mute`n`t</Engine>")
+        }
         if ($new -ne $xml) { [System.IO.File]::WriteAllText($cfgUserPath, $new) }
     }
     # Isolate the game's %LOCALAPPDATA% (savegames, ConfigUser.xml, screenshots) inside the test copy.

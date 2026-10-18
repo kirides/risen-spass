@@ -439,6 +439,25 @@ json world_data(const Project& p) {
     return w;
 }
 
+namespace {
+// objects with their keys in alphabetical order, recursively (a Lua table has no order: what an import reads back is sorted, so the export must be too)
+json with_sorted_keys(const json& j) {
+    if (j.is_object()) {
+        std::map<std::string, json> m;
+        for (auto& [k, v] : j.items()) m[k] = with_sorted_keys(v);
+        json o = json::object();
+        for (auto& [k, v] : m) o[k] = v;
+        return o;
+    }
+    if (j.is_array()) {
+        json a = json::array();
+        for (auto& v : j) a.push_back(with_sorted_keys(v));
+        return a;
+    }
+    return j;
+}
+}  // namespace
+
 json npcs_data(const Project& p) {
     json list = json::array();
     for (auto& n : p.npcs) {
@@ -459,7 +478,7 @@ json npcs_data(const Project& p) {
             e["items"] = items;
             if (!equip.empty()) e["equip"] = equip;
         }
-        if (!n.routine.is_null() && !n.routine.empty()) e["routine"] = n.routine;
+        if (!n.routine.is_null() && !n.routine.empty()) e["routine"] = with_sorted_keys(n.routine);
         if (n.respawn) e["respawn"] = true;
         if (n.version != 1) e["version"] = n.version;
         if (!n.appear_when.is_null()) e["appear_when"] = n.appear_when;
@@ -531,10 +550,14 @@ json behaviors_data(const Project& p) {
             o["target"] = n.name;
             npcs.push_back(o);
         }
-    for (auto& t : p.npc_templates)
-        for (auto& u : t.behaviors) {
+    // by template name: an import reads the templates back in name order
+    std::vector<const NpcTemplateDef*> by_name;
+    for (auto& t : p.npc_templates) by_name.push_back(&t);
+    std::stable_sort(by_name.begin(), by_name.end(), [](const NpcTemplateDef* a, const NpcTemplateDef* b) { return a->name < b->name; });
+    for (const NpcTemplateDef* t : by_name)
+        for (auto& u : t->behaviors) {
             json o = use(u);
-            o["template"] = t.name;
+            o["template"] = t->name;
             templates.push_back(o);
         }
     return json{{"scripts", scripts}, {"npcs", npcs}, {"templates", templates}};

@@ -212,7 +212,9 @@ local function each_objective(fn)
             fn(q, st, s, s)
         elseif st.kind == "race" and s.gates then
             for _, idx in ipairs(st.paths) do
-                local g = s.gates[tostring(idx)]
+                local gates = s.gates
+                if not gates then break end   -- an earlier path just decided: the flow went on and dropped the gates
+                local g = gates[tostring(idx)]
                 if g then fn(q, f.steps[idx], g, s) end
             end
         end
@@ -238,7 +240,7 @@ local function install_flow_events()
         local tpl = entity and entity:template()
         local tname = tpl and tpl:name()
         local function hit(target) return target == name or target == tname end
-        triggers("kill", function(t) return hit(t.target) end)
+        -- the objectives first: the kill that starts a quest (a Start of kind kill) is not one of the kills its objective counts
         each_objective(function(q, st, state, s)
             if st.objective == "kill" and s.entered and hit(st.target) then
                 state.n = (state.n or 0) + 1
@@ -246,6 +248,7 @@ local function install_flow_events()
                 advance(q)
             end
         end)
+        triggers("kill", function(t) return hit(t.target) end)
     end)
     risen.on("info.finished", function(info)
         each_objective(function(q, st, state, s)

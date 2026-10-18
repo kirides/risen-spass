@@ -332,7 +332,7 @@ all (top to bottom). **Condition** nodes test a list of checks (variable, quest,
 random chance; combined with all / any, optionally negated) and go on at `then` or `else`. **Flow** nodes: Once, After N passes, Cooldown, Delay (survives save and load), Repeat, Sequence, End.
 **Actions**: Set variable (a game variable, which dialogues and quests can read, or a mod variable kept in the savegame), Spawn / Remove NPC, Give / Take item, Give experience, Quest, Quest log,
 HUD message (`{chapter}`, `{value}`, `{var:name}` ...), Play sound, Teleport, Set chapter, Set time, Heal / hurt, Run script, Send signal, Layer, Game sector, Write to log.
-The example `examples/modkit/events.rmk.json` has one graph of each flavour. `On player moved` fires when the player has moved at least N metres (N >= 1) since it last fired; turning never does.
+The example `examples/modkit/events.rmk.json` has one graph of each flavour; [CHRONICLE.md](CHRONICLE.md) describes a complete four-chapter mod that uses every feature of the editor (`examples/modkit/chronicle.rmk.json`). `On player moved` fires when the player has moved at least N metres (N >= 1) since it last fired; turning never does.
 The first graph of a new project is the help's example: On chapter 2 -> Condition (intro_done = 0) -> Set variable -> End. State (Once, counters, cooldowns, delays, mod variables) lives in the savegame:
 a quick load rolls it back with the world.
 

@@ -115,7 +115,8 @@ local saves, handlers, emitted, logs, quest_calls, xp = {}, {}, {}, {}, {}, 0
 local player = { is_player = function() return true end }
 local carried = 0
 risen = {
-    save = { get = function(k) return deep(saves[k]) end, set = function(k, v) saves[k] = deep(v) end },
+    -- like the layer's risen.save: the table that was set comes back from get (the same one: a flow that mutates its state sees the change everywhere)
+    save = { get = function(k) return saves[k] end, set = function(k, v) saves[k] = v end },
     on = function(ev, fn) handlers[ev] = handlers[ev] or {} handlers[ev][#handlers[ev] + 1] = fn end,
     emit = function(...) emitted[#emitted + 1] = { ... } end,
     log = { info = function() end, warn = function() end, error = function(m) failures[#failures + 1] = "log.error: " .. tostring(m) end },
@@ -134,6 +135,7 @@ risen = {
 }
 mod = { id = "t" }
 local function fire(ev, ...) for _, fn in ipairs(handlers[ev] or {}) do fn(...) end end
+local function rat() return { name = function() return "Rat_1" end, template = function() return { name = function() return "Rat" end } end } end
 local function wolf() return { name = function() return "Wolf_1" end, template = function() return { name = function() return "Wolf" end } end } end
 
 local FLOW = { trigger = { kind = "dialog" }, steps = {
@@ -146,7 +148,18 @@ local FLOW = { trigger = { kind = "dialog" }, steps = {
 } }
 local M = assert(loadstring(RUNTIME_SOURCE, "runtime"))()
 check("version", M.VERSION >= 8)
-M.install({ quests = { { name = "Q", title = "t", flow = FLOW } } })
+local FLOW2 = { trigger = { kind = "dialog" }, steps = {
+    { kind = "race", paths = { 2, 4 } },
+    { kind = "objective", objective = "kill", target = "Wolf", count = 1 },
+    { kind = "outcome", result = "success" },
+    { kind = "objective", objective = "talk", info = "X" },
+    { kind = "outcome", result = "fail" },
+} }
+local FLOW3 = { trigger = { kind = "kill", target = "Rat" }, steps = {
+    { kind = "objective", objective = "kill", target = "Rat", count = 2 },
+    { kind = "outcome", result = "success" },
+} }
+M.install({ quests = { { name = "Q", title = "t", flow = FLOW }, { name = "Q2", title = "t2", flow = FLOW2 }, { name = "Q3", title = "t3", flow = FLOW3 } } })
 
 -- the race starts: both ways are announced, nothing is decided
 M.start_quest("Q")
@@ -183,6 +196,21 @@ saves = {}
 logs, quest_calls, xp = {}, {}, 0
 M.start_quest("Q")
 check("a race that is decided at once", saves["modkit.quest.Q"].result == "success" and xp == 10)
+
+-- the FIRST way of a race decides while a later way is still waiting: the loop over the ways must not touch the gates that were just dropped (found by the
+-- chronicle example, whose camp quest kills the warlord or pays the tithe)
+saves, quest_calls = {}, {}
+M.start_quest("Q2")
+fire("entity.died", wolf())
+check("the first way decides without an error", saves["modkit.quest.Q2"].done == true and saves["modkit.quest.Q2"].result == "success" and quest_calls[#quest_calls] == "succeed Q2")
+-- the kill that starts a quest is not one of the kills its objective counts (found by the chronicle example: "kill a wolf starts the bounty, kill two more")
+saves, quest_calls = {}, {}
+fire("entity.died", rat())
+check("the starting kill starts the quest", saves["modkit.quest.Q3"] ~= nil and saves["modkit.quest.Q3"].n == 0 and not saves["modkit.quest.Q3"].done)
+fire("entity.died", rat())
+check("one more kill is not enough", saves["modkit.quest.Q3"].n == 1 and not saves["modkit.quest.Q3"].done)
+fire("entity.died", rat())
+check("two more kills finish it", saves["modkit.quest.Q3"].done == true)
 return table.concat(failures, "; ")
 )LUA";
 

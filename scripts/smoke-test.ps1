@@ -29,6 +29,7 @@
       ex_ai        - example: a follower and a sentry who warns the player, a guard who flees when hit (mods/example_ai)
       showcase     - the showcase mod (M12, mods/balance_example): balance of items/monsters/spells, new items (one with loose mesh and texture), a recipe, a persistent smith with a voiced dialogue and an iron-ore quest, an apprentice who appears afterwards (routine), a watchman (Lua AI); play + quick save/load, then a fresh-process load
       meshprobe    - a mesh converted from an OBJ by risen-modkit's model import, loaded by the engine and photographed (mods/meshprobe, mods/meshprobe_shots)
+      chronicle    - the complete example project examples/modkit/chronicle.rmk.json (mods/chronicle_example, checked by mods/chronicle_driver): plays chapters 1-4 like a player, 78 checks
       evlive       - the event graphs and mod layers of risen-modkit (mods/modkit_events, made from examples/modkit/events.rmk.json, checked by mods/modkit_events_driver) and the sector API: chapter event, movement debounce, layer switching without duplicates after a load, a stock sector switched on
       modkit       - the export of risen-modkit (mods/modkit_showcase, made from examples/modkit/showcase.rmk.json, checked by mods/modkit_driver): new and changed items, item group, texts
       geometry     - vectors, the engine's ray test and field of view, the render camera, random streams (M13, mods/geometry): yaw convention against real entities, open air / terrain / rock, can_see against the AI's CanSee, camera, risen.random.persist across a quick save + load
@@ -66,7 +67,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'behaviors', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'modmanager', 'options', 'modkit', 'evlive', 'meshprobe', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'behaviors', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'modmanager', 'options', 'modkit', 'evlive', 'chronicle', 'meshprobe', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -218,6 +219,7 @@ $scenarios = [ordered]@{
     # risen-modkit (docs/editor/REQUIREMENTS.md): the exported showcase project, checked by mods/modkit_driver
     # a mesh made by risen-modkit's 3D model import (mods/meshprobe/probe.obj -> assets/Spass_Probe._xmsh): the engine loads the item and three pictures are taken (look at them: bin\spass\screenshots\meshprobe_*.png)
     meshprobe         = @{ Est = 80; Title = 'risen-modkit 3D model import (mesh in the engine)'; Kind = 'result'; Mods = @('meshprobe', 'meshprobe_shots'); Limit = 220 }
+    chronicle         = @{ Est = 265; Title = 'risen-modkit chronicle example: chapters 1-4 played through (dialogues, quests, layers, sectors, events, quick save/load)'; Kind = 'result'; Mods = @('chronicle_example', 'chronicle_driver'); Limit = 700 }
     evlive            = @{ Est = 70; Title = 'risen-modkit events: graphs, layers, sectors, movement debounce'; Kind = 'result'; Mods = @('modkit_events', 'modkit_events_driver'); Limit = 500 }
     modkit            = @{ Est = 45; Title = 'risen-modkit export (items, texts, item group)'; Kind = 'result'; Mods = @('modkit_showcase', 'modkit_driver'); Limit = 300 }
     # geometry (M13): one process: conventions against real entities, rays (air, terrain, rock, characters), can_see against the AI's CanSee, camera, risen.random.persist across a quick save + load
