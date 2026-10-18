@@ -71,8 +71,8 @@ struct Registrar {
 #define CHECK_EQ(a, b)                                                                                              \
     do {                                                                                                            \
         ++g_checks;                                                                                                 \
-        const auto& va_ = (a);                                                                                      \
-        const auto& vb_ = (b);                                                                                      \
+        const auto va_ = (a);  /* by value: `render_mod(p).at("f")` is a reference into a temporary that is gone at the end of the statement */                                                                                      \
+        const auto vb_ = (b);                                                                                      \
         if (!(va_ == vb_)) {                                                                                        \
             ++g_failures;                                                                                           \
             std::printf("  %s:%d: %s: CHECK_EQ(%s, %s) failed\n", __FILE__, __LINE__, g_current.c_str(), #a, #b); \
