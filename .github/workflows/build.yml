@@ -160,10 +160,12 @@ jobs:
         with:
           name: risen-spass.zip
           path: nightly
+          skip-decompress: true
       - uses: actions/download-artifact@v8
         with:
           name: risen-spass-tools-windows-x64.zip
           path: nightly
+          skip-decompress: true
       - name: Publish the nightly release
         env:
           GH_TOKEN: ${{ github.token }}
