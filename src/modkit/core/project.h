@@ -201,6 +201,15 @@ struct QuestDef {
     std::string notes;
 };
 
+// an event graph (core/events.h): triggers -> conditions, flow, actions
+struct EventGraphDef {
+    std::string uid;
+    std::string name;  // shown in the editor; the runtime's key of the graph is made of the uid
+    bool enabled = true;
+    Graph graph;
+    std::string notes;
+};
+
 struct WorldSpawn {
     std::string uid;
     std::string template_name;
@@ -255,6 +264,7 @@ struct Project {
     std::vector<PlacedNpc> npcs;
     std::vector<DialogDef> dialogs;
     std::vector<QuestDef> quests;
+    std::vector<EventGraphDef> events;
     WorldEdits world;
     std::vector<AssetFile> assets;
     std::vector<BehaviorScript> behaviors;

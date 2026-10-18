@@ -10,6 +10,7 @@
 #include "core/catalog.h"
 #include "core/image.h"
 #include "core/dialog.h"
+#include "core/events.h"
 #include "core/behavior.h"
 #include "core/quest.h"
 #include "core/spells.h"
@@ -414,6 +415,51 @@ void check_condition(Ctx& c, const char* A, const std::string& uid, const std::s
     }
 }
 
+// event graphs: the graph's own problems (core/events.cpp) and the names its nodes point at
+void check_events(Ctx& c) {
+    const char* A = "Events";
+    std::map<std::string, int> seen;
+    for (auto& e : c.p.events) {
+        const std::string subj = e.name.empty() ? "(unnamed event graph)" : e.name;
+        if (e.name.empty()) c.add(Severity::Error, A, e.uid, subj, "the event graph needs a name");
+        if (++seen[e.name] == 2) c.add(Severity::Error, A, e.uid, subj, "the project has two event graphs with this name");
+        std::vector<DialogIssue> issues;
+        compile_events(c.p, e, issues);
+        for (auto& i : issues) c.add(i.error ? Severity::Error : Severity::Warning, A, e.uid, subj + (i.node.empty() ? "" : " (node)"), i.message);
+        for (auto& r : event_refs(e)) {
+            const std::string where = subj + " (node)";
+            if (r.kind == "item") {
+                if (!item_known(c, r.name)) c.add(Severity::Error, A, e.uid, where, "'" + r.name + "' is no item of the game or the project");
+            } else if (r.kind == "quest") {
+                if (!c.p.quest(r.name) && (!c.g || c.g->quests().empty() || !c.g->quest(r.name)))
+                    c.add(Severity::Warning, A, e.uid, where, "the quest '" + r.name + "' is not in the project" + (c.g && !c.g->quests().empty() ? " or the game" : ""));
+            } else if (r.kind == "skill") {
+                if (!c.skills.empty() && !c.skills.count(r.name)) c.add(Severity::Error, A, e.uid, where, "unknown skill '" + r.name + "'");
+            } else if (r.kind == "template") {
+                if (!npc_template_known(c, r.name)) c.add(Severity::Error, A, e.uid, where, "the template '" + r.name + "' is no NPC or monster of the game or the project");
+            } else if (r.kind == "npc") {
+                if (!c.p.npc(r.name) && !npc_template_known(c, r.name) && !(c.w && c.w->by_name(r.name)))
+                    c.add(Severity::Warning, A, e.uid, where, "'" + r.name + "' is neither an NPC / template of the project or the game nor an NPC of the world");
+            }
+        }
+    }
+    // signals: one that nothing sends or nothing waits for
+    std::set<std::string> sent, waited;
+    for (auto& e : c.p.events)
+        for (auto& n : e.graph.nodes) {
+            const std::string name = n.data.value("name", std::string());
+            if (n.type == "send_signal") sent.insert(name);
+            if (n.type == "on_signal") waited.insert(name);
+        }
+    for (auto& e : c.p.events)
+        for (auto& n : e.graph.nodes) {
+            const std::string name = n.data.value("name", std::string());
+            if (n.type == "on_signal" && !name.empty() && !sent.count(name))
+                c.add(Severity::Warning, A, e.uid, e.name + " (node)", "no Send signal node sends '" + name + "' (custom.lua may call require(\"modkit.events\").fire_signal)");
+            if (n.type == "send_signal" && !name.empty() && !waited.count(name)) c.add(Severity::Warning, A, e.uid, e.name + " (node)", "nothing waits for the signal '" + name + "'");
+        }
+}
+
 // behaviour scripts and their attachments (the scripts' contents are checked by the Behaviours panel and the export, which read the files)
 void check_behaviors(Ctx& c) {
     const char* A = "Behaviours";
@@ -701,6 +747,7 @@ std::vector<Problem> validate(const Project& p, const GameData* game, const Worl
     check_npc_templates(c);
     check_placed_npcs(c);
     check_quests(c);
+    check_events(c);
     check_behaviors(c);
     check_dialogs(c);
     check_world(c);

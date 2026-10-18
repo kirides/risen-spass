@@ -314,7 +314,7 @@ never runs on into the next path. Paths do not join (a node reached twice is an 
 the quest's state (`s.gates["<step>"] = { n, talked }`), looks at all gates on every event, and the first gate whose objective is done sets `s.step` to the step after it.
 ### 7.5 Event graphs -> `data/events.lua` (E21)
 
-Each graph becomes `{ name, key, enabled, nodes = { { id, type, x, y, <the node's fields>, outs = { next = { "id", ... } } }, ... } }`; `id` is the first 10 hex digits of the node uid (stable,
+Each graph becomes `{ name, key, enabled, nodes = { { id, type, pos = { x, y }, <the node's fields>, outs = { next = { "id", ... } } }, ... } }`; `id` is the first 10 hex digits of the node uid (stable,
 the key of the Once / Count / Cooldown state in `risen.save`: `modkit.ev.<graph key>.<id>`), `outs` names the targets per output pin (`next`, `then`, `else`, `1`..`4`, `again`, `body`, `done`),
 ordered top to bottom by the target's position. `modkit/events.lua` registers one handler per trigger kind used by any graph, evaluates conditions at once, runs action nodes through the layer's API, keeps
 a step budget per run (no endless loops) and the pending delays in `risen.save` (`modkit.ev.pending`, a clock in `modkit.ev.clock` that only advances while the world runs).

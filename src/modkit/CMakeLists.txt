@@ -16,7 +16,8 @@ find_path(MINIAUDIO_INCLUDE_DIRS "miniaudio.h" REQUIRED)
 
 # The generic Lua part of every exported mod is embedded (like pack2mod's main.lua).
 set(MK_EMBED_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/lua/runtime.lua|kMkRuntimeLua")
+    "${CMAKE_CURRENT_SOURCE_DIR}/lua/runtime.lua|kMkRuntimeLua"
+    "${CMAKE_CURRENT_SOURCE_DIR}/lua/events.lua|kMkEventsLua")
 set(MK_EMBED_SRC "")
 foreach(_entry IN LISTS MK_EMBED_FILES)
     string(REPLACE "|" ";" _parts "${_entry}")
@@ -39,6 +40,7 @@ add_library(modkit_core STATIC
     core/catalog.cpp
     core/dialog.cpp
     core/dialog_sim.cpp
+    core/events.cpp
     core/export.cpp
     core/gamedata.cpp
     core/gamelog.cpp

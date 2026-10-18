@@ -1,4 +1,5 @@
 #include "core/import.h"
+#include "core/events.h"
 
 #include <luajit/lua.hpp>
 #include <toml++/toml.hpp>
@@ -769,6 +770,8 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
         if (npcs.is_array()) import_npcs(c, npcs);
         if (quests.is_array()) import_quests(c, quests);
         if (dialogs.is_object()) import_dialogs(c, dialogs);
+        if (const json events = data("events.lua"); events.is_array())
+            for (auto& e : events) p.events.push_back(event_graph_from_data(e));
         const json world = data("world.lua");
         if (world.is_object()) {
             for (auto& s : world.value("spawns", json::array())) {

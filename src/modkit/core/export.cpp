@@ -9,6 +9,7 @@
 #include "core/dialog.h"
 #include "core/gamedata.h"
 #include "core/image.h"
+#include "core/events.h"
 #include "core/quest.h"
 #include "core/log.h"
 #include "core/lua_writer.h"
@@ -18,10 +19,13 @@
 
 extern const unsigned char kMkRuntimeLua[];
 extern const unsigned long long kMkRuntimeLuaSize;
+extern const unsigned char kMkEventsLua[];
+extern const unsigned long long kMkEventsLuaSize;
 
 namespace mk {
 
 std::string runtime_lua() { return std::string(reinterpret_cast<const char*>(kMkRuntimeLua), static_cast<size_t>(kMkRuntimeLuaSize)); }
+std::string events_lua() { return std::string(reinterpret_cast<const char*>(kMkEventsLua), static_cast<size_t>(kMkEventsLuaSize)); }
 
 namespace {
 
@@ -556,7 +560,8 @@ std::map<std::string, std::string> render_mod(const Project& p) {
                     "    world = require(\"data.world\"),\n"
                     "    assets = require(\"data.assets\"),\n"
                     "    behaviors = require(\"data.behaviors\"),\n"
-                    "})\n"
+                    "})\n" +
+                    (p.events.empty() ? std::string() : std::string("require(\"modkit.events\").install(require(\"data.events\"), runtime)\n")) +
                     "require(\"custom\")\n";
     f["data/assets.lua"] = data_file("Assets: the image lists of icons the runtime registers (risen.assets.load_icons) before the items that use them are made.",
                                      json::object({{"icons", icon_lists(p)}}));
@@ -582,6 +587,10 @@ std::map<std::string, std::string> render_mod(const Project& p) {
     f["data/behaviors.lua"] = data_file("Behaviours: the scripts in behaviors/ (risen.behavior.define) and the NPCs and templates they are attached to (risen.behavior.attach / attach_template).",
                                         behaviors_data(p));
     f["modkit/runtime.lua"] = runtime_lua();
+    if (!p.events.empty()) {
+        f["data/events.lua"] = data_file("Event graphs (docs/editor/REQUIREMENTS.md 7.5): triggers, conditions, flow and actions, run by modkit/events.lua.", events_data(p));
+        f["modkit/events.lua"] = events_lua();
+    }
     f["modkit/project.json"] = dump_project(p);
 
     // strings: the first language is the fallback for every language (all.csv), the others get their own file

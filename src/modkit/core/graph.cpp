@@ -1,4 +1,5 @@
 #include "core/graph.h"
+#include "core/events.h"
 
 #include <algorithm>
 #include <map>
@@ -69,11 +70,24 @@ std::vector<NodeTypeDef> quest_types() {
     };
 }
 
+// the node kinds of the event graphs come from the table of core/events.cpp
+std::vector<NodeTypeDef> event_types() {
+    std::vector<NodeTypeDef> v;
+    for (auto& s : event_specs()) {
+        NodeTypeDef t{s.type, s.title, s.help, s.color, {}};
+        t.group = s.group;
+        if (!s.trigger && std::string(s.type) != "comment") t.pins.push_back({"in", "", true, PinKind::Flow, true});
+        for (const char* o : s.outs) t.pins.push_back({o, std::string(o) == "next" ? "" : o, false, PinKind::Flow, true});
+        v.push_back(std::move(t));
+    }
+    return v;
+}
+
 }  // namespace
 
 const std::vector<NodeTypeDef>& node_types(GraphKind k) {
-    static const std::vector<NodeTypeDef> d = dialog_types(), q = quest_types();
-    return k == GraphKind::Dialog ? d : q;
+    static const std::vector<NodeTypeDef> d = dialog_types(), q = quest_types(), e = event_types();
+    return k == GraphKind::Dialog ? d : k == GraphKind::Quest ? q : e;
 }
 
 const NodeTypeDef* node_type(GraphKind k, const std::string& type) {
@@ -188,6 +202,8 @@ GraphNode make_node(GraphKind k, const std::string& type, double x, double y) {
         } else if (type == "comment") {
             d["text"] = "";
         }
+    } else if (k == GraphKind::Event) {
+        d = event_default_data(type);
     } else {
         if (type == "start") {
             d["trigger"] = "dialog";
