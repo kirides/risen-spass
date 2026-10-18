@@ -342,6 +342,9 @@ private:
             ImGui::PopID();
         }
         ch |= ImGui::Checkbox("Level meshes (huge boxes)", &show_level_);
+        ch |= ImGui::Checkbox("Hide story sectors (off at the start)", &hide_gated_);
+        ui::help("Some sectors are switched off when a game starts and a chapter, a quest or a dialogue switches them on: the NPCs and monsters in them are not "
+                 "there at first. They are marked in the layer list and the inspector says what switches them on (docs/RE.md section 55).");
         ImGui::SeparatorText("Draw");
         ch |= ImGui::Checkbox("Meshes and textures", &draw_meshes_);
         ImGui::SetNextItemWidth(-FLT_MIN);
@@ -384,6 +387,16 @@ private:
                     }
                     ImGui::SameLine();
                     ImGui::TextDisabled("%u", world_->layers[i].count);
+                    if (const SectorInfo* s = world_->layers[i].sector >= 0 ? &world_->sectors[static_cast<size_t>(world_->layers[i].sector)] : nullptr;
+                        s && !s->enabled_on_startup) {
+                        ImGui::SameLine();
+                        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.3f, 1), "story");
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::BeginTooltip();
+                            draw_sector_triggers(*s);
+                            ImGui::EndTooltip();
+                        }
+                    }
                 }
                 ImGui::TreePop();
             }
@@ -392,8 +405,27 @@ private:
         if (ch) boxes_dirty_ = true;
     }
 
+    // what switches a sector on (or off): the dialogue infos and game scripts of core/sectors.h
+    static void draw_sector_triggers(const SectorInfo& s) {
+        ImGui::Text("Sector %s", s.name.c_str());
+        ImGui::TextDisabled(s.enabled_on_startup ? "on when a game starts" : "OFF when a game starts: its entities are not in the world yet");
+        if (s.triggers.empty()) {
+            if (!s.enabled_on_startup) ImGui::TextWrapped("Nothing in the game switches it on (the demo's or an unused story sector).");
+            return;
+        }
+        for (const SectorTrigger& t : s.triggers) {
+            ImGui::BulletText("%s by %s %s", t.enable ? "switched ON" : "switched OFF", t.kind == SectorTrigger::Dialogue ? "dialogue info" : "script", t.what.c_str());
+            ImGui::Indent();
+            ImGui::TextDisabled("%s", t.detail.c_str());
+            ImGui::Unindent();
+        }
+    }
+
     bool visible(const WorldEntity& e) const {
         if (!layer_on_[e.layer] || !kinds_[static_cast<int>(e.kind)]) return false;
+        if (hide_gated_) {
+            if (const SectorInfo* s = world_->sector_of(e); s && !s->enabled_on_startup) return false;
+        }
         if (!show_level_ && is_level_mesh(e)) return false;
         return true;
     }
@@ -1274,6 +1306,10 @@ private:
             if (!e.mesh.empty()) row("mesh", e.mesh);
             ImGui::EndTable();
         }
+        if (const SectorInfo* s = world_->sector_of(e); s && (!s->enabled_on_startup || !s->triggers.empty())) {
+            ImGui::SeparatorText("Appears");
+            draw_sector_triggers(*s);
+        }
         if (ImGui::SmallButton("Copy id")) ImGui::SetClipboardText(e.guid.c_str());
         ImGui::SameLine();
         if (ImGui::SmallButton("Copy position")) {
@@ -1326,6 +1362,7 @@ private:
     std::string loading_name_ = "World";
     bool tried_ = false;
     std::vector<char> layer_on_;
+    bool hide_gated_ = false;  // entities of sectors that start switched off
     bool kinds_[kTplKindCount] = {true, true, true, true, true, true, false, false, false, false};
     bool show_level_ = false;
     bool draw_meshes_ = true, boxes_for_meshes_ = false, boxes_plain_objects_ = false;

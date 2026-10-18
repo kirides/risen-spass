@@ -63,6 +63,7 @@ add_library(modkit_core STATIC
     core/validate.cpp
     core/wizards.cpp
     core/world.cpp
+    core/sectors.cpp
     "${CMAKE_CURRENT_BINARY_DIR}/modkit_embedded.cpp"
 )
 target_include_directories(modkit_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/src")

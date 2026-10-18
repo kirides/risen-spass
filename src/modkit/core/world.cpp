@@ -163,6 +163,13 @@ std::shared_ptr<World> load_world(const GameData& g, const std::string& world, c
         L.count = static_cast<uint32_t>(w->entities.size() - L.first);
         w->layers.push_back(std::move(L));
     }
+    w->sectors = load_sectors(g, world);
+    {
+        std::unordered_map<std::string, int> by_name;
+        for (size_t i = 0; i < w->sectors.size(); ++i) by_name[p2m::lower(w->sectors[i].name)] = static_cast<int>(i);
+        for (WorldLayer& L : w->layers)
+            if (auto it = by_name.find(p2m::lower(L.name)); it != by_name.end()) L.sector = it->second;
+    }
     w->load_seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     log_info("world " + world + ": " + std::to_string(w->entities.size()) + " entities in " + std::to_string(w->layers.size()) + " layers (" +
              std::to_string(w->load_seconds).substr(0, 4) + " s)");

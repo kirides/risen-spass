@@ -341,6 +341,7 @@ TEST(gamedata_real_archives) {
 #include "meshwrite_tests.inc"
 #include "model_import_tests.inc"
 #include "actor_tests.inc"
+#include "sectors_tests.inc"
 #include "dialog_sim_tests.inc"
 
 int main(int argc, char** argv) {

@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "core/gamedata.h"
+#include "core/sectors.h"
 
 namespace mk {
 
@@ -43,13 +44,17 @@ struct WorldLayer {
     std::string group;  // "Cities/Harbour_Town"
     std::string name;   // "Harbour_Town_NPC_01"
     uint32_t first = 0, count = 0;  // entities [first, first + count)
+    int sector = -1;                // index into World::sectors of the sector file with the same name (-1: none)
 };
 
 struct World {
     std::string name;
     std::vector<WorldLayer> layers;
     std::vector<WorldEntity> entities;
+    std::vector<SectorInfo> sectors;  // the world's sector files: which start switched off and what switches them on (docs/RE.md section 55)
     double load_seconds = 0;
+    // the sector of an entity's layer, nullptr when the layer has none
+    const SectorInfo* sector_of(const WorldEntity& e) const { return e.layer < layers.size() && layers[e.layer].sector >= 0 ? &sectors[static_cast<size_t>(layers[e.layer].sector)] : nullptr; }
     const WorldEntity* by_guid(const std::string& guid) const;
     const WorldEntity* by_name(const std::string& name) const;  // the first entity with this name
 };
