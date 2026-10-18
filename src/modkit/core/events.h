@@ -3,7 +3,9 @@
 // inspector, the validation and the summary on the canvas. The graph compiles to the plain data of data/events.lua that modkit/events.lua runs.
 #pragma once
 
+#include <functional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "core/dialog.h"
@@ -24,6 +26,8 @@ enum class EvField {
     Target,  // an NPC or monster template, or the unique name of one NPC
     Template,  // an NPC or monster template (what spawn_npc makes)
     Info,    // a dialogue option name (of the project's dialogues, or free)
+    Layer,   // a mod layer of the project (core/layers.h)
+    Sector,  // a stock story sector of the game (World::SetSectorStatus), by file base name
 };
 
 struct EvFieldDef {
@@ -67,6 +71,13 @@ json event_default_test(const std::string& kind);
 
 // whether a field is shown / used given the node's other values (EvFieldDef::when)
 bool event_field_visible(const EvFieldDef& f, const json& data);
+
+// a condition set { mode = all | any, negate, tests = [ checks ] }: the data of a Condition node, also the enable_when / disable_when of a layer
+json event_default_condition_set();
+json event_condition_set(const json& d);  // a normalised copy (keys in order)
+void event_check_condition_set(const json& d, const std::function<void(bool error, const std::string& message)>& problem);
+std::vector<std::pair<std::string, std::string>> event_condition_refs(const json& d);  // (kind, name) as in EventRef
+std::string event_describe_condition_set(const json& d);
 
 // the pin list a node type has on the canvas (core/graph.cpp builds its NodeTypeDef from it)
 const std::vector<std::string>& event_groups();

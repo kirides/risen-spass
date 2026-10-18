@@ -1,5 +1,6 @@
 #include "core/import.h"
 #include "core/events.h"
+#include "core/layers.h"
 
 #include <luajit/lua.hpp>
 #include <toml++/toml.hpp>
@@ -772,6 +773,8 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
         if (dialogs.is_object()) import_dialogs(c, dialogs);
         if (const json events = data("events.lua"); events.is_array())
             for (auto& e : events) p.events.push_back(event_graph_from_data(e));
+        if (const json layers = data("layers.lua"); layers.is_array())
+            for (auto& e : layers) p.layers.push_back(layer_from_data(e));
         const json world = data("world.lua");
         if (world.is_object()) {
             for (auto& s : world.value("spawns", json::array())) {
@@ -812,6 +815,23 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
                     if (m.contains("rotation")) er.rotation = vec3(m["rotation"]);
                     (std::string(section) == "removals" ? p.world.removals : p.world.moves).push_back(er);
                 }
+            }
+        }
+        // layers: the members name their layer
+        if (!p.layers.empty()) {
+            auto layer = [&](const json& e) { return find_layer(p, e.value("layer", std::string())); };
+            if (npcs.is_array())
+                for (auto& e : npcs)
+                    if (LayerDef* l = layer(e)) l->npcs.push_back(e.value("name", std::string()));
+            if (world.is_object()) {
+                for (auto& e : world.value("spawns", json::array()))
+                    if (LayerDef* l = layer(e))
+                        for (auto& sp : p.world.spawns)
+                            if (sp.uid.compare(0, 12, e.value("key", std::string())) == 0) l->spawns.push_back(sp.uid);
+                for (auto& e : world.value("containers", json::array()))
+                    if (LayerDef* l = layer(e))
+                        for (auto& ct : p.world.containers)
+                            if (ct.uid.compare(0, 12, e.value("key", std::string())) == 0) l->containers.push_back(ct.uid);
             }
         }
         // behaviours: the scripts stay in behaviors/ of the mod (like the asset files), the attachments go back onto their NPCs and templates

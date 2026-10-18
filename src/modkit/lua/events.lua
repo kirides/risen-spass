@@ -183,6 +183,13 @@ local function check(t)
         local cx, cy, cz = position_of(t)
         if not (px and cx) then return false end
         return E.in_sphere(px, py, pz, cx, cy, cz, (t.radius or 5) * 100)
+    elseif k == "layer" then
+        local on = rt.layers and rt.layers.enabled(t.layer) or false
+        return on == ((t.state or "enabled") == "enabled")
+    elseif k == "sector" then
+        local on = risen.world.sector_enabled(t.sector)
+        if on == nil then return false end
+        return on == ((t.state or "enabled") == "enabled")
     elseif k == "chance" then return math.random(100) <= (t.percent or 50)
     end
     error("unknown check " .. tostring(k))
@@ -264,6 +271,9 @@ function actions.spawn_npc(g, n)
         x, y, z = pos_of(n)
     end
     if not x then return end
+    ---@cast x number
+    ---@cast y number
+    ---@cast z number
     local e = risen.npc.spawn(n.template, x, y, z, { name = name, peaceful = n.peaceful or nil })
     if not e then warn_once("spawn." .. n.template, "cannot spawn " .. tostring(n.template)) end
 end
@@ -317,6 +327,17 @@ function actions.teleport(g, n)
     if not p then return end
     local x, y, z = pos_of(n)
     if x then p:set_pose({ x = x, y = y, z = z }) end
+end
+
+function actions.layer(g, n)
+    local layers = rt.layers
+    if not layers then warn_once("layers", "a Layer node but no layers in this mod") return end
+    if n.action == "toggle" then layers.toggle(n.layer) else layers.set(n.layer, n.action ~= "disable") end
+end
+
+function actions.sector(g, n)
+    local ok, why = risen.world.set_sector(n.sector, n.action ~= "disable")
+    if not ok then warn_once("sector." .. tostring(n.sector), ("cannot switch the sector %s: %s"):format(tostring(n.sector), tostring(why))) end
 end
 
 function actions.set_chapter(g, n) risen.quest.set_chapter(n.chapter, true) end
@@ -611,7 +632,9 @@ local function install_events()
     if used.item then
         local function item_handler(what, ev, amount_of)
             risen.on(ev, function(owner, template, a, b, c)
-                if not (owner and owner:is_player()) then return end
+                ---@type Entity?
+                local who = owner
+                if not (who and who:is_player()) then return end
                 if what == "dropped" and c ~= "drop" then return end
                 fire("item", { item = template, amount = amount_of(a), what = what }, function(n)
                     return n.what == what and ((n.item or "") == "" or n.item == template)
@@ -664,6 +687,8 @@ end
 function E.fire_signal(name)
     raise("signal", { name = name })
 end
+
+function E.set_runtime(runtime) rt = runtime end
 
 function E.install(data, runtime)
     rt = runtime

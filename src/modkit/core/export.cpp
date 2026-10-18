@@ -10,6 +10,7 @@
 #include "core/gamedata.h"
 #include "core/image.h"
 #include "core/events.h"
+#include "core/layers.h"
 #include "core/quest.h"
 #include "core/log.h"
 #include "core/lua_writer.h"
@@ -20,11 +21,14 @@
 extern const unsigned char kMkRuntimeLua[];
 extern const unsigned long long kMkRuntimeLuaSize;
 extern const unsigned char kMkEventsLua[];
+extern const unsigned char kMkLayersLua[];
+extern const unsigned long long kMkLayersLuaSize;
 extern const unsigned long long kMkEventsLuaSize;
 
 namespace mk {
 
 std::string runtime_lua() { return std::string(reinterpret_cast<const char*>(kMkRuntimeLua), static_cast<size_t>(kMkRuntimeLuaSize)); }
+std::string layers_lua() { return std::string(reinterpret_cast<const char*>(kMkLayersLua), static_cast<size_t>(kMkLayersLuaSize)); }
 std::string events_lua() { return std::string(reinterpret_cast<const char*>(kMkEventsLua), static_cast<size_t>(kMkEventsLuaSize)); }
 
 namespace {
@@ -388,6 +392,7 @@ json world_data(const Project& p) {
         if (s.rotation[0] != 0 || s.rotation[1] != 0 || s.rotation[2] != 0) e["rotation"] = json::array({s.rotation[0], s.rotation[1], s.rotation[2]});
         if (s.amount != 1) e["amount"] = s.amount;
         e["world"] = world_of(p, s.world);  // the runtime applies it only while this world is active
+        if (const LayerDef* l = layer_of_spawn(p, s.uid)) e["layer"] = l->name;
         spawns.push_back(e);
     }
     // entities of the world removed or moved: by their ID, applied on every world.ready (Entity:kill / Entity:set_pose)
@@ -419,6 +424,7 @@ json world_data(const Project& p) {
         for (auto& i : c.items) items.push_back(json::array({i.item, i.amount}));
         e["items"] = items;
         e["world"] = world_of(p, c.world);
+        if (const LayerDef* l = layer_of_container(p, c.uid)) e["layer"] = l->name;
         containers.push_back(e);
     }
     json w = json::object();
@@ -455,6 +461,7 @@ json npcs_data(const Project& p) {
         if (!n.appear_when.is_null()) e["appear_when"] = n.appear_when;
         if (!n.leave_when.is_null()) e["leave_when"] = n.leave_when;
         e["world"] = world_of(p, n.world);  // made and kept only while this world is active
+        if (const LayerDef* l = layer_of_npc(p, n.name)) e["layer"] = l->name;  // made while the layer is on, removed when it goes off
         list.push_back(e);
     }
     return list;
@@ -558,10 +565,11 @@ std::map<std::string, std::string> render_mod(const Project& p) {
                     "    quests = require(\"data.quests\"),\n"
                     "    dialogs = require(\"data.dialogs\"),\n"
                     "    world = require(\"data.world\"),\n"
-                    "    assets = require(\"data.assets\"),\n"
+                    "    assets = require(\"data.assets\"),\n" +
+                    (p.layers.empty() ? std::string() : std::string("    layers = require(\"data.layers\"),\n")) +
                     "    behaviors = require(\"data.behaviors\"),\n"
                     "})\n" +
-                    (p.events.empty() ? std::string() : std::string("require(\"modkit.events\").install(require(\"data.events\"), runtime)\n")) +
+                    (p.events.empty() && p.layers.empty() ? std::string() : std::string("require(\"modkit.events\").install(require(\"data.events\"), runtime)\n")) +
                     "require(\"custom\")\n";
     f["data/assets.lua"] = data_file("Assets: the image lists of icons the runtime registers (risen.assets.load_icons) before the items that use them are made.",
                                      json::object({{"icons", icon_lists(p)}}));
@@ -587,7 +595,13 @@ std::map<std::string, std::string> render_mod(const Project& p) {
     f["data/behaviors.lua"] = data_file("Behaviours: the scripts in behaviors/ (risen.behavior.define) and the NPCs and templates they are attached to (risen.behavior.attach / attach_template).",
                                         behaviors_data(p));
     f["modkit/runtime.lua"] = runtime_lua();
-    if (!p.events.empty()) {
+    if (!p.layers.empty()) {
+        std::vector<DialogIssue> issues;
+        f["data/layers.lua"] = data_file("Mod layers (docs/editor/REQUIREMENTS.md 7.6): groups of NPCs, spawns and container fills switched on and off as a whole; the members carry a `layer` field in npcs.lua and world.lua. Run by modkit/layers.lua.",
+                                         layers_data(p, &issues));
+        f["modkit/layers.lua"] = layers_lua();
+    }
+    if (!p.events.empty() || !p.layers.empty()) {
         f["data/events.lua"] = data_file("Event graphs (docs/editor/REQUIREMENTS.md 7.5): triggers, conditions, flow and actions, run by modkit/events.lua.", events_data(p));
         f["modkit/events.lua"] = events_lua();
     }

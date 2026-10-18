@@ -1,0 +1,7 @@
+id          = "modkit_events_driver"
+name        = "risen-modkit events driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Development aid: checks the exported event graphs (mods/modkit_events) and the sector API as the risen.test scenario evlive."
+main        = "main.lua"
+requires    = ["modkit_events"]

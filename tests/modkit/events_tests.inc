@@ -404,3 +404,215 @@ TEST(events_runtime_runs_the_graphs) {
     if (!result.empty()) std::printf("  events runtime test failed: %s\n", result.c_str());
     CHECK(result.empty());
 }
+
+// ---- mod layers (core/layers.*, modkit/layers.lua) -------------------------------------------------------------------------------------------------
+
+#include "core/layers.h"
+
+namespace {
+
+Project layers_project() {
+    Project p = events_project();
+    p.mod.id = "layer_test";
+    for (const char* name : {"Layer_Guard", "Layer_Cook"}) {
+        PlacedNpc n;
+        n.uid = new_uid();
+        n.name = name;
+        n.template_name = "Peasant_1_01";
+        n.position = {100, 0, 100};
+        p.npcs.push_back(n);
+    }
+    WorldSpawn s;
+    s.uid = new_uid();
+    s.template_name = "It_Apple";
+    p.world.spawns.push_back(s);
+    ContainerEdit c;
+    c.uid = new_uid();
+    c.guid = "01234567-89ab-cdef-0123-456789abcdef";
+    c.items = {{"It_Apple", 2, false}};
+    p.world.containers.push_back(c);
+    LayerDef a;
+    a.uid = new_uid();
+    a.name = "Siege";
+    a.enabled = false;
+    a.npcs = {"Layer_Guard"};
+    a.spawns = {s.uid};
+    a.containers = {c.uid};
+    json test = event_default_test("chapter");
+    test["op"] = ">=";
+    test["value"] = 2;
+    a.enable_when = json::object({{"mode", "all"}, {"negate", false}, {"tests", json::array({test})}});
+    LayerDef b;
+    b.uid = new_uid();
+    b.name = "Peace";
+    b.npcs = {"Layer_Cook"};
+    b.disable_when = event_default_condition_set();
+    b.disable_when["tests"][0]["name"] = "war";
+    p.layers = {a, b};
+    // an event graph that switches the layer
+    EvBuilder g("Siege switch");
+    const std::string t = g.add("on_signal", 0, 0, json::object({{"name", "siege"}}));
+    const std::string l = g.add("layer", 300, 0, json::object({{"layer", "Siege"}, {"action", "toggle"}}));
+    const std::string sec = g.add("sector", 600, 0, json::object({{"sector", "Monastery_Story_LizardAttack_Off"}, {"action", "enable"}}));
+    g.link(t, "next", l);
+    g.link(l, "next", sec);
+    p.events.push_back(g.g);
+    return p;
+}
+
+}  // namespace
+
+TEST(layers_export_import_round_trip) {
+    const Project p = layers_project();
+    for (auto& pr : validate(p, nullptr))
+        if (pr.severity == Severity::Error) std::printf("  problem: %s: %s\n", pr.subject.c_str(), pr.message.c_str());
+    CHECK_EQ(error_count(validate(p, nullptr)), size_t(0));
+    const auto files = render_mod(p);
+    CHECK(files.count("data/layers.lua") && files.count("modkit/layers.lua") && files.count("modkit/events.lua"));
+    CHECK(files.at("data/npcs.lua").find("layer = \"Siege\"") != std::string::npos);
+    CHECK(files.at("data/npcs.lua").find("layer = \"Peace\"") != std::string::npos);
+    CHECK(files.at("data/world.lua").find("layer = \"Siege\"") != std::string::npos);
+    CHECK(files.at("main.lua").find("layers = require(\"data.layers\")") != std::string::npos);
+    const fs::path dir = temp_dir("layers") / "layer_test";
+    CHECK(export_mod(p, u8str(dir), ExportOptions{}).ok);
+    const ImportResult via_project = import_mod(u8str(dir));
+    CHECK(via_project.ok && dump_project(via_project.project) == dump_project(p));
+    const ImportResult r = import_mod(u8str(dir), true);
+    CHECK(r.ok);
+    CHECK_EQ(r.project.layers.size(), size_t(2));
+    if (r.project.layers.size() == 2) {
+        CHECK(r.project.layers[0].npcs == std::vector<std::string>{"Layer_Guard"});
+        CHECK_EQ(r.project.layers[0].spawns.size(), size_t(1));
+        CHECK_EQ(r.project.layers[0].containers.size(), size_t(1));
+        CHECK(!r.project.layers[0].enabled && r.project.layers[1].enabled);
+        CHECK(!r.project.layers[0].enable_when.is_null() && !r.project.layers[1].disable_when.is_null());
+    }
+    const auto a = render_mod(p), c = render_mod(r.project);
+    for (auto& [rel, content] : a) {
+        if (rel == "modkit/project.json") continue;
+        auto it = c.find(rel);
+        CHECK(it != c.end());
+        if (it != c.end() && it->second != content) {
+            ++g_failures;
+            std::printf("  differs after the import: %s\n", rel.c_str());
+            write_text(fs::temp_directory_path() / "ly_a.lua", content);
+            write_text(fs::temp_directory_path() / "ly_b.lua", it->second);
+        }
+    }
+    // without layers nothing of it is written
+    const auto none = render_mod(events_project());
+    CHECK(!none.count("data/layers.lua") && !none.count("modkit/layers.lua"));
+    CHECK(none.at("main.lua").find("data.layers") == std::string::npos);
+}
+
+TEST(layers_validation) {
+    Project p = layers_project();
+    auto errors = [&](const Project& q) {
+        size_t n = 0;
+        for (auto& pr : validate(q, nullptr))
+            if (pr.severity == Severity::Error && (pr.area == "Layers" || pr.area == "Events")) ++n;
+        return n;
+    };
+    CHECK_EQ(errors(p), size_t(0));
+    Project q = p;
+    q.layers[1].name = "Siege";  // twice
+    CHECK(errors(q) >= 1);
+    q = p;
+    q.layers[1].npcs = {"Layer_Guard"};  // an NPC in two layers
+    CHECK(errors(q) >= 1);
+    q = p;
+    q.layers[0].npcs = {"Nobody"};
+    CHECK(errors(q) >= 1);
+    q = p;
+    q.layers[0].name = "a b";
+    CHECK(errors(q) >= 1);
+    q = p;
+    q.layers[0].enable_when["tests"] = json::array();  // a condition without checks
+    CHECK(errors(q) >= 1);
+    q = p;
+    q.events[1].graph.nodes[1].data["layer"] = "Missing";  // a graph that names a layer the project does not have
+    CHECK(errors(q) >= 1);
+}
+
+static const char* kLayersScript = R"LUA(
+local failures = {}
+local function check(name, cond) if not cond then failures[#failures + 1] = name end end
+local function deep(v) if type(v) ~= "table" then return v end local o = {} for k, x in pairs(v) do o[k] = deep(x) end return o end
+local handlers, saves, emitted, gv = {}, {}, {}, {}
+local chapter = 1
+local function fire(ev, ...) for _, fn in ipairs(handlers[ev] or {}) do fn(...) end end
+risen = {
+    on = function(ev, fn) handlers[ev] = handlers[ev] or {} table.insert(handlers[ev], fn) end,
+    emit = function(...) emitted[#emitted + 1] = { ... } fire(...) end,
+    clock = function() return 0 end,
+    log = { info = function() end, warn = function() end, error = function() end },
+    save = { get = function(k) return deep(saves[k]) end, set = function(k, v) saves[k] = deep(v) end, remove = function(k) saves[k] = nil end },
+    gamevar = { get = function(n) return gv[n] end, set = function(n, v) gv[n] = v end, remove = function(n) gv[n] = nil end },
+    quest = { chapter = function() return chapter end },
+    entity = { player = function() return {} end },
+    world = { time = function() return 8, 0 end, sector_enabled = function() return false end, set_sector = function() return true end },
+    cond = { fn = function(f, o) return { fn = f, on = o and o.on } end },
+    loc = { language = function() return "English" end },
+}
+mod = { id = "t" }
+local E = assert(loadstring(EVENTS_SOURCE, "events"))()
+local L = assert(loadstring(LAYERS_SOURCE, "layers"))()
+local data = assert(loadstring(DATA_SOURCE, "data"))()
+local rtm = { quest_action = function() end, cond = function(d) return d end }
+rtm.layers = L
+E.set_runtime(rtm)
+L.install(data.layers, E)
+E.install(data.events, rtm)
+local function tick(n) for _ = 1, n do fire("tick") end end
+
+check("start state", L.enabled("Siege") == false and L.enabled("Peace") == true and L.enabled("Nope") == false)
+check("a layer condition object", L.cond("Siege").on == "modkit.layer_changed" and L.cond("Siege").fn() == false)
+tick(40)
+check("nothing yet", L.enabled("Siege") == false)
+chapter = 2
+tick(31)
+check("enable_when switched it on", L.enabled("Siege") == true)
+check("announced", emitted[#emitted][1] == "modkit.layer_changed" and emitted[#emitted][2] == "Siege" and emitted[#emitted][3] == true)
+check("once: the fired flag is saved", saves["modkit.layer.Siege.on"] == true)
+check("set(false) is a change", L.set("Siege", false) == true and L.enabled("Siege") == false)
+check("set(false) again is none", L.set("Siege", false) == false)
+chapter = 3
+tick(61)
+check("the condition fires only once per savegame", L.enabled("Siege") == false)
+gv.war = 1
+tick(31)
+check("disable_when switched it off", L.enabled("Peace") == false)
+-- the event graph's Layer node toggles; a quick load rolls the state back
+local snap = deep(saves)
+E.fire_signal("siege")
+tick(2)
+check("the Layer node toggled it on", L.enabled("Siege") == true)
+saves = snap
+check("a load rolls it back", L.enabled("Siege") == false)
+E.fire_signal("siege")
+tick(2)
+check("toggled again after the load", L.enabled("Siege") == true)
+return table.concat(failures, "; ")
+)LUA";
+
+TEST(layers_runtime_switches_by_condition_and_graph) {
+    Project p = layers_project();
+    lua_State* L = luaL_newstate();
+    luaL_openlibs(L);
+    auto set = [&](const char* name, const std::string& v) {
+        lua_pushlstring(L, v.data(), v.size());
+        lua_setglobal(L, name);
+    };
+    set("EVENTS_SOURCE", events_lua());
+    set("LAYERS_SOURCE", layers_lua());
+    json d = json::object();
+    d["layers"] = layers_data(p);
+    d["events"] = events_data(p);
+    set("DATA_SOURCE", "return " + lua_value(d, 0, 60));
+    std::string result;
+    if (luaL_loadstring(L, kLayersScript) != 0 || lua_pcall(L, 0, 1, 0) != 0) result = std::string("lua error: ") + lua_tostring(L, -1);
+    else result = lua_tostring(L, -1) ? lua_tostring(L, -1) : "";
+    lua_close(L);
+    if (!result.empty()) std::printf("  layers runtime test failed: %s\n", result.c_str());
+    CHECK(result.empty());
+}

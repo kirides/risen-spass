@@ -11,6 +11,7 @@
 #include "core/image.h"
 #include "core/dialog.h"
 #include "core/events.h"
+#include "core/layers.h"
 #include "core/behavior.h"
 #include "core/quest.h"
 #include "core/spells.h"
@@ -415,6 +416,63 @@ void check_condition(Ctx& c, const char* A, const std::string& uid, const std::s
     }
 }
 
+// mod layers: names, members, switch conditions
+void check_layers(Ctx& c) {
+    const char* A = "Layers";
+    std::map<std::string, int> seen;
+    std::map<std::string, std::string> npc_in, spawn_in, container_in;
+    for (auto& l : c.p.layers) {
+        const std::string subj = l.name.empty() ? "(unnamed layer)" : l.name;
+        if (l.name.empty()) c.add(Severity::Error, A, l.uid, subj, "the layer needs a name");
+        for (unsigned char ch : l.name)
+            if (!(std::isalnum(ch) && ch < 0x80) && ch != '_') {
+                c.add(Severity::Error, A, l.uid, subj, "the layer name may only contain letters, digits and _");
+                break;
+            }
+        if (++seen[l.name] == 2) c.add(Severity::Error, A, l.uid, subj, "the project has two layers with this name");
+        for (auto& n : l.npcs) {
+            if (!c.p.npc(n)) c.add(Severity::Error, A, l.uid, subj, "the NPC '" + n + "' is not a placed NPC of the project");
+            auto [it, fresh] = npc_in.emplace(n, subj);
+            if (!fresh) c.add(Severity::Error, A, l.uid, subj, "the NPC '" + n + "' is also in the layer '" + it->second + "': an object belongs to one layer");
+        }
+        for (auto& u : l.spawns) {
+            bool found = false;
+            for (auto& s : c.p.world.spawns) found |= s.uid == u;
+            if (!found) c.add(Severity::Error, A, l.uid, subj, "a world spawn of this layer does not exist any more");
+            auto [it, fresh] = spawn_in.emplace(u, subj);
+            if (!fresh) c.add(Severity::Error, A, l.uid, subj, "a world spawn is also in the layer '" + it->second + "'");
+        }
+        for (auto& u : l.containers) {
+            bool found = false;
+            for (auto& s : c.p.world.containers) found |= s.uid == u;
+            if (!found) c.add(Severity::Error, A, l.uid, subj, "a container of this layer does not exist any more");
+            auto [it, fresh] = container_in.emplace(u, subj);
+            if (!fresh) c.add(Severity::Error, A, l.uid, subj, "a container is also in the layer '" + it->second + "'");
+        }
+        std::vector<DialogIssue> issues;
+        LayerDef only;  // layers_data checks every layer: look at this one's conditions alone
+        Project one;
+        one.layers = {l};
+        layers_data(one, &issues);
+        for (auto& i : issues) c.add(i.error ? Severity::Error : Severity::Warning, A, l.uid, subj, i.message);
+        for (const json* w : {&l.enable_when, &l.disable_when})
+            for (auto& [kind, name] : event_condition_refs(*w)) {
+                if (kind == "item" && !item_known(c, name)) c.add(Severity::Error, A, l.uid, subj, "'" + name + "' is no item of the game or the project");
+                else if (kind == "quest" && !c.p.quest(name) && c.g && !c.g->quests().empty() && !c.g->quest(name))
+                    c.add(Severity::Warning, A, l.uid, subj, "the quest '" + name + "' is not in the project or the game");
+                else if (kind == "skill" && !c.skills.empty() && !c.skills.count(name)) c.add(Severity::Error, A, l.uid, subj, "unknown skill '" + name + "'");
+                else if (kind == "layer" && !find_layer(c.p, name)) c.add(Severity::Error, A, l.uid, subj, "the layer '" + name + "' is not in the project");
+            }
+        if (l.enabled && !l.enable_when.is_null()) c.add(Severity::Warning, A, l.uid, subj, "the layer is on from the start: 'switches on when' has no effect");
+        if (l.npcs.empty() && l.spawns.empty() && l.containers.empty()) {
+            bool used = false;
+            for (auto& e : c.p.events)
+                for (auto& r : event_refs(e)) used |= r.kind == "layer" && r.name == l.name;
+            if (!used) c.add(Severity::Warning, A, l.uid, subj, "the layer has no members and no event graph switches or asks it");
+        }
+    }
+}
+
 // event graphs: the graph's own problems (core/events.cpp) and the names its nodes point at
 void check_events(Ctx& c) {
     const char* A = "Events";
@@ -437,6 +495,21 @@ void check_events(Ctx& c) {
                 if (!c.skills.empty() && !c.skills.count(r.name)) c.add(Severity::Error, A, e.uid, where, "unknown skill '" + r.name + "'");
             } else if (r.kind == "template") {
                 if (!npc_template_known(c, r.name)) c.add(Severity::Error, A, e.uid, where, "the template '" + r.name + "' is no NPC or monster of the game or the project");
+            } else if (r.kind == "layer") {
+                if (!find_layer(c.p, r.name)) c.add(Severity::Error, A, e.uid, where, "the layer '" + r.name + "' is not in the project (Layers panel)");
+            } else if (r.kind == "sector") {
+                if (c.g) {
+                    // the game's sector files, read once per game data object
+                    static std::map<const GameData*, std::set<std::string>> cache;
+                    auto it = cache.find(c.g);
+                    if (it == cache.end()) {
+                        std::set<std::string> names;
+                        for (auto& s : stock_sectors(*c.g)) names.insert(p2m::lower(s.name));
+                        it = cache.emplace(c.g, std::move(names)).first;
+                    }
+                    if (!it->second.empty() && !it->second.count(p2m::lower(r.name)))
+                        c.add(Severity::Error, A, e.uid, where, "'" + r.name + "' is no sector of the game's world (a file X.sec below projects/World)");
+                }
             } else if (r.kind == "npc") {
                 if (!c.p.npc(r.name) && !npc_template_known(c, r.name) && !(c.w && c.w->by_name(r.name)))
                     c.add(Severity::Warning, A, e.uid, where, "'" + r.name + "' is neither an NPC / template of the project or the game nor an NPC of the world");
@@ -748,6 +821,7 @@ std::vector<Problem> validate(const Project& p, const GameData* game, const Worl
     check_placed_npcs(c);
     check_quests(c);
     check_events(c);
+    check_layers(c);
     check_behaviors(c);
     check_dialogs(c);
     check_world(c);

@@ -143,6 +143,10 @@ std::vector<EvNodeSpec> make_specs() {
         for (auto& f : position_fields("To")) s.fields.push_back(f);
         add(std::move(s));
     }
+    add({"layer", "Actions", "Layer", "Switches a mod layer (the Layers panel) on, off or the other way round: its NPCs, spawns and container fills appear / vanish as a group.", kAct, false, {"next"},
+         {req(fkind(EvField::Layer, "layer", "Layer")), fcombo("action", "Action", {"enable", "disable", "toggle"}, "enable")}});
+    add({"sector", "Actions", "Game sector", "Switches one of the game's story sectors (World::SetSectorStatus): e.g. Monastery_Story_LizardAttack_Off. The state is part of the savegame; entities already made stay when it is switched off.", kAct, false, {"next"},
+         {req(fkind(EvField::Sector, "sector", "Sector")), fcombo("action", "Action", {"enable", "disable"}, "enable")}});
     add({"set_chapter", "Actions", "Set chapter", "Changes the story chapter (quests and infos synchronise; the chapter card is not shown).", kAct, false, {"next"}, {fint("chapter", "Chapter", 2, 1, 20)}});
     add({"set_time", "Actions", "Set time of day", "Sets the in-game clock.", kAct, false, {"next"}, {fint("hour", "Hour", 12, 0, 23), fint("minute", "Minute", 0, 0, 59)}});
     add({"heal", "Actions", "Heal / hurt player", "Adds hit points and mana to the player (negative values take them away).", kAct, false, {"next"}, {fint("hp", "Hit points", 50), fint("mana", "Mana", 0)}});
@@ -172,6 +176,8 @@ std::vector<EvTestSpec> make_tests() {
          "Player is in an area",
          {fcombo("at", "Centre", {"point", "entity"}, "point"), when(fnum("x", "X", 0), "at=point"), when(fnum("y", "Y", 0), "at=point"), when(fnum("z", "Z", 0), "at=point"),
           when(req(fstr("entity", "Entity")), "at=entity"), fnum("radius", "Radius (m)", 5, 1, 100000)}},
+        {"layer", "Layer is on / off", {req(fkind(EvField::Layer, "layer", "Layer")), fcombo("state", "Is", {"enabled", "disabled"}, "enabled")}},
+        {"sector", "Game sector is on / off", {req(fkind(EvField::Sector, "sector", "Sector")), fcombo("state", "Is", {"enabled", "disabled"}, "enabled")}},
         {"chance", "Random chance", {fint("percent", "Percent", 50, 1, 100)}},
     };
 }
@@ -232,7 +238,7 @@ void check_fields(const std::vector<EvFieldDef>& fields, const json& d, const st
                 if (v.empty()) {
                     if (f.required) problem(true, label + " is empty");
                 } else if (refs) {
-                    const char* kind = f.kind == EvField::Item ? "item" : f.kind == EvField::Quest ? "quest" : f.kind == EvField::Target ? "npc" : f.kind == EvField::Template ? "template" : nullptr;
+                    const char* kind = f.kind == EvField::Item ? "item" : f.kind == EvField::Quest ? "quest" : f.kind == EvField::Target ? "npc" : f.kind == EvField::Template ? "template" : f.kind == EvField::Layer ? "layer" : f.kind == EvField::Sector ? "sector" : nullptr;
                     if (kind) refs->push_back({kind, v});
                 }
             }
@@ -293,6 +299,60 @@ json event_default_data(const std::string& type) {
     return d;
 }
 
+namespace {
+json sorted(const json& j);
+}  // namespace
+
+json event_default_condition_set() {
+    json d = json::object();
+    d["mode"] = "all";
+    d["negate"] = false;
+    d["tests"] = json::array({event_default_test("var")});
+    return d;
+}
+
+json event_condition_set(const json& d) {
+    json o = json::object();
+    o["mode"] = d.is_object() && d.value("mode", std::string()) == "any" ? "any" : "all";
+    o["negate"] = d.is_object() && d.value("negate", false);
+    o["tests"] = d.is_object() && d.contains("tests") && d["tests"].is_array() ? d["tests"] : json::array();
+    return sorted(o);
+}
+
+void event_check_condition_set(const json& d, const std::function<void(bool, const std::string&)>& problem) {
+    const json tests = d.is_object() ? d.value("tests", json::array()) : json::array();
+    if (!tests.is_array() || tests.empty()) {
+        problem(true, "add at least one check");
+        return;
+    }
+    for (auto& c : tests) {
+        const EvTestSpec* ts = event_test(str(c, "kind"));
+        if (!ts) {
+            problem(true, "unknown check '" + str(c, "kind") + "'");
+            continue;
+        }
+        check_fields(ts->fields, c, [&](bool error, const std::string& m) { problem(error, std::string(ts->title) + ": " + m); }, nullptr);
+    }
+}
+
+std::vector<std::pair<std::string, std::string>> event_condition_refs(const json& d) {
+    std::vector<std::pair<std::string, std::string>> refs;
+    if (!d.is_object() || !d.contains("tests") || !d["tests"].is_array()) return refs;
+    for (auto& c : d["tests"]) {
+        if (const EvTestSpec* ts = event_test(str(c, "kind"))) check_fields(ts->fields, c, [](bool, const std::string&) {}, &refs);
+        if (str(c, "kind") == "skill" && !str(c, "skill").empty()) refs.push_back({"skill", str(c, "skill")});
+        if ((str(c, "kind") == "alive" || str(c, "kind") == "dead") && !str(c, "who").empty()) refs.push_back({"npc", str(c, "who")});
+    }
+    return refs;
+}
+
+std::string event_describe_condition_set(const json& d) {
+    GraphNode n;
+    n.type = "condition";
+    n.data = d;
+    return event_summary(Project{}, n);
+}
+
 std::string event_node_id(const GraphNode& n) { return n.uid.substr(0, 10); }
 std::string event_graph_key(const EventGraphDef& g) { return g.uid.substr(0, 10); }
 
@@ -346,6 +406,8 @@ std::string event_summary(const Project& p, const GraphNode& n) {
                 else if (k == "time") one = "time " + cn("from") + "-" + cn("to") + " h";
                 else if (k == "area") one = "in area r " + cn("radius") + " m";
                 else if (k == "chance") one = cn("percent") + " % chance";
+                else if (k == "layer") one = "layer " + cs("layer") + " is " + cs("state");
+                else if (k == "sector") one = "sector " + cs("sector") + " is " + cs("state");
                 out += (i++ ? (s("mode") == "any" ? "\nor " : "\nand ") : "") + one;
             }
         }
@@ -368,6 +430,8 @@ std::string event_summary(const Project& p, const GraphNode& n) {
     if (t == "hud_message") return first_text(d.value("text", json::object()));
     if (t == "play_sound") return s("sound");
     if (t == "teleport") return pos();
+    if (t == "layer") return s("action") + " layer " + s("layer");
+    if (t == "sector") return s("action") + " sector " + s("sector");
     if (t == "set_chapter") return "chapter " + num("chapter");
     if (t == "set_time") return num("hour") + ":" + (d.value("minute", 0) < 10 ? "0" : "") + num("minute");
     if (t == "heal") return num("hp") + " HP, " + num("mana") + " mana";
