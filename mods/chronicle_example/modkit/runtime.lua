@@ -25,7 +25,7 @@
 --   "modkit.quest_started" (mod id, quest), "modkit.objective" (mod id, quest, step), "modkit.quest_done" (mod id, quest, result) for quest flows
 --   "modkit.world_spawned" (mod id, key, entity), "modkit.container_filled" (mod id, key, container), "modkit.world_removed" (mod id, key, entity id),
 --   "modkit.world_moved" (mod id, key, entity) for the world edits
-local M = { VERSION = 11 }
+local M = { VERSION = 12 }
 
 local unpack = table.unpack or unpack
 local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
@@ -461,17 +461,46 @@ local function set_command_props(inf, idx, props)
     return true
 end
 
+-- property edits of a shipped info (docs/editor/REQUIREMENTS.md EXT-4): a value changed where the info still has the old one, a condition appended
+local function apply_info_ops(inf, ops, bad)
+    local n, appended = 0, {}
+    for _, op in ipairs(ops) do
+        local ok, why = false, nil
+        if op.kind == "info" then
+            if tostring(inf:get_property(op.name)) == op.old then ok = inf:set_property(op.name, op.new) else why = "it has another value" end
+        elseif op.kind == "command" then
+            if inf:get_command_property(op.index, op.name) == op.old then ok = inf:set_command_property(op.index, op.name, op.new) else why = "it has another value" end
+        elseif op.kind == "condition" then
+            if inf:get_condition_property(op.index, op.name) == op.old then ok = inf:set_condition_property(op.index, op.name, op.new) else why = "it has another value" end
+        elseif op.kind == "add_condition" then
+            local idx = appended[op.index]
+            if not idx then
+                idx = inf:add_condition(op.class)
+                appended[op.index] = idx
+            end
+            ok = idx and inf:set_condition_property(idx, op.name, op.new)
+        end
+        if ok then n = n + 1 else bad(op, why) end
+    end
+    return n
+end
+
 local function install_dialog_edits(id, edits)
     local done = false
     risen.on("tick", function()
         if done then return end
         done = true
-        local c = { xp_added = 0, xp_changed = 0, refills = 0 }
+        local c = { xp_added = 0, xp_changed = 0, refills = 0, ops = 0 }
         for _, e in ipairs(edits) do
             local inf = risen.dialog.get(e.info)
             if not inf then
                 risen.log.warn(("%s: dialogue edit %s: no such dialogue info"):format(id, e.info))
             else
+                if e.ops then
+                    c.ops = c.ops + apply_info_ops(inf, e.ops, function(op, why)
+                        risen.log.warn(("%s: dialogue edit %s: %s %s: %s"):format(id, e.info, op.kind, tostring(op.name), why or "cannot be set"))
+                    end)
+                end
                 if e.xp_add then
                     local idx = inf:add_command("GiveXP")
                     if idx and set_command_props(inf, idx, { Amount = e.xp_add }) then c.xp_added = c.xp_added + 1

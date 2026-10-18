@@ -33,6 +33,8 @@ static Project extras_project() {
     e.uid = "d1";
     e.info = "FILLERX2_00029";
     e.xp_add = 40;
+    e.ops = {{"command", 4, "", "Amount", "100", "400"}, {"info", 0, "", "StartChapter", "4", "-1"}, {"condition", 2, "", "Item", "It_Bow_Cole", "It_Bow_Cole_01"},
+             {"add_condition", 3, "PlayerKnows", "PlayerKnows", "", "Ursegor_FindGraves"}};
     p.dialog_edits.push_back(e);
     DialogEdit e2;
     e2.uid = "d2";
@@ -113,6 +115,8 @@ TEST(extras_export_and_import_from_data_files) {
     if (!r.ok) return;
     const Project& q = r.project;
     CHECK(q.patches.size() == 1 && q.patches[0].template_name == "It_Cast_Light" && q.patches[0].properties.at("eCPointLight_PS").at("Range") == 1500);
+    CHECK(q.dialog_edits.size() == 2 && q.dialog_edits[0].ops.size() == 4 && q.dialog_edits[0].ops[3].kind == "add_condition" && q.dialog_edits[0].ops[3].cls == "PlayerKnows" &&
+          q.dialog_edits[0].ops[0].old_value == "100" && q.dialog_edits[0].ops[0].new_value == "400" && q.dialog_edits[0].ops[0].index == 4);
     CHECK(q.dialog_edits.size() == 2 && q.dialog_edits[0].xp_add == 40 && q.dialog_edits[1].xp_old == 10 && q.dialog_edits[1].xp_new == 25 && q.dialog_edits[1].chapter == 1 &&
           q.dialog_edits[1].refills.size() == 2 && q.dialog_edits[1].refills[0].trader == "Oscar" && q.dialog_edits[1].refills[1].count == 1);
     CHECK(q.teachers.size() == 1 && q.teachers[0].guid == p.teachers[0].guid && q.teachers[0].skill == "Dexterity" && q.teachers[0].max == 150);
@@ -163,8 +167,14 @@ TEST(extras_validation) {
     CHECK(m.find("choose the template to patch") != std::string::npos && m.find("patched twice") != std::string::npos && m.find("changes nothing") != std::string::npos);
     q = p;
     q.dialog_edits[0].xp_old = 5;  // old without new, and added together with changed
-    q.dialog_edits.push_back({"d3", "", std::nullopt, std::nullopt, std::nullopt, {{"", "", -1}}, std::nullopt, ""});
+    q.dialog_edits.push_back({"d3", "", std::nullopt, std::nullopt, std::nullopt, {{"", "", -1}}, {}, std::nullopt, ""});
     m = messages(q);
+    q.dialog_edits[0].ops.push_back({"nonsense", 0, "", "", "", ""});
+    q.dialog_edits[0].ops.push_back({"command", 0, "", "Amount", "1", "2"});
+    q.dialog_edits[0].ops.push_back({"add_condition", 1, "", "X", "", "y"});
+    m = messages(q);
+    CHECK(m.find("unknown kind 'nonsense'") != std::string::npos && m.find("needs the property's name") != std::string::npos && m.find("needs the place") != std::string::npos &&
+          m.find("needs its class") != std::string::npos);
     CHECK(m.find("either added or changed") != std::string::npos && m.find("old and the new amount") != std::string::npos && m.find("choose the shipped dialogue info") != std::string::npos &&
           m.find("needs the trader's name") != std::string::npos && m.find("must not be negative") != std::string::npos);
     q = p;
@@ -189,10 +199,20 @@ local function new_info(name)
     function inf:set_command_property(i, k, v) self.commands[i].props[k] = v return true end
     function inf:get_command_property(i, k) return self.commands[i].props[k] end
     function inf:command_count() return #self.commands end
+    inf.props, inf.conds = {}, {}
+    function inf:get_property(n) return self.props[n] end
+    function inf:set_property(n, v) self.props[n] = v return true end
+    function inf:get_condition_property(i, n) return self.conds[i] and self.conds[i].props[n] end
+    function inf:set_condition_property(i, n, v) if not self.conds[i] then return false end self.conds[i].props[n] = v return true end
+    function inf:add_condition(class) self.conds[#self.conds + 1] = { class = class, props = {} } return #self.conds end
     return inf
 end
 local infos = { FILLERX2_00029 = new_info("FILLERX2_00029"), FILLERX2_00792 = new_info("FILLERX2_00792") }
 infos.FILLERX2_00792.commands[1] = { kind = "GiveXP", props = { Amount = "10" } }
+infos.OPS_INFO = new_info("OPS_INFO")
+infos.OPS_INFO.commands = { { kind = "Say", props = {} }, { kind = "Give", props = { Amount = "100", Item = "It_A" } } }
+infos.OPS_INFO.conds = { { class = "ItemAmount", props = { Item = "It_A" } } }
+infos.OPS_INFO.props.StartChapter = "4"
 local player = { position = function() return 0, 0, 0 end }
 local traders = { Oscar = {}, Cyrus = {} }
 risen = {
@@ -223,7 +243,13 @@ M.install({
                 { template = "It_Mixed", properties = { gCItem_PS = { Bad = 1, SortValue = 5 } } } },
     dialog_edits = { { info = "FILLERX2_00029", xp_add = 40 },
                      { info = "FILLERX2_00792", xp_old = 10, xp_new = 25, chapter = 1, refills = { { trader = "Oscar", item = "It_Axe_Test", count = 2 }, { trader = "Cyrus", item = "It_Staff_Test", count = 1 } } },
-                     { info = "NO_SUCH_INFO", xp_add = 1 } },
+                     { info = "NO_SUCH_INFO", xp_add = 1 },
+                     { info = "OPS_INFO", xp_add = 7, ops = {
+                         { kind = "command", index = 2, name = "Amount", old = "100", new = "400" },
+                         { kind = "command", index = 2, name = "Item", old = "It_WRONG", new = "It_B" },
+                         { kind = "condition", index = 1, name = "Item", old = "It_A", new = "It_B" },
+                         { kind = "info", index = 0, name = "StartChapter", old = "4", new = "-1" },
+                         { kind = "add_condition", index = 2, class = "PlayerKnows", name = "PlayerKnows", new = "Ursegor_FindGraves" } } } },
     world = { teachers = { { id = "11111111-2222-3333-4444-555555555555", name = "Sam", skill = "Dexterity", max = 150 },
                            { id = "99999999-2222-3333-4444-555555555555", name = "Ghost", skill = "Dexterity", max = 150 },
                            { id = "11111111-2222-3333-4444-555555555555", name = "Sam", skill = "Nonsense", max = 10 } } },
@@ -247,6 +273,17 @@ for _, l in ipairs(logs) do if l:find("W ") and l:find("NO_SUCH_INFO") then miss
 check("an unknown info is warned about, the rest still applies", missing)
 fire("tick")
 check("dialogue edits only once", #c29 == 1 and #c792 == 3)
+-- property edits of a shipped info: values changed where they still have the old one (a wrong old value is warned about and left), a condition appended, before the XP
+local ops_info = infos.OPS_INFO
+check("a command value is changed", ops_info.commands[2].props.Amount == "400")
+check("a value with another old value is left alone and warned about", ops_info.commands[2].props.Item == "It_A")
+check("a condition value is changed", ops_info.conds[1].props.Item == "It_B")
+check("an info property is changed", ops_info.props.StartChapter == "-1")
+check("a condition is appended", #ops_info.conds == 2 and ops_info.conds[2].class == "PlayerKnows" and ops_info.conds[2].props.PlayerKnows == "Ursegor_FindGraves")
+check("the XP reward comes after the property edits", ops_info.commands[#ops_info.commands].kind == "GiveXP" and ops_info.commands[#ops_info.commands].props.Amount == "7")
+local wrong = false
+for _, l in ipairs(logs) do if l:find("W ") and l:find("OPS_INFO") and l:find("It_WRONG") == nil and l:find("another value") then wrong = true end end
+check("the refused edit is warned about", wrong)
 -- the session start writes the live entities again
 local before = #patches
 fire("session.start", "new")

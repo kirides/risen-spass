@@ -501,6 +501,18 @@ json dialog_edits_data(const Project& p) {
         json refills = json::array();
         for (auto& r : x.refills) refills.push_back(json{{"trader", r.trader}, {"item", r.item}, {"count", r.count}});
         if (!refills.empty()) e["refills"] = refills;
+        json ops = json::array();
+        for (auto& op : x.ops) {
+            json o = json::object();
+            o["kind"] = op.kind;
+            if (op.index) o["index"] = op.index;
+            if (!op.cls.empty()) o["class"] = op.cls;
+            o["name"] = op.name;
+            if (!op.old_value.empty() || op.kind != "add_condition") o["old"] = op.old_value;
+            o["new"] = op.new_value;
+            ops.push_back(o);
+        }
+        if (!ops.empty()) e["ops"] = ops;
         list.push_back(e);
     }
     return list;

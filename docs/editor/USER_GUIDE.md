@@ -318,7 +318,8 @@ Four small panels for what no other panel owns (a converted Risen mod uses all o
 * **Strings**: text rows of the game's string tables that belong to no item, recipe or NPC of the project (a button's label, a document, a changed line): an id and a text per language. The first
   language is the fallback; a row without a text in it is shown only in the languages that have one.
 * **Shipped dialogues**, tab *Dialogue edits*: add commands to a dialogue info of the game: an XP reward (added, or an existing amount changed) and **trader refills** (what a trader gets when the
-  info runs: the chapter infos restock the traders; chapter 1's refills are also given when a new game starts). The new dialogues of the *Dialogues* tab are separate.
+  info runs: the chapter infos restock the traders; chapter 1's refills are also given when a new game starts) and **property edits**: change a value of the info, of its n-th command or
+  condition where it still has the old value (an amount of gold given, the item a command gives), or append a condition (`PlayerKnows`, `ItemAmount`, ...). The new dialogues of the *Dialogues* tab are separate.
 * **Shipped dialogues**, tab *Teacher limits*: how far a placed NPC teaches a skill (his entity ID from the World panel, the skill, the highest value).
 
 Items: the requirement and modifier lists keep their **order** (the ^ button moves a row up) and each modifier has a **mode**: *add* (default), *set* (to the value), *max* (to the skill's maximum),
