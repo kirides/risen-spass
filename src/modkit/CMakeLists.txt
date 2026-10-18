@@ -99,6 +99,7 @@ add_executable(risen-modkit
     app/dragdrop.cpp
     app/os_open.cpp
     app/editor_util.cpp
+    app/event_ui.cpp
     app/node_canvas.cpp
     app/palette.cpp
     app/pickers.cpp
@@ -113,6 +114,7 @@ add_executable(risen-modkit
     app/panels/items_panel.cpp
     app/panels/problems_panel.cpp
     app/panels/events_panel.cpp
+    app/panels/layers_panel.cpp
     app/panels/quests_panel.cpp
     app/panels/recipes_panel.cpp
     app/panels/log_panel.cpp

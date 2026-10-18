@@ -324,6 +324,26 @@ The **Wizards** menu makes common things from a short form; what it makes is ord
 * **Trader with stock**: a placed NPC with his own template (`gCDialog_PS.TradeEnabled` on, so the shipped template stays as it is), the stock in his inventory and a
   dialogue option that runs the `DoTrade` command. He is made in front of the player when the game first makes him. **Not tried in a real trade yet**: test him with Play.
 
+## Events
+
+The **Events** tab holds event graphs on the same canvas as dialogues and quests. A graph starts at a **trigger** (green: On game start / load, On chapter, On kill, On player moved,
+On enter / leave area, On quest status, On item, On dialogue option, On time of day, On variable changed, On timer, On signal) and runs along its links; an output linked to several nodes runs them
+all (top to bottom). **Condition** nodes test a list of checks (variable, quest, items, chapter, level, skill, NPC alive / dead, guild, game event, time window, player in an area, layer, game sector,
+random chance; combined with all / any, optionally negated) and go on at `then` or `else`. **Flow** nodes: Once, After N passes, Cooldown, Delay (survives save and load), Repeat, Sequence, End.
+**Actions**: Set variable (a game variable, which dialogues and quests can read, or a mod variable kept in the savegame), Spawn / Remove NPC, Give / Take item, Give experience, Quest, Quest log,
+HUD message (`{chapter}`, `{value}`, `{var:name}` ...), Play sound, Teleport, Set chapter, Set time, Heal / hurt, Run script, Send signal, Layer, Game sector, Write to log.
+The example `examples/modkit/events.rmk.json` has one graph of each flavour. `On player moved` fires when the player has moved at least N metres (N >= 1) since it last fired; turning never does.
+The first graph of a new project is the help's example: On chapter 2 -> Condition (intro_done = 0) -> Set variable -> End. State (Once, counters, cooldowns, delays, mod variables) lives in the savegame:
+a quick load rolls it back with the world.
+
+## Layers
+
+The **Layers** tab: a layer is a named group of placed NPCs, world spawns and container fills that is switched as a whole (like the game's story sectors). Tick **On when a game starts** or not; let it
+switch itself the first time a condition holds (**Switches on when** / **Switches off when**, the checks of the Condition node) or switch it from an event graph (Layer node). The plan shows where the
+members stand (ring = off at the start). NPCs are made while the layer is on and removed when it goes off (a new body each time), spawns likewise, container fills happen once. The **Game sector**
+node switches one of the game's own sectors (`World::SetSectorStatus`; the picker lists the 289 sectors of the world, 21 of which start off); entities that were already made stay when a sector is
+switched off.
+
 ## Play and the game's errors
 
 Set the **game folder** (the Risen folder with `bin\Risen.exe` and the mod layer) in **Window > Settings > Play**, choose what the game does at start

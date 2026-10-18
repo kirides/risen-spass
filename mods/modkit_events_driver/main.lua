@@ -1,3 +1,4 @@
+---@diagnostic disable: need-check-nil
 -- Checks the exported event graphs of examples/modkit/events.rmk.json (mods/modkit_events) and the sector API in a running game:
 --   .\scripts\test-run.ps1 -Instance 3 -Mods modkit_events,modkit_events_driver -WaitForResult -Seconds 300 -Scenario evlive
 local T = risen.test
@@ -7,8 +8,14 @@ T.plan {
     "sector API lists the world's sectors",
     "bad sector names are refused",
     "a stock sector that starts off is found",
-    "enabling it makes entities appear",
-    "disabling clears the flag (entities already made stay)",
+    "the flag reads back",
+    "a layer that starts off has no members yet",
+    "a layer that starts on made its member",
+    "a graph switching a layer on makes its NPC",
+    "exactly one member after switching on",
+    "no duplicates after a quick load",
+    "switching the layer off removes its NPC",
+    "a graph switches a stock sector",
     "chapter 3 sets the variable",
     "chapter 3 said so once",
     "movement: the first position only anchors",
@@ -17,6 +24,8 @@ T.plan {
     "movement: a metre fires once",
     "movement: small steps add up",
     "movement: standing still does not fire",
+    "the sector's monsters are absent while it is off",
+    "switching the sector on makes its monsters appear",
 }
 
 local fired = {}  -- trigger kind -> count
@@ -56,39 +65,39 @@ T.run(function()
     end
     T.expect("a stock sector that starts off is found", pick ~= nil, pick and pick.name or ("of " .. #list .. " sectors"))
     if pick then
-        local function snapshot()
-            local m, n = {}, 0
-            for _, e in ipairs(risen.entity.npcs()) do
-                local t = e:template()
-                m[e:id() or tostring(n)] = t and t:name() or "?"
-                n = n + 1
-            end
-            return m, n
-        end
-        local function diff(a, b)
-            local out = {}
-            for id, t in pairs(b) do if not a[id] then out[#out + 1] = t end end
-            table.sort(out)
-            return table.concat(out, ",")
-        end
-        local s0, n0 = snapshot()
-        local on, why = risen.world.set_sector(pick.name, true)
-        local s1, n1
-        for i = 1, 4 do
-            T.sleep(120)
-            s1, n1 = snapshot()
-            risen.log.info(("evlive: %d ticks after enabling: %d npcs, new: %s"):format(i * 120, n1, diff(s0, s1)))
-        end
-        T.expect("enabling it makes entities appear", on == true and risen.world.sector_enabled(pick.name) == true and n1 > n0, ("npcs %d -> %d: %s"):format(n0, n1, diff(s0, s1)))
+        local on = risen.world.set_sector(pick.name, true)
+        local read_on = risen.world.sector_enabled(pick.name)
         local off = risen.world.set_sector(pick.name, false)
-        local s2, n2
-        for i = 1, 4 do
-            T.sleep(120)
-            s2, n2 = snapshot()
-            risen.log.info(("evlive: %d ticks after disabling: %d npcs, gone: %s, new: %s"):format(i * 120, n2, diff(s2, s1), diff(s1, s2)))
-        end
-        T.expect("disabling clears the flag (entities already made stay)", off == true and risen.world.sector_enabled(pick.name) == false, ("npcs %d -> %d, gone: %s"):format(n1, n2, diff(s2, s1)))
+        local read_off = risen.world.sector_enabled(pick.name)
+        T.expect("the flag reads back", on == true and read_on == true and off == true and read_off == false, ("%s %s %s %s"):format(tostring(on), tostring(read_on), tostring(off), tostring(read_off)))
     end
+
+    T.section("layers")
+    local function named(n)
+        local c = 0
+        for _, e in ipairs(risen.entity.npcs()) do if e:name() == n then c = c + 1 end end
+        return c
+    end
+    T.expect("a layer that starts off has no members yet", named("MkEv_Trader") == 0, "traders: " .. named("MkEv_Trader"))
+    T.wait_until(function() return named("MkEv_Guard") >= 1 end, 30, "guard")
+    T.expect("a layer that starts on made its member", named("MkEv_Guard") == 1, "guards: " .. named("MkEv_Guard"))
+    risen.gamevar.set("mkev_open_market", 1)
+    T.wait_until(function() return named("MkEv_Trader") >= 1 end, 40, "trader")
+    T.sleep(120)
+    T.expect("a graph switching a layer on makes its NPC", named("MkEv_Trader") >= 1, "traders: " .. named("MkEv_Trader"))
+    T.expect("exactly one member after switching on", named("MkEv_Trader") == 1, "traders: " .. named("MkEv_Trader"))
+    risen.world.quick_save()
+    T.wait_event("save.after", 60)
+    risen.world.quick_load()
+    T.wait_event("session.start", 120, function(m) return m == "load" end)
+    T.sleep(480)
+    T.expect("no duplicates after a quick load", named("MkEv_Trader") == 1 and named("MkEv_Guard") == 1, ("traders %d, guards %d"):format(named("MkEv_Trader"), named("MkEv_Guard")))
+    risen.gamevar.set("mkev_close_market", 1)
+    T.wait_until(function() return named("MkEv_Trader") == 0 end, 40, "trader gone")
+    T.expect("switching the layer off removes its NPC", named("MkEv_Trader") == 0, "traders: " .. named("MkEv_Trader"))
+    risen.gamevar.set("mkev_raid", 1)
+    T.wait_until(function() return risen.world.sector_enabled("Monastery_Story_LizardAttack_Off") == true end, 30, "sector")
+    T.expect("a graph switches a stock sector", risen.world.sector_enabled("Monastery_Story_LizardAttack_Off") == true)
 
     T.section("chapter event")
     risen.quest.set_chapter(3, true)
@@ -98,6 +107,7 @@ T.run(function()
     T.expect("chapter 3 said so once", (fired.chapter or 0) == 1, "fired " .. tostring(fired.chapter))
 
     T.section("movement")
+    player = risen.entity.player()
     local x, y, z = player:position()
     T.sleep(60)
     local base = fired.move or 0
@@ -124,5 +134,31 @@ T.run(function()
     T.expect("movement: small steps add up", (fired.move or 0) == base + 2, ("fired %d -> %d"):format(base, fired.move or 0))
     T.sleep(120)
     T.expect("movement: standing still does not fire", (fired.move or 0) == base + 2, ("fired %d -> %d"):format(base, fired.move or 0))
+    T.section("sector effect")
+    -- Monastery_Story_LizardAttack_Off holds 35 LizardScout_Monastery at the monastery (modkit_tests --data: x 13637, y 13199, z 26207 is one of them)
+    local function scouts()
+        local p = risen.entity.player()
+        local c = 0
+        for _, e in ipairs(risen.entity.npcs(p, 8000)) do
+            local t = e:template()
+            if t and t:name() == "LizardScout_Monastery" then c = c + 1 end
+        end
+        return c
+    end
+    risen.world.set_sector("Monastery_Story_LizardAttack_Off", false)
+    player = risen.entity.player()
+    player:set_pose({ x = 13637, y = 13400, z = 26207 })
+    T.sleep(420)
+    local before = scouts()
+    risen.log.info("evlive: scouts before: " .. before)
+    T.expect("the sector's monsters are absent while it is off", before == 0, "scouts: " .. before)
+    local ok, why = risen.world.set_sector("Monastery_Story_LizardAttack_Off", true)
+    local after = 0
+    for _ = 1, 8 do
+        T.sleep(120)
+        after = scouts()
+        risen.log.info(("evlive: scouts after enabling: %d (%s)"):format(after, tostring(ok)))
+    end
+    T.expect("switching the sector on makes its monsters appear", ok == true and after > 0, ("scouts %d -> %d"):format(before, after))
     T.finish("evlive done")
 end, "evlive")

@@ -170,6 +170,19 @@ A visual event system for game designers: the **Events** tab holds *event graphs
 | EVT-9 M | Export `data/events.lua` (plain data, one entry per graph with its nodes, their data and outputs) + `modkit/events.lua` (the runtime module, written only when the project has event graphs; its pure-Lua parts are tested with LuaJIT); import from the data files rebuilds identical graphs (positions kept), the project file round trip is exact. |
 | EVT-10 S | Layer additions only where cheap: none are needed (chapter changes, movement and time of day are polled per frame by the runtime). "On interact" and "enable a world sector" have no layer event / API and are not offered. |
 
+### 3.12 Mod layers (stage E21)
+
+A mod layer is a named group of the project's placed NPCs, world spawns and container fills that is switched on and off as a whole, like the game's story sectors
+(`X.sec` + `X.lrent`, `EnabledOnStartup`, switched by `World::SetSectorStatus`, RE.md section 55).
+
+| ID | Requirement |
+|---|---|
+| LAY-1 M | Project model `LayerDef { uid, name, label, enabled (at start), enable_when, disable_when, npcs[], spawns[], containers[] }` (`Project::layers`, project file `layers`); an object belongs to one layer. The Layers panel lists the layers, edits members (pickers over the objects not yet in a layer), and draws a plan (x / z, one colour per layer, ring = off at start, tooltip with the object and its layer). |
+| LAY-2 M | Switching: `enable_when` / `disable_when` are condition sets (the checks of the Condition node: chapter, quest, variable, item, NPC dead, area ...); the first time one holds the layer switches (once per savegame, looked at about twice a second). The event graphs switch it with the **Layer** node (enable / disable / toggle) and ask it with the **Layer is on / off** check. |
+| LAY-3 M | Runtime (`modkit/layers.lua`): state in `risen.save` (`modkit.layer.<name>`, absent = `enabled`), rolled back by a load; members carry a `layer` field in `data/npcs.lua` / `data/world.lua`: an NPC becomes a tracking `risen.spawn.when` rule (made while the layer is on, removed when it goes off, a new body each time it comes back, his own appear / leave conditions still apply), a world spawn is made when the layer is on and taken away when it goes off, a container fill happens once, the first time the layer is on. Nothing is doubled after a quick load. |
+| LAY-4 M | **Game sectors:** the layer API `risen.world.set_sector(name, enabled)`, `sector_enabled(name)`, `sectors()` (World::SetSectorStatus / gCSector::IsEnabled); the Events editor has a **Game sector** action and a check, with a picker over the game's sectors read from `projects/World/**.sec` (`core/layers.*` `stock_sectors`; 289 sectors, 21 start off). |
+| LAY-5 S | Open: the layer members are not drawn in the World view (that panel belongs to another work stream; the Layers panel's plan stands in for it), containers have no position in the plan, and a layer cannot hold template edits or items placed through the balance data. |
+
 ### 3.10 Export and import (stages E2 onwards, E9)
 
 | ID | Requirement |
@@ -320,6 +333,14 @@ ordered top to bottom by the target's position. `modkit/events.lua` registers on
 a step budget per run (no endless loops) and the pending delays in `risen.save` (`modkit.ev.pending`, a clock in `modkit.ev.clock` that only advances while the world runs).
 Movement and areas: see EVT-7. Mod events for tests: `"modkit.event"` (mod id, graph name, node id, trigger kind) when a trigger starts a graph, `"modkit.event_node"` (mod id, graph name, node id, node type) per executed node.
 
+### 7.6 Mod layers -> `data/layers.lua` (E21)
+
+`data/layers.lua` is a list of `{ name, enabled, enable_when?, disable_when? }` (condition sets are `{ mode, negate, tests = { { kind = "chapter", op = ">=", value = 2 }, ... } }`, the same data the
+Condition node of an event graph has). Members are not listed there: every member names its layer (`layer = "Siege"` in `data/npcs.lua` entries and in the `spawns` / `containers` of
+`data/world.lua`), so the import rebuilds the membership from the data files alone. `modkit/runtime.lua` (version 9) requires `modkit/layers.lua` and `modkit/events.lua` when `layers` is given:
+NPC rules use `layers.cond(name)` (a `risen.cond.fn` re-evaluated on `modkit.layer_changed`), `apply_world` consults `layers.enabled(name)` and runs again on every layer change.
+Mod event for tests: `"modkit.layer_changed"` (name, enabled).
+
 ## 8. Testing and verification
 
 1. **Unit tests** (`modkit_tests`, runs in CI without game data): project JSON round trip, undo/redo, validation rules, Lua writer determinism, export of the example
@@ -369,7 +390,7 @@ Each stage ends with a usable feature (or the base the next stage needs), is ver
 
 | **E19b** Actors in the World view | `core/actor.*` reads the EMotion FX actor inside `._xmac` (RE.md section 54); the World view draws monsters, animals and humans as their textured bind pose (T-position) instead of boxes; humans and ogres are assembled from skeleton, armour and head parts | WLD-3 | **done** (unit tests `actor_*`, `world_monsters_have_actors`: 107 of 111 actors (five stored big endian), 1253 of 1306 monsters, `world_humans_are_assembled_from_parts`: all 246 NPCs with body and head; Sara and Gyrger checked in pictures of the world view; the humans wear a stand-in head, the real one is not in the data; SpeedTrees stay boxes) |
 
-| **E21** Events and triggers | the Events tab: event graphs (triggers, conditions, flow, actions), `core/events.*`, `lua/events.lua` (export `data/events.lua` + `modkit/events.lua`), import, validation, movement debounce | EVT-1..10 | **in progress** |
+| **E21** Events, triggers, layers and sectors | the Events tab (event graphs: triggers, conditions, flow, actions; `core/events.*`, `lua/events.lua`), the Layers panel (mod layers, `core/layers.*`, `lua/layers.lua`), export `data/events.lua` / `data/layers.lua` + `modkit/events.lua` / `layers.lua`, import, validation, movement debounce, `risen.world.set_sector / sector_enabled / sectors` | EVT-1..10, LAY-1..5 | **done** (unit tests `events_*`, `layers_*`: the example graph, every node kind, validation, project and data round trips, the movement filter in C++ and Lua, the generated Lua run against a stand-in API (chapter -> variable, once, delays that survive a load, signals, movement per metre, areas, layers switched by condition and graph); live scenario `evlive` (23 checks): chapter 3 sets the variable, movement fires once per metre and never for turning, a layer's NPC appears / goes / is not doubled by a quick load, a graph switches a game sector and the lizard scouts of `Monastery_Story_LizardAttack_Off` appear; screenshots of both panels checked; EVT-10 open: no interact event, no World view tag) |
 
 All of the roadmap of 2026-10-17 is done (E13 to E20).
 

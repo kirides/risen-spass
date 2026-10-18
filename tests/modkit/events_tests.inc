@@ -616,3 +616,31 @@ TEST(layers_runtime_switches_by_condition_and_graph) {
     if (!result.empty()) std::printf("  layers runtime test failed: %s\n", result.c_str());
     CHECK(result.empty());
 }
+
+TEST(layers_stock_sectors_from_the_game_data) {
+    auto g = game_data();
+    if (!g) {
+        std::printf("  (skipped: no --data)\n");
+        return;
+    }
+    const auto sectors = stock_sectors(*g);
+    size_t off = 0;
+    bool found = false;
+    for (auto& s : sectors) {
+        if (!s.enabled_on_startup) ++off;
+        found |= s.name == "Monastery_Story_LizardAttack_Off" && !s.enabled_on_startup;
+    }
+    std::printf("  %zu sectors, %zu start switched off\n", sectors.size(), off);
+    CHECK(sectors.size() > 250);
+    CHECK_EQ(off, size_t(21));  // RE.md section 55
+    CHECK(found);
+    // where the entities of a story sector stand (the layer file has the sector's name)
+    const auto w = load_world(*g, "World");
+    for (const char* name : {"Monastery_Story_LizardAttack_Off", "Pirate_Coast_NPC_02_Story", "Game_Start_NPC_Story_01"})
+        for (auto& l : w->layers)
+            if (l.name == name) {
+                std::printf("  layer %s: %u entities\n", name, l.count);
+                for (uint32_t i = l.first; i < l.first + l.count && i < l.first + 4; ++i)
+                    std::printf("    %s (%s) at %.0f %.0f %.0f\n", w->entities[i].name.c_str(), w->entities[i].template_name.c_str(), w->entities[i].x(), w->entities[i].y(), w->entities[i].z());
+            }
+}

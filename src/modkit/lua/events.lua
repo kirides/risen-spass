@@ -632,8 +632,7 @@ local function install_events()
     if used.item then
         local function item_handler(what, ev, amount_of)
             risen.on(ev, function(owner, template, a, b, c)
-                ---@type Entity?
-                local who = owner
+                local who = owner --[[@as Entity?]]
                 if not (who and who:is_player()) then return end
                 if what == "dropped" and c ~= "drop" then return end
                 fire("item", { item = template, amount = amount_of(a), what = what }, function(n)

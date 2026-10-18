@@ -12,6 +12,102 @@
       "German"
     ]
   },
+  "npcs": [
+    {
+      "uid": "ea430576f3318b31bc2d5d5168d2e533",
+      "name": "MkEv_Trader",
+      "template": "Peasant_1_01",
+      "offset": true,
+      "position": [
+        300,
+        0,
+        0
+      ],
+      "peaceful": true,
+      "label": {
+        "English": "Market trader",
+        "German": "Markthaendler"
+      }
+    },
+    {
+      "uid": "711471f52cb1b6691925c61c80c22d4d",
+      "name": "MkEv_Guard",
+      "template": "Peasant_1_01",
+      "offset": true,
+      "position": [
+        -300,
+        0,
+        0
+      ],
+      "peaceful": true
+    }
+  ],
+  "world": {
+    "world": "World",
+    "spawns": [
+      {
+        "uid": "0b18866d5a04e6c01aa41099b7cb8415",
+        "template": "It_Apple",
+        "position": [
+          400,
+          0,
+          400
+        ]
+      },
+      {
+        "uid": "94d94dca92b8bbbb54d2215522186d07",
+        "template": "It_Apple",
+        "position": [
+          -300,
+          0,
+          700
+        ]
+      }
+    ],
+    "containers": [],
+    "removals": [],
+    "moves": []
+  },
+  "layers": [
+    {
+      "uid": "01708671f98a95f6db316d6ab50912ed",
+      "name": "Market",
+      "label": {
+        "English": "Market stalls",
+        "German": "Marktstaende"
+      },
+      "enabled": false,
+      "npcs": [
+        "MkEv_Trader"
+      ],
+      "spawns": [
+        "0b18866d5a04e6c01aa41099b7cb8415"
+      ],
+      "notes": "Switched by the Market open / close graphs."
+    },
+    {
+      "uid": "b72343b37835b790def670dc3ea63659",
+      "name": "Guards",
+      "enabled": true,
+      "npcs": [
+        "MkEv_Guard"
+      ],
+      "spawns": [
+        "94d94dca92b8bbbb54d2215522186d07"
+      ],
+      "disable_when": {
+        "mode": "all",
+        "negate": false,
+        "tests": [
+          {
+            "kind": "chapter",
+            "op": ">=",
+            "value": 5
+          }
+        ]
+      }
+    }
+  ],
   "events": [
     {
       "uid": "69e38d880f9c0fbf774c39d8ecc39193",
@@ -565,6 +661,225 @@
             ],
             "to": [
               "20d4f2189afef06f6ada84f4fb9b5bad",
+              "in"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "9880991671dd040c95ebf6b410b5fe6f",
+      "name": "Market open",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "7a6204ca5a12f7518daf41d983ef0489",
+            "type": "on_variable",
+            "pos": [
+              0,
+              0
+            ],
+            "data": {
+              "scope": "game",
+              "name": "mkev_open_market",
+              "op": ">=",
+              "value": 1
+            }
+          },
+          {
+            "uid": "e6d8da646b43a94e5e368f10946b53ed",
+            "type": "layer",
+            "pos": [
+              340,
+              0
+            ],
+            "data": {
+              "layer": "Market",
+              "action": "enable"
+            }
+          },
+          {
+            "uid": "1d661278f593906ff4ce80de4f5b3e3a",
+            "type": "hud_message",
+            "pos": [
+              680,
+              0
+            ],
+            "data": {
+              "text": {
+                "English": "The market opens",
+                "German": "Der Markt oeffnet"
+              },
+              "style": "note"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "5fedecbf0eaf51c8b0faec81a8ac812a",
+            "from": [
+              "7a6204ca5a12f7518daf41d983ef0489",
+              "next"
+            ],
+            "to": [
+              "e6d8da646b43a94e5e368f10946b53ed",
+              "in"
+            ]
+          },
+          {
+            "uid": "1363b924b426fb3c5312529a45e73401",
+            "from": [
+              "e6d8da646b43a94e5e368f10946b53ed",
+              "next"
+            ],
+            "to": [
+              "1d661278f593906ff4ce80de4f5b3e3a",
+              "in"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "4f7f3cf3306a4a5aba1d21baa419971a",
+      "name": "Market close",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "e257dae61016e8fcb2392229ba4f353c",
+            "type": "on_variable",
+            "pos": [
+              0,
+              0
+            ],
+            "data": {
+              "scope": "game",
+              "name": "mkev_close_market",
+              "op": ">=",
+              "value": 1
+            }
+          },
+          {
+            "uid": "e653690bfe5c97e09c6b31f3b41e1cb2",
+            "type": "layer",
+            "pos": [
+              340,
+              0
+            ],
+            "data": {
+              "layer": "Market",
+              "action": "disable"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "5c0e47f380a35e58022a0df39bb21267",
+            "from": [
+              "e257dae61016e8fcb2392229ba4f353c",
+              "next"
+            ],
+            "to": [
+              "e653690bfe5c97e09c6b31f3b41e1cb2",
+              "in"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "c33b4ca93e68b6d01b9079a000ce99fd",
+      "name": "Lizard raid",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "c427da88bf9a845ca5f98816ef6b3dc2",
+            "type": "on_variable",
+            "pos": [
+              0,
+              0
+            ],
+            "data": {
+              "scope": "game",
+              "name": "mkev_raid",
+              "op": ">=",
+              "value": 1
+            }
+          },
+          {
+            "uid": "e05d095e991c4588c6bb6ce24142d130",
+            "type": "condition",
+            "pos": [
+              340,
+              0
+            ],
+            "data": {
+              "mode": "all",
+              "negate": true,
+              "tests": [
+                {
+                  "kind": "sector",
+                  "sector": "Monastery_Story_LizardAttack_Off",
+                  "state": "enabled"
+                }
+              ]
+            }
+          },
+          {
+            "uid": "3d67bee7a6704ad97134e541a92a2b55",
+            "type": "sector",
+            "pos": [
+              700,
+              -40
+            ],
+            "data": {
+              "sector": "Monastery_Story_LizardAttack_Off",
+              "action": "enable"
+            }
+          },
+          {
+            "uid": "1d2c181f7aeba2ef2e27cb4ade2ff7d7",
+            "type": "log",
+            "pos": [
+              700,
+              120
+            ],
+            "data": {
+              "text": "the raid sector is already on"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "0c58d37783a75769e0468696ef0d422f",
+            "from": [
+              "c427da88bf9a845ca5f98816ef6b3dc2",
+              "next"
+            ],
+            "to": [
+              "e05d095e991c4588c6bb6ce24142d130",
+              "in"
+            ]
+          },
+          {
+            "uid": "8c82e2455a3d7b0f9019997213b1d7a8",
+            "from": [
+              "e05d095e991c4588c6bb6ce24142d130",
+              "then"
+            ],
+            "to": [
+              "3d67bee7a6704ad97134e541a92a2b55",
+              "in"
+            ]
+          },
+          {
+            "uid": "8a52d04933db15d65a47eee3575a9398",
+            "from": [
+              "e05d095e991c4588c6bb6ce24142d130",
+              "else"
+            ],
+            "to": [
+              "1d2c181f7aeba2ef2e27cb4ade2ff7d7",
               "in"
             ]
           }

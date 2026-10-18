@@ -8,6 +8,7 @@ runtime.install({
     dialogs = require("data.dialogs"),
     world = require("data.world"),
     assets = require("data.assets"),
+    layers = require("data.layers"),
     behaviors = require("data.behaviors"),
 })
 require("modkit.events").install(require("data.events"), runtime)
