@@ -20,6 +20,9 @@ namespace mk {
 std::string asset_kind(const std::string& file);
 bool is_raw_audio(const std::string& file);       // .ogg / .wav / .mp3
 bool is_compiled_sound(const std::string& file);  // ._xsnd
+// the loose data files the layer reads besides the compiled resources (RE.md section 45): the combat table `compiled_combatspecies.bin` and weather files (.g3ws).
+// They are asset files of kind "other" that the export copies into assets/ like any other; the validator does not call them unknown.
+bool is_loose_data_file(const std::string& file);
 
 struct SoundData {
     std::string audio;    // the playable file (the payload of a compiled sound)

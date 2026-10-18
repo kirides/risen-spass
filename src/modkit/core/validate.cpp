@@ -760,7 +760,7 @@ void check_assets(Ctx& c) {
         if (++names[p2m::lower(name)] == 2)
             c.add(Severity::Error, A, a.uid, name, "two asset files are called " + name + " (the export puts them into one folder)");
         const std::string kind = asset_kind(name);
-        if (kind == "other")
+        if (kind == "other" && !is_loose_data_file(name))
             c.add(Severity::Warning, A, a.uid, name, "not a resource the engine loads (._xmsh, ._xmat, ._ximg, ._xmac, ._xmot, ._xsnd) and no audio file (.ogg, .wav, .mp3)");
         else if (!is_raw_audio(name) && !is_picture(name) && kind != "iconlist" && c.g && c.g->exists(name))
             c.add(Severity::Warning, A, a.uid, name, "replaces the game's file of the same name everywhere it is used");
