@@ -10,7 +10,7 @@ namespace {
 const char* kUsage =
     "risen-pack2mod " P2M_VERSION " - converts a Risen mod's .pNN / .pak archives into a mod for the risen-spass layer\n"
     "\n"
-    "usage: risen-pack2mod <mod folder | archive files...> --baseline <Risen data dir> --out <mods/name> [options]\n"
+    "usage: risen-pack2mod <mod folder | archive files...> --baseline <Risen data dir> (--out <mods/name> | --project <file.rmk.json>) [options]\n"
     "\n"
     "  --baseline DIR     the user's own Risen data directory (holds common/*.pak and compiled/*.pak); read only\n"
     "  --out DIR          the mod folder to write (replaced on a rerun; refuses a non-empty folder this tool did not create)\n"
@@ -20,6 +20,8 @@ const char* kUsage =
     "  --profile FILE     JSON profile with knowledge about one specific mod (docs/PACK2MOD.md)\n"
     "  --strings all      apply every differing string row, not only new rows and rows of converted items\n"
     "  --no-assets        do not copy the loose resource files    --no-world   skip dialogue / world extraction\n"
+    "  --project FILE     also (or instead of --out) write the result as a risen-modkit project (FILE.rmk.json in its own folder; needs a build with the modkit feature)\n"
+    "  --verify           with --out and --project: export the project again and compare it with the converted mod\n"
     "  --list             list the archives and every file (new / changed / same) and stop\n"
     "  --dry-run          analyse and print the summary, write nothing\n"
     "\n"
@@ -49,6 +51,8 @@ int pack2mod_main(int argc, const char* const* argv, std::ostream& out, std::ost
         else if (key == "--strings") { std::string v; if (!value(v)) return 1; o.strings_all = v == "all"; }
         else if (key == "--no-assets") o.no_assets = true;
         else if (key == "--no-world") o.no_world = true;
+        else if (key == "--project") { if (!value(o.project)) return 1; }
+        else if (key == "--verify") o.verify = true;
         else if (key == "--list") o.list = true;
         else if (key == "--dry-run") o.dry_run = true;
         else if (a.compare(0, 2, "--") == 0) { err << "error: unknown option " << a << "\n\n" << kUsage; return 1; }

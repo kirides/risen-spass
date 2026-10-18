@@ -52,6 +52,7 @@ add_library(modkit_core STATIC
     core/import.cpp
     core/layers.cpp
     core/log.cpp
+    core/pack2project.cpp
     core/paths.cpp
     core/play.cpp
     core/project.cpp

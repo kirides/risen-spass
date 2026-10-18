@@ -275,4 +275,10 @@ endif()
 # ---------------------------------------------------------------------------------------------
 if(SPASS_BUILD_MODKIT)
     add_subdirectory(src/modkit)
+    # risen-pack2mod --project (docs/PACK2MOD.md "Editor project") maps its results onto the editor's project model: that code is part of modkit_core,
+    # which links pack2mod_core, so the executable (not the library) links modkit_core. Without the modkit feature the option reports that it is missing.
+    if(SPASS_BUILD_LAYER)
+        target_link_libraries(risen-pack2mod PRIVATE modkit_core)
+        target_compile_definitions(risen-pack2mod PRIVATE P2M_WITH_MODKIT)
+    endif()
 endif()
