@@ -135,6 +135,7 @@ risen = {
 }
 mod = { id = "t" }
 local function fire(ev, ...) for _, fn in ipairs(handlers[ev] or {}) do fn(...) end end
+local function rat() return { name = function() return "Rat_1" end, template = function() return { name = function() return "Rat" end } end } end
 local function wolf() return { name = function() return "Wolf_1" end, template = function() return { name = function() return "Wolf" end } end } end
 
 local FLOW = { trigger = { kind = "dialog" }, steps = {
@@ -154,7 +155,11 @@ local FLOW2 = { trigger = { kind = "dialog" }, steps = {
     { kind = "objective", objective = "talk", info = "X" },
     { kind = "outcome", result = "fail" },
 } }
-M.install({ quests = { { name = "Q", title = "t", flow = FLOW }, { name = "Q2", title = "t2", flow = FLOW2 } } })
+local FLOW3 = { trigger = { kind = "kill", target = "Rat" }, steps = {
+    { kind = "objective", objective = "kill", target = "Rat", count = 2 },
+    { kind = "outcome", result = "success" },
+} }
+M.install({ quests = { { name = "Q", title = "t", flow = FLOW }, { name = "Q2", title = "t2", flow = FLOW2 }, { name = "Q3", title = "t3", flow = FLOW3 } } })
 
 -- the race starts: both ways are announced, nothing is decided
 M.start_quest("Q")
@@ -198,6 +203,14 @@ saves, quest_calls = {}, {}
 M.start_quest("Q2")
 fire("entity.died", wolf())
 check("the first way decides without an error", saves["modkit.quest.Q2"].done == true and saves["modkit.quest.Q2"].result == "success" and quest_calls[#quest_calls] == "succeed Q2")
+-- the kill that starts a quest is not one of the kills its objective counts (found by the chronicle example: "kill a wolf starts the bounty, kill two more")
+saves, quest_calls = {}, {}
+fire("entity.died", rat())
+check("the starting kill starts the quest", saves["modkit.quest.Q3"] ~= nil and saves["modkit.quest.Q3"].n == 0 and not saves["modkit.quest.Q3"].done)
+fire("entity.died", rat())
+check("one more kill is not enough", saves["modkit.quest.Q3"].n == 1 and not saves["modkit.quest.Q3"].done)
+fire("entity.died", rat())
+check("two more kills finish it", saves["modkit.quest.Q3"].done == true)
 return table.concat(failures, "; ")
 )LUA";
 
