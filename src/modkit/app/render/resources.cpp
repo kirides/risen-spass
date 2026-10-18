@@ -166,7 +166,19 @@ void ResourceCache::worker() {
         try {
             if (job.is_mesh) {
                 const std::string lowered = p2m::lower(job.name);
-                d.mesh = std::make_unique<MeshData>(p2m::ends_with(lowered, "._xmac") ? decode_actor(read(job.name)) : decode_mesh(read(job.name)));
+                if (is_composed(job.name)) {
+                    // a character: its armour and head actors in one mesh (a part that does not decode, like a skeleton, is left out)
+                    std::vector<MeshData> parts;
+                    for (const std::string& a : composed_parts(job.name))
+                        try {
+                            parts.push_back(decode_actor(read(a)));
+                        } catch (const std::exception&) {
+                        }
+                    if (parts.empty()) throw p2m::Error("no part of the character has a mesh");
+                    d.mesh = std::make_unique<MeshData>(merge_meshes(parts));
+                } else {
+                    d.mesh = std::make_unique<MeshData>(p2m::ends_with(lowered, "._xmac") ? decode_actor(read(job.name)) : decode_mesh(read(job.name)));
+                }
                 for (auto& s : d.mesh->submeshes) {
                     std::string tex;
                     try {

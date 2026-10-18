@@ -340,7 +340,7 @@ Each stage ends with a usable feature (or the base the next stage needs), is ver
 
 | **E19a** 3D model import (AST-4) | OBJ / glTF / GLB -> `._xmsh`: the writer `core/meshwrite.*` (byte-exact against a shipped mesh, RE.md section 53), the readers `core/model_import.*`, the Assets panel's **Import 3D model...**, `--convert-model`, the probe mods `meshprobe` / `meshprobe_shots` (scenario `meshprobe`) | AST-4 | **done** (unit tests `meshwrite_*`, `model_import_*`; live: the engine loaded the mesh and drew it textured, and the first winding was found wrong from the pictures and fixed; the handedness default is inferred) |
 
-| **E19b** Actors in the World view | `core/actor.*` reads the EMotion FX actor inside `._xmac` (RE.md section 54); the World view draws monsters and animals as their textured bind pose instead of boxes | WLD-3 | **done** (unit tests `actor_*`, `world_monsters_have_actors`: 102 of 111 actors, 1253 of 1306 monsters; the wolf checked in a picture of the world view; humans and SpeedTrees stay boxes) |
+| **E19b** Actors in the World view | `core/actor.*` reads the EMotion FX actor inside `._xmac` (RE.md section 54); the World view draws monsters, animals and humans as their textured bind pose (T-position) instead of boxes; humans and ogres are assembled from skeleton, armour and head parts | WLD-3 | **done** (unit tests `actor_*`, `world_monsters_have_actors`: 107 of 111 actors (five stored big endian), 1253 of 1306 monsters, `world_humans_are_assembled_from_parts`: all 246 NPCs with body and head; Sara and Gyrger checked in pictures of the world view; the humans wear a stand-in head, the real one is not in the data; SpeedTrees stay boxes) |
 
 All of the roadmap of 2026-10-17 is done (E13 to E20).
 

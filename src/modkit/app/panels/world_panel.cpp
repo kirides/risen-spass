@@ -24,6 +24,7 @@
 #include "app/render/gl_util.h"
 #include "app/render/mesh_renderer.h"
 #include "app/render/resources.h"
+#include "core/actor.h"
 #include "core/catalog.h"
 #include "app/widgets.h"
 #include "core/log.h"
@@ -192,15 +193,22 @@ private:
         mesh_names_.assign(world_->entities.size(), std::string());
         for (size_t i = 0; i < world_->entities.size(); ++i)
             if (!world_->entities[i].mesh.empty()) mesh_names_[i] = compiled_name(world_->entities[i].mesh);
-        // monsters and animals are drawn as their actor (the bind pose of the skinned mesh) instead of a box: the actor file their template names
-        if (app.game)
+        // monsters, animals and humans are drawn as their actors (the bind pose, the T-position, of the skinned meshes) instead of a box: the actor their template
+        // names plus, for a human or an ogre, the armour and head parts it wears
+        if (app.game) {
+            std::map<std::string, std::string> by_template;
             for (size_t i = 0; i < world_->entities.size(); ++i) {
                 const WorldEntity& e = world_->entities[i];
-                if (!mesh_names_[i].empty() || e.kind != TplKind::Monster || e.template_name.empty()) continue;
-                const TemplateInfo* t = app.game->tpl(e.template_name);
-                const p2m::Val* v = t ? t->get("eCAnimation_PS.ResourceFilePath") : nullptr;
-                if (v && v->is_str() && !v->s.empty()) mesh_names_[i] = compiled_name(v->s);
+                if (!mesh_names_[i].empty() || (e.kind != TplKind::Monster && e.kind != TplKind::Npc) || e.template_name.empty()) continue;
+                auto it = by_template.find(e.template_name);
+                if (it == by_template.end()) {
+                    const TemplateInfo* t = app.game->tpl(e.template_name);
+                    const std::vector<std::string> parts = t ? actor_parts(*app.game, *t) : std::vector<std::string>();
+                    it = by_template.emplace(e.template_name, parts.empty() ? std::string() : compose_name(parts)).first;
+                }
+                mesh_names_[i] = it->second;
             }
+        }
         layer_on_.assign(world_->layers.size(), 1);
         // the system, navigation and sound layers are hidden at first: they are mostly helpers
         for (size_t i = 0; i < world_->layers.size(); ++i) {

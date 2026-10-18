@@ -160,6 +160,14 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
         try {
             const p2m::Bytes raw = lf.read();
             p2m::Template t = p2m::parse_template(raw);
+            // the GUID records of the header start with the file's format version (0xd9, 0xda, 0xdb ...): the shared parser only knows 0xdb, so the entity GUID
+            // of every other template (the armour and head parts of Sara and Gyrger among them) would stay unresolved
+            if (t.guids.empty() && raw.size() > 0x1c && raw.compare(0, 8, "GENOMFLE") == 0 && raw.compare(14, 8, "GENOMETP") == 0 && raw[0x17] == '\0' && static_cast<uint8_t>(raw[0x16]) >= 0xd0) {
+                const char ver = raw[0x16];
+                for (size_t i = 0x1c; i + 18 <= raw.size() && i < 0x200; ++i)
+                    if (raw[i] == ver && raw[i + 1] == '\0') t.guids.push_back("@" + p2m::hex_of(raw.substr(i + 2, 16)));
+                t.guid = t.guids.size() > 1 ? t.guids[1] : (t.guids.empty() ? std::string() : t.guids[0]);
+            }
             for (const std::string& g : t.guids) guid_names[g] = t.base_name();
             std::vector<int> skills;
             RawInventory inv;
