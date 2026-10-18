@@ -1,0 +1,7 @@
+id          = "chronicle_driver"
+name        = "Chronicle driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Development aid: plays the exported chronicle example (mods/chronicle_example) chapter by chapter as the risen.test scenario chronicle."
+main        = "main.lua"
+requires    = ["chronicle_example"]

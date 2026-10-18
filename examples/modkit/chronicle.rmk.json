@@ -1,0 +1,6588 @@
+{
+  "format": "risen-modkit-project",
+  "format_version": 1,
+  "mod": {
+    "id": "chronicle_example",
+    "name": "The Ashen Chronicle",
+    "version": "1.0.0",
+    "author": "risen-spass",
+    "description": "The complete example project of risen-modkit (examples/modkit/chronicle.rmk.json, docs/editor/CHRONICLE.md): something new in every chapter 1-4, made with every feature of the editor.",
+    "languages": [
+      "English",
+      "German"
+    ]
+  },
+  "items": [
+    {
+      "uid": "d13c8d51c3e3b1aa5df6d4a1ad0e4cbc",
+      "mode": "new",
+      "name": "MKC_Chronicle_Blade",
+      "base": "It_1H_Sword",
+      "label": {
+        "English": "Chronicler's Blade",
+        "German": "Klinge des Chronisten"
+      },
+      "description": {
+        "English": "A sword forged from the ink of an old story.",
+        "German": "Ein Schwert, geschmiedet aus der Tinte einer alten Geschichte."
+      },
+      "value": 420,
+      "damage": 36,
+      "requires": {
+        "Strength": 20
+      },
+      "icon": "chronicle_blade.png"
+    },
+    {
+      "uid": "04805a5d74cb191e5fc6150ba9d0b895",
+      "mode": "new",
+      "name": "MKC_Tide_Potion",
+      "base": "It_Po_Health_02",
+      "label": {
+        "English": "Tide Draught",
+        "German": "Gezeitentrank"
+      },
+      "description": {
+        "English": "Tastes of salt and ash.",
+        "German": "Schmeckt nach Salz und Asche."
+      },
+      "value": 90,
+      "modifies": {
+        "HitPoints": 160
+      }
+    },
+    {
+      "uid": "1890ba147f4a7513a09d321fc2c49ba9",
+      "mode": "new",
+      "name": "MKC_Warlord_Axe",
+      "base": "It_Axe_Waraxe",
+      "label": {
+        "English": "Ash Warlord's Axe",
+        "German": "Axt des Aschekriegsherrn"
+      },
+      "description": {
+        "English": "Still warm from the camp fire.",
+        "German": "Noch warm vom Lagerfeuer."
+      },
+      "value": 650,
+      "damage": 52,
+      "requires": {
+        "Strength": 35
+      }
+    },
+    {
+      "uid": "33d0c0dafa86fc6a56f3a2c6c6e71105",
+      "mode": "new",
+      "name": "MKC_Tide_Key",
+      "base": "It_Stoneplate",
+      "label": {
+        "English": "Key of the Tide",
+        "German": "Schluessel der Gezeiten"
+      },
+      "description": {
+        "English": "It hums when the tide rises.",
+        "German": "Er summt, wenn die Flut steigt."
+      },
+      "value": 0
+    },
+    {
+      "uid": "3830b82d8c390abab96a2da324b78bc7",
+      "mode": "new",
+      "name": "MKC_Chronicle_Tablet",
+      "base": "It_Stoneplate",
+      "label": {
+        "English": "Chronicle Tablet",
+        "German": "Chronikplatte"
+      },
+      "description": {
+        "English": "A fragment of the Ashen Chronicle.",
+        "German": "Ein Bruchstueck der Aschechronik."
+      },
+      "value": 25,
+      "mesh": "MKC_Tablet.xmsh"
+    },
+    {
+      "uid": "ee9ef3b4570b073ff56266b8e7ca71b8",
+      "mode": "new",
+      "name": "MKC_Tide_Amulet",
+      "base": "It_Am_HP",
+      "label": {
+        "English": "Amulet of the Ashen Tide",
+        "German": "Amulett der Aschegezeiten"
+      },
+      "description": {
+        "English": "The Chronicle's last page, worn around the neck.",
+        "German": "Die letzte Seite der Chronik, um den Hals getragen."
+      },
+      "value": 1500,
+      "modifies": {
+        "HitPoints": 150
+      },
+      "icon": "chronicle_amulet.png"
+    },
+    {
+      "uid": "c8c7a49f5af603cfec888948b9eee813",
+      "mode": "edit",
+      "name": "It_1H_Sword_Rusty",
+      "label": {
+        "English": "Salt-eaten sword",
+        "German": "Salzzerfressenes Schwert"
+      },
+      "value": 9,
+      "damage": 11
+    },
+    {
+      "uid": "9b69e61a5297bca8bddce9e70eb57778",
+      "mode": "edit",
+      "name": "It_Apple",
+      "value": 2
+    }
+  ],
+  "item_groups": [
+    {
+      "uid": "2eef071d0cf4684db0c1c67f06964d0f",
+      "group": "Items/Potions",
+      "value_mult": 0.75
+    },
+    {
+      "uid": "9431ea8c8169d0af4ab8c15d2cc954ce",
+      "group": "Items/Weapons_Axes",
+      "exclude": "Titan",
+      "damage_mult": 1.1
+    },
+    {
+      "uid": "ccf8c7d3270cf80fd13902f249b9c3cf",
+      "names": [
+        "It_Pearl",
+        "It_BlackPearl"
+      ],
+      "value_mult": 1.5
+    }
+  ],
+  "spells": [
+    {
+      "uid": "a1b8683b15421b723146024c64ae405e",
+      "mode": "edit",
+      "name": "Light",
+      "mana_cost": 7,
+      "scroll_mana_cost": 3
+    },
+    {
+      "uid": "dc748b386dc343ec8f07da4cb1076af9",
+      "mode": "edit",
+      "name": "Frost",
+      "damage_mult": 1.5
+    },
+    {
+      "uid": "0a0d28778366231f98af9ebaed46f117",
+      "mode": "new",
+      "name": "MKC_Ember_Whisper",
+      "base": "Fireball",
+      "forms": [
+        "crystal",
+        "scroll"
+      ],
+      "label": {
+        "English": "Ember Whisper",
+        "German": "Glutfluestern"
+      },
+      "description": {
+        "English": "A quiet fireball that burns longer.",
+        "German": "Ein leiser Feuerball, der laenger brennt."
+      },
+      "value": 300,
+      "mana_cost": 16,
+      "requires": {
+        "Fireball": 1
+      },
+      "damage_mult": 1.5,
+      "speed_mult": 1.3,
+      "radius_mult": 1.2,
+      "damage_type": "Fire"
+    }
+  ],
+  "npc_groups": [
+    {
+      "uid": "9e1b9d05c1cb4b8a01914f3d72fa916f",
+      "match": "^Wolf",
+      "exclude": "Young",
+      "hp_mult": 1.2,
+      "damage_mult": 1.1,
+      "notes": "Chapter 1: the island's wolves have been eating ash."
+    },
+    {
+      "uid": "cce207435c965a84470be51f4d4b737b",
+      "group": "Monster/Kapitel 3",
+      "damage_mult": 1.15,
+      "level_add": 1,
+      "skills_mult": {
+        "ProtEdge": 1.1
+      },
+      "notes": "Chapter 3: the monsters of the chapter hit harder and take more."
+    }
+  ],
+  "recipes": [
+    {
+      "uid": "276e3ad54d039159eebfb4595d075667",
+      "mode": "new",
+      "name": "MKC_Recipe_Chronicle_Blade",
+      "station": "anvil",
+      "ingredients": [
+        [
+          "It_1H_Steel_Sharp",
+          1
+        ],
+        [
+          "It_IronOre",
+          2
+        ],
+        [
+          "It_Pearl",
+          1
+        ]
+      ],
+      "skills": {
+        "Smith": 1
+      },
+      "result": "MKC_Chronicle_Blade",
+      "label": {
+        "English": "Smithing plan: Chronicler's Blade",
+        "German": "Schmiedeplan: Klinge des Chronisten"
+      },
+      "description": {
+        "English": "Maren's plan: a blade that remembers.",
+        "German": "Marens Plan: eine Klinge, die sich erinnert."
+      }
+    },
+    {
+      "uid": "f8d0826bdec51c8e7af3c9ca6e0a8135",
+      "mode": "new",
+      "name": "MKC_Recipe_Tide_Potion",
+      "station": "alchemy",
+      "ingredients": [
+        [
+          "It_Plant_Health_01",
+          2
+        ],
+        [
+          "It_Plant_Mint",
+          1
+        ]
+      ],
+      "skills": {
+        "Alchemy": 1
+      },
+      "result": "MKC_Tide_Potion",
+      "label": {
+        "English": "Alchemy plan: Tide Draught",
+        "German": "Alchemieplan: Gezeitentrank"
+      },
+      "learn": true
+    },
+    {
+      "uid": "a059de0ebb6c9c2a31d280cb88ecaee5",
+      "mode": "edit",
+      "name": "It_1H_Steel_Hot",
+      "skills": {
+        "Smith": 1
+      }
+    }
+  ],
+  "npc_templates": [
+    {
+      "uid": "8fa8a543d966c8347c0736a281da953c",
+      "mode": "new",
+      "name": "MKC_Maren_T",
+      "base": "Peasant_Female_1_01",
+      "label": {
+        "English": "Maren the Chronicler",
+        "German": "Maren die Chronistin"
+      },
+      "hp_max": 220,
+      "level": 4,
+      "guild": "Cit",
+      "behaviors": [
+        {
+          "behavior": "chronicler"
+        }
+      ]
+    },
+    {
+      "uid": "cec759e1da8d623a4932b4737bf005db",
+      "mode": "new",
+      "name": "MKC_Smuggler_T",
+      "base": "Peasant_1_03",
+      "label": {
+        "English": "Smuggler",
+        "German": "Schmuggler"
+      },
+      "hp_max": 260,
+      "level": 8,
+      "guild": "Cit",
+      "loot": {
+        "It_Gold": 400
+      },
+      "properties": {
+        "gCDialog_PS": {
+          "TradeEnabled": true
+        }
+      }
+    },
+    {
+      "uid": "f00697456e8339e922367813e6119b70",
+      "mode": "new",
+      "name": "MKC_Ash_Raider_T",
+      "base": "Skeleton",
+      "label": {
+        "English": "Ash Raider",
+        "German": "Aschepluenderer"
+      },
+      "hp_max": 260,
+      "level": 11,
+      "damage_mult": 1.2,
+      "loot": {
+        "It_Gold": 25
+      }
+    },
+    {
+      "uid": "28d2f3b3781fa46a54779960bcb6b3bc",
+      "mode": "new",
+      "name": "MKC_Ash_Warlord_T",
+      "base": "Skeleton_BDDon_Boss",
+      "label": {
+        "English": "Ash Warlord",
+        "German": "Aschekriegsherr"
+      },
+      "hp_max": 1400,
+      "level": 20,
+      "damage_mult": 1.6,
+      "loot": {
+        "It_Gold": 300,
+        "MKC_Tide_Potion": 2,
+        "MKC_Warlord_Axe": 1
+      },
+      "behaviors": [
+        {
+          "behavior": "camp_watch",
+          "params": {
+            "taunt": "Who dares to walk into the Ash Camp?"
+          }
+        }
+      ]
+    },
+    {
+      "uid": "e64b0bb5b58f72f295f6e852ef43a941",
+      "mode": "new",
+      "name": "MKC_Tide_Lord_T",
+      "base": "LizardWarrior_EliteBoss_01",
+      "label": {
+        "English": "Lord of the Tide",
+        "German": "Herr der Gezeiten"
+      },
+      "hp_max": 3200,
+      "level": 28,
+      "damage_mult": 1.4,
+      "loot": {
+        "It_Gold": 800,
+        "MKC_Tide_Potion": 5
+      }
+    },
+    {
+      "uid": "97efc2da2f3365474fad099a16e3d895",
+      "mode": "edit",
+      "name": "LizardWarrior",
+      "hp_mult": 1.3,
+      "skills": {
+        "Strength": 95
+      }
+    },
+    {
+      "uid": "f6544c9d34da27c0e1e5b549bce03c74",
+      "mode": "edit",
+      "name": "Wolf_Black",
+      "level_add": 2
+    }
+  ],
+  "npcs": [
+    {
+      "uid": "965ee693c8a150632beea5b4d6a90401",
+      "name": "MKC_Maren",
+      "template": "MKC_Maren_T",
+      "position": [
+        -30050.0,
+        700.0,
+        -6350.0
+      ],
+      "label": {
+        "English": "Maren",
+        "German": "Maren"
+      },
+      "peaceful": true,
+      "items": [
+        [
+          "It_Quill",
+          1
+        ],
+        [
+          "It_Parchment_Empty",
+          5
+        ],
+        [
+          "It_Apple",
+          3
+        ]
+      ],
+      "routine": {
+        "at": {
+          "dx": 60,
+          "dy": 0,
+          "dz": 0,
+          "kind": "lookat",
+          "yaw": 90
+        }
+      },
+      "version": 2
+    },
+    {
+      "uid": "17ae7a23bfb83a6d49232afb19e3bc8c",
+      "name": "MKC_Scout",
+      "template": "Peasant_1_01",
+      "position": [
+        -30150.0,
+        700.0,
+        -6300.0
+      ],
+      "label": {
+        "English": "Wounded scout",
+        "German": "Verwundeter Kundschafter"
+      },
+      "peaceful": true,
+      "guild": "Cit",
+      "level": 3,
+      "hp_max": 120,
+      "items": [
+        [
+          "It_Po_Health_01",
+          2
+        ],
+        [
+          "It_Bread",
+          1
+        ]
+      ],
+      "appear_when": [
+        "quest",
+        "Q_MKC_Camp",
+        "Running"
+      ],
+      "leave_when": [
+        "quest",
+        "Q_MKC_Camp",
+        "Success"
+      ]
+    },
+    {
+      "uid": "49d3bc122eb4123dce4f43a4a924a8e6",
+      "name": "MKC_Ash_Warlord",
+      "template": "MKC_Ash_Warlord_T",
+      "position": [
+        -35080.0,
+        420.0,
+        -6646.0
+      ],
+      "label": {
+        "English": "Ash Warlord",
+        "German": "Aschekriegsherr"
+      },
+      "peaceful": false,
+      "items": [
+        [
+          "MKC_Warlord_Axe",
+          1,
+          true
+        ],
+        [
+          "It_Gold",
+          150
+        ]
+      ]
+    },
+    {
+      "uid": "a257a9ea3f731e65ed3d74671ec0b5d5",
+      "name": "MKC_Ash_Raider_1",
+      "template": "MKC_Ash_Raider_T",
+      "position": [
+        -34830.0,
+        420.0,
+        -6546.0
+      ],
+      "peaceful": false
+    },
+    {
+      "uid": "55cc29773d77119570ad0626c6387152",
+      "name": "MKC_Ash_Raider_2",
+      "template": "MKC_Ash_Raider_T",
+      "position": [
+        -35330.0,
+        420.0,
+        -6496.0
+      ],
+      "peaceful": false,
+      "routine": {
+        "patrol": {
+          "points": [
+            {
+              "dx": 0,
+              "dy": 0,
+              "dz": 0
+            },
+            {
+              "dx": 300,
+              "dy": 0,
+              "dz": 200
+            },
+            {
+              "dx": 300,
+              "dy": 0,
+              "dz": -200
+            }
+          ],
+          "kind": "guard"
+        }
+      }
+    },
+    {
+      "uid": "558dce2fff88d387c29281636787d067",
+      "name": "MKC_Ash_Raider_3",
+      "template": "MKC_Ash_Raider_T",
+      "position": [
+        -35080.0,
+        420.0,
+        -6946.0
+      ],
+      "peaceful": false,
+      "level": 13
+    },
+    {
+      "uid": "28d64b578af6ef6b5c5f5fbe19d931e2",
+      "name": "MKC_Smuggler",
+      "template": "MKC_Smuggler_T",
+      "position": [
+        -29850.0,
+        700.0,
+        -6450.0
+      ],
+      "label": {
+        "English": "Smuggler Joss",
+        "German": "Schmuggler Joss"
+      },
+      "peaceful": true,
+      "items": [
+        [
+          "MKC_Tide_Potion",
+          6
+        ],
+        [
+          "MKC_Recipe_Tide_Potion",
+          1
+        ],
+        [
+          "MKC_Ember_Whisper_Scroll",
+          2
+        ],
+        [
+          "It_Pearl",
+          4
+        ],
+        [
+          "It_IronOre",
+          5
+        ],
+        [
+          "It_1H_Steel_Sharp",
+          2
+        ]
+      ],
+      "routine": {
+        "work": {
+          "dx": 150,
+          "dy": 0,
+          "dz": 0,
+          "kind": "guard"
+        },
+        "relax": {
+          "dx": 0,
+          "dy": 0,
+          "dz": 150,
+          "kind": "lookat"
+        },
+        "sleep": {
+          "dx": -100,
+          "dy": 0,
+          "dz": 100,
+          "kind": "sleep"
+        }
+      }
+    },
+    {
+      "uid": "ab110fe405c3ecc3fca77f443ee73c7e",
+      "name": "MKC_Tide_Lord",
+      "template": "MKC_Tide_Lord_T",
+      "position": [
+        -31756.0,
+        699.0,
+        -3457.0
+      ],
+      "label": {
+        "English": "Lord of the Tide",
+        "German": "Herr der Gezeiten"
+      },
+      "peaceful": false,
+      "level": 30
+    },
+    {
+      "uid": "e0f23e392fd7210a5a8c52d3c4bdb90f",
+      "name": "MKC_Tide_Guard_1",
+      "template": "MKC_Ash_Raider_T",
+      "position": [
+        -32256.0,
+        699.0,
+        -3357.0
+      ],
+      "peaceful": false
+    },
+    {
+      "uid": "7ea2313c75ec57fc2b7992cb7b956f9e",
+      "name": "MKC_Tide_Guard_2",
+      "template": "MKC_Ash_Raider_T",
+      "position": [
+        -31456.0,
+        699.0,
+        -3357.0
+      ],
+      "peaceful": false
+    }
+  ],
+  "dialogs": [
+    {
+      "uid": "63512424d21d7d1c6eea79763354d40f",
+      "name": "Maren",
+      "owner": "MKC_Maren",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "83b90f419d9b7b6b59e05329b7c46eb1",
+            "type": "option",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "Who are you?",
+                "German": "Wer bist du?"
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MKC_Maren_Who"
+            }
+          },
+          {
+            "uid": "6fac19b3b004e4617bf951bcd88675f3",
+            "type": "line",
+            "pos": [
+              330.0,
+              0.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "I am Maren. I write down what the island forgets.",
+                "German": "Ich bin Maren. Ich schreibe auf, was die Insel vergisst."
+              },
+              "sound": {
+                "default": "maren_who.wav",
+                "German": "maren_who_de.wav"
+              }
+            }
+          },
+          {
+            "uid": "f32b87410ca3841d1f7ce92c024ac3ac",
+            "type": "option",
+            "pos": [
+              0.0,
+              230.0
+            ],
+            "data": {
+              "text": {
+                "English": "Do you have work for me?",
+                "German": "Hast du Arbeit fuer mich?"
+              },
+              "type": "Info",
+              "permanent": false,
+              "info": "MKC_Maren_Work"
+            }
+          },
+          {
+            "uid": "0a3aad167663c5675b4b6388cbff67d1",
+            "type": "cond",
+            "pos": [
+              -420.0,
+              230.0
+            ],
+            "data": {
+              "kind": "var",
+              "args": {
+                "name": "mkc_ch1",
+                "value": 1
+              }
+            }
+          },
+          {
+            "uid": "e74f633d62add01ae35969c45be4fa1b",
+            "type": "line",
+            "pos": [
+              330.0,
+              230.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "The ink is running low. Bring me three pearls from the shore: salt pearls make the best ink.",
+                "German": "Die Tinte wird knapp. Bring mir drei Perlen vom Strand: Salzperlen geben die beste Tinte."
+              }
+            }
+          },
+          {
+            "uid": "3892ba1e5c09694a7b90f1f79411464b",
+            "type": "line",
+            "pos": [
+              660.0,
+              230.0
+            ],
+            "data": {
+              "speaker": "player",
+              "text": {
+                "English": "Pearls. Fine.",
+                "German": "Perlen. Gut."
+              }
+            }
+          },
+          {
+            "uid": "760f69db3675545a0404a5b2dad8a96e",
+            "type": "quest",
+            "pos": [
+              990.0,
+              230.0
+            ],
+            "data": {
+              "quest": "Q_MKC_Ink",
+              "action": "start"
+            }
+          },
+          {
+            "uid": "4268a2a89b0f2e624f88bb7bbd398128",
+            "type": "log",
+            "pos": [
+              1320.0,
+              230.0
+            ],
+            "data": {
+              "quest": "Q_MKC_Ink",
+              "text": {
+                "English": "Maren needs three pearls for her ink.",
+                "German": "Maren braucht drei Perlen fuer ihre Tinte."
+              }
+            }
+          },
+          {
+            "uid": "b8c2fcca75c213d7c0c2d5b19a9e2896",
+            "type": "option",
+            "pos": [
+              0.0,
+              460.0
+            ],
+            "data": {
+              "text": {
+                "English": "Here are your pearls.",
+                "German": "Hier sind deine Perlen."
+              },
+              "type": "Info",
+              "permanent": false,
+              "info": "MKC_Maren_Ink_Turnin"
+            }
+          },
+          {
+            "uid": "b6237d40b2145219ff5dd9de9cc5646f",
+            "type": "cond",
+            "pos": [
+              -420.0,
+              410.0
+            ],
+            "data": {
+              "kind": "quest",
+              "args": {
+                "quest": "Q_MKC_Ink",
+                "status": "Running"
+              }
+            }
+          },
+          {
+            "uid": "09377d6da50d9084cdbf3a586bed781a",
+            "type": "cond",
+            "pos": [
+              -420.0,
+              510.0
+            ],
+            "data": {
+              "kind": "item",
+              "args": {
+                "item": "It_Pearl",
+                "count": 3
+              }
+            }
+          },
+          {
+            "uid": "8b344c9ebecb7fd59e30a48588d41089",
+            "type": "all",
+            "pos": [
+              -210.0,
+              460.0
+            ]
+          },
+          {
+            "uid": "e5623008a09ca3903d6f567fce01cfe1",
+            "type": "command",
+            "pos": [
+              330.0,
+              460.0
+            ],
+            "data": {
+              "command": "Give",
+              "params": {
+                "Entity1": "player",
+                "Entity2": "npc",
+                "Item": "It_Pearl",
+                "Amount": 3
+              }
+            }
+          },
+          {
+            "uid": "c501e0fbc36b3e5a563c92269f99d1f2",
+            "type": "line",
+            "pos": [
+              660.0,
+              460.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "Salt and shine. Take this plan: it will turn your iron into a story.",
+                "German": "Salz und Glanz. Nimm diesen Plan: er macht aus deinem Eisen eine Geschichte."
+              }
+            }
+          },
+          {
+            "uid": "4334779cbc28f22740ea279d9191386b",
+            "type": "command",
+            "pos": [
+              990.0,
+              460.0
+            ],
+            "data": {
+              "command": "SetGameEvent",
+              "params": {
+                "GameEvent": "MKC_Maren_Paid"
+              }
+            }
+          },
+          {
+            "uid": "023b4f7b59a0b90571280e28d054f9bd",
+            "type": "option",
+            "pos": [
+              0.0,
+              690.0
+            ],
+            "data": {
+              "text": {
+                "English": "Tell me about the Chronicle.",
+                "German": "Erzaehl mir von der Chronik."
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MKC_Maren_Lore"
+            }
+          },
+          {
+            "uid": "e6aa814e73922939035849f6964dab8f",
+            "type": "line",
+            "pos": [
+              330.0,
+              690.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "What do you want to hear?",
+                "German": "Was willst du hoeren?"
+              }
+            }
+          },
+          {
+            "uid": "6d69a23de340fd19ee84b1d5376a9c14",
+            "type": "option",
+            "pos": [
+              330.0,
+              830.0
+            ],
+            "data": {
+              "text": {
+                "English": "About the ash.",
+                "German": "Ueber die Asche."
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MKC_Maren_Ash"
+            }
+          },
+          {
+            "uid": "4e5103bb39663e4ea62d3f9e8d642c10",
+            "type": "line",
+            "pos": [
+              660.0,
+              830.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "The ash falls from a sky that no longer has a sun.",
+                "German": "Die Asche faellt von einem Himmel, der keine Sonne mehr hat."
+              }
+            }
+          },
+          {
+            "uid": "02448456ec5a8025c84b342464158157",
+            "type": "option",
+            "pos": [
+              330.0,
+              970.0
+            ],
+            "data": {
+              "text": {
+                "English": "About the tide.",
+                "German": "Ueber die Flut."
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MKC_Maren_Tide"
+            }
+          },
+          {
+            "uid": "2baa486b9743cdcdbb5feaaa1dfbb7f4",
+            "type": "cond",
+            "pos": [
+              -90.0,
+              970.0
+            ],
+            "data": {
+              "kind": "var",
+              "args": {
+                "name": "mkc_ch2",
+                "value": 1
+              }
+            }
+          },
+          {
+            "uid": "6f87b138bd6dc263c3ae75717b76a77d",
+            "type": "line",
+            "pos": [
+              660.0,
+              970.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "The tide brings the raiders and takes the dead. It will rise four times.",
+                "German": "Die Flut bringt die Pluenderer und holt die Toten. Sie wird viermal steigen."
+              }
+            }
+          },
+          {
+            "uid": "272c76ca46ead19e377985f744f3b7a1",
+            "type": "option",
+            "pos": [
+              0.0,
+              1150.0
+            ],
+            "data": {
+              "text": {
+                "English": "I will pay the raiders' tithe (200 gold).",
+                "German": "Ich zahle den Zoll der Pluenderer (200 Gold)."
+              },
+              "type": "Info",
+              "permanent": false,
+              "info": "MKC_Maren_Tithe"
+            }
+          },
+          {
+            "uid": "f89cdcc8afeec1d436cbac7096d9c4dd",
+            "type": "cond",
+            "pos": [
+              -420.0,
+              1100.0
+            ],
+            "data": {
+              "kind": "quest",
+              "args": {
+                "quest": "Q_MKC_Camp",
+                "status": "Running"
+              }
+            }
+          },
+          {
+            "uid": "496fb806099e453b6567ee7f2c495f05",
+            "type": "cond",
+            "pos": [
+              -420.0,
+              1200.0
+            ],
+            "data": {
+              "kind": "item",
+              "args": {
+                "item": "It_Gold",
+                "count": 200
+              }
+            }
+          },
+          {
+            "uid": "9c5688a12b64c8fec9a04bf9ef491bca",
+            "type": "all",
+            "pos": [
+              -210.0,
+              1150.0
+            ]
+          },
+          {
+            "uid": "f312150d91bd2382c648db06988df9ac",
+            "type": "command",
+            "pos": [
+              330.0,
+              1150.0
+            ],
+            "data": {
+              "command": "Give",
+              "params": {
+                "Entity1": "player",
+                "Entity2": "npc",
+                "Item": "It_Gold",
+                "Amount": 200
+              }
+            }
+          },
+          {
+            "uid": "21f1351a00110e7d4e47a7aef0b406b3",
+            "type": "line",
+            "pos": [
+              660.0,
+              1150.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "Gold buys silence. The camp will leave you alone, and so will the tide, for a while.",
+                "German": "Gold kauft Schweigen. Das Lager laesst dich in Ruhe, und die Flut auch, eine Weile."
+              }
+            }
+          },
+          {
+            "uid": "f745e069769397e680b55c8d7fb77c77",
+            "type": "option",
+            "pos": [
+              0.0,
+              1380.0
+            ],
+            "data": {
+              "text": {
+                "English": "Show me the old trail.",
+                "German": "Zeig mir den alten Pfad."
+              },
+              "type": "Info",
+              "permanent": false,
+              "info": "MKC_Maren_Trail"
+            }
+          },
+          {
+            "uid": "63796e348e6234a283fb07e95561e948",
+            "type": "cond",
+            "pos": [
+              -420.0,
+              1330.0
+            ],
+            "data": {
+              "kind": "var",
+              "args": {
+                "name": "mkc_ch3",
+                "value": 1
+              }
+            }
+          },
+          {
+            "uid": "b706e58199406bba9e698a117f377e3a",
+            "type": "cond",
+            "pos": [
+              -420.0,
+              1430.0
+            ],
+            "data": {
+              "kind": "event",
+              "args": {
+                "name": "MKC_Trail_Shown"
+              }
+            }
+          },
+          {
+            "uid": "fb5ca57604c4af21e650b5cdb76a2da8",
+            "type": "not",
+            "pos": [
+              -210.0,
+              1430.0
+            ]
+          },
+          {
+            "uid": "474d4b2995e637d56ed1d720caac1ad2",
+            "type": "all",
+            "pos": [
+              -210.0,
+              1320.0
+            ]
+          },
+          {
+            "uid": "80826342b8d93fb538c6e6b49aa9e703",
+            "type": "command",
+            "pos": [
+              330.0,
+              1380.0
+            ],
+            "data": {
+              "command": "SetSectorStatus",
+              "params": {
+                "SectorName": "OutMain_Story_Chapter3_Lizards_Off",
+                "SectorEnabled": true
+              }
+            }
+          },
+          {
+            "uid": "5bffe51176a3968b610bbc5bbcc0a27b",
+            "type": "command",
+            "pos": [
+              660.0,
+              1380.0
+            ],
+            "data": {
+              "command": "SetGameEvent",
+              "params": {
+                "GameEvent": "MKC_Trail_Shown"
+              }
+            }
+          },
+          {
+            "uid": "058708ad8cc4402336899b307351961c",
+            "type": "line",
+            "pos": [
+              990.0,
+              1380.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "Follow the smoke. The lizards have woken on the old trail.",
+                "German": "Folge dem Rauch. Auf dem alten Pfad sind die Echsen erwacht."
+              }
+            }
+          },
+          {
+            "uid": "b1d87fd411330bb7b7c7e5c377c8cf5d",
+            "type": "option",
+            "pos": [
+              0.0,
+              1610.0
+            ],
+            "data": {
+              "text": {
+                "English": "Is the Chronicle complete?",
+                "German": "Ist die Chronik vollstaendig?"
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MKC_Maren_Done"
+            }
+          },
+          {
+            "uid": "1d80024b0ccdf64f28d88c7deed064be",
+            "type": "cond",
+            "pos": [
+              -420.0,
+              1560.0
+            ],
+            "data": {
+              "kind": "quest",
+              "args": {
+                "quest": "Q_MKC_Finale",
+                "status": "Success"
+              }
+            }
+          },
+          {
+            "uid": "7c8c18d9560f5da2c3b4d107b6c65666",
+            "type": "cond",
+            "pos": [
+              -420.0,
+              1660.0
+            ],
+            "data": {
+              "kind": "var",
+              "args": {
+                "name": "mkc_finale_done",
+                "value": 1
+              }
+            }
+          },
+          {
+            "uid": "d68d32d3b9c36b4fbf956f2c7fdb8793",
+            "type": "any",
+            "pos": [
+              -210.0,
+              1610.0
+            ]
+          },
+          {
+            "uid": "4eb9af2087f29545bbd9be2591db0ca7",
+            "type": "line",
+            "pos": [
+              330.0,
+              1610.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "Almost. The last line is yours to write.",
+                "German": "Fast. Die letzte Zeile schreibst du."
+              }
+            }
+          },
+          {
+            "uid": "3879d07018d05d8bda65ca6944efb7c4",
+            "type": "script",
+            "pos": [
+              660.0,
+              1610.0
+            ],
+            "data": {
+              "script": "MKC_TideBell"
+            }
+          },
+          {
+            "uid": "b144adf975d0ea08671c65051fb93d94",
+            "type": "option",
+            "pos": [
+              0.0,
+              1840.0
+            ],
+            "data": {
+              "text": {
+                "English": "Farewell.",
+                "German": "Lebewohl."
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MKC_Maren_Bye"
+            }
+          },
+          {
+            "uid": "5adf18fc15d8214e32873f5a90f5ec3f",
+            "type": "end",
+            "pos": [
+              330.0,
+              1840.0
+            ]
+          },
+          {
+            "uid": "9c647e9c7f30536c5e01a9c1b8502f87",
+            "type": "comment",
+            "pos": [
+              400.0,
+              -150.0
+            ],
+            "data": {
+              "text": "Maren: the dialogue of every chapter. The options appear when their conditions hold: variables set by the event graphs, quest states, items carried."
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "7618ee416fd34968a67bb463b77bf8a4",
+            "from": [
+              "83b90f419d9b7b6b59e05329b7c46eb1",
+              "then"
+            ],
+            "to": [
+              "6fac19b3b004e4617bf951bcd88675f3",
+              "in"
+            ]
+          },
+          {
+            "uid": "4967b1c1e484677619ac2e381bf07049",
+            "from": [
+              "0a3aad167663c5675b4b6388cbff67d1",
+              "out"
+            ],
+            "to": [
+              "f32b87410ca3841d1f7ce92c024ac3ac",
+              "when"
+            ]
+          },
+          {
+            "uid": "9d72298d6c4c67749639da92b0b7f498",
+            "from": [
+              "e74f633d62add01ae35969c45be4fa1b",
+              "next"
+            ],
+            "to": [
+              "3892ba1e5c09694a7b90f1f79411464b",
+              "in"
+            ]
+          },
+          {
+            "uid": "2ec0224f04b60691630cf1b0a22b9591",
+            "from": [
+              "3892ba1e5c09694a7b90f1f79411464b",
+              "next"
+            ],
+            "to": [
+              "760f69db3675545a0404a5b2dad8a96e",
+              "in"
+            ]
+          },
+          {
+            "uid": "b46c88279f5dadd3a9daedbdcf3dc5ae",
+            "from": [
+              "760f69db3675545a0404a5b2dad8a96e",
+              "next"
+            ],
+            "to": [
+              "4268a2a89b0f2e624f88bb7bbd398128",
+              "in"
+            ]
+          },
+          {
+            "uid": "98c46d6399480cd1ed161a77e38aaf95",
+            "from": [
+              "f32b87410ca3841d1f7ce92c024ac3ac",
+              "then"
+            ],
+            "to": [
+              "e74f633d62add01ae35969c45be4fa1b",
+              "in"
+            ]
+          },
+          {
+            "uid": "4ffbf73c199b34a6ef109b6727436658",
+            "from": [
+              "b6237d40b2145219ff5dd9de9cc5646f",
+              "out"
+            ],
+            "to": [
+              "8b344c9ebecb7fd59e30a48588d41089",
+              "in"
+            ]
+          },
+          {
+            "uid": "04d059f18acdc9d57a7d17e97c8d305f",
+            "from": [
+              "09377d6da50d9084cdbf3a586bed781a",
+              "out"
+            ],
+            "to": [
+              "8b344c9ebecb7fd59e30a48588d41089",
+              "in"
+            ]
+          },
+          {
+            "uid": "728a06e02dc646701036b7ee714a0492",
+            "from": [
+              "8b344c9ebecb7fd59e30a48588d41089",
+              "out"
+            ],
+            "to": [
+              "b8c2fcca75c213d7c0c2d5b19a9e2896",
+              "when"
+            ]
+          },
+          {
+            "uid": "ff35f0205751ac4583137497b83dfcf4",
+            "from": [
+              "e5623008a09ca3903d6f567fce01cfe1",
+              "next"
+            ],
+            "to": [
+              "c501e0fbc36b3e5a563c92269f99d1f2",
+              "in"
+            ]
+          },
+          {
+            "uid": "efb4cb4326d278ce526bc045c20cf457",
+            "from": [
+              "c501e0fbc36b3e5a563c92269f99d1f2",
+              "next"
+            ],
+            "to": [
+              "4334779cbc28f22740ea279d9191386b",
+              "in"
+            ]
+          },
+          {
+            "uid": "76839550a88374926af01b86f0f03b0b",
+            "from": [
+              "b8c2fcca75c213d7c0c2d5b19a9e2896",
+              "then"
+            ],
+            "to": [
+              "e5623008a09ca3903d6f567fce01cfe1",
+              "in"
+            ]
+          },
+          {
+            "uid": "1ff8cf901c9ee46f764383dfa5d11df6",
+            "from": [
+              "023b4f7b59a0b90571280e28d054f9bd",
+              "then"
+            ],
+            "to": [
+              "e6aa814e73922939035849f6964dab8f",
+              "in"
+            ]
+          },
+          {
+            "uid": "2c9db6a4a33aad932147f95e4df2e95b",
+            "from": [
+              "6d69a23de340fd19ee84b1d5376a9c14",
+              "then"
+            ],
+            "to": [
+              "4e5103bb39663e4ea62d3f9e8d642c10",
+              "in"
+            ]
+          },
+          {
+            "uid": "41c39d2d316394d3c70d8e55b63c245b",
+            "from": [
+              "2baa486b9743cdcdbb5feaaa1dfbb7f4",
+              "out"
+            ],
+            "to": [
+              "02448456ec5a8025c84b342464158157",
+              "when"
+            ]
+          },
+          {
+            "uid": "2d3d0b7662f43920b81558fad5f6a3a9",
+            "from": [
+              "02448456ec5a8025c84b342464158157",
+              "then"
+            ],
+            "to": [
+              "6f87b138bd6dc263c3ae75717b76a77d",
+              "in"
+            ]
+          },
+          {
+            "uid": "588558b7cf3ae7c5064cf27a8313b3a5",
+            "from": [
+              "023b4f7b59a0b90571280e28d054f9bd",
+              "choices"
+            ],
+            "to": [
+              "6d69a23de340fd19ee84b1d5376a9c14",
+              "parent"
+            ]
+          },
+          {
+            "uid": "8ee5ed0f2b57f71191dea21918db27f6",
+            "from": [
+              "023b4f7b59a0b90571280e28d054f9bd",
+              "choices"
+            ],
+            "to": [
+              "02448456ec5a8025c84b342464158157",
+              "parent"
+            ]
+          },
+          {
+            "uid": "6b5e8e48f3dfd7fc156d7ff320a24561",
+            "from": [
+              "f89cdcc8afeec1d436cbac7096d9c4dd",
+              "out"
+            ],
+            "to": [
+              "9c5688a12b64c8fec9a04bf9ef491bca",
+              "in"
+            ]
+          },
+          {
+            "uid": "2746ae30160b27ec023f025a6315bddd",
+            "from": [
+              "496fb806099e453b6567ee7f2c495f05",
+              "out"
+            ],
+            "to": [
+              "9c5688a12b64c8fec9a04bf9ef491bca",
+              "in"
+            ]
+          },
+          {
+            "uid": "3d0a51dd81e14f5302f2037b23505c8f",
+            "from": [
+              "9c5688a12b64c8fec9a04bf9ef491bca",
+              "out"
+            ],
+            "to": [
+              "272c76ca46ead19e377985f744f3b7a1",
+              "when"
+            ]
+          },
+          {
+            "uid": "75d61086fc3ca9e4ee8e91600aa6e8e5",
+            "from": [
+              "f312150d91bd2382c648db06988df9ac",
+              "next"
+            ],
+            "to": [
+              "21f1351a00110e7d4e47a7aef0b406b3",
+              "in"
+            ]
+          },
+          {
+            "uid": "f5be326de610e74b914aaed7da6c3f08",
+            "from": [
+              "272c76ca46ead19e377985f744f3b7a1",
+              "then"
+            ],
+            "to": [
+              "f312150d91bd2382c648db06988df9ac",
+              "in"
+            ]
+          },
+          {
+            "uid": "357afd3979c92aeba5652a075cdfbf49",
+            "from": [
+              "b706e58199406bba9e698a117f377e3a",
+              "out"
+            ],
+            "to": [
+              "fb5ca57604c4af21e650b5cdb76a2da8",
+              "in"
+            ]
+          },
+          {
+            "uid": "6a79ddc5c1a591352ed9970c57864306",
+            "from": [
+              "63796e348e6234a283fb07e95561e948",
+              "out"
+            ],
+            "to": [
+              "474d4b2995e637d56ed1d720caac1ad2",
+              "in"
+            ]
+          },
+          {
+            "uid": "188ea79c8f72e9b5ee45b2236d7838f2",
+            "from": [
+              "fb5ca57604c4af21e650b5cdb76a2da8",
+              "out"
+            ],
+            "to": [
+              "474d4b2995e637d56ed1d720caac1ad2",
+              "in"
+            ]
+          },
+          {
+            "uid": "703a2b7dda8d2c27c6ed025a09bafe49",
+            "from": [
+              "474d4b2995e637d56ed1d720caac1ad2",
+              "out"
+            ],
+            "to": [
+              "f745e069769397e680b55c8d7fb77c77",
+              "when"
+            ]
+          },
+          {
+            "uid": "07384f3985c6ae07963063f7bc881dc6",
+            "from": [
+              "80826342b8d93fb538c6e6b49aa9e703",
+              "next"
+            ],
+            "to": [
+              "5bffe51176a3968b610bbc5bbcc0a27b",
+              "in"
+            ]
+          },
+          {
+            "uid": "96e6347c54de29c4dae68b13cbc4f280",
+            "from": [
+              "5bffe51176a3968b610bbc5bbcc0a27b",
+              "next"
+            ],
+            "to": [
+              "058708ad8cc4402336899b307351961c",
+              "in"
+            ]
+          },
+          {
+            "uid": "a25bf05b5ebae26efa824fde8b509108",
+            "from": [
+              "f745e069769397e680b55c8d7fb77c77",
+              "then"
+            ],
+            "to": [
+              "80826342b8d93fb538c6e6b49aa9e703",
+              "in"
+            ]
+          },
+          {
+            "uid": "0e7d8b6672bf77efd6f7c5f03054be87",
+            "from": [
+              "1d80024b0ccdf64f28d88c7deed064be",
+              "out"
+            ],
+            "to": [
+              "d68d32d3b9c36b4fbf956f2c7fdb8793",
+              "in"
+            ]
+          },
+          {
+            "uid": "e6828627b34c8cb01a1ebdab0c6bd1e1",
+            "from": [
+              "7c8c18d9560f5da2c3b4d107b6c65666",
+              "out"
+            ],
+            "to": [
+              "d68d32d3b9c36b4fbf956f2c7fdb8793",
+              "in"
+            ]
+          },
+          {
+            "uid": "a36a3e1af8a74dbc619f4bd6a7a13f34",
+            "from": [
+              "d68d32d3b9c36b4fbf956f2c7fdb8793",
+              "out"
+            ],
+            "to": [
+              "b1d87fd411330bb7b7c7e5c377c8cf5d",
+              "when"
+            ]
+          },
+          {
+            "uid": "2d7b686f246658f4cd2a34906cafe228",
+            "from": [
+              "4eb9af2087f29545bbd9be2591db0ca7",
+              "next"
+            ],
+            "to": [
+              "3879d07018d05d8bda65ca6944efb7c4",
+              "in"
+            ]
+          },
+          {
+            "uid": "0e1b221c6566097e8db46b8cde6fbd2c",
+            "from": [
+              "b1d87fd411330bb7b7c7e5c377c8cf5d",
+              "then"
+            ],
+            "to": [
+              "4eb9af2087f29545bbd9be2591db0ca7",
+              "in"
+            ]
+          },
+          {
+            "uid": "29927752558dfc69ce8a59067f843d1b",
+            "from": [
+              "b144adf975d0ea08671c65051fb93d94",
+              "then"
+            ],
+            "to": [
+              "5adf18fc15d8214e32873f5a90f5ec3f",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "The chronicler: quest giver, lore, tithe, trail, finale."
+    },
+    {
+      "uid": "e114584a8a5724194ca9fb9ea7aa28a5",
+      "name": "Scout",
+      "owner": "MKC_Scout",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "a6af22d2544ebbf09a5660d58a544e22",
+            "type": "option",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "What happened to you?",
+                "German": "Was ist dir passiert?"
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MKC_Scout_Hurt"
+            }
+          },
+          {
+            "uid": "3b6588a18485cca5317ebddf89743490",
+            "type": "line",
+            "pos": [
+              330.0,
+              0.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "Raiders at the Ash Camp. They burned my boat.",
+                "German": "Pluenderer im Aschelager. Sie haben mein Boot verbrannt."
+              }
+            }
+          },
+          {
+            "uid": "3fc4094a93597887c04d779d607b7abf",
+            "type": "line",
+            "pos": [
+              660.0,
+              0.0
+            ],
+            "data": {
+              "speaker": "MKC_Maren",
+              "text": {
+                "English": "(Maren, from afar) Write that down, someone.",
+                "German": "(Maren, aus der Ferne) Schreibt das jemand auf."
+              }
+            }
+          },
+          {
+            "uid": "ce13f7bc98fbc8ac6c4538ec3dd711e9",
+            "type": "option",
+            "pos": [
+              0.0,
+              200.0
+            ],
+            "data": {
+              "text": {
+                "English": "Take this, you look half dead.",
+                "German": "Nimm das, du siehst halb tot aus."
+              },
+              "type": "Info",
+              "permanent": false,
+              "info": "MKC_Scout_Gift"
+            }
+          },
+          {
+            "uid": "382503c4d98d98f7517590b96c5f7599",
+            "type": "cond",
+            "pos": [
+              -380.0,
+              200.0
+            ],
+            "data": {
+              "kind": "item",
+              "args": {
+                "item": "It_Apple",
+                "count": 1
+              }
+            }
+          },
+          {
+            "uid": "c13bc474c5bd9124e8a63a58322debfd",
+            "type": "command",
+            "pos": [
+              330.0,
+              200.0
+            ],
+            "data": {
+              "command": "Give",
+              "params": {
+                "Entity1": "player",
+                "Entity2": "npc",
+                "Item": "It_Apple",
+                "Amount": 1
+              }
+            }
+          },
+          {
+            "uid": "4c2678be6c4a218c254938b9ecda7c4f",
+            "type": "command",
+            "pos": [
+              660.0,
+              200.0
+            ],
+            "data": {
+              "command": "Give",
+              "params": {
+                "Entity1": "npc",
+                "Entity2": "player",
+                "Item": "It_Po_Health_01",
+                "Amount": 1
+              }
+            }
+          },
+          {
+            "uid": "7c728f9a04490600eaeb14a15ee38b3b",
+            "type": "line",
+            "pos": [
+              990.0,
+              200.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "Thank you. Take a potion; I owe you.",
+                "German": "Danke. Nimm einen Trank; ich stehe in deiner Schuld."
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "9d422db8717f46fd4d1d6dc58d0dbc4a",
+            "from": [
+              "a6af22d2544ebbf09a5660d58a544e22",
+              "then"
+            ],
+            "to": [
+              "3b6588a18485cca5317ebddf89743490",
+              "in"
+            ]
+          },
+          {
+            "uid": "acef42cff38428322c302f322e9e33e3",
+            "from": [
+              "3b6588a18485cca5317ebddf89743490",
+              "next"
+            ],
+            "to": [
+              "3fc4094a93597887c04d779d607b7abf",
+              "in"
+            ]
+          },
+          {
+            "uid": "dffdde172e3985e5fd12a1464f895b0f",
+            "from": [
+              "382503c4d98d98f7517590b96c5f7599",
+              "out"
+            ],
+            "to": [
+              "ce13f7bc98fbc8ac6c4538ec3dd711e9",
+              "when"
+            ]
+          },
+          {
+            "uid": "dfe9f833b37da7c00996a83cbb834187",
+            "from": [
+              "c13bc474c5bd9124e8a63a58322debfd",
+              "next"
+            ],
+            "to": [
+              "4c2678be6c4a218c254938b9ecda7c4f",
+              "in"
+            ]
+          },
+          {
+            "uid": "762062e08ef5e5ca025876384ed1c3ad",
+            "from": [
+              "4c2678be6c4a218c254938b9ecda7c4f",
+              "next"
+            ],
+            "to": [
+              "7c728f9a04490600eaeb14a15ee38b3b",
+              "in"
+            ]
+          },
+          {
+            "uid": "a1775a7ae14a84fe60f1c8e4b0de53c4",
+            "from": [
+              "ce13f7bc98fbc8ac6c4538ec3dd711e9",
+              "then"
+            ],
+            "to": [
+              "c13bc474c5bd9124e8a63a58322debfd",
+              "in"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "b460d5e8d4c53034aa7febd9404faaec",
+      "name": "Smuggler",
+      "owner": "MKC_Smuggler",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "4e27306ee3e36af594eb2b193a2e6a23",
+            "type": "option",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "What do you sell?",
+                "German": "Was verkaufst du?"
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MKC_Smuggler_Trade"
+            }
+          },
+          {
+            "uid": "519a428d3ee2be0f26e91d5cf27f41d0",
+            "type": "line",
+            "pos": [
+              330.0,
+              0.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "Things the Inquisition would rather you did not own.",
+                "German": "Dinge, die die Inquisition lieber nicht in deinem Besitz saehe."
+              }
+            }
+          },
+          {
+            "uid": "a0816aa45698352d77604c35c0b7ad09",
+            "type": "command",
+            "pos": [
+              660.0,
+              0.0
+            ],
+            "data": {
+              "command": "DoTrade",
+              "params": {
+                "Entity1": "player",
+                "Entity2": "npc"
+              }
+            }
+          },
+          {
+            "uid": "d71e03077f4a2db0aaa3c7d009bb48cf",
+            "type": "option",
+            "pos": [
+              0.0,
+              200.0
+            ],
+            "data": {
+              "text": {
+                "English": "I know the Chronicle.",
+                "German": "Ich kenne die Chronik."
+              },
+              "type": "Important",
+              "permanent": false,
+              "info": "MKC_Smuggler_Chronicle"
+            }
+          },
+          {
+            "uid": "8c663d99473271d8ddbfc8d527acd664",
+            "type": "cond",
+            "pos": [
+              -380.0,
+              200.0
+            ],
+            "data": {
+              "kind": "quest",
+              "args": {
+                "quest": "Q_MKC_Ink",
+                "status": "Success"
+              }
+            }
+          },
+          {
+            "uid": "8d4e0af11bf49462728f312281330966",
+            "type": "line",
+            "pos": [
+              330.0,
+              200.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "Then you know why the tide is wrong. Take a scroll from me, for free.",
+                "German": "Dann weisst du, warum die Flut falsch ist. Nimm eine Schriftrolle, umsonst."
+              }
+            }
+          },
+          {
+            "uid": "82a638319292b1b5bd6ee62502459eab",
+            "type": "command",
+            "pos": [
+              660.0,
+              200.0
+            ],
+            "data": {
+              "command": "Give",
+              "params": {
+                "Entity1": "npc",
+                "Entity2": "player",
+                "Item": "MKC_Ember_Whisper_Scroll",
+                "Amount": 1
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "868d749e1f24fdc123f1da3b042b5756",
+            "from": [
+              "519a428d3ee2be0f26e91d5cf27f41d0",
+              "next"
+            ],
+            "to": [
+              "a0816aa45698352d77604c35c0b7ad09",
+              "in"
+            ]
+          },
+          {
+            "uid": "2cb9bff088108a984897339b5ed473ab",
+            "from": [
+              "4e27306ee3e36af594eb2b193a2e6a23",
+              "then"
+            ],
+            "to": [
+              "519a428d3ee2be0f26e91d5cf27f41d0",
+              "in"
+            ]
+          },
+          {
+            "uid": "50c9f28bb189b9904948665e6ab3d6af",
+            "from": [
+              "8c663d99473271d8ddbfc8d527acd664",
+              "out"
+            ],
+            "to": [
+              "d71e03077f4a2db0aaa3c7d009bb48cf",
+              "when"
+            ]
+          },
+          {
+            "uid": "8a7e71367f62f37ca1da986ddeacf6af",
+            "from": [
+              "8d4e0af11bf49462728f312281330966",
+              "next"
+            ],
+            "to": [
+              "82a638319292b1b5bd6ee62502459eab",
+              "in"
+            ]
+          },
+          {
+            "uid": "e32ec2d18dfcde2960a471f8697bc453",
+            "from": [
+              "d71e03077f4a2db0aaa3c7d009bb48cf",
+              "then"
+            ],
+            "to": [
+              "8d4e0af11bf49462728f312281330966",
+              "in"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "quests": [
+    {
+      "uid": "41ae9713b7553e857443ef8dc71402cb",
+      "name": "Q_MKC_Chronicle",
+      "title": {
+        "English": "The Ashen Chronicle",
+        "German": "Die Aschechronik"
+      },
+      "type": "Report",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "48cd41c1d15a412d5f90dd37469a1e70",
+            "type": "start",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "trigger": "game_start"
+            }
+          },
+          {
+            "uid": "cc9b5c2cea4433702de842a624051d3b",
+            "type": "log",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "Somewhere on the beach a chronicler writes down the island's story.",
+                "German": "Irgendwo am Strand schreibt eine Chronistin die Geschichte der Insel auf."
+              }
+            }
+          },
+          {
+            "uid": "4032789b7caff6221293335afbbb5f51",
+            "type": "objective",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "kind": "var",
+              "name": "mkc_finale_done",
+              "value": 1,
+              "text": {
+                "English": "Help the Chronicle reach its last page.",
+                "German": "Hilf der Chronik bis zu ihrer letzten Seite."
+              }
+            }
+          },
+          {
+            "uid": "30780fa107881a5e18b547e64d7e0bd9",
+            "type": "reward",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "xp": 500,
+              "gold": 0,
+              "items": [
+                [
+                  "MKC_Tide_Amulet",
+                  1
+                ]
+              ],
+              "var": "mkc_chronicle_done",
+              "var_value": 1
+            }
+          },
+          {
+            "uid": "e7c434964487232a27f2a1d5fe75608a",
+            "type": "outcome",
+            "pos": [
+              1360.0,
+              0.0
+            ],
+            "data": {
+              "result": "success",
+              "text": {
+                "English": "The Chronicle is complete.",
+                "German": "Die Chronik ist vollstaendig."
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "55c0fc9b8e96f28572e3ba8f5c4e758c",
+            "from": [
+              "48cd41c1d15a412d5f90dd37469a1e70",
+              "next"
+            ],
+            "to": [
+              "cc9b5c2cea4433702de842a624051d3b",
+              "in"
+            ]
+          },
+          {
+            "uid": "0a847ae365d4484ca9737e54caa46d99",
+            "from": [
+              "cc9b5c2cea4433702de842a624051d3b",
+              "next"
+            ],
+            "to": [
+              "4032789b7caff6221293335afbbb5f51",
+              "in"
+            ]
+          },
+          {
+            "uid": "61686b92507305c79d0410e5d4c7e089",
+            "from": [
+              "4032789b7caff6221293335afbbb5f51",
+              "next"
+            ],
+            "to": [
+              "30780fa107881a5e18b547e64d7e0bd9",
+              "in"
+            ]
+          },
+          {
+            "uid": "a716db1d013e334dff071ea1628b7e44",
+            "from": [
+              "30780fa107881a5e18b547e64d7e0bd9",
+              "next"
+            ],
+            "to": [
+              "e7c434964487232a27f2a1d5fe75608a",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "The main quest: started with every new game, ends with the finale."
+    },
+    {
+      "uid": "60b28697a0f43ca2f8b579771fea7744",
+      "name": "Q_MKC_Ink",
+      "title": {
+        "English": "Pearls for the Ink",
+        "German": "Perlen fuer die Tinte"
+      },
+      "type": "HasItems",
+      "xp": 60,
+      "graph": {
+        "nodes": [
+          {
+            "uid": "f270e933da26dba1850e0aa40fd9f112",
+            "type": "start",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "trigger": "dialog"
+            }
+          },
+          {
+            "uid": "17c164b9edec4403540c0f6e68b55542",
+            "type": "objective",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "kind": "items",
+              "item": "It_Pearl",
+              "count": 3,
+              "text": {
+                "English": "Find three pearls on the shore.",
+                "German": "Finde drei Perlen am Strand."
+              }
+            }
+          },
+          {
+            "uid": "b9af7445ab037460cb34fd09e1073d9f",
+            "type": "objective",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "kind": "talk",
+              "info": "MKC_Maren_Ink_Turnin",
+              "text": {
+                "English": "Bring the pearls to Maren.",
+                "German": "Bring die Perlen zu Maren."
+              }
+            }
+          },
+          {
+            "uid": "64e7abf799d3b86cea214eab76eac500",
+            "type": "reward",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "xp": 120,
+              "gold": 40,
+              "items": [
+                [
+                  "MKC_Recipe_Chronicle_Blade",
+                  1
+                ],
+                [
+                  "It_Po_Health_01",
+                  2
+                ]
+              ]
+            }
+          },
+          {
+            "uid": "4a31a4dd4cb977383aad3e2d0cf7cd83",
+            "type": "outcome",
+            "pos": [
+              1360.0,
+              0.0
+            ],
+            "data": {
+              "result": "success",
+              "text": {
+                "English": "Maren has her ink, and I have a smithing plan.",
+                "German": "Maren hat ihre Tinte und ich einen Schmiedeplan."
+              },
+              "next_quest": "Q_MKC_Scout"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "0edeba0cb7de5610ee6863c322664676",
+            "from": [
+              "f270e933da26dba1850e0aa40fd9f112",
+              "next"
+            ],
+            "to": [
+              "17c164b9edec4403540c0f6e68b55542",
+              "in"
+            ]
+          },
+          {
+            "uid": "cdbdcf9dd95dae02194264bc873f7fc8",
+            "from": [
+              "17c164b9edec4403540c0f6e68b55542",
+              "next"
+            ],
+            "to": [
+              "b9af7445ab037460cb34fd09e1073d9f",
+              "in"
+            ]
+          },
+          {
+            "uid": "5af270df3d59abd2219537113aec144d",
+            "from": [
+              "b9af7445ab037460cb34fd09e1073d9f",
+              "next"
+            ],
+            "to": [
+              "64e7abf799d3b86cea214eab76eac500",
+              "in"
+            ]
+          },
+          {
+            "uid": "b4377912ec5f3886cb1ffa4df56a5b0e",
+            "from": [
+              "64e7abf799d3b86cea214eab76eac500",
+              "next"
+            ],
+            "to": [
+              "4a31a4dd4cb977383aad3e2d0cf7cd83",
+              "in"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "e437cf8e0f5fc9715195059b220a12ef",
+      "name": "Q_MKC_Scout",
+      "title": {
+        "English": "The Wounded Scout",
+        "German": "Der verwundete Kundschafter"
+      },
+      "type": "Report",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "f9079db4222260521fed0636c3fd4e6a",
+            "type": "start",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "trigger": "dialog"
+            }
+          },
+          {
+            "uid": "60fb333cd3b05bea44b8fa4c3c9477fe",
+            "type": "log",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "A scout lies wounded near Maren's camp. He saw something in the west.",
+                "German": "Ein Kundschafter liegt verwundet bei Marens Lager. Er hat im Westen etwas gesehen."
+              }
+            }
+          },
+          {
+            "uid": "1e038afa33095c528ece6cab9cacb458",
+            "type": "objective",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "kind": "talk",
+              "info": "MKC_Scout_Hurt",
+              "text": {
+                "English": "Talk to the wounded scout.",
+                "German": "Sprich mit dem verwundeten Kundschafter."
+              }
+            }
+          },
+          {
+            "uid": "3e491e6a60fb32f95a87a7f31a578de1",
+            "type": "reward",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "xp": 60,
+              "items": [
+                [
+                  "It_Bread",
+                  2
+                ]
+              ]
+            }
+          },
+          {
+            "uid": "fb226132465eff2074962365592636cd",
+            "type": "outcome",
+            "pos": [
+              1360.0,
+              0.0
+            ],
+            "data": {
+              "result": "success",
+              "text": {
+                "English": "Raiders have a camp in the west.",
+                "German": "Pluenderer haben ein Lager im Westen."
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "00c0ed22f975eac0a1cf62007175edcd",
+            "from": [
+              "f9079db4222260521fed0636c3fd4e6a",
+              "next"
+            ],
+            "to": [
+              "60fb333cd3b05bea44b8fa4c3c9477fe",
+              "in"
+            ]
+          },
+          {
+            "uid": "6995971c184f35881352a9fabcb8974c",
+            "from": [
+              "60fb333cd3b05bea44b8fa4c3c9477fe",
+              "next"
+            ],
+            "to": [
+              "1e038afa33095c528ece6cab9cacb458",
+              "in"
+            ]
+          },
+          {
+            "uid": "43fad5b13baad3d37e96dbfd74b3d9f2",
+            "from": [
+              "1e038afa33095c528ece6cab9cacb458",
+              "next"
+            ],
+            "to": [
+              "3e491e6a60fb32f95a87a7f31a578de1",
+              "in"
+            ]
+          },
+          {
+            "uid": "924f1cfc47d8af1113788234943e478b",
+            "from": [
+              "3e491e6a60fb32f95a87a7f31a578de1",
+              "next"
+            ],
+            "to": [
+              "fb226132465eff2074962365592636cd",
+              "in"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "3a5ab94aa134b4e4e8fa5b58092598d3",
+      "name": "Q_MKC_Wolves",
+      "title": {
+        "English": "Ash-fed Wolves",
+        "German": "Aschegefressene Woelfe"
+      },
+      "type": "Kill",
+      "silent": true,
+      "graph": {
+        "nodes": [
+          {
+            "uid": "3cbdcff47187509a339df336390dffe9",
+            "type": "start",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "trigger": "kill",
+              "target": "Wolf"
+            }
+          },
+          {
+            "uid": "e5d2adb86ff6eef6babe2abe8cc6ffbf",
+            "type": "log",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "Ash-fed wolves roam the shore. Two more of them have to go.",
+                "German": "Aschegefressene Woelfe streifen am Strand. Zwei weitere muessen weg."
+              }
+            }
+          },
+          {
+            "uid": "6b79f0c67e55a00dd146a675c14e94e2",
+            "type": "objective",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "kind": "kill",
+              "target": "Wolf",
+              "count": 2,
+              "text": {
+                "English": "Kill two more wolves.",
+                "German": "Toete zwei weitere Woelfe."
+              }
+            }
+          },
+          {
+            "uid": "5c79e4d8bc1675031dfd24284c3f87b5",
+            "type": "reward",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "xp": 80,
+              "items": [
+                [
+                  "MKC_Tide_Potion",
+                  1
+                ]
+              ]
+            }
+          },
+          {
+            "uid": "7518285e2a53e0af41515b413e045a15",
+            "type": "outcome",
+            "pos": [
+              1360.0,
+              0.0
+            ],
+            "data": {
+              "result": "success",
+              "text": {
+                "English": "The shore is quieter.",
+                "German": "Der Strand ist ruhiger."
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "2cdd6da780c21c773183c8623742a9aa",
+            "from": [
+              "3cbdcff47187509a339df336390dffe9",
+              "next"
+            ],
+            "to": [
+              "e5d2adb86ff6eef6babe2abe8cc6ffbf",
+              "in"
+            ]
+          },
+          {
+            "uid": "afd86ac230722161e9724ce8f9f6199b",
+            "from": [
+              "e5d2adb86ff6eef6babe2abe8cc6ffbf",
+              "next"
+            ],
+            "to": [
+              "6b79f0c67e55a00dd146a675c14e94e2",
+              "in"
+            ]
+          },
+          {
+            "uid": "928ec31f121a4b7455c7f54346db4e11",
+            "from": [
+              "6b79f0c67e55a00dd146a675c14e94e2",
+              "next"
+            ],
+            "to": [
+              "5c79e4d8bc1675031dfd24284c3f87b5",
+              "in"
+            ]
+          },
+          {
+            "uid": "b1bea0e20fd9880f74123cd1a01c2cbb",
+            "from": [
+              "5c79e4d8bc1675031dfd24284c3f87b5",
+              "next"
+            ],
+            "to": [
+              "7518285e2a53e0af41515b413e045a15",
+              "in"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "17255c6b2d242f225bb27ba1bf6d9a0f",
+      "name": "Q_MKC_Camp",
+      "title": {
+        "English": "The Ash Camp",
+        "German": "Das Aschelager"
+      },
+      "type": "Kill",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "d29efc308aa5126057d56f71bfa8bbb7",
+            "type": "start",
+            "pos": [
+              0.0,
+              170.0
+            ],
+            "data": {
+              "trigger": "dialog"
+            }
+          },
+          {
+            "uid": "7ae7d9e917525b2d39bb7e3c4924c13d",
+            "type": "log",
+            "pos": [
+              340.0,
+              170.0
+            ],
+            "data": {
+              "text": {
+                "English": "Chapter 2: the raiders' Ash Camp has appeared in the west.",
+                "German": "Kapitel 2: Das Aschelager der Pluenderer ist im Westen aufgetaucht."
+              }
+            }
+          },
+          {
+            "uid": "882535c9830bb440b79e00b84699b203",
+            "type": "branch",
+            "pos": [
+              680.0,
+              170.0
+            ]
+          },
+          {
+            "uid": "6bc36ca5b81cb1e8f033757fbf9713c3",
+            "type": "objective",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "kind": "kill",
+              "target": "MKC_Ash_Warlord",
+              "count": 1,
+              "text": {
+                "English": "Kill the Ash Warlord.",
+                "German": "Toete den Aschekriegsherrn."
+              }
+            }
+          },
+          {
+            "uid": "707612c50b6d3b53d170cfa9cc7b500b",
+            "type": "reward",
+            "pos": [
+              1360.0,
+              0.0
+            ],
+            "data": {
+              "xp": 400,
+              "items": [
+                [
+                  "MKC_Tide_Potion",
+                  2
+                ]
+              ]
+            }
+          },
+          {
+            "uid": "8c460cdc7e641f888be0e0d68041d3ba",
+            "type": "outcome",
+            "pos": [
+              1700.0,
+              0.0
+            ],
+            "data": {
+              "result": "success",
+              "text": {
+                "English": "The Warlord is dead and the camp is broken.",
+                "German": "Der Kriegsherr ist tot und das Lager zerschlagen."
+              }
+            }
+          },
+          {
+            "uid": "f68dce61fd563bd3ed5b1993af25fd56",
+            "type": "objective",
+            "pos": [
+              1020.0,
+              340.0
+            ],
+            "data": {
+              "kind": "talk",
+              "info": "MKC_Maren_Tithe",
+              "text": {
+                "English": "Or pay the tithe to Maren (200 gold).",
+                "German": "Oder zahle den Zoll an Maren (200 Gold)."
+              }
+            }
+          },
+          {
+            "uid": "ddfe7bcc668a3070c5c2f45924aac7a6",
+            "type": "reward",
+            "pos": [
+              1360.0,
+              340.0
+            ],
+            "data": {
+              "xp": 100
+            }
+          },
+          {
+            "uid": "54ef4742821626f271d439f55ee40eea",
+            "type": "outcome",
+            "pos": [
+              1700.0,
+              340.0
+            ],
+            "data": {
+              "result": "success",
+              "text": {
+                "English": "The raiders were bought off.",
+                "German": "Die Pluenderer wurden bezahlt."
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "9afeebdcc668c38dec69c7f81fc54fda",
+            "from": [
+              "d29efc308aa5126057d56f71bfa8bbb7",
+              "next"
+            ],
+            "to": [
+              "7ae7d9e917525b2d39bb7e3c4924c13d",
+              "in"
+            ]
+          },
+          {
+            "uid": "34ffd9d70426cc8de8906649de65f2a3",
+            "from": [
+              "7ae7d9e917525b2d39bb7e3c4924c13d",
+              "next"
+            ],
+            "to": [
+              "882535c9830bb440b79e00b84699b203",
+              "in"
+            ]
+          },
+          {
+            "uid": "8ab56a5ee1395c2df38eaee7d9ff8b9e",
+            "from": [
+              "882535c9830bb440b79e00b84699b203",
+              "next"
+            ],
+            "to": [
+              "6bc36ca5b81cb1e8f033757fbf9713c3",
+              "in"
+            ]
+          },
+          {
+            "uid": "b54c2326b39fa404fcf4f27dcbca619f",
+            "from": [
+              "882535c9830bb440b79e00b84699b203",
+              "next"
+            ],
+            "to": [
+              "f68dce61fd563bd3ed5b1993af25fd56",
+              "in"
+            ]
+          },
+          {
+            "uid": "e6186362a39732337d94286c9ee4333c",
+            "from": [
+              "6bc36ca5b81cb1e8f033757fbf9713c3",
+              "next"
+            ],
+            "to": [
+              "707612c50b6d3b53d170cfa9cc7b500b",
+              "in"
+            ]
+          },
+          {
+            "uid": "3f9b6b1631d14adf0f963bd450c557d7",
+            "from": [
+              "707612c50b6d3b53d170cfa9cc7b500b",
+              "next"
+            ],
+            "to": [
+              "8c460cdc7e641f888be0e0d68041d3ba",
+              "in"
+            ]
+          },
+          {
+            "uid": "0b6a6000ea73fb00742b6f163c6793fd",
+            "from": [
+              "f68dce61fd563bd3ed5b1993af25fd56",
+              "next"
+            ],
+            "to": [
+              "ddfe7bcc668a3070c5c2f45924aac7a6",
+              "in"
+            ]
+          },
+          {
+            "uid": "666d8861c57a57924e54fec93454dcf4",
+            "from": [
+              "ddfe7bcc668a3070c5c2f45924aac7a6",
+              "next"
+            ],
+            "to": [
+              "54ef4742821626f271d439f55ee40eea",
+              "in"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "37612e9be7fc678dd21812d30ff7007c",
+      "name": "Q_MKC_Beacon",
+      "title": {
+        "English": "The Beacon",
+        "German": "Das Leuchtfeuer"
+      },
+      "type": "Kill",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "bbd5938be16ce9b6ee8ba7c169979ce0",
+            "type": "start",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "trigger": "quest",
+              "quest": "Q_MKC_Camp",
+              "status": "Success"
+            }
+          },
+          {
+            "uid": "55d38f081b78e4e79cf3f3fdfe128d81",
+            "type": "log",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "The camp is broken, but the tide is not done with the island.",
+                "German": "Das Lager ist zerschlagen, aber die Flut ist mit der Insel noch nicht fertig."
+              }
+            }
+          },
+          {
+            "uid": "7776704f916eaadedef563ce690820a5",
+            "type": "objective",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "kind": "var",
+              "name": "mkc_ch3",
+              "value": 1,
+              "text": {
+                "English": "Wait for the third chapter of the tide.",
+                "German": "Warte auf das dritte Kapitel der Flut."
+              }
+            }
+          },
+          {
+            "uid": "15f66ec64b4d70c8f82cf2b005836c89",
+            "type": "objective",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "kind": "kill",
+              "target": "MKC_Ash_Raider_T",
+              "count": 3,
+              "text": {
+                "English": "Defend the stone circle: kill three raiders.",
+                "German": "Verteidige den Steinkreis: toete drei Pluenderer."
+              }
+            }
+          },
+          {
+            "uid": "7c9772602b5e6a29e5d1b6490b212d49",
+            "type": "reward",
+            "pos": [
+              1360.0,
+              0.0
+            ],
+            "data": {
+              "xp": 250,
+              "gold": 100,
+              "items": [
+                [
+                  "It_Plant_Health_02",
+                  2
+                ]
+              ]
+            }
+          },
+          {
+            "uid": "cfd5db623c9369031f7ca52f8660b0a0",
+            "type": "outcome",
+            "pos": [
+              1700.0,
+              0.0
+            ],
+            "data": {
+              "result": "success",
+              "text": {
+                "English": "The beacon holds.",
+                "German": "Das Leuchtfeuer haelt."
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "9e88ffb6454c1b1a888bf05bbfbf4df2",
+            "from": [
+              "bbd5938be16ce9b6ee8ba7c169979ce0",
+              "next"
+            ],
+            "to": [
+              "55d38f081b78e4e79cf3f3fdfe128d81",
+              "in"
+            ]
+          },
+          {
+            "uid": "a54242941fb8e6f7f5c83435a17bc661",
+            "from": [
+              "55d38f081b78e4e79cf3f3fdfe128d81",
+              "next"
+            ],
+            "to": [
+              "7776704f916eaadedef563ce690820a5",
+              "in"
+            ]
+          },
+          {
+            "uid": "e919119ea765e082732d7d50ba345b40",
+            "from": [
+              "7776704f916eaadedef563ce690820a5",
+              "next"
+            ],
+            "to": [
+              "15f66ec64b4d70c8f82cf2b005836c89",
+              "in"
+            ]
+          },
+          {
+            "uid": "af150548f9b2c1449a1f7f1584916da3",
+            "from": [
+              "15f66ec64b4d70c8f82cf2b005836c89",
+              "next"
+            ],
+            "to": [
+              "7c9772602b5e6a29e5d1b6490b212d49",
+              "in"
+            ]
+          },
+          {
+            "uid": "a5f16b5c252330e1f6ae86cbba14e91e",
+            "from": [
+              "7c9772602b5e6a29e5d1b6490b212d49",
+              "next"
+            ],
+            "to": [
+              "cfd5db623c9369031f7ca52f8660b0a0",
+              "in"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "f8607232fa30f0bba3180024623e7f73",
+      "name": "Q_MKC_Finale",
+      "title": {
+        "English": "Lord of the Tide",
+        "German": "Herr der Gezeiten"
+      },
+      "type": "Kill",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "5325e9e3f44699fa5ec1d286f229de12",
+            "type": "start",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "trigger": "item",
+              "item": "MKC_Tide_Key"
+            }
+          },
+          {
+            "uid": "8ae6e1abcd42f680bc724a2a058e0a57",
+            "type": "log",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "The Key of the Tide hums. The Lord of the Tide waits in the stone circle.",
+                "German": "Der Schluessel der Gezeiten summt. Der Herr der Gezeiten wartet im Steinkreis."
+              }
+            }
+          },
+          {
+            "uid": "0d5a26983178733d988ad2a6a17e1b8d",
+            "type": "objective",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "kind": "kill",
+              "target": "MKC_Tide_Lord",
+              "count": 1,
+              "text": {
+                "English": "Kill the Lord of the Tide in the stone circle.",
+                "German": "Toete den Herrn der Gezeiten im Steinkreis."
+              }
+            }
+          },
+          {
+            "uid": "b55bd09c0d5e2577d9072d26725ab2ab",
+            "type": "reward",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "xp": 800,
+              "gold": 500,
+              "items": [
+                [
+                  "MKC_Tide_Potion",
+                  3
+                ]
+              ],
+              "var": "mkc_finale_done",
+              "var_value": 1
+            }
+          },
+          {
+            "uid": "e078c54ef83913dd3c1c0ded84b2feed",
+            "type": "outcome",
+            "pos": [
+              1360.0,
+              0.0
+            ],
+            "data": {
+              "result": "success",
+              "text": {
+                "English": "The tide has turned.",
+                "German": "Die Flut hat sich gewendet."
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "eef0dff75a7c2b9b71a928784241b2d4",
+            "from": [
+              "5325e9e3f44699fa5ec1d286f229de12",
+              "next"
+            ],
+            "to": [
+              "8ae6e1abcd42f680bc724a2a058e0a57",
+              "in"
+            ]
+          },
+          {
+            "uid": "2a40d6e20e37b4ce9e73bc7f67248e0d",
+            "from": [
+              "8ae6e1abcd42f680bc724a2a058e0a57",
+              "next"
+            ],
+            "to": [
+              "0d5a26983178733d988ad2a6a17e1b8d",
+              "in"
+            ]
+          },
+          {
+            "uid": "03b7078f2d127a25330d626c04b69626",
+            "from": [
+              "0d5a26983178733d988ad2a6a17e1b8d",
+              "next"
+            ],
+            "to": [
+              "b55bd09c0d5e2577d9072d26725ab2ab",
+              "in"
+            ]
+          },
+          {
+            "uid": "164098b64784041647ec8cd4dc4ea8b2",
+            "from": [
+              "b55bd09c0d5e2577d9072d26725ab2ab",
+              "next"
+            ],
+            "to": [
+              "e078c54ef83913dd3c1c0ded84b2feed",
+              "in"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "uid": "38c8318eddf4be6890890621b09172f2",
+      "name": "Q_MKC_Epilogue",
+      "title": {
+        "English": "The Last Line",
+        "German": "Die letzte Zeile"
+      },
+      "type": "Report",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "143b26051c5a43d4716efd2ccd1bca42",
+            "type": "start",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "trigger": "var",
+              "name": "mkc_finale_done",
+              "value": 1
+            }
+          },
+          {
+            "uid": "c9c10abce7552444bcc3ee29d278948a",
+            "type": "log",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "Maren waits on the beach with a fresh page.",
+                "German": "Maren wartet am Strand mit einer neuen Seite."
+              }
+            }
+          },
+          {
+            "uid": "5cf26aa7dc40ffd82286ec950a1e9544",
+            "type": "reward",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "xp": 100
+            }
+          },
+          {
+            "uid": "8eeedc56f80e620a81d107b6a5c13e41",
+            "type": "outcome",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "result": "success",
+              "text": {
+                "English": "The last line is written.",
+                "German": "Die letzte Zeile ist geschrieben."
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "bcbff1b3fec665680cdbcae31c4099c4",
+            "from": [
+              "143b26051c5a43d4716efd2ccd1bca42",
+              "next"
+            ],
+            "to": [
+              "c9c10abce7552444bcc3ee29d278948a",
+              "in"
+            ]
+          },
+          {
+            "uid": "6dce4c15b0539eabc90871d4841a71e8",
+            "from": [
+              "c9c10abce7552444bcc3ee29d278948a",
+              "next"
+            ],
+            "to": [
+              "5cf26aa7dc40ffd82286ec950a1e9544",
+              "in"
+            ]
+          },
+          {
+            "uid": "0a16b3f5d523d7cff0772a8ae1bc67b4",
+            "from": [
+              "5cf26aa7dc40ffd82286ec950a1e9544",
+              "next"
+            ],
+            "to": [
+              "8eeedc56f80e620a81d107b6a5c13e41",
+              "in"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "uid": "2f7c79f7740d7ca04a1e576140389838",
+      "name": "Chronicle begins",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "a4895a1e72935ce1acc0d6975f1d2639",
+            "type": "on_session",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "mode": "new"
+            }
+          },
+          {
+            "uid": "d8e3e9e2b81bd755a03e307688a442f1",
+            "type": "sequence",
+            "pos": [
+              340.0,
+              0.0
+            ]
+          },
+          {
+            "uid": "1e3fdebbb8973c4474a52022c4be5076",
+            "type": "set_variable",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "scope": "game",
+              "name": "mkc_ch1",
+              "op": "set",
+              "value": 1
+            }
+          },
+          {
+            "uid": "e90ed03be68c56ed1fb6a00417c7e38e",
+            "type": "hud_message",
+            "pos": [
+              680.0,
+              170.0
+            ],
+            "data": {
+              "text": {
+                "English": "The Ashen Chronicle begins. Find Maren on the beach.",
+                "German": "Die Aschechronik beginnt. Finde Maren am Strand."
+              },
+              "style": "note"
+            }
+          },
+          {
+            "uid": "487bd3d5d135e07f8f8aa4113583c1fd",
+            "type": "log",
+            "pos": [
+              680.0,
+              340.0
+            ],
+            "data": {
+              "text": "chronicle: a new game began"
+            }
+          },
+          {
+            "uid": "d8739f7061cabcf7962d4bc8c196d15d",
+            "type": "end",
+            "pos": [
+              1020.0,
+              170.0
+            ]
+          }
+        ],
+        "links": [
+          {
+            "uid": "a3cfed4b565652cf09af3188168341ef",
+            "from": [
+              "a4895a1e72935ce1acc0d6975f1d2639",
+              "next"
+            ],
+            "to": [
+              "d8e3e9e2b81bd755a03e307688a442f1",
+              "in"
+            ]
+          },
+          {
+            "uid": "7237c9630a281f690b3c8abd9ef07816",
+            "from": [
+              "d8e3e9e2b81bd755a03e307688a442f1",
+              "1"
+            ],
+            "to": [
+              "1e3fdebbb8973c4474a52022c4be5076",
+              "in"
+            ]
+          },
+          {
+            "uid": "2d26286ccc663237dc0163c5bad4e80a",
+            "from": [
+              "d8e3e9e2b81bd755a03e307688a442f1",
+              "2"
+            ],
+            "to": [
+              "e90ed03be68c56ed1fb6a00417c7e38e",
+              "in"
+            ]
+          },
+          {
+            "uid": "0bbea6bb608e0de7ec52081c5c724de1",
+            "from": [
+              "d8e3e9e2b81bd755a03e307688a442f1",
+              "3"
+            ],
+            "to": [
+              "487bd3d5d135e07f8f8aa4113583c1fd",
+              "in"
+            ]
+          },
+          {
+            "uid": "60625d2eddaa6d6eeb161d662b22f8fd",
+            "from": [
+              "e90ed03be68c56ed1fb6a00417c7e38e",
+              "next"
+            ],
+            "to": [
+              "d8739f7061cabcf7962d4bc8c196d15d",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On a new game: a game variable (which the dialogue reads), a HUD message and a log line, started in parallel by a Sequence."
+    },
+    {
+      "uid": "013ed324a5be5a6f6b3c7b58b814b481",
+      "name": "Tablet found",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "37002227d6b11e7dc216e40c6dc528b8",
+            "type": "on_item",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "item": "MKC_Chronicle_Tablet",
+              "what": "picked_up"
+            }
+          },
+          {
+            "uid": "d41b5f6684d694adff542ade42ab23a2",
+            "type": "once",
+            "pos": [
+              340.0,
+              0.0
+            ]
+          },
+          {
+            "uid": "31054e2c4410c8d2a12ea954d441e545",
+            "type": "give_xp",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "amount": 60
+            }
+          },
+          {
+            "uid": "d4598da1d7c92975fe2fad749d0d9857",
+            "type": "set_variable",
+            "pos": [
+              680.0,
+              170.0
+            ],
+            "data": {
+              "scope": "save",
+              "name": "mkc_fragments",
+              "op": "add",
+              "value": 1
+            }
+          },
+          {
+            "uid": "49c7407b9200dc1acf6f5bd333085aa2",
+            "type": "hud_message",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "A fragment of the Chronicle: {item}",
+                "German": "Ein Bruchstueck der Chronik: {item}"
+              },
+              "style": "experience"
+            }
+          },
+          {
+            "uid": "71d23caa732566025413172d20df139c",
+            "type": "log",
+            "pos": [
+              680.0,
+              340.0
+            ],
+            "data": {
+              "text": "tablet already collected"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "fea8aa852e9b064af40c1e221e87acbc",
+            "from": [
+              "37002227d6b11e7dc216e40c6dc528b8",
+              "next"
+            ],
+            "to": [
+              "d41b5f6684d694adff542ade42ab23a2",
+              "in"
+            ]
+          },
+          {
+            "uid": "d3850d7d31d82f44a0671a1fa020f425",
+            "from": [
+              "d41b5f6684d694adff542ade42ab23a2",
+              "next"
+            ],
+            "to": [
+              "31054e2c4410c8d2a12ea954d441e545",
+              "in"
+            ]
+          },
+          {
+            "uid": "0003542f5a2bff61bd1b77989342ea61",
+            "from": [
+              "d41b5f6684d694adff542ade42ab23a2",
+              "next"
+            ],
+            "to": [
+              "d4598da1d7c92975fe2fad749d0d9857",
+              "in"
+            ]
+          },
+          {
+            "uid": "6cc52b422717037b615944f263018f0b",
+            "from": [
+              "31054e2c4410c8d2a12ea954d441e545",
+              "next"
+            ],
+            "to": [
+              "49c7407b9200dc1acf6f5bd333085aa2",
+              "in"
+            ]
+          },
+          {
+            "uid": "5155174d7665f1406626c7f7cca6bade",
+            "from": [
+              "d41b5f6684d694adff542ade42ab23a2",
+              "again"
+            ],
+            "to": [
+              "71d23caa732566025413172d20df139c",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On item + Once: the first tablet gives experience and counts a save variable."
+    },
+    {
+      "uid": "182c5beec871cf87c63131a065b72943",
+      "name": "Pearls in the pocket",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "e3c4b7532a48051459a49c95841737ea",
+            "type": "on_item",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "item": "It_Pearl",
+              "what": "added"
+            }
+          },
+          {
+            "uid": "da3a79ad77ddf70aeffa34d1a53b1868",
+            "type": "condition",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "mode": "all",
+              "negate": false,
+              "tests": [
+                {
+                  "kind": "quest",
+                  "quest": "Q_MKC_Ink",
+                  "status": "Running"
+                },
+                {
+                  "kind": "item",
+                  "item": "It_Pearl",
+                  "count": 1
+                }
+              ]
+            }
+          },
+          {
+            "uid": "69e750e7a1769a0cfb5eacf6a566307b",
+            "type": "cooldown",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "seconds": 30
+            }
+          },
+          {
+            "uid": "51bc3dd244544dd06ac0a99857fb24d6",
+            "type": "hud_message",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "Maren will want these pearls.",
+                "German": "Maren wird diese Perlen wollen."
+              },
+              "style": "log"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "010700ea3b58ac41d8e68b037a1e2248",
+            "from": [
+              "e3c4b7532a48051459a49c95841737ea",
+              "next"
+            ],
+            "to": [
+              "da3a79ad77ddf70aeffa34d1a53b1868",
+              "in"
+            ]
+          },
+          {
+            "uid": "a8e5933e3920cded8e17d1a4aa2f0563",
+            "from": [
+              "da3a79ad77ddf70aeffa34d1a53b1868",
+              "then"
+            ],
+            "to": [
+              "69e750e7a1769a0cfb5eacf6a566307b",
+              "in"
+            ]
+          },
+          {
+            "uid": "fdbc047bd77d5154f862b57d60fceaec",
+            "from": [
+              "69e750e7a1769a0cfb5eacf6a566307b",
+              "next"
+            ],
+            "to": [
+              "51bc3dd244544dd06ac0a99857fb24d6",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On item (added) + Condition + Cooldown."
+    },
+    {
+      "uid": "16c7d4c35819525be0145d40076e712d",
+      "name": "Ink delivered",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "826e538bdda3e0cf45710e3221628361",
+            "type": "on_quest",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "quest": "Q_MKC_Ink",
+              "status": "Success"
+            }
+          },
+          {
+            "uid": "b5c078889f0a211688ad79f54c86c100",
+            "type": "give_item",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "item": "It_Plant_Health_01",
+              "count": 2,
+              "show": true
+            }
+          },
+          {
+            "uid": "4f0ce4081d6073873e3a040c11c2665d",
+            "type": "send_signal",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "name": "ink_done"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "a84c2d9042774f719b4544d9e4c984bd",
+            "from": [
+              "826e538bdda3e0cf45710e3221628361",
+              "next"
+            ],
+            "to": [
+              "b5c078889f0a211688ad79f54c86c100",
+              "in"
+            ]
+          },
+          {
+            "uid": "98649ad6b6422a443b3403f455607d91",
+            "from": [
+              "b5c078889f0a211688ad79f54c86c100",
+              "next"
+            ],
+            "to": [
+              "4f0ce4081d6073873e3a040c11c2665d",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On quest status: a gift, then a signal to another graph."
+    },
+    {
+      "uid": "901a8a04694dac38a4363079b434a3ae",
+      "name": "After the ink",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "d738c8fa70c7dac768d184882ffb0494",
+            "type": "on_signal",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "name": "ink_done"
+            }
+          },
+          {
+            "uid": "a334408315f154676486dec068a30fec",
+            "type": "delay",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "seconds": 2
+            }
+          },
+          {
+            "uid": "eebd10f14c0a1e2df48d593d663a2cfa",
+            "type": "hud_message",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "Maren: 'A scout came back wounded. Talk to him.'",
+                "German": "Maren: 'Ein Kundschafter kam verwundet zurueck. Sprich mit ihm.'"
+              },
+              "style": "note"
+            }
+          },
+          {
+            "uid": "ce94840c09d13593d27d1adc57048995",
+            "type": "set_variable",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "scope": "game",
+              "name": "mkc_scout_hint",
+              "op": "set",
+              "value": 1
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "9c5f5b2d446229c6e41c239c48cf362f",
+            "from": [
+              "d738c8fa70c7dac768d184882ffb0494",
+              "next"
+            ],
+            "to": [
+              "a334408315f154676486dec068a30fec",
+              "in"
+            ]
+          },
+          {
+            "uid": "dbec881f32cf1e8539c810baf3f76211",
+            "from": [
+              "a334408315f154676486dec068a30fec",
+              "next"
+            ],
+            "to": [
+              "eebd10f14c0a1e2df48d593d663a2cfa",
+              "in"
+            ]
+          },
+          {
+            "uid": "c6524f01c114e51f19394e14bc48578b",
+            "from": [
+              "eebd10f14c0a1e2df48d593d663a2cfa",
+              "next"
+            ],
+            "to": [
+              "ce94840c09d13593d27d1adc57048995",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On signal + Delay (survives a save)."
+    },
+    {
+      "uid": "25f7f03331340e8e2e2d817819b26d92",
+      "name": "Lore heard",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "2ea9c86d9590bb5bfd13b306c71184b7",
+            "type": "on_dialogue",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "info": "MKC_Maren_Lore"
+            }
+          },
+          {
+            "uid": "f36bab123b273b746a480b6a94eea93d",
+            "type": "condition",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "mode": "all",
+              "negate": false,
+              "tests": [
+                {
+                  "kind": "event",
+                  "name": "MKC_Maren_Paid"
+                }
+              ]
+            }
+          },
+          {
+            "uid": "38888f8671265584a72e774ce2c85b7b",
+            "type": "set_variable",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "scope": "game",
+              "name": "mkc_lore",
+              "op": "set",
+              "value": 1
+            }
+          },
+          {
+            "uid": "de20a0c74cac7c1466541dd4e8cf6097",
+            "type": "hud_message",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "Maren remembers the pearls you brought.",
+                "German": "Maren erinnert sich an die Perlen, die du brachtest."
+              },
+              "style": "note"
+            }
+          },
+          {
+            "uid": "b05c832c9cd80ed7feebe00d62d9e230",
+            "type": "hud_message",
+            "pos": [
+              680.0,
+              170.0
+            ],
+            "data": {
+              "text": {
+                "English": "Maren has heard nothing yet to write down.",
+                "German": "Maren hat noch nichts zum Aufschreiben gehoert."
+              },
+              "style": "note"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "02de8fcdc915ecf9fdb3a39d956e41cf",
+            "from": [
+              "2ea9c86d9590bb5bfd13b306c71184b7",
+              "next"
+            ],
+            "to": [
+              "f36bab123b273b746a480b6a94eea93d",
+              "in"
+            ]
+          },
+          {
+            "uid": "abff74ef37789df04f9553ce148d9881",
+            "from": [
+              "f36bab123b273b746a480b6a94eea93d",
+              "then"
+            ],
+            "to": [
+              "38888f8671265584a72e774ce2c85b7b",
+              "in"
+            ]
+          },
+          {
+            "uid": "730604af1fbdf048876b7f256062e8d2",
+            "from": [
+              "38888f8671265584a72e774ce2c85b7b",
+              "next"
+            ],
+            "to": [
+              "de20a0c74cac7c1466541dd4e8cf6097",
+              "in"
+            ]
+          },
+          {
+            "uid": "222264d57713ee7bcb276d2fe014b87c",
+            "from": [
+              "f36bab123b273b746a480b6a94eea93d",
+              "else"
+            ],
+            "to": [
+              "b05c832c9cd80ed7feebe00d62d9e230",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On dialogue option + the 'game event happened' check."
+    },
+    {
+      "uid": "c85e60cabee090b68cda4d4b624aa182",
+      "name": "Walking the shore",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "5898a57655bee677fe0dd0ca55b7814a",
+            "type": "on_move",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "min_m": 50
+            }
+          },
+          {
+            "uid": "00423c0d314bdf6aec468da3f73afcc7",
+            "type": "set_variable",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "scope": "save",
+              "name": "mkc_steps",
+              "op": "add",
+              "value": 1
+            }
+          },
+          {
+            "uid": "f228672c91863bb8f29f97916dd014d6",
+            "type": "count",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "n": 20,
+              "repeat": false
+            }
+          },
+          {
+            "uid": "27f93620e0f4d24c53262c40d8e4f94e",
+            "type": "condition",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "mode": "any",
+              "negate": false,
+              "tests": [
+                {
+                  "kind": "guild",
+                  "guild": "None"
+                },
+                {
+                  "kind": "area",
+                  "at": "entity",
+                  "entity": "MKC_Maren",
+                  "radius": 30
+                }
+              ]
+            }
+          },
+          {
+            "uid": "b4cf28bbf5b482528c5377f1ff85828e",
+            "type": "give_item",
+            "pos": [
+              1360.0,
+              0.0
+            ],
+            "data": {
+              "item": "It_Apple",
+              "count": 2,
+              "show": true
+            }
+          },
+          {
+            "uid": "5d6963ec86a7b4876b315afa2f6ccf41",
+            "type": "hud_message",
+            "pos": [
+              1360.0,
+              170.0
+            ],
+            "data": {
+              "text": {
+                "English": "A long walk on the shore: Maren notes it down.",
+                "German": "Ein langer Marsch am Strand: Maren schreibt es auf."
+              },
+              "style": "note"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "8f9103c2a139abe8caba378b9849a892",
+            "from": [
+              "5898a57655bee677fe0dd0ca55b7814a",
+              "next"
+            ],
+            "to": [
+              "00423c0d314bdf6aec468da3f73afcc7",
+              "in"
+            ]
+          },
+          {
+            "uid": "05ddedebebd6ff4d85fd3a0c25ddeae7",
+            "from": [
+              "00423c0d314bdf6aec468da3f73afcc7",
+              "next"
+            ],
+            "to": [
+              "f228672c91863bb8f29f97916dd014d6",
+              "in"
+            ]
+          },
+          {
+            "uid": "fb802be733b0a57cdca40fbe82eb1a99",
+            "from": [
+              "f228672c91863bb8f29f97916dd014d6",
+              "next"
+            ],
+            "to": [
+              "27f93620e0f4d24c53262c40d8e4f94e",
+              "in"
+            ]
+          },
+          {
+            "uid": "6c7d7d4dd13c65d0e74f85b4ad9a174d",
+            "from": [
+              "27f93620e0f4d24c53262c40d8e4f94e",
+              "then"
+            ],
+            "to": [
+              "b4cf28bbf5b482528c5377f1ff85828e",
+              "in"
+            ]
+          },
+          {
+            "uid": "0b9ea8e7af9c905181e639d8bcb82b01",
+            "from": [
+              "27f93620e0f4d24c53262c40d8e4f94e",
+              "else"
+            ],
+            "to": [
+              "5d6963ec86a7b4876b315afa2f6ccf41",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On player moved (50 m) + After N passes + any of guild / area checks."
+    },
+    {
+      "uid": "5ea675242d94cfe1bbfccdbc7fb678a7",
+      "name": "Chapter 2: the hidden camp",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "ffe5cf081daed583a4aa8cdfcbbe1e85",
+            "type": "on_chapter",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "chapter": 2
+            }
+          },
+          {
+            "uid": "1d30b34941e58a48cb6449954ad0bd5c",
+            "type": "once",
+            "pos": [
+              340.0,
+              0.0
+            ]
+          },
+          {
+            "uid": "51cd755aa0f763e89156be73d9431a48",
+            "type": "condition",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "mode": "all",
+              "negate": false,
+              "tests": [
+                {
+                  "kind": "chapter",
+                  "op": ">=",
+                  "value": 2
+                },
+                {
+                  "kind": "layer",
+                  "layer": "AshCamp",
+                  "state": "disabled"
+                }
+              ]
+            }
+          },
+          {
+            "uid": "da84d1c4a79504b3c7c68594acc25223",
+            "type": "sequence",
+            "pos": [
+              1020.0,
+              0.0
+            ]
+          },
+          {
+            "uid": "9ed7f57603a0ec14f3d5a017ae9a63d2",
+            "type": "layer",
+            "pos": [
+              1360.0,
+              0.0
+            ],
+            "data": {
+              "layer": "AshCamp",
+              "action": "enable"
+            }
+          },
+          {
+            "uid": "1caa9b98d22c6afdbc8144dbbd567e56",
+            "type": "sector",
+            "pos": [
+              1360.0,
+              170.0
+            ],
+            "data": {
+              "sector": "OutMain_Story_Chapter2_MonsterForFollowPatty_Off",
+              "action": "enable"
+            }
+          },
+          {
+            "uid": "b29cab6f3b2bf70991cdc2966b544429",
+            "type": "quest_action",
+            "pos": [
+              1360.0,
+              340.0
+            ],
+            "data": {
+              "quest": "Q_MKC_Camp",
+              "action": "start"
+            }
+          },
+          {
+            "uid": "093b13ca83dd301faef6f65522d72dd5",
+            "type": "set_variable",
+            "pos": [
+              1360.0,
+              510.0
+            ],
+            "data": {
+              "scope": "game",
+              "name": "mkc_ch2",
+              "op": "set",
+              "value": 1
+            }
+          },
+          {
+            "uid": "9a47ca0306b75e2467f41593ecb217d5",
+            "type": "hud_message",
+            "pos": [
+              1700.0,
+              510.0
+            ],
+            "data": {
+              "text": {
+                "English": "Chapter {chapter}: smoke rises in the west. The Ash Camp.",
+                "German": "Kapitel {chapter}: Im Westen steigt Rauch auf. Das Aschelager."
+              },
+              "style": "note"
+            }
+          },
+          {
+            "uid": "28d2b952a7ab3d8ed1849ac8eae56bbb",
+            "type": "send_signal",
+            "pos": [
+              2040.0,
+              510.0
+            ],
+            "data": {
+              "name": "camp_open"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "e33f1d1ab2b2e2a8f25d09abd3d2008a",
+            "from": [
+              "ffe5cf081daed583a4aa8cdfcbbe1e85",
+              "next"
+            ],
+            "to": [
+              "1d30b34941e58a48cb6449954ad0bd5c",
+              "in"
+            ]
+          },
+          {
+            "uid": "e91d4cf250f0382aaad6f6003f4cc7d6",
+            "from": [
+              "1d30b34941e58a48cb6449954ad0bd5c",
+              "next"
+            ],
+            "to": [
+              "51cd755aa0f763e89156be73d9431a48",
+              "in"
+            ]
+          },
+          {
+            "uid": "d8eefd59ef02c29e74e7f86baba91c1e",
+            "from": [
+              "51cd755aa0f763e89156be73d9431a48",
+              "then"
+            ],
+            "to": [
+              "da84d1c4a79504b3c7c68594acc25223",
+              "in"
+            ]
+          },
+          {
+            "uid": "764c45b6e8734c5255d603a97042ed86",
+            "from": [
+              "da84d1c4a79504b3c7c68594acc25223",
+              "1"
+            ],
+            "to": [
+              "9ed7f57603a0ec14f3d5a017ae9a63d2",
+              "in"
+            ]
+          },
+          {
+            "uid": "8ca36ddca6d7b430399721c7b768948f",
+            "from": [
+              "da84d1c4a79504b3c7c68594acc25223",
+              "2"
+            ],
+            "to": [
+              "1caa9b98d22c6afdbc8144dbbd567e56",
+              "in"
+            ]
+          },
+          {
+            "uid": "ce021185f4624fbd91d119f09a22694a",
+            "from": [
+              "da84d1c4a79504b3c7c68594acc25223",
+              "3"
+            ],
+            "to": [
+              "b29cab6f3b2bf70991cdc2966b544429",
+              "in"
+            ]
+          },
+          {
+            "uid": "84e5ba0c34b3cbbcdca9943f8e1aa8f1",
+            "from": [
+              "da84d1c4a79504b3c7c68594acc25223",
+              "4"
+            ],
+            "to": [
+              "093b13ca83dd301faef6f65522d72dd5",
+              "in"
+            ]
+          },
+          {
+            "uid": "e7eda23a10c4eb1649b29dc5932be929",
+            "from": [
+              "093b13ca83dd301faef6f65522d72dd5",
+              "next"
+            ],
+            "to": [
+              "9a47ca0306b75e2467f41593ecb217d5",
+              "in"
+            ]
+          },
+          {
+            "uid": "52270706f936d09286f7e0845a003e48",
+            "from": [
+              "9a47ca0306b75e2467f41593ecb217d5",
+              "next"
+            ],
+            "to": [
+              "28d2b952a7ab3d8ed1849ac8eae56bbb",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "Chapter 2: layer AshCamp on, a stock story sector on, the quest started, a variable, a message, a signal."
+    },
+    {
+      "uid": "0aa5fac04d38bce2900d1385d7dab3bc",
+      "name": "Camp falls",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "784aaa0cbcb3001b3fd4997d3f35ca09",
+            "type": "on_kill",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "target": "MKC_Ash_Warlord",
+              "by_player": true
+            }
+          },
+          {
+            "uid": "a24bf127633e10044e0bbc5416b776ba",
+            "type": "condition",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "mode": "all",
+              "negate": false,
+              "tests": [
+                {
+                  "kind": "alive",
+                  "who": "MKC_Maren"
+                },
+                {
+                  "kind": "var",
+                  "scope": "game",
+                  "name": "mkc_ch2",
+                  "op": "==",
+                  "value": 1
+                }
+              ]
+            }
+          },
+          {
+            "uid": "8c986b4144288b744342d64674f229d0",
+            "type": "set_variable",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "scope": "game",
+              "name": "mkc_camp_broken",
+              "op": "set",
+              "value": 1
+            }
+          },
+          {
+            "uid": "fd1394098eabf1b0c7168991393f1814",
+            "type": "give_xp",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "amount": 150
+            }
+          },
+          {
+            "uid": "ce17f6bea69ff2379cb2a9e98c53d2c7",
+            "type": "hud_message",
+            "pos": [
+              1360.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "The Ash Warlord is dead. Maren will hear of it.",
+                "German": "Der Aschekriegsherr ist tot. Maren wird davon hoeren."
+              },
+              "style": "experience"
+            }
+          },
+          {
+            "uid": "d127cd50072a0f51f3ae009b2f7f6830",
+            "type": "send_signal",
+            "pos": [
+              1700.0,
+              0.0
+            ],
+            "data": {
+              "name": "camp_down"
+            }
+          },
+          {
+            "uid": "a54f38156be8e6aa7e215f2cf9d98790",
+            "type": "log",
+            "pos": [
+              680.0,
+              170.0
+            ],
+            "data": {
+              "text": "the warlord fell but Maren or the chapter variable is missing"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "adacf4ca26e8ad62975de40e9a81820a",
+            "from": [
+              "784aaa0cbcb3001b3fd4997d3f35ca09",
+              "next"
+            ],
+            "to": [
+              "a24bf127633e10044e0bbc5416b776ba",
+              "in"
+            ]
+          },
+          {
+            "uid": "b1d16128429257fe8d2ca2579c24e791",
+            "from": [
+              "a24bf127633e10044e0bbc5416b776ba",
+              "then"
+            ],
+            "to": [
+              "8c986b4144288b744342d64674f229d0",
+              "in"
+            ]
+          },
+          {
+            "uid": "849dd8a8bc44d6e983365bf9a68e1888",
+            "from": [
+              "8c986b4144288b744342d64674f229d0",
+              "next"
+            ],
+            "to": [
+              "fd1394098eabf1b0c7168991393f1814",
+              "in"
+            ]
+          },
+          {
+            "uid": "bb85835918a6442539966c31ecd67924",
+            "from": [
+              "fd1394098eabf1b0c7168991393f1814",
+              "next"
+            ],
+            "to": [
+              "ce17f6bea69ff2379cb2a9e98c53d2c7",
+              "in"
+            ]
+          },
+          {
+            "uid": "329040837430256633caa881172d9582",
+            "from": [
+              "ce17f6bea69ff2379cb2a9e98c53d2c7",
+              "next"
+            ],
+            "to": [
+              "d127cd50072a0f51f3ae009b2f7f6830",
+              "in"
+            ]
+          },
+          {
+            "uid": "6657de9b74692ca6905d8b6132f8fe2e",
+            "from": [
+              "a24bf127633e10044e0bbc5416b776ba",
+              "else"
+            ],
+            "to": [
+              "a54f38156be8e6aa7e215f2cf9d98790",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On kill (a named NPC, by the player) + alive / variable checks."
+    },
+    {
+      "uid": "d6ea694c51b1a1022200e8a5dfdea623",
+      "name": "Camp open",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "ee43fd4e13f37222b8d44241e9f66670",
+            "type": "on_signal",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "name": "camp_open"
+            }
+          },
+          {
+            "uid": "162bcb7af5d3ab1d914abc96a328c668",
+            "type": "quest_log",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "quest": "Q_MKC_Camp",
+              "text": {
+                "English": "The scout says the camp lies where the plants grow, west of the beach.",
+                "German": "Der Kundschafter sagt, das Lager liege dort, wo die Pflanzen wachsen, westlich vom Strand."
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "e0cb3ac9144239f3a96379480de5c28e",
+            "from": [
+              "ee43fd4e13f37222b8d44241e9f66670",
+              "next"
+            ],
+            "to": [
+              "162bcb7af5d3ab1d914abc96a328c668",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On signal: a log line."
+    },
+    {
+      "uid": "2ed482dd04db621c06182a2ce2342185",
+      "name": "Camp down",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "63b1627db6718fa8eea0a384c15aeefd",
+            "type": "on_signal",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "name": "camp_down"
+            }
+          },
+          {
+            "uid": "7e41f84c612f8bffe8dce3310a8e1433",
+            "type": "quest_log",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "quest": "Q_MKC_Chronicle",
+              "text": {
+                "English": "The Ash Camp is broken.",
+                "German": "Das Aschelager ist zerschlagen."
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "8c6d25e250ba94bc8db00a86bbe14043",
+            "from": [
+              "63b1627db6718fa8eea0a384c15aeefd",
+              "next"
+            ],
+            "to": [
+              "7e41f84c612f8bffe8dce3310a8e1433",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On signal: a log line in the main quest."
+    },
+    {
+      "uid": "9d67714ad341a98cdf3e0205148a669c",
+      "name": "Beacon cleared",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "9fad266580e782ec4c327f5adc7dcc80",
+            "type": "on_signal",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "name": "beacon_cleared"
+            }
+          },
+          {
+            "uid": "7bc01a7a6f8dd24e2b72e63cfb2cd5ad",
+            "type": "set_variable",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "scope": "save",
+              "name": "mkc_beacon",
+              "op": "set",
+              "value": 1
+            }
+          },
+          {
+            "uid": "e178236eadd94c09bc83287a864836db",
+            "type": "quest_log",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "quest": "Q_MKC_Chronicle",
+              "text": {
+                "English": "The beacon at the stone circle holds.",
+                "German": "Das Leuchtfeuer am Steinkreis haelt."
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "2747edce379cb6fc7b91513d6b05fd4c",
+            "from": [
+              "9fad266580e782ec4c327f5adc7dcc80",
+              "next"
+            ],
+            "to": [
+              "7bc01a7a6f8dd24e2b72e63cfb2cd5ad",
+              "in"
+            ]
+          },
+          {
+            "uid": "09f7057dc1fad49134748385207f5c66",
+            "from": [
+              "7bc01a7a6f8dd24e2b72e63cfb2cd5ad",
+              "next"
+            ],
+            "to": [
+              "e178236eadd94c09bc83287a864836db",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On signal: a save variable and a log line."
+    },
+    {
+      "uid": "ae75dfb9f3ebcd09a39a8ac975c8831d",
+      "name": "Smugglers hint",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "c013bbbc5b025e1ce4a5447afd5726b9",
+            "type": "on_signal",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "name": "chapter3"
+            }
+          },
+          {
+            "uid": "c128b2639da3b45b4b92ec8ed5741325",
+            "type": "delay",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "seconds": 4
+            }
+          },
+          {
+            "uid": "88811a54350d90c148856db024439782",
+            "type": "hud_message",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "Smuggler Joss has pitched his tent east of the bench.",
+                "German": "Schmuggler Joss hat sein Zelt oestlich der Bank aufgeschlagen."
+              },
+              "style": "log"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "9769e24727813720c1a188fdab37f279",
+            "from": [
+              "c013bbbc5b025e1ce4a5447afd5726b9",
+              "next"
+            ],
+            "to": [
+              "c128b2639da3b45b4b92ec8ed5741325",
+              "in"
+            ]
+          },
+          {
+            "uid": "0560e857dcdaacd7fe8607a0f89f84ee",
+            "from": [
+              "c128b2639da3b45b4b92ec8ed5741325",
+              "next"
+            ],
+            "to": [
+              "88811a54350d90c148856db024439782",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On signal + Delay."
+    },
+    {
+      "uid": "07261a400215b8378c68923c83c3d866",
+      "name": "Raider hunt",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "77a31b324283726c5fe0855e67ccfb02",
+            "type": "on_kill",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "target": "MKC_Ash_Raider_T",
+              "by_player": true
+            }
+          },
+          {
+            "uid": "94e38029fea34f463b86964fa219c50d",
+            "type": "condition",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "mode": "all",
+              "negate": false,
+              "tests": [
+                {
+                  "kind": "var",
+                  "scope": "game",
+                  "name": "mkc_ch3",
+                  "op": "==",
+                  "value": 1
+                },
+                {
+                  "kind": "skill",
+                  "skill": "Strength",
+                  "op": ">=",
+                  "value": 1
+                }
+              ]
+            }
+          },
+          {
+            "uid": "1d6e692e3c48bfa4c401e3693a0776d2",
+            "type": "set_variable",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "scope": "save",
+              "name": "mkc_raiders",
+              "op": "add",
+              "value": 1
+            }
+          },
+          {
+            "uid": "b0efb4527f94cf838e363f5aa4f40407",
+            "type": "count",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "n": 3,
+              "repeat": false
+            }
+          },
+          {
+            "uid": "3ac967dc0805cebd4875b30f4c53254a",
+            "type": "set_variable",
+            "pos": [
+              1360.0,
+              0.0
+            ],
+            "data": {
+              "scope": "game",
+              "name": "mkc_ambush_done",
+              "op": "set",
+              "value": 1
+            }
+          },
+          {
+            "uid": "7d61208fe3afe68478d08b17d63a7842",
+            "type": "give_xp",
+            "pos": [
+              1360.0,
+              170.0
+            ],
+            "data": {
+              "amount": 200
+            }
+          },
+          {
+            "uid": "45f86166ba2d00d8f70305da22024b18",
+            "type": "heal",
+            "pos": [
+              1360.0,
+              340.0
+            ],
+            "data": {
+              "hp": 100,
+              "mana": 50
+            }
+          },
+          {
+            "uid": "ebd31bbd75d1073f06b0d005097790bf",
+            "type": "hud_message",
+            "pos": [
+              1700.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "The stone circle is clear.",
+                "German": "Der Steinkreis ist frei."
+              },
+              "style": "experience"
+            }
+          },
+          {
+            "uid": "c973f9d0b32feaa671d0c17ca8ced83b",
+            "type": "send_signal",
+            "pos": [
+              2040.0,
+              0.0
+            ],
+            "data": {
+              "name": "beacon_cleared"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "573939db9fc59b68b085d020ad9aadb5",
+            "from": [
+              "77a31b324283726c5fe0855e67ccfb02",
+              "next"
+            ],
+            "to": [
+              "94e38029fea34f463b86964fa219c50d",
+              "in"
+            ]
+          },
+          {
+            "uid": "14b3fb7f6b993be942c7bd55c5e29ac6",
+            "from": [
+              "94e38029fea34f463b86964fa219c50d",
+              "then"
+            ],
+            "to": [
+              "1d6e692e3c48bfa4c401e3693a0776d2",
+              "in"
+            ]
+          },
+          {
+            "uid": "86dd916288c708fb9239e3a178f72a79",
+            "from": [
+              "1d6e692e3c48bfa4c401e3693a0776d2",
+              "next"
+            ],
+            "to": [
+              "b0efb4527f94cf838e363f5aa4f40407",
+              "in"
+            ]
+          },
+          {
+            "uid": "f04abdc0300020c30a9724d6a8c284f6",
+            "from": [
+              "b0efb4527f94cf838e363f5aa4f40407",
+              "next"
+            ],
+            "to": [
+              "3ac967dc0805cebd4875b30f4c53254a",
+              "in"
+            ]
+          },
+          {
+            "uid": "fd744897b74aa35897db09eda8bd5d25",
+            "from": [
+              "b0efb4527f94cf838e363f5aa4f40407",
+              "next"
+            ],
+            "to": [
+              "7d61208fe3afe68478d08b17d63a7842",
+              "in"
+            ]
+          },
+          {
+            "uid": "c603a5b6095931eefca5f2c2c659c62f",
+            "from": [
+              "b0efb4527f94cf838e363f5aa4f40407",
+              "next"
+            ],
+            "to": [
+              "45f86166ba2d00d8f70305da22024b18",
+              "in"
+            ]
+          },
+          {
+            "uid": "5fcc460651c9c59f979aa7ae391e2483",
+            "from": [
+              "3ac967dc0805cebd4875b30f4c53254a",
+              "next"
+            ],
+            "to": [
+              "ebd31bbd75d1073f06b0d005097790bf",
+              "in"
+            ]
+          },
+          {
+            "uid": "4985d1e4fbbe238d9bc37fd998702b8e",
+            "from": [
+              "ebd31bbd75d1073f06b0d005097790bf",
+              "next"
+            ],
+            "to": [
+              "c973f9d0b32feaa671d0c17ca8ced83b",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On kill (a template) + skill check + counter + After N passes + Heal."
+    },
+    {
+      "uid": "9f397d20550e817837c2043e788d2b06",
+      "name": "Chapter 3: smugglers and the beacon",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "8bf98a74df9b1b9517ec23bdf73299b8",
+            "type": "on_chapter",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "chapter": 3
+            }
+          },
+          {
+            "uid": "7d016627c63569ff9ed2a25973a0e983",
+            "type": "once",
+            "pos": [
+              340.0,
+              0.0
+            ]
+          },
+          {
+            "uid": "741694181350fd01322416456740f391",
+            "type": "sequence",
+            "pos": [
+              680.0,
+              0.0
+            ]
+          },
+          {
+            "uid": "ef87993a95e0db7fa1fe3e6d60bef393",
+            "type": "set_variable",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "scope": "game",
+              "name": "mkc_ch3",
+              "op": "set",
+              "value": 1
+            }
+          },
+          {
+            "uid": "ebc15add9f84967ca1b3a555a0da4472",
+            "type": "sector",
+            "pos": [
+              1020.0,
+              170.0
+            ],
+            "data": {
+              "sector": "Druid_Outdoor_Story_LizardHunter_Off",
+              "action": "enable"
+            }
+          },
+          {
+            "uid": "277c71af1d32ef0d8ca3e9117b9c5cad",
+            "type": "hud_message",
+            "pos": [
+              1020.0,
+              340.0
+            ],
+            "data": {
+              "text": {
+                "English": "Chapter {chapter}: the tide brings smugglers, and the stone circle glows.",
+                "German": "Kapitel {chapter}: Die Flut bringt Schmuggler, und der Steinkreis gluehen."
+              },
+              "style": "note"
+            }
+          },
+          {
+            "uid": "4b7cf9a20462d4766aade82f102e59ce",
+            "type": "send_signal",
+            "pos": [
+              1020.0,
+              510.0
+            ],
+            "data": {
+              "name": "chapter3"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "f0b0193259f854e331780fd9a6bafa7e",
+            "from": [
+              "8bf98a74df9b1b9517ec23bdf73299b8",
+              "next"
+            ],
+            "to": [
+              "7d016627c63569ff9ed2a25973a0e983",
+              "in"
+            ]
+          },
+          {
+            "uid": "ec653ed9795a42d56827530bce960ccd",
+            "from": [
+              "7d016627c63569ff9ed2a25973a0e983",
+              "next"
+            ],
+            "to": [
+              "741694181350fd01322416456740f391",
+              "in"
+            ]
+          },
+          {
+            "uid": "1828a1118b90174f04a452b3cdcd6679",
+            "from": [
+              "741694181350fd01322416456740f391",
+              "1"
+            ],
+            "to": [
+              "ef87993a95e0db7fa1fe3e6d60bef393",
+              "in"
+            ]
+          },
+          {
+            "uid": "e6a791ad5e2ff13798717d853c363989",
+            "from": [
+              "741694181350fd01322416456740f391",
+              "2"
+            ],
+            "to": [
+              "ebc15add9f84967ca1b3a555a0da4472",
+              "in"
+            ]
+          },
+          {
+            "uid": "1d80cba74a22f0c6248f83ac31e127fe",
+            "from": [
+              "741694181350fd01322416456740f391",
+              "3"
+            ],
+            "to": [
+              "277c71af1d32ef0d8ca3e9117b9c5cad",
+              "in"
+            ]
+          },
+          {
+            "uid": "4ba0c06d5bd6a0067124eabd808fcf71",
+            "from": [
+              "741694181350fd01322416456740f391",
+              "4"
+            ],
+            "to": [
+              "4b7cf9a20462d4766aade82f102e59ce",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "Chapter 3: a variable, a stock sector (Druid_Outdoor_Story_LizardHunter_Off), a message. The Smugglers layer switches itself (chapter >= 3)."
+    },
+    {
+      "uid": "24673a1f1fc3e2177013406ef18a2a8f",
+      "name": "The beacon",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "37a6bab0ff86a5b739dfec82ce18349d",
+            "type": "on_area",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "at": "point",
+              "x": -31956,
+              "y": 639,
+              "z": -3757,
+              "radius": 15,
+              "on": "enters"
+            }
+          },
+          {
+            "uid": "c748035393fea530748fbae0e047891f",
+            "type": "condition",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "mode": "all",
+              "negate": false,
+              "tests": [
+                {
+                  "kind": "var",
+                  "scope": "game",
+                  "name": "mkc_ch3",
+                  "op": "==",
+                  "value": 1
+                },
+                {
+                  "kind": "var",
+                  "scope": "game",
+                  "name": "mkc_ambush_done",
+                  "op": "==",
+                  "value": 0
+                },
+                {
+                  "kind": "var",
+                  "scope": "save",
+                  "name": "mkc_ambushes",
+                  "op": "==",
+                  "value": 0
+                },
+                {
+                  "kind": "level",
+                  "op": ">=",
+                  "value": 1
+                },
+                {
+                  "kind": "chapter",
+                  "op": "<=",
+                  "value": 3
+                }
+              ]
+            }
+          },
+          {
+            "uid": "00704cce985159407d73f72ece1a3234",
+            "type": "set_variable",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "scope": "save",
+              "name": "mkc_ambushes",
+              "op": "set",
+              "value": 1
+            }
+          },
+          {
+            "uid": "b64052abdc9a7526e76adbec34256e83",
+            "type": "hud_message",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "The circle glows. Ash raiders rise from the stones!",
+                "German": "Der Kreis gluehen. Aschepluenderer steigen aus den Steinen!"
+              },
+              "style": "log"
+            }
+          },
+          {
+            "uid": "1271960250920bc5b04d6d4e69726251",
+            "type": "delay",
+            "pos": [
+              1360.0,
+              0.0
+            ],
+            "data": {
+              "seconds": 3
+            }
+          },
+          {
+            "uid": "02c441b47e49b84fb4f31fe4a810cb28",
+            "type": "repeat",
+            "pos": [
+              1700.0,
+              0.0
+            ],
+            "data": {
+              "count": 3
+            }
+          },
+          {
+            "uid": "8016fec206b0cce9c5eeb834ac9c39f8",
+            "type": "spawn_npc",
+            "pos": [
+              2040.0,
+              0.0
+            ],
+            "data": {
+              "template": "MKC_Ash_Raider_T",
+              "name": "",
+              "at": "near_player",
+              "x": 500,
+              "y": 0,
+              "z": 0,
+              "peaceful": false
+            }
+          },
+          {
+            "uid": "24f4550a60b4a2081abed4c4459315cc",
+            "type": "spawn_npc",
+            "pos": [
+              2040.0,
+              170.0
+            ],
+            "data": {
+              "template": "MKC_Ash_Raider_T",
+              "name": "MKC_Beacon_Wraith",
+              "at": "point",
+              "x": -31556,
+              "y": 739,
+              "z": -3757,
+              "peaceful": false
+            }
+          },
+          {
+            "uid": "93c182b0905d4e7334e35633c5fd87c5",
+            "type": "log",
+            "pos": [
+              2040.0,
+              340.0
+            ],
+            "data": {
+              "text": "beacon ambush spawned"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "fdf138c0d050e950b82f9b34fd9624b6",
+            "from": [
+              "37a6bab0ff86a5b739dfec82ce18349d",
+              "next"
+            ],
+            "to": [
+              "c748035393fea530748fbae0e047891f",
+              "in"
+            ]
+          },
+          {
+            "uid": "0b1aee53be940bf0b3b8c658dfe24f03",
+            "from": [
+              "c748035393fea530748fbae0e047891f",
+              "then"
+            ],
+            "to": [
+              "00704cce985159407d73f72ece1a3234",
+              "in"
+            ]
+          },
+          {
+            "uid": "e95311fd4cb477e7bfea3a203f062538",
+            "from": [
+              "00704cce985159407d73f72ece1a3234",
+              "next"
+            ],
+            "to": [
+              "b64052abdc9a7526e76adbec34256e83",
+              "in"
+            ]
+          },
+          {
+            "uid": "4a4f5791a0003a1dbf41a1a96f6a8b37",
+            "from": [
+              "b64052abdc9a7526e76adbec34256e83",
+              "next"
+            ],
+            "to": [
+              "1271960250920bc5b04d6d4e69726251",
+              "in"
+            ]
+          },
+          {
+            "uid": "e5818309304ec41f4f95bfaf01bf9dfc",
+            "from": [
+              "1271960250920bc5b04d6d4e69726251",
+              "next"
+            ],
+            "to": [
+              "02c441b47e49b84fb4f31fe4a810cb28",
+              "in"
+            ]
+          },
+          {
+            "uid": "1017632723ce10e8a97c5c26906b84f0",
+            "from": [
+              "02c441b47e49b84fb4f31fe4a810cb28",
+              "body"
+            ],
+            "to": [
+              "8016fec206b0cce9c5eeb834ac9c39f8",
+              "in"
+            ]
+          },
+          {
+            "uid": "9ebe13d8ac38996d947e2d671fee91a0",
+            "from": [
+              "02c441b47e49b84fb4f31fe4a810cb28",
+              "done"
+            ],
+            "to": [
+              "24f4550a60b4a2081abed4c4459315cc",
+              "in"
+            ]
+          },
+          {
+            "uid": "8ca08770a6432dd21b9e7683622a3eb2",
+            "from": [
+              "02c441b47e49b84fb4f31fe4a810cb28",
+              "done"
+            ],
+            "to": [
+              "93c182b0905d4e7334e35633c5fd87c5",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On enter area (the stone circle) + level / chapter / variable checks + Delay + Repeat spawning raiders."
+    },
+    {
+      "uid": "4ce6aff4c6d6e7872ef431d68050ba57",
+      "name": "Dusk bell",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "381795bf65c2366604d1eae831acab3e",
+            "type": "on_time",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "hour": 20,
+              "minute": 0
+            }
+          },
+          {
+            "uid": "688adeb927a516d1eef8ffe398a1e3fd",
+            "type": "condition",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "mode": "all",
+              "negate": false,
+              "tests": [
+                {
+                  "kind": "time",
+                  "from": 19,
+                  "to": 23
+                },
+                {
+                  "kind": "chance",
+                  "percent": 100
+                }
+              ]
+            }
+          },
+          {
+            "uid": "e17ae3d862fe6ca07e497a3054d1aa91",
+            "type": "hud_message",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "The tide bell rings.",
+                "German": "Die Gezeitenglocke laeutet."
+              },
+              "style": "note"
+            }
+          },
+          {
+            "uid": "7bd5b8cd96138a1372d1919972a3027d",
+            "type": "run_script",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "script": "MKC_TideBell",
+              "arg": 1
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "361be6b15aada688c61b3491d62236d9",
+            "from": [
+              "381795bf65c2366604d1eae831acab3e",
+              "next"
+            ],
+            "to": [
+              "688adeb927a516d1eef8ffe398a1e3fd",
+              "in"
+            ]
+          },
+          {
+            "uid": "7b29c3caf3b43242b8e3a8777a114d88",
+            "from": [
+              "688adeb927a516d1eef8ffe398a1e3fd",
+              "then"
+            ],
+            "to": [
+              "e17ae3d862fe6ca07e497a3054d1aa91",
+              "in"
+            ]
+          },
+          {
+            "uid": "9bd3a9be4dba1ac569267b11a3759894",
+            "from": [
+              "e17ae3d862fe6ca07e497a3054d1aa91",
+              "next"
+            ],
+            "to": [
+              "7bd5b8cd96138a1372d1919972a3027d",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On time of day (20:00) + time window + chance + Run script (custom.lua)."
+    },
+    {
+      "uid": "f7705d1ca62ebe655b82e0e1ce61e45b",
+      "name": "Old watchfire",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "0471dc283d5fd1fb94d4a9b1accd649e",
+            "type": "on_timer",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "seconds": 1800,
+              "repeat": false
+            }
+          },
+          {
+            "uid": "a6ff6e9fb0d00cd8a1481a14ddc737b0",
+            "type": "hud_message",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "Maren has been waiting a long time.",
+                "German": "Maren wartet schon lange."
+              },
+              "style": "note"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "c1f48d0816ab5103f098a286ac103117",
+            "from": [
+              "0471dc283d5fd1fb94d4a9b1accd649e",
+              "next"
+            ],
+            "to": [
+              "a6ff6e9fb0d00cd8a1481a14ddc737b0",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On timer: 30 minutes of play."
+    },
+    {
+      "uid": "f9179c3c743b5f77347cf22d6dd3fd3f",
+      "name": "Chapter 4: the key",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "7a944aee0d2b39434957b763b79fcac2",
+            "type": "on_chapter",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "chapter": 4
+            }
+          },
+          {
+            "uid": "082bd7657f0934b211cef63f7b1a84dd",
+            "type": "once",
+            "pos": [
+              340.0,
+              0.0
+            ]
+          },
+          {
+            "uid": "145fdf647784daf887dae75df7b1abfa",
+            "type": "sequence",
+            "pos": [
+              680.0,
+              0.0
+            ]
+          },
+          {
+            "uid": "5273d1511476846a57b8fda6bc554b5f",
+            "type": "set_variable",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "scope": "game",
+              "name": "mkc_ch4",
+              "op": "set",
+              "value": 1
+            }
+          },
+          {
+            "uid": "650f46b521d2019df1b317807fd89aa1",
+            "type": "give_item",
+            "pos": [
+              1020.0,
+              170.0
+            ],
+            "data": {
+              "item": "MKC_Tide_Key",
+              "count": 1,
+              "show": true
+            }
+          },
+          {
+            "uid": "bbcb870f622bd9f4308972ce73dd2316",
+            "type": "hud_message",
+            "pos": [
+              1020.0,
+              340.0
+            ],
+            "data": {
+              "text": {
+                "English": "Chapter {chapter}: the Key of the Tide hums in your pack.",
+                "German": "Kapitel {chapter}: Der Schluessel der Gezeiten summt in deinem Rucksack."
+              },
+              "style": "note"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "3b62cf7ec250e8b1e799dfb69529b183",
+            "from": [
+              "7a944aee0d2b39434957b763b79fcac2",
+              "next"
+            ],
+            "to": [
+              "082bd7657f0934b211cef63f7b1a84dd",
+              "in"
+            ]
+          },
+          {
+            "uid": "183dbc36d61c54516d461284ef2f945f",
+            "from": [
+              "082bd7657f0934b211cef63f7b1a84dd",
+              "next"
+            ],
+            "to": [
+              "145fdf647784daf887dae75df7b1abfa",
+              "in"
+            ]
+          },
+          {
+            "uid": "cb7353f0d4c2b270b9602ca91a9ff48c",
+            "from": [
+              "145fdf647784daf887dae75df7b1abfa",
+              "1"
+            ],
+            "to": [
+              "5273d1511476846a57b8fda6bc554b5f",
+              "in"
+            ]
+          },
+          {
+            "uid": "28960c7ee8aa17422f9e6df9071b938b",
+            "from": [
+              "145fdf647784daf887dae75df7b1abfa",
+              "2"
+            ],
+            "to": [
+              "650f46b521d2019df1b317807fd89aa1",
+              "in"
+            ]
+          },
+          {
+            "uid": "b22c96adafc0cbb2779e302645f62687",
+            "from": [
+              "145fdf647784daf887dae75df7b1abfa",
+              "3"
+            ],
+            "to": [
+              "bbcb870f622bd9f4308972ce73dd2316",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "Chapter 4: a variable, the Key of the Tide (it starts the finale quest: Start kind 'item')."
+    },
+    {
+      "uid": "9ba8258befed27443ac2428ee441eeb2",
+      "name": "The tide rises",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "fd3cc9c40fcd6b7fdf9426506d8e1ca1",
+            "type": "on_variable",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "scope": "game",
+              "name": "mkc_ch4",
+              "op": ">=",
+              "value": 1
+            }
+          },
+          {
+            "uid": "38dcbe2db6229744fc08c50fed1add59",
+            "type": "sequence",
+            "pos": [
+              340.0,
+              0.0
+            ]
+          },
+          {
+            "uid": "6b6cd9531d30e0c27f1bbf19ebcf29b9",
+            "type": "layer",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "layer": "TideCircle",
+              "action": "enable"
+            }
+          },
+          {
+            "uid": "5f17d79e2f143050af560c809a07788c",
+            "type": "sector",
+            "pos": [
+              680.0,
+              170.0
+            ],
+            "data": {
+              "sector": "Monastery_Story_LizardAttack_Off",
+              "action": "enable"
+            }
+          },
+          {
+            "uid": "de8b040d0a7be9650ea3e5dc11b7d395",
+            "type": "set_time",
+            "pos": [
+              680.0,
+              340.0
+            ],
+            "data": {
+              "hour": 21,
+              "minute": 0
+            }
+          },
+          {
+            "uid": "c7873067c026ab4f71621b53b6090562",
+            "type": "play_sound",
+            "pos": [
+              680.0,
+              510.0
+            ],
+            "data": {
+              "sound": "sounds/maren_who.wav"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "a7527b3b82e85f170ad4e6707a88f495",
+            "from": [
+              "fd3cc9c40fcd6b7fdf9426506d8e1ca1",
+              "next"
+            ],
+            "to": [
+              "38dcbe2db6229744fc08c50fed1add59",
+              "in"
+            ]
+          },
+          {
+            "uid": "01f58d42a001dc22d4700335718fbf47",
+            "from": [
+              "38dcbe2db6229744fc08c50fed1add59",
+              "1"
+            ],
+            "to": [
+              "6b6cd9531d30e0c27f1bbf19ebcf29b9",
+              "in"
+            ]
+          },
+          {
+            "uid": "3000e39c804323afa1ddd33ca5654964",
+            "from": [
+              "38dcbe2db6229744fc08c50fed1add59",
+              "2"
+            ],
+            "to": [
+              "5f17d79e2f143050af560c809a07788c",
+              "in"
+            ]
+          },
+          {
+            "uid": "617c766aa687b39154a4b54440073ee4",
+            "from": [
+              "38dcbe2db6229744fc08c50fed1add59",
+              "3"
+            ],
+            "to": [
+              "de8b040d0a7be9650ea3e5dc11b7d395",
+              "in"
+            ]
+          },
+          {
+            "uid": "c37e5a04a53c9a328ad7d252a00727f6",
+            "from": [
+              "38dcbe2db6229744fc08c50fed1add59",
+              "4"
+            ],
+            "to": [
+              "c7873067c026ab4f71621b53b6090562",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On variable (>= 1): layer TideCircle on, the monastery lizard sector on, time of day, a sound."
+    },
+    {
+      "uid": "30d1779305129ee31e226342e41d2c96",
+      "name": "The Lord falls",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "823c43bfff738e1de1da1f4de95ac9eb",
+            "type": "on_kill",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "target": "MKC_Tide_Lord",
+              "by_player": true
+            }
+          },
+          {
+            "uid": "e668093ce350bcbed87405ccebb3d040",
+            "type": "condition",
+            "pos": [
+              340.0,
+              0.0
+            ],
+            "data": {
+              "mode": "any",
+              "negate": false,
+              "tests": [
+                {
+                  "kind": "quest",
+                  "quest": "Q_MKC_Finale",
+                  "status": "Running"
+                },
+                {
+                  "kind": "var",
+                  "scope": "game",
+                  "name": "mkc_ch4",
+                  "op": ">=",
+                  "value": 1
+                }
+              ]
+            }
+          },
+          {
+            "uid": "aba3c8216628c799b4f45115094bc762",
+            "type": "sequence",
+            "pos": [
+              680.0,
+              0.0
+            ]
+          },
+          {
+            "uid": "d8c11f41f61f23eaacb9cffc62de4255",
+            "type": "set_variable",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "scope": "game",
+              "name": "mkc_finale_done",
+              "op": "set",
+              "value": 1
+            }
+          },
+          {
+            "uid": "ff80abfffd0b9828c83e7702757447d5",
+            "type": "hud_message",
+            "pos": [
+              1020.0,
+              170.0
+            ],
+            "data": {
+              "text": {
+                "English": "The Lord of the Tide has fallen. The Chronicle is nearly complete.",
+                "German": "Der Herr der Gezeiten ist gefallen. Die Chronik ist fast vollstaendig."
+              },
+              "style": "experience"
+            }
+          },
+          {
+            "uid": "8c5c2c18e1bfb2d65aec8f51efcc55b1",
+            "type": "send_signal",
+            "pos": [
+              1020.0,
+              340.0
+            ],
+            "data": {
+              "name": "chronicle_complete"
+            }
+          },
+          {
+            "uid": "b619f26e52ff371d5a2a6ba648605fea",
+            "type": "remove_npc",
+            "pos": [
+              1020.0,
+              510.0
+            ],
+            "data": {
+              "target": "MKC_Ash_Raider_T",
+              "radius": 100
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "33747c6324ee2757fab4bc6ef20d8f72",
+            "from": [
+              "823c43bfff738e1de1da1f4de95ac9eb",
+              "next"
+            ],
+            "to": [
+              "e668093ce350bcbed87405ccebb3d040",
+              "in"
+            ]
+          },
+          {
+            "uid": "aa0d765317aabc1b97e9055b8b023291",
+            "from": [
+              "e668093ce350bcbed87405ccebb3d040",
+              "then"
+            ],
+            "to": [
+              "aba3c8216628c799b4f45115094bc762",
+              "in"
+            ]
+          },
+          {
+            "uid": "01096835e1adc80ac8d61b7c3f78f128",
+            "from": [
+              "aba3c8216628c799b4f45115094bc762",
+              "1"
+            ],
+            "to": [
+              "d8c11f41f61f23eaacb9cffc62de4255",
+              "in"
+            ]
+          },
+          {
+            "uid": "1866bfc06040de03eab114cd5bb59bf6",
+            "from": [
+              "aba3c8216628c799b4f45115094bc762",
+              "2"
+            ],
+            "to": [
+              "ff80abfffd0b9828c83e7702757447d5",
+              "in"
+            ]
+          },
+          {
+            "uid": "7d379ef3f99eca2517f537831343ecec",
+            "from": [
+              "aba3c8216628c799b4f45115094bc762",
+              "3"
+            ],
+            "to": [
+              "8c5c2c18e1bfb2d65aec8f51efcc55b1",
+              "in"
+            ]
+          },
+          {
+            "uid": "c5b73f1c104194ca5a9cee5402931160",
+            "from": [
+              "aba3c8216628c799b4f45115094bc762",
+              "4"
+            ],
+            "to": [
+              "b619f26e52ff371d5a2a6ba648605fea",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On kill: finale variable, message, signal, Remove NPC (the raiders by template)."
+    },
+    {
+      "uid": "3f3e5ba8de3ec1d7dad942780ac0823d",
+      "name": "Epilogue",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "f5ac5beaefe62bf991b351e66d38b310",
+            "type": "on_signal",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "name": "chronicle_complete"
+            }
+          },
+          {
+            "uid": "6614dcf052337375d3fb8c8b2b985970",
+            "type": "once",
+            "pos": [
+              340.0,
+              0.0
+            ]
+          },
+          {
+            "uid": "888d0281df2cc8b1a5f656261a49ea22",
+            "type": "delay",
+            "pos": [
+              680.0,
+              0.0
+            ],
+            "data": {
+              "seconds": 6
+            }
+          },
+          {
+            "uid": "1b13b7972399359b0da847f0e6d8d403",
+            "type": "condition",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "mode": "any",
+              "negate": false,
+              "tests": [
+                {
+                  "kind": "dead",
+                  "who": "MKC_Tide_Lord"
+                },
+                {
+                  "kind": "sector",
+                  "sector": "Monastery_Story_LizardAttack_Off",
+                  "state": "enabled"
+                }
+              ]
+            }
+          },
+          {
+            "uid": "294f55c6a7110db02b2e0c8dad3ec5e8",
+            "type": "sequence",
+            "pos": [
+              1360.0,
+              0.0
+            ]
+          },
+          {
+            "uid": "2ec93df8b0bdd89bf11eb05ba2d749f8",
+            "type": "heal",
+            "pos": [
+              1700.0,
+              0.0
+            ],
+            "data": {
+              "hp": 500,
+              "mana": 200
+            }
+          },
+          {
+            "uid": "a959f2febf041fc750caf406f694c908",
+            "type": "take_item",
+            "pos": [
+              1700.0,
+              170.0
+            ],
+            "data": {
+              "item": "MKC_Tide_Key",
+              "count": 1
+            }
+          },
+          {
+            "uid": "1f9e09a42d4987f34b012397c8945381",
+            "type": "set_chapter",
+            "pos": [
+              1700.0,
+              340.0
+            ],
+            "data": {
+              "chapter": 4
+            }
+          },
+          {
+            "uid": "3b9c2ac822d2a55793fda8ea7d9c7a4f",
+            "type": "teleport",
+            "pos": [
+              1700.0,
+              510.0
+            ],
+            "data": {
+              "at": "point",
+              "x": -31900,
+              "y": 650,
+              "z": -4800
+            }
+          },
+          {
+            "uid": "47c8094d0925da8a7c48f38411589e5b",
+            "type": "set_time",
+            "pos": [
+              1700.0,
+              680.0
+            ],
+            "data": {
+              "hour": 8,
+              "minute": 0
+            }
+          },
+          {
+            "uid": "b211eb4d6919e175e8bccdff84725c75",
+            "type": "hud_message",
+            "pos": [
+              2040.0,
+              680.0
+            ],
+            "data": {
+              "text": {
+                "English": "The Chronicle is complete. Maren waits on the beach.",
+                "German": "Die Chronik ist vollstaendig. Maren wartet am Strand."
+              },
+              "style": "note"
+            }
+          },
+          {
+            "uid": "4ceba4bc10a0019f10bcfc5e39efbdce",
+            "type": "quest_log",
+            "pos": [
+              1700.0,
+              850.0
+            ],
+            "data": {
+              "quest": "Q_MKC_Chronicle",
+              "text": {
+                "English": "The last page is written.",
+                "German": "Die letzte Seite ist geschrieben."
+              }
+            }
+          },
+          {
+            "uid": "38bfedf59d4a377744505133dc0137a6",
+            "type": "log",
+            "pos": [
+              1360.0,
+              170.0
+            ],
+            "data": {
+              "text": "the epilogue condition did not hold"
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "6d1443c7066dcb5bab076ab10490b2b3",
+            "from": [
+              "f5ac5beaefe62bf991b351e66d38b310",
+              "next"
+            ],
+            "to": [
+              "6614dcf052337375d3fb8c8b2b985970",
+              "in"
+            ]
+          },
+          {
+            "uid": "7e26f8e644caeac692d5f1d3c343f5ce",
+            "from": [
+              "6614dcf052337375d3fb8c8b2b985970",
+              "next"
+            ],
+            "to": [
+              "888d0281df2cc8b1a5f656261a49ea22",
+              "in"
+            ]
+          },
+          {
+            "uid": "d48f469ca263ce8438df4b20452b1cee",
+            "from": [
+              "888d0281df2cc8b1a5f656261a49ea22",
+              "next"
+            ],
+            "to": [
+              "1b13b7972399359b0da847f0e6d8d403",
+              "in"
+            ]
+          },
+          {
+            "uid": "997c40715d3178262ed5c611a2ec14ca",
+            "from": [
+              "1b13b7972399359b0da847f0e6d8d403",
+              "then"
+            ],
+            "to": [
+              "294f55c6a7110db02b2e0c8dad3ec5e8",
+              "in"
+            ]
+          },
+          {
+            "uid": "8e01a4bf01c7863119c60403462aa9c3",
+            "from": [
+              "1b13b7972399359b0da847f0e6d8d403",
+              "else"
+            ],
+            "to": [
+              "38bfedf59d4a377744505133dc0137a6",
+              "in"
+            ]
+          },
+          {
+            "uid": "374958f304e06b0814f5215dfb17adb9",
+            "from": [
+              "294f55c6a7110db02b2e0c8dad3ec5e8",
+              "1"
+            ],
+            "to": [
+              "2ec93df8b0bdd89bf11eb05ba2d749f8",
+              "in"
+            ]
+          },
+          {
+            "uid": "a667e1ee357635c2cd2fd49d0263d79c",
+            "from": [
+              "294f55c6a7110db02b2e0c8dad3ec5e8",
+              "2"
+            ],
+            "to": [
+              "a959f2febf041fc750caf406f694c908",
+              "in"
+            ]
+          },
+          {
+            "uid": "e2689054b1f872671aa48048744bde91",
+            "from": [
+              "294f55c6a7110db02b2e0c8dad3ec5e8",
+              "3"
+            ],
+            "to": [
+              "1f9e09a42d4987f34b012397c8945381",
+              "in"
+            ]
+          },
+          {
+            "uid": "b80f5471008a27e4c346935abbd16ab2",
+            "from": [
+              "294f55c6a7110db02b2e0c8dad3ec5e8",
+              "4"
+            ],
+            "to": [
+              "3b9c2ac822d2a55793fda8ea7d9c7a4f",
+              "in"
+            ]
+          },
+          {
+            "uid": "71959d2e008357e455a1627dc0bd9ab2",
+            "from": [
+              "3b9c2ac822d2a55793fda8ea7d9c7a4f",
+              "next"
+            ],
+            "to": [
+              "47c8094d0925da8a7c48f38411589e5b",
+              "in"
+            ]
+          },
+          {
+            "uid": "994f1e73ef9811e12ad543d5de4f22a4",
+            "from": [
+              "47c8094d0925da8a7c48f38411589e5b",
+              "next"
+            ],
+            "to": [
+              "b211eb4d6919e175e8bccdff84725c75",
+              "in"
+            ]
+          },
+          {
+            "uid": "e5229b33633b08ecc0b35c9013e0f80c",
+            "from": [
+              "47c8094d0925da8a7c48f38411589e5b",
+              "next"
+            ],
+            "to": [
+              "4ceba4bc10a0019f10bcfc5e39efbdce",
+              "in"
+            ]
+          }
+        ]
+      },
+      "notes": "On signal + Once + Delay + any-of check (dead NPC / sector): heal, take the key, set chapter, teleport, set time, quest log."
+    }
+  ],
+  "layers": [
+    {
+      "uid": "4ec208c91c8b78bb791db63f690a355e",
+      "name": "Beach",
+      "label": {
+        "English": "Maren's beach",
+        "German": "Marens Strand"
+      },
+      "enabled": true,
+      "npcs": [
+        "MKC_Maren"
+      ],
+      "spawns": [
+        "a060c77ff3f819209ff937868dcbd757",
+        "abf3d6c25d1423dcc312e4afa102bb4b"
+      ],
+      "notes": "Chapter 1: on from the start."
+    },
+    {
+      "uid": "2acd0e3498bb55b1ffb186db09dd7db0",
+      "name": "AshCamp",
+      "label": {
+        "English": "The Ash Camp",
+        "German": "Das Aschelager"
+      },
+      "enabled": false,
+      "disable_when": {
+        "mode": "all",
+        "negate": false,
+        "tests": [
+          {
+            "kind": "quest",
+            "quest": "Q_MKC_Beacon",
+            "status": "Success"
+          }
+        ]
+      },
+      "npcs": [
+        "MKC_Ash_Warlord",
+        "MKC_Ash_Raider_1",
+        "MKC_Ash_Raider_2",
+        "MKC_Ash_Raider_3"
+      ],
+      "spawns": [
+        "4e99e341a6630b0dabc9f5566f95c4cb",
+        "4c5f135e19f6ab16241e51a12886912a"
+      ],
+      "containers": [
+        "752335929e3e0157cbdbaa2814852fa3"
+      ],
+      "notes": "Chapter 2: switched on by the graph 'Chapter 2: the hidden camp', off when the beacon quest is done."
+    },
+    {
+      "uid": "ad613e63e9d225411cd314478a6e7b03",
+      "name": "Smugglers",
+      "label": {
+        "English": "The smugglers' cove",
+        "German": "Die Schmugglerbucht"
+      },
+      "enabled": false,
+      "enable_when": {
+        "mode": "all",
+        "negate": false,
+        "tests": [
+          {
+            "kind": "chapter",
+            "op": ">=",
+            "value": 3
+          }
+        ]
+      },
+      "npcs": [
+        "MKC_Smuggler"
+      ],
+      "spawns": [
+        "80f6188eb45ec73c2f65b89d238392e7"
+      ],
+      "notes": "Chapter 3: switches itself on when the chapter reaches 3 (no graph involved)."
+    },
+    {
+      "uid": "918ea4fa59a62832f8fd9642c4b09e99",
+      "name": "TideCircle",
+      "label": {
+        "English": "The Tide Circle",
+        "German": "Der Gezeitenkreis"
+      },
+      "enabled": false,
+      "disable_when": {
+        "mode": "all",
+        "negate": false,
+        "tests": [
+          {
+            "kind": "quest",
+            "quest": "Q_MKC_Epilogue",
+            "status": "Success"
+          }
+        ]
+      },
+      "npcs": [
+        "MKC_Tide_Lord",
+        "MKC_Tide_Guard_1",
+        "MKC_Tide_Guard_2"
+      ],
+      "spawns": [
+        "ab8f8fcd6a30d610bcbb4202cf9cb666"
+      ],
+      "notes": "Chapter 4: switched on by 'The tide rises'."
+    }
+  ],
+  "world": {
+    "world": "World",
+    "spawns": [
+      {
+        "uid": "a060c77ff3f819209ff937868dcbd757",
+        "template": "MKC_Chronicle_Tablet",
+        "position": [
+          -31880.0,
+          620.0,
+          -4600.0
+        ],
+        "notes": "a fragment of the chronicle, with the imported 3D model"
+      },
+      {
+        "uid": "abf3d6c25d1423dcc312e4afa102bb4b",
+        "template": "Object_Interact_Bench_Outdoor",
+        "position": [
+          -31800.0,
+          600.0,
+          -4550.0
+        ],
+        "rotation": [
+          90.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "uid": "4e99e341a6630b0dabc9f5566f95c4cb",
+        "template": "Def_CampFire",
+        "position": [
+          -34980.0,
+          420.0,
+          -6596.0
+        ]
+      },
+      {
+        "uid": "4c5f135e19f6ab16241e51a12886912a",
+        "template": "Object_Interact_Bench_Outdoor",
+        "position": [
+          -35230.0,
+          420.0,
+          -6746.0
+        ],
+        "rotation": [
+          200.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "uid": "80f6188eb45ec73c2f65b89d238392e7",
+        "template": "It_Pearl",
+        "position": [
+          -29950.0,
+          720.0,
+          -6450.0
+        ],
+        "amount": 2
+      },
+      {
+        "uid": "ab8f8fcd6a30d610bcbb4202cf9cb666",
+        "template": "Def_CampFire",
+        "position": [
+          -31956.0,
+          679.0,
+          -3607.0
+        ]
+      }
+    ],
+    "containers": [
+      {
+        "uid": "14289e99bd1c7fd471a5b4976b756fee",
+        "guid": "2c2c2522-cdad-4dba-aba1-12a5e2054790",
+        "entity_name": "Object_Interact_Animated_Chest_Medium",
+        "layer": "Harbour_Town_Events",
+        "items": [
+          [
+            "MKC_Ember_Whisper",
+            1
+          ],
+          [
+            "MKC_Ember_Whisper_Scroll",
+            1
+          ],
+          [
+            "It_Gold",
+            120
+          ]
+        ]
+      },
+      {
+        "uid": "752335929e3e0157cbdbaa2814852fa3",
+        "guid": "7bd3ae88-20f1-490c-8c86-f7e02d4f5787",
+        "entity_name": "Object_Interact_Animated_Chest_Medium",
+        "layer": "Harbour_Town_Events",
+        "items": [
+          [
+            "MKC_Tide_Potion",
+            2
+          ],
+          [
+            "It_Pearl",
+            3
+          ]
+        ]
+      }
+    ],
+    "removals": [
+      {
+        "uid": "567644f77fd58f45164910cedadab8d3",
+        "guid": "01c4332e-efae-459f-9098-ae6c71dbd23d",
+        "entity_name": "Obj_LS_Torch_Ground_01",
+        "layer": "Game_Start_Dyn_Lights"
+      }
+    ],
+    "moves": [
+      {
+        "uid": "cbd23b42e607e5f59f1dd227043b199e",
+        "guid": "3dbe0473-6c27-4a13-a0c2-86fdafabff88",
+        "entity_name": "Obj_Nat_Stone_Shape_02_Small_L01",
+        "layer": "Game_Start_Dyn",
+        "position": [
+          -31910.0,
+          655.0,
+          -3777.0
+        ],
+        "rotation": [
+          33.0,
+          0.0,
+          0.0
+        ]
+      }
+    ]
+  },
+  "assets": [
+    {
+      "uid": "7efa49dc3fefc9c70095d070ff50d270",
+      "file": "chronicle/images/chronicle_blade.png",
+      "kind": "picture"
+    },
+    {
+      "uid": "a7319936cea3c59e2c586bccd2ef9d94",
+      "file": "chronicle/images/chronicle_amulet.png",
+      "kind": "picture"
+    },
+    {
+      "uid": "26adfacfddbad8a366b565176350d58e",
+      "file": "chronicle/audio/maren_who.wav",
+      "kind": "sound"
+    },
+    {
+      "uid": "1d81e73cf8348a5c0b81371c97a3e3d2",
+      "file": "chronicle/audio/maren_who_de.wav",
+      "kind": "sound"
+    },
+    {
+      "uid": "48bca387117ff1cb489c56b7c97e2009",
+      "file": "chronicle/assets/MKC_Tablet._xmsh",
+      "kind": "mesh"
+    }
+  ],
+  "behaviors": [
+    {
+      "uid": "2d14c8982f871d1f8411b8c4abefe585",
+      "name": "chronicler",
+      "file": "chronicle/behaviors/chronicler.lua"
+    },
+    {
+      "uid": "5b5696f6d99d1c44539939527220073e",
+      "name": "camp_watch",
+      "file": "chronicle/behaviors/camp_watch.lua"
+    }
+  ],
+  "editor": {}
+}

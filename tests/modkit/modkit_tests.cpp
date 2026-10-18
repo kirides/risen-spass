@@ -345,6 +345,7 @@ TEST(gamedata_real_archives) {
 #include "sectors_tests.inc"
 #include "genome_tests.inc"
 #include "dialog_sim_tests.inc"
+#include "chronicle_tests.inc"
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
