@@ -544,10 +544,16 @@ api.on("entity.damaged", function(e, attacker, damage)
 end)
 
 api.on("info.started", function(info, owner)
-    local r = type(owner) == "string" and running[owner]
-    if not r then return end
-    local list = {}
-    for _, inst in pairs(r) do list[#list + 1] = inst end
+    if type(owner) ~= "string" then return end
+    local list, seen = {}, {}
+    for _, inst in pairs(running[owner] or {}) do list[#list + 1] = inst seen[inst] = true end
+    -- an NPC with a unique name whose behaviour came from his template runs under "@<id>": find him by the name and look there too
+    local ok, e = pcall(api.entity.get, owner)
+    if ok and e then
+        for _, inst in ipairs(instances_of(e)) do
+            if not seen[inst] then list[#list + 1] = inst seen[inst] = true end
+        end
+    end
     for _, inst in ipairs(list) do call(inst, "on_talk", info) end
 end)
 

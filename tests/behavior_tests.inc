@@ -160,6 +160,21 @@ TEST(behavior_on_every_npc_of_a_template) {
     CHECK(lua.script("return #api.behavior.list() == 0 and api.behavior.get(risen.entity.npcs()[1], 'pack') == nil").get<bool>());
 }
 
+TEST(behavior_on_talk_reaches_a_template_npc_with_a_unique_name) {
+    // found by the chronicle example: a behaviour attached to a template runs under "@<id>"; the dialogue's owner is the NPC's unique name
+    sol::state lua;
+    setupBehaviorMock(lua);
+    lua.script(R"LUA(
+        api.behavior.define("chat", { on_talk = function(self, info) log_call("talk", self.key:sub(1, 1), info) end })
+        api.behavior.attach_template("Peasant", "chat")
+        spawn("Peasant", "Maren")
+        up()
+        fire("info.started", "Maren_Who", "Maren")
+        fire("info.started", "Other_Who", "Nobody")
+    )LUA");
+    CHECK(lua.script("return has_call('talk @ Maren_Who') and count_calls('talk') == 1").get<bool>());
+}
+
 TEST(behavior_errors_switch_one_attachment_off) {
     sol::state lua;
     setupBehaviorMock(lua);
