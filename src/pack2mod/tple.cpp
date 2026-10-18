@@ -96,6 +96,8 @@ bool any_prefix(const std::string& s, std::initializer_list<const char*> ps) {
 
 }  // namespace
 
+Val decode_value(const std::string& type, const Bytes& payload, const std::vector<std::string>& strs) { return decode(type, payload, strs); }
+
 std::vector<std::string> read_string_table(const Bytes& b, size_t* table_offset) {
     const size_t p = rd32(b, 10);
     if (p + 9 > b.size() || b.compare(p, 4, "\xef\xbe\xad\xde", 4) != 0) throw Error("no string table");

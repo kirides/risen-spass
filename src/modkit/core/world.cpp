@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <unordered_map>
 
+#include "core/genome.h"
 #include "core/log.h"
 
 namespace mk {
@@ -38,62 +39,6 @@ const WorldEntity* World::by_name(const std::string& entity_name) const {
     return nullptr;
 }
 
-namespace {
-
-bool is_type_name(const std::string& n) {
-    return p2m::starts_with(n, "gC") || p2m::starts_with(n, "eC") || p2m::starts_with(n, "bC") || p2m::starts_with(n, "bT");
-}
-
-struct Record {
-    size_t start;
-    std::string name;
-};
-
-// the entity records of a layer file (byte offsets, names), the same recognition as risen-pack2mod's world scanner
-std::vector<Record> find_records(const p2m::Bytes& b, const std::vector<std::string>& strings, size_t table) {
-    std::vector<Record> out;
-    for (size_t p = 0; p + 24 + 64 <= table; ++p) {
-        if (b[p] != '\xD6' || b[p + 1] != '\0') continue;
-        if (b.compare(p + 18, 4, std::string(4, '\0')) != 0 || (b[p + 4] == '\x1e' && b[p + 5] == '\0')) continue;
-        const size_t idx = p2m::rd16(b, p + 22);
-        if (idx >= strings.size()) continue;
-        const std::string& nm = strings[idx];
-        if (nm.empty() || is_type_name(nm)) continue;
-        bool ok = true;
-        for (size_t k = 0; k < 16 && ok; ++k) {
-            const float f = p2m::rdf(b, p + 24 + 4 * k);
-            ok = std::isfinite(f) && std::fabs(f) < 1e7f;
-        }
-        if (!ok) continue;
-        out.push_back({p, nm});
-        p += 1;
-    }
-    return out;
-}
-
-void read_entity(const p2m::Bytes& b, size_t p, size_t end, WorldEntity& e, const GameData& g) {
-    e.guid = guid_text(b.data() + p + 2);
-    for (size_t k = 0; k < 16; ++k) e.matrix[k] = p2m::rdf(b, p + 24 + 4 * k);
-    const size_t box = p + 24 + 64;
-    if (box + 24 <= end) {
-        for (int k = 0; k < 3; ++k) {
-            e.box_min[k] = p2m::rdf(b, box + 4 * k);
-            e.box_max[k] = p2m::rdf(b, box + 12 + 4 * k);
-        }
-    }
-    // the creator template: "01 00 01" + GUID after the boxes and the sphere (searched a little, the layout differs for some entity kinds)
-    const size_t from = box + 24 + 16 + 24;
-    for (size_t q = from; q + 3 + 16 <= end && q < from + 48; ++q) {
-        if (b[q] == '\x01' && b[q + 1] == '\0' && b[q + 2] == '\x01') {
-            const std::string at = "@" + p2m::hex_of(std::string_view(b.data() + q + 3, 16));
-            e.template_name = g.template_by_guid(at);
-            if (!e.template_name.empty()) break;
-        }
-    }
-}
-
-}  // namespace
-
 std::shared_ptr<World> load_world(const GameData& g, const std::string& world, const WorldProgress& progress, const std::atomic<bool>* cancel) {
     const auto t0 = std::chrono::steady_clock::now();
     const std::string prefix = "projects/" + world + "/";
@@ -107,17 +52,13 @@ std::shared_ptr<World> load_world(const GameData& g, const std::string& world, c
     for (const std::string& path : files) {
         if (cancel && cancel->load()) return nullptr;
         if (progress && (++done % 10 == 0)) progress(static_cast<float>(done) / static_cast<float>(files.size()), path);
-        p2m::Bytes b;
-        p2m::Template t;
+        GFile f;
         try {
-            b = g.read_path(path);
-            t = p2m::parse_template(b);
+            f = parse_genome(g.read_path(path));
         } catch (const std::exception& ex) {
             log_warn("world layer " + path + " skipped: " + ex.what());
             continue;
         }
-        const size_t table = p2m::rd32(b, 10);
-        auto recs = find_records(b, t.strings, table);
         WorldLayer L;
         L.path = path;
         const std::string rel = path.substr(prefix.size());
@@ -127,28 +68,33 @@ std::shared_ptr<World> load_world(const GameData& g, const std::string& world, c
         if (p2m::ends_with(p2m::lower(L.name), ".lrent")) L.name.resize(L.name.size() - 6);
         L.first = static_cast<uint32_t>(w->entities.size());
         const uint32_t layer_index = static_cast<uint32_t>(w->layers.size());
-        for (size_t i = 0; i < recs.size(); ++i) {
-            const size_t end = i + 1 < recs.size() ? recs[i + 1].start : table;
-            if (recs[i].name == "DRE") continue;  // the layer's root record (identity matrix, no box): not an entity of the world
+        for (const GEntity& ge : f.entities) {
+            if (ge.name == "DRE") continue;  // the layer's root record (identity matrix, no box): not an entity of the world
             WorldEntity e;
-            e.name = recs[i].name;
+            e.name = ge.name;
             e.layer = layer_index;
-            e.start = static_cast<uint32_t>(recs[i].start);
-            e.end = static_cast<uint32_t>(end);
-            read_entity(b, recs[i].start, end, e, g);
+            e.start = static_cast<uint32_t>(ge.begin);
+            e.end = static_cast<uint32_t>(ge.end);
+            {
+                // "@" + 32 hex = the 16 bytes in file order
+                char raw[16];
+                for (size_t k = 0; k < 16; ++k) raw[k] = static_cast<char>(std::stoi(ge.id.substr(1 + 2 * k, 2), nullptr, 16));
+                e.guid = guid_text(raw);
+            }
+            e.matrix = ge.matrix;
+            e.box_min = ge.box_min;
+            e.box_max = ge.box_max;
+            // the template the entity was made from: the creator proxy of its record (an entity without one has no template)
+            if (!ge.creator.empty()) e.template_name = g.template_by_guid(ge.creator);
+            for (const GSet& s : ge.sets) {
+                if (s.cls == "gCNPC_PS") e.npc = true;
+                else if (s.cls == "gCInventory_PS") e.inventory = true;
+                // level meshes name a virtual path ("#G3:/data/raw/meshes/World//Harbour_01_L01._xmsh"): resources are found by the bare name (RE.md section 26)
+                else if (s.cls == "eCMesh_PS")
+                    for (const p2m::Prop& pr : s.props)
+                        if (pr.name == "MeshFileName" && pr.value.is_str() && !pr.value.s.empty()) e.mesh = p2m::bare_name(pr.value.s);
+            }
             w->entities.push_back(std::move(e));
-        }
-        // the properties of the layer belong to the entity whose range holds them
-        size_t cur = L.first;
-        for (const p2m::Prop& pr : t.props) {
-            while (cur + 1 < w->entities.size() && pr.off >= w->entities[cur].end) ++cur;
-            if (cur >= w->entities.size() || cur < L.first) continue;
-            WorldEntity& e = w->entities[cur];
-            if (pr.off < e.start || pr.off >= e.end) continue;
-            if (pr.pset == "gCNPC_PS") e.npc = true;
-            else if (pr.pset == "gCInventory_PS") e.inventory = true;
-            // level meshes name a virtual path ("#G3:/data/raw/meshes/World//Harbour_01_L01._xmsh"): resources are found by the bare name (RE.md section 26)
-            else if (pr.pset == "eCMesh_PS" && pr.name == "MeshFileName" && pr.value.is_str() && !pr.value.s.empty()) e.mesh = p2m::bare_name(pr.value.s);
         }
         for (size_t i = L.first; i < w->entities.size(); ++i) {
             WorldEntity& e = w->entities[i];
@@ -180,15 +126,18 @@ std::vector<p2m::Prop> entity_properties(const GameData& g, const World& w, cons
     std::vector<p2m::Prop> out;
     if (e.layer >= w.layers.size()) return out;
     try {
-        const p2m::Bytes b = g.read_path(w.layers[e.layer].path);
-        p2m::Template t = p2m::parse_template(b);
-        for (auto& p : t.props) {
-            if (p.off < e.start || p.off >= e.end) continue;
-            if (p.value.is_str() && p.value.s.size() == 33 && p.value.s[0] == '@') {
-                const std::string n = g.template_by_guid(p.value.s);
-                if (!n.empty()) p.value.s = n;
+        const GFile f = parse_genome(g.read_path(w.layers[e.layer].path));
+        for (const GEntity& ge : f.entities) {
+            if (ge.begin != e.start) continue;
+            const p2m::Template t = genome_entity_props(ge);
+            for (p2m::Prop p : t.props) {
+                if (p.value.is_str() && p.value.s.size() == 33 && p.value.s[0] == '@') {
+                    const std::string n = g.template_by_guid(p.value.s);
+                    if (!n.empty()) p.value.s = n;
+                }
+                out.push_back(std::move(p));
             }
-            out.push_back(p);
+            break;
         }
     } catch (const std::exception& ex) {
         log_warn(std::string("entity properties: ") + ex.what());

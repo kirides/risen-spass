@@ -69,6 +69,8 @@ struct Template {
     }
 };
 
+// the value of one property payload by its type name (what the scanner stores in Prop::value); undecodable payloads become their hex text
+Val decode_value(const std::string& type, const Bytes& payload, const std::vector<std::string>& strs);
 // throws Error ("no string table") when the data is no GENOMFLE file
 Template parse_template(const Bytes& b);
 // the string table only (offset of the table is in the header at 10)
