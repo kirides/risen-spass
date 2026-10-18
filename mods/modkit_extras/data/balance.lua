@@ -21,4 +21,24 @@ return {
             },
         },
     },
+    new_recipes = {
+        MKX_Stage_A = {
+            name = { English = "Stage A", German = "Stufe A", default = "Stage A" },
+            station = "anvil",
+            ingredients = { { item = "It_IronOre", count = 1 } },
+            result = "MKX_Stage_B",
+            skills = { Smith = 1 },
+        },
+        MKX_Stage_B = {
+            name = {
+                English = "Stage B (consumes itself and stage A)",
+                German = "Stufe B",
+                default = "Stage B (consumes itself and stage A)",
+            },
+            station = "anvil",
+            ingredients = { { item = "MKX_Stage_B", count = 1 }, { item = "MKX_Stage_A", count = 1 } },
+            result = "It_IronOre",
+            skills = { Smith = 1 },
+        },
+    },
 }

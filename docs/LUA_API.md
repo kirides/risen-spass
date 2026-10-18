@@ -425,7 +425,7 @@ is a new recipe item (a clone of a written recipe item with deterministic ID, li
 ```lua
 risen.balance.install({
     new_items = { Spass_Sword_Improved = { base = "It_1H_Sword", name = { English = "Slightly Improved Sword", German = "Leicht verbessertes Schwert" }, value = 65, damage = 18 } },
-    new_recipes = {                                                            -- a new recipe item; a recipe may name an item of the same spec's new_items
+    new_recipes = {                                                            -- a new recipe item; a recipe may name an item of the same spec's new_items, and the new_recipes of one spec may name each other (their templates are all created first: the smithing stages consume and make each other, a stage may consume itself)
         Spass_Recipe_Improved_Sword = { station = "anvil", ingredients = { It_1H_Sword = 1, It_IronOre = 2 }, result = "Spass_Sword_Improved",
                                         skills = { Smith = 1 }, name = "Smithing plan: Slightly Improved Sword", learn = true },   -- learn: the player is given the plan once per savegame
     },

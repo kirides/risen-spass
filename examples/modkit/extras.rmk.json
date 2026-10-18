@@ -49,7 +49,52 @@
     }
   ],
   "item_groups": [],
-  "recipes": [],
+  "recipes": [
+    {
+      "uid": "e0000000000000000000000000000051",
+      "mode": "new",
+      "name": "MKX_Stage_A",
+      "station": "anvil",
+      "ingredients": [
+        [
+          "It_IronOre",
+          1
+        ]
+      ],
+      "skills": {
+        "Smith": 1
+      },
+      "result": "MKX_Stage_B",
+      "label": {
+        "English": "Stage A",
+        "German": "Stufe A"
+      }
+    },
+    {
+      "uid": "e0000000000000000000000000000052",
+      "mode": "new",
+      "name": "MKX_Stage_B",
+      "station": "anvil",
+      "ingredients": [
+        [
+          "MKX_Stage_B",
+          1
+        ],
+        [
+          "MKX_Stage_A",
+          1
+        ]
+      ],
+      "skills": {
+        "Smith": 1
+      },
+      "result": "It_IronOre",
+      "label": {
+        "English": "Stage B (consumes itself and stage A)",
+        "German": "Stufe B"
+      }
+    }
+  ],
   "npc_templates": [],
   "npcs": [],
   "dialogs": [],

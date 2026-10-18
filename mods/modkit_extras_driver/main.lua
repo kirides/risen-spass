@@ -14,6 +14,7 @@ T.plan {
     "a row with CRLF keeps it",
     "a row without English text is not served in English",
     "a name table's default serves the other languages",
+    "recipes that name each other (and themselves) are created",
     "an XP reward is added to a shipped info",
     "an XP reward is changed on a shipped info",
     "a trader refill is added to a shipped info",
@@ -57,6 +58,10 @@ T.run(function()
     local report, why = risen.balance.apply({ new_items = { MKX_DefaultName = { base = "It_Ri_DEX_Small", name = { German = "Nur deutsch", default = "Fallback text" } } } })
     T.expect("a name table's default serves the other languages", report and report.ok and risen.loc.get("FO_MKX_DefaultName") == "Fallback text",
         tostring(why) .. " / " .. tostring(risen.loc.get("FO_MKX_DefaultName")))
+
+    T.section("recipes that name each other")
+    T.expect("recipes that name each other (and themselves) are created", risen.template.get("MKX_Stage_A") ~= nil and risen.template.get("MKX_Stage_B") ~= nil,
+        tostring(risen.template.get("MKX_Stage_A")) .. " / " .. tostring(risen.template.get("MKX_Stage_B")))
 
     T.section("shipped dialogue infos")
     local fred = risen.dialog.get("FILLERX2_00029")
