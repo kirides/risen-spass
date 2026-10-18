@@ -3099,6 +3099,31 @@ function worldApi.new_game() end
 ---@return string|nil name
 function worldApi.name() end
 
+---One sector of the active world (`risen.world.sectors()`).
+---@class SectorInfo
+---@field name string The sector's file base name (`"Monastery_Story_LizardAttack_Off"`): what `set_sector` takes.
+---@field enabled boolean Its enabled flag now (`gCSector::IsEnabled`).
+---@field on_startup boolean|nil `EnabledOnStartup` as the sector's file stores it (stock story sectors that start switched off are `false`).
+
+---Switches a sector of the active world on or off (`World::SetSectorStatus`, what the dialogue command `SetSectorStatus` and the chapter scripts call): the entities of its layers appear / vanish at once when the sector
+---is created, a sector that is not created yet remembers the flag. The state is part of the savegame. `name` is the sector's file base name (case-insensitive, a trailing `.sec` is dropped). Returns `true`, or `nil, reason`
+---for a bad name, a sector the world does not have, no active world or a flag that did not read back.
+---@param name string
+---@param enabled boolean
+---@return true|nil ok
+---@return string|nil reason
+function worldApi.set_sector(name, enabled) end
+
+---Whether a sector of the active world is enabled (`gCSector::IsEnabled`); `nil, reason` for a bad name, an unknown sector or no active world.
+---@param name string
+---@return boolean|nil enabled
+---@return string|nil reason
+function worldApi.sector_enabled(name) end
+
+---Every sector of the active world with its name, enabled flag and `EnabledOnStartup` (an empty list without a world).
+---@return SectorInfo[] sectors
+function worldApi.sectors() end
+
 ---Loads the last quick save.
 ---@return boolean requested
 function worldApi.quick_load() end

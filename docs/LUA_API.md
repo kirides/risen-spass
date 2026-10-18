@@ -1084,6 +1084,9 @@ risen.gamevar.exists("Name")   risen.gamevar.remove("Name")      -- dialogue com
 risen.world.is_game_running()  risen.world.new_game()  risen.world.quick_load()
 risen.world.quick_save()  risen.world.auto_save("name")  risen.world.is_save_allowed()
 risen.world.name()     -- the active world: "World" (the island), a test level's or a mod's world; nil before the first one (event world.changed)
+risen.world.sectors()   -- { { name, enabled, on_startup }, ... } of the active world (sector = X.sec + X.lrent of the game's worlds)
+risen.world.sector_enabled("OutMain_Story_Chapter3_Lizards_Off")  -- boolean | nil, reason
+risen.world.set_sector("OutMain_Story_Chapter3_Lizards_Off", true)  -- World::SetSectorStatus: true | nil, reason; saved with the game
 ```
 `new_game`, `quick_load`, `quick_save` and `auto_save` are *requests*: the engine performs them on its next processing step
 (watch `save.after` / `load.after` / `session.start`). `is_save_allowed()` is false while a conversation is open; a save requested then crashed the game when the conversation had run a `Give`
