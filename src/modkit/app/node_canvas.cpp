@@ -131,6 +131,33 @@ bool NodeCanvas::create_menu(Graph& g, double x, double y, std::string* created)
     return made;
 }
 
+void NodeCanvas::duplicate_nodes(Ctx& c, Graph& g, const std::vector<std::string>& uids) {
+    std::map<std::string, std::string> copy;  // old uid -> new uid
+    std::vector<GraphNode> made;
+    for (auto& uid : uids) {
+        const GraphNode* n = g.find(uid);
+        if (!n) continue;
+        GraphNode d = *n;
+        d.uid = new_uid();
+        d.x += 40;
+        d.y += 40;
+        copy[uid] = d.uid;
+        made.push_back(std::move(d));
+    }
+    if (made.empty()) return;
+    std::vector<GraphLink> links;
+    for (auto& l : g.links) {
+        auto a = copy.find(l.from_node), b = copy.find(l.to_node);
+        if (a != copy.end() && b != copy.end()) links.push_back({new_uid(), a->second, l.from_pin, b->second, l.to_pin});
+    }
+    c.focus = made.front().uid;
+    c.focus_navigate = false;
+    c.focus_more.clear();
+    for (size_t i = 1; i < made.size(); ++i) c.focus_more.push_back(made[i].uid);
+    for (auto& n : made) g.nodes.push_back(std::move(n));
+    for (auto& l : links) g.links.push_back(std::move(l));
+}
+
 bool NodeCanvas::draw(const std::string& key, Graph& g, const Summary& summary) {
     Ctx& c = ctx(key);
     ed::SetCurrentEditor(c.ed);
@@ -302,20 +329,70 @@ bool NodeCanvas::draw(const std::string& key, Graph& g, const Summary& summary) 
         pending_y_ = mouse_canvas.y;
         open_menu_ = true;
     }
+    ed::NodeId ctx_node;
+    if (ed::ShowNodeContextMenu(&ctx_node)) {
+        // right click on a node: the whole selection if the node is part of it, else just that node
+        menu_nodes_.clear();
+        std::vector<ed::NodeId> sel(static_cast<size_t>(std::max(ed::GetSelectedObjectCount(), 0)));
+        const int n_sel = sel.empty() ? 0 : ed::GetSelectedNodes(sel.data(), static_cast<int>(sel.size()));
+        bool inside = false;
+        for (int i = 0; i < n_sel; ++i) inside |= sel[static_cast<size_t>(i)] == ctx_node;
+        if (inside) {
+            for (int i = 0; i < n_sel; ++i) {
+                auto it = c.node_uids.find(static_cast<int>(sel[static_cast<size_t>(i)].Get()));
+                if (it != c.node_uids.end()) menu_nodes_.push_back(it->second);
+            }
+        } else {
+            auto it = c.node_uids.find(static_cast<int>(ctx_node.Get()));
+            if (it != c.node_uids.end()) menu_nodes_.push_back(it->second);
+        }
+        open_node_menu_ = true;
+    }
     if (open_menu_) {
         ImGui::OpenPopup("##create");
         open_menu_ = false;
+    }
+    if (open_node_menu_) {
+        ImGui::OpenPopup("##node_menu");
+        open_node_menu_ = false;
     }
     if (ImGui::BeginPopup("##create")) {
         std::string created;
         if (create_menu(g, pending_x_, pending_y_, &created)) {
             changed = true;
             c.focus = created;
+            c.focus_navigate = false;
+            c.focus_more.clear();
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
     } else {
         pending_node_.clear();
+    }
+    if (ImGui::BeginPopup("##node_menu")) {
+        if (ImGui::MenuItem("Duplicate", "Ctrl+D")) {
+            duplicate_nodes(c, g, menu_nodes_);
+            changed = true;
+        }
+        ImGui::EndPopup();
+    }
+    // Ctrl+D with the canvas hovered or focused
+    {
+        const ImGuiIO& io = ImGui::GetIO();
+        if ((io.KeyCtrl || io.KeySuper) && !io.WantTextInput && ImGui::IsKeyPressed(ImGuiKey_D, false) &&
+            ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows)) {
+            std::vector<ed::NodeId> sel(static_cast<size_t>(std::max(ed::GetSelectedObjectCount(), 0)));
+            const int n_sel = sel.empty() ? 0 : ed::GetSelectedNodes(sel.data(), static_cast<int>(sel.size()));
+            std::vector<std::string> uids;
+            for (int i = 0; i < n_sel; ++i) {
+                auto it = c.node_uids.find(static_cast<int>(sel[static_cast<size_t>(i)].Get()));
+                if (it != c.node_uids.end()) uids.push_back(it->second);
+            }
+            if (!uids.empty()) {
+                duplicate_nodes(c, g, uids);
+                changed = true;
+            }
+        }
     }
     ed::Resume();
 
@@ -323,9 +400,15 @@ bool NodeCanvas::draw(const std::string& key, Graph& g, const Summary& summary) 
         auto it = c.node_ids.find(c.focus);
         if (it != c.node_ids.end()) {
             ed::SelectNode(it->second);
-            ed::NavigateToSelection(false, c.first_frame ? 0.0f : 0.2f);
+            for (auto& more : c.focus_more) {
+                auto m = c.node_ids.find(more);
+                if (m != c.node_ids.end()) ed::SelectNode(m->second, true);
+            }
+            if (c.focus_navigate) ed::NavigateToSelection(false, c.first_frame ? 0.0f : 0.2f);
         }
         c.focus.clear();
+        c.focus_more.clear();
+        c.focus_navigate = true;
     } else if (c.first_frame && !g.nodes.empty()) {
         // open at zoom 1 on the top-left node (fitting a large graph would make the text unreadably small)
         const GraphNode* first = &g.nodes.front();

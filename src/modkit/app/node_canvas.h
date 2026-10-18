@@ -8,6 +8,7 @@
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "core/graph.h"
 
@@ -44,6 +45,8 @@ private:
         int next = 1;
         bool first_frame = true, clear_selection = false;
         std::string focus;
+        bool focus_navigate = true;  // false: select only (a node made from the menu stays where it was placed)
+        std::vector<std::string> focus_more;  // further nodes to select with `focus` (duplicates)
     };
     Ctx& ctx(const std::string& key);
     int node_id(Ctx& c, const std::string& uid);
@@ -51,6 +54,8 @@ private:
     static uintptr_t pin_id(int node, int pin_index) { return static_cast<uintptr_t>(node) * 64 + static_cast<uintptr_t>(pin_index) + 1; }
     bool decode_pin(Ctx& c, const Graph& g, uintptr_t pin, std::string& node, std::string& pin_name) const;
     bool create_menu(Graph& g, double x, double y, std::string* created);
+    // copies the nodes (and the links between them) 40 units down-right; the copies become the selection
+    void duplicate_nodes(Ctx& c, Graph& g, const std::vector<std::string>& uids);
 
     GraphKind kind_;
     std::map<std::string, Ctx> ctxs_;
@@ -58,6 +63,8 @@ private:
     std::map<std::string, std::string> marked_;
     // a link dragged into empty space: the node and pin it came from, waiting for the create menu
     std::string pending_node_, pending_pin_;
+    std::vector<std::string> menu_nodes_;  // the nodes the node context menu acts on
+    bool open_node_menu_ = false;
     double pending_x_ = 0, pending_y_ = 0;
     bool open_menu_ = false;
 };
