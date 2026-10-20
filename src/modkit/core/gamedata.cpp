@@ -267,8 +267,15 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
                     }
                 }
             }
+            std::string table = p2m::lower(p2m::bare_name(k));
+            table.erase(table.size() - 4);
             for (const std::string& id : tab.ids) {
                 auto& cells = tab.rows.at(id);
+                // the row with its other columns (StageDir, WaveFile, Voice, Info ...: the Strings panel and the voice export)
+                GameStringRow row{table, id, {}};
+                for (size_t c = 0; c < cells.size() && c < col_lang.size(); ++c)
+                    if (col_lang[c] == SIZE_MAX && !cells[c].empty()) row.cols.emplace_back(tab.columns[c + 1], cells[c]);
+                gd->string_rows_.push_back(std::move(row));
                 auto& dst = gd->texts_[id];
                 for (size_t c = 0; c < cells.size() && c < col_lang.size(); ++c) {
                     if (col_lang[c] == SIZE_MAX) continue;
@@ -437,6 +444,12 @@ std::string GameData::info_text(const std::string& info, const std::string& lang
     return it == info_first_line_.end() ? std::string() : text(it->second, language);
 }
 
+const std::string* GameStringRow::col(const std::string& name) const {
+    for (auto& [k, v] : cols)
+        if (k == name) return &v;
+    return nullptr;
+}
+
 const GameInfo* GameData::info(const std::string& name) const {
     const std::string key = p2m::lower(name);
     const auto it = std::lower_bound(infos_.begin(), infos_.end(), key, [](const GameInfo& a, const std::string& k) { return p2m::lower(a.name) < k; });
@@ -466,6 +479,14 @@ std::string GameData::text(const std::string& id, const std::string& language) c
     std::string s = pick(language);
     if (s.empty() && language != "English") s = pick("English");
     return s;
+}
+
+std::string GameData::text_exact(const std::string& id, const std::string& language) const {
+    const auto it = texts_.find(id);
+    if (it == texts_.end()) return {};
+    for (size_t i = 0; i < languages_.size() && i < it->second.size(); ++i)
+        if (languages_[i] == language) return it->second[i];
+    return {};
 }
 
 const std::vector<AssetEntry>& GameData::assets(const std::string& ext) const {

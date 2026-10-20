@@ -1,0 +1,17 @@
+Voice script: MKV_Speaker (voice Enzo)
+Mod: risen-modkit voice recording example (modkit_voice)   Language: German   Lines: 2
+Deliver one file per line, named as shown after 'file:' (any audio format; the editor converts it).
+==============================================================================
+
+## Dialogue Speaker > option 'Can you hear me?'
+
+[1] modkit_voice_b2c3d4e5   file: modkit_voice_b2c3d4e5_German.ogg
+    to: PC_Hero
+    (stolz, etwas zu laut)
+    Laut und deutlich. Diese Zeile wurde aufgenommen, umgewandelt und vom Editor eingefuegt.
+
+## Dialogue Speaker > option 'Goodbye.'
+
+[2] modkit_voice_d4e5f607   file: modkit_voice_d4e5f607_German.ogg
+    to: PC_Hero
+    Diese Zeile ist noch nicht aufgenommen.

@@ -315,7 +315,8 @@ Four small panels for what no other panel owns (a converted Risen mod uses all o
 * **Patches**: write properties of any template of the game (or of your own new templates): the range of a light, a projectile's flight, an item's sort value. Add a patch (or use *Patch this
   template's properties* in the Browser), choose the template and add properties like on the Items panel's *Other properties* (values are typed like the game's: numbers, text, true / false, vectors as
   `x; y; z`). The mod applies them when the game starts and again with every world that loads. A property set the template lacks cannot be added.
-* **Strings**: text rows of the game's string tables that belong to no item, recipe or NPC of the project (a button's label, a document, a changed line): an id and a text per language. The first
+* **Strings**: every text of the mod and of the game in one table (next section). Its *string* rows are the free text rows: rows of the game's string tables that belong to no item,
+  recipe or NPC of the project (a button's label, a document, a changed line): an id and a text per language (**+ String row**, or *Override in the mod* on a game row). The first
   language is the fallback; a row without a text in it is shown only in the languages that have one.
 * **Shipped dialogues**, tab *Dialogue edits*: add commands to a dialogue info of the game: an XP reward (added, or an existing amount changed) and **trader refills** (what a trader gets when the
   info runs: the chapter infos restock the traders; chapter 1's refills are also given when a new game starts) and **property edits**: change a value of the info, of its n-th command or
@@ -325,6 +326,92 @@ Four small panels for what no other panel owns (a converted Risen mod uses all o
 
 Items: the requirement and modifier lists keep their **order** (the ^ button moves a row up) and each modifier has a **mode**: *add* (default), *set* (to the value), *max* (to the skill's maximum),
 *percent* (of the maximum).
+
+## Strings and voice recording
+
+The **Strings** panel lists every text of your mod *and* of the game in one table: the lines of your dialogues (option, NPC line, SaySound), quest titles and log entries, HUD
+messages and log texts of event graphs, names and descriptions of items, recipes, spells, NPCs and layers, the free string rows, and all rows of the game's string tables (about 24 000:
+15 000 dialogue lines of `infos.tab`, the standard voice messages of `svms.tab`, items, quests, HUD, documents ...). The game's rows appear once the game data is loaded (Settings).
+
+* **Columns**: id, source (`dialogue line`, `item label`, `game: infos`, ...), speaker, *Audio <Language>* for each language of the mod (*recorded*, *missing*, `-` for texts nobody
+  speaks), the text in the chosen language, the stage direction and the context (dialogue and option, quest, the game's info / quest / role).
+* **Filter**: free text (id, texts, speaker, voice, object, quest), *Mod and game / Mod / Game*, the kind (`dialogue`, `item`, `infos`, `svms` ...), speaker or voice, dialogue / quest / info,
+  the language, *Spoken* (only lines someone says), *Missing audio* (spoken lines without a recording in the chosen language), *Overridden* (also game rows a row of the mod replaces).
+  The table is a virtual list over a prepared index: filtering 24 000 rows is instant.
+* **Editing**: select a row; the box below shows every language. Rows of the mod are edited in place (the change goes into the dialogue node, the item, the quest ...; one undo step per
+  edit). Dialogue lines also take a **stage direction** per language ("whispering"): it is only for the voice actor (export below), the game does not see it. **Open** jumps to the object.
+  Game rows are read-only; **Override in the mod** copies one into a free string row with the game's texts, which you then change (the game row is hidden from then on).
+  Recorded lines have a play button per language (the game's own speech files too).
+
+### Voice recording
+
+The workflow for a voice studio: export the lines, record, import the folder of recordings.
+
+1. **Export**: filter the table to what should be recorded (e.g. *Mod*, *Spoken*, *Missing audio*, or one speaker), then **Export for voice recording...**: choose a folder and the
+   languages. Written are
+   * `voice_lines.csv`: one row per line and language, UTF-8 with BOM (Excel and LibreOffice open it with the right characters), comma separated, RFC 4180 quoting;
+   * `voice_lines.json`: the same rows (`{ "mod", "columns", "lines": [ {...} ] }`) for scripts;
+   * `scripts/<speaker>_<Language>.txt`: a plain script per speaker and language (context headings, line id, stage direction, text, the file to deliver) to print for the session.
+   *Only lines without a recording* leaves out what is done; switching off *Only spoken lines* exports every text of the selection (item names, descriptions, quest texts, HUD
+   messages) for translators, with an empty status.
+2. **Record**: the studio delivers one file per line and language, named **`<line_id>_<Language>.<ext>`** (the `expected_file` column, e.g. `my_mod_1a2b3c4d_German.wav`). Any common
+   format works (WAV, FLAC, AIFF, Ogg, Opus, MP3, M4A ...). Studios that name files their own way fill the **`file`** column of the CSV instead (a bare file name or a path relative to
+   the folder) and send the CSV back.
+3. **Import**: **Import recordings...**, choose the folder (a `voice_recordings` or `recordings` folder next to the project is preselected, with its `voice_lines.csv`) and optionally the
+   filled CSV. **Preview** lists for every file what happens: *copy* (the game plays it as it is), *convert* (through ffmpeg), *cannot* (no ffmpeg), *unmatched* (no line has that
+   name), *ambiguous* (the name or the CSV fits more than one line) and *duplicate* (two files for the same line and language: none is taken until you remove one). **Import** copies /
+   converts in the background (progress bar, *Cancel*) into the project's `voice/` folder as `<line_id>_<Language>.ogg` (or the original extension when copied), adds the files to the
+   Assets and sets them as the line's sound for that language. One **Ctrl+Z** undoes the assignment (the files stay in `voice/`). The project must be saved first.
+   File names that match: `<line_id>_<Language>` (the language as name or code: `English`, `en`, `de` ...), `<line_id>` alone (the language chosen in the dialog), and the name the
+   layer gives the line (`INFO_SPASS_<mod>_<info>_<n>_<Language>_%_SPASS`, the `runtime_sound` column). Case does not matter. *Only the shown lines* restricts the import to the rows
+   the filter shows (off: every spoken line of the mod).
+
+**Line ids** stay the same across saving, renaming the dialogue and moving nodes: a dialogue node's id is `<mod id>_<the first 8 hex digits of the node's uid>` (an option without an
+own info name has the same as its info). Other texts have `<kind>.<name>.<field>` (`item.MK_Sword.label`) or their string id; game rows the id of their table row.
+
+**CSV columns** (`voice_lines.csv`, in this order):
+
+| Column | Meaning |
+|---|---|
+| `line_id` | the stable id of the line (above) |
+| `language` | the language of this row (`English`, `German` ...) |
+| `status` | `recorded` / `missing` (for texts nobody speaks: empty) |
+| `speaker` | who speaks: the entity (`PC_Hero` for the hero, the NPC's unique name) |
+| `voice` | the NPC voice of the speaker's template (`gCNPC_PS.Voice`: `Player`, `Enzo` ...; with game data) |
+| `listener` | who is spoken to |
+| `text` | the line in this language (falls back to the first language of the mod) |
+| `stage_direction` | how to say it (dialogue lines of the mod: the editor's stage direction; game rows: `<Language>_StageDir`) |
+| `context` | where it is said: `Dialogue Maren > option 'Who are you?'`, `Quest ...`, the game's info, quest and role |
+| `source` | `mod` or `game` |
+| `kind` | `dialogue/option`, `dialogue/line`, `dialogue/command`, `quest/log`, `item/label` ... (game rows: the table) |
+| `object` | the dialogue / quest / item it belongs to (game: the info) |
+| `quest` | the quest of a log entry or of a game line |
+| `parent_line` | the line id of the option this line answers |
+| `order` | the place in its info (1 = the option's own line) |
+| `expected_file` | the file name to deliver: `<line_id>_<Language>.ogg` (game rows: the game's `WaveFile`) |
+| `runtime_sound` | the name the game plays the line under: `INFO_SPASS_<mod>_<info>_<n>_<Language>_%_SPASS.wav` (it moves when lines are inserted before it; the line id does not) |
+| `current_file` | the recording the line has now |
+| `file` | **filled by the studio**: the recording of this row when it is not named `expected_file` |
+| `notes` | free, for the studio |
+
+**Audio formats and ffmpeg.** The game plays **Ogg Vorbis, WAV (PCM 8/16/24/32 bit, float, ADPCM) and MP3** as they are (FMOD recognises the format by content; docs/RE.md section 28).
+Everything else (FLAC, Opus, AIFF, M4A/AAC, WMA ...) is converted with **ffmpeg** to Ogg Vorbis, by default **mono, 44.1 kHz** like the game's own speech (positioned voices should be
+mono), optionally with **loudness normalisation** (EBU R128 to -16 LUFS); *Convert every file* sends files that already play through the same processing. A converted file is checked
+with the layer's own audio probe before it is used. ffmpeg is **not bundled**; the editor runs the `ffmpeg` it finds on `PATH` or the one set in **Settings > Audio** (*Test* shows the
+version and whether it has the `libvorbis` encoder; without it conversions write 16-bit WAV). Getting ffmpeg:
+* Windows: a build from https://www.gyan.dev/ffmpeg/builds/ or https://github.com/BtbN/FFmpeg-Builds/releases (or `winget install Gyan.FFmpeg`); add its `bin` folder to `PATH` or set the path of `ffmpeg.exe`.
+* Linux: the package manager (`sudo apt install ffmpeg`, `sudo dnf install ffmpeg` with RPM Fusion, `sudo pacman -S ffmpeg`).
+* macOS: `brew install ffmpeg` (Homebrew) or MacPorts.
+Without ffmpeg the files that already play are imported and the others are listed with this hint.
+
+From the command line (no window; the import saves the project):
+```
+risen-modkit my.rmk.json --voice-export rec --language German --missing        the sheets of the German lines without a recording
+risen-modkit my.rmk.json --voice-import rec --csv rec/voice_lines.csv --dry-run  the preview as text
+risen-modkit my.rmk.json --voice-import rec --csv rec/voice_lines.csv --normalize
+```
+`examples/modkit/voice.rmk.json` with `voice_recordings/` is a complete example (a stereo FLAC converted, a WAV copied, an AIFF named in the filled CSV); scenario `modkit_voice`
+plays it in the game.
 
 ## Command palette and wizards
 
@@ -447,6 +534,10 @@ risen-modkit project.rmk.json --game-dir <Risen folder> --play    the Play butto
 risen-modkit --convert-model model.(obj|gltf|glb) --out My_Mesh._xmsh --material X._xmat [--scale S] [--z-up] [--no-mirror]
                                                                    convert a 3D model into a compiled mesh without a window
 risen-modkit --import MODDIR --save project.rmk.json [--from-data] import an exported mod (or only its data files) as a project
+risen-modkit project.rmk.json --voice-export DIR [--language L]... [--missing] [--all-text] [--with-game] [--no-scripts] [--data DIR]
+                                                                   the voice recording sheets (voice_lines.csv / .json, scripts/) without a window
+risen-modkit project.rmk.json --voice-import DIR [--csv FILE] [--language L] [--normalize] [--convert-all] [--stereo] [--ffmpeg PATH] [--dry-run]
+                                                                   match, convert and assign recordings, save the project (--dry-run: only the report)
 ```
 
 ## Limits

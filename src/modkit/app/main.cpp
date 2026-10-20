@@ -1,6 +1,7 @@
 // risen-modkit: the mod editor of the Risen modding layer (docs/editor/REQUIREMENTS.md).
 //   risen-modkit [project.rmk.json] [--data DIR] [--game-dir DIR [--play]] [--screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH]]
 //   risen-modkit project.rmk.json --export DIR [--data DIR]     validate and export without a window (exit code 0 = exported)
+//   risen-modkit project.rmk.json --voice-export DIR / --voice-import DIR   the voice recording workflow without a window (core/voice.h)
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -8,12 +9,14 @@
 #include <string>
 
 #include "app/app.h"
+#include "core/audio_convert.h"
 #include "core/export.h"
 #include "core/import.h"
 #include "core/log.h"
 #include "core/model_import.h"
 #include "core/paths.h"
 #include "core/validate.h"
+#include "core/voice.h"
 
 namespace {
 
@@ -21,6 +24,8 @@ constexpr const char* kUsage =
     "risen-modkit [project.rmk.json] [--data DIR] [--screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch] [--click x,y] [--drag x1,y1,x2,y2]]\n"
     "risen-modkit project.rmk.json --export DIR [--data DIR]\n"
     "risen-modkit --import MODDIR --save project.rmk.json [--from-data]\n"
+    "risen-modkit project.rmk.json --voice-export DIR [--language L]... [--missing] [--all-text] [--with-game] [--no-scripts] [--data DIR]\n"
+    "risen-modkit project.rmk.json --voice-import DIR [--csv FILE] [--language L] [--normalize] [--convert-all] [--stereo] [--ffmpeg PATH] [--dry-run]\n"
     "risen-modkit --convert-model model.(obj|gltf|glb) --out My_Mesh._xmsh --material X._xmat [--scale S] [--z-up] [--no-mirror]\n";
 
 int export_headless(const mk::AppOptions& opts, const std::string& out_dir) {
@@ -65,6 +70,109 @@ int export_headless(const mk::AppOptions& opts, const std::string& out_dir) {
     for (auto& w : r.removed) log_info("removed: " + w);
     log_info(std::to_string(r.written.size()) + " written, " + std::to_string(r.unchanged.size()) + " unchanged, " + std::to_string(r.removed.size()) + " removed");
     return r.ok ? 0 : 1;
+}
+
+struct VoiceCli {
+    std::string export_dir, import_dir, csv, ffmpeg;
+    std::vector<std::string> languages;
+    bool missing = false, all_text = false, with_game = false, no_scripts = false, normalize = false, convert_all = false, stereo = false, dry_run = false;
+};
+
+bool load_for_voice(const mk::AppOptions& opts, mk::Project& p) {
+    using namespace mk;
+    if (opts.project.empty()) {
+        std::fprintf(stderr, "the voice options need a project file\n");
+        return false;
+    }
+    try {
+        std::vector<std::string> warnings;
+        p = load_project_file(opts.project, &warnings);
+        for (auto& w : warnings) log_warn(w);
+    } catch (const std::exception& e) {
+        log_error(e.what());
+        return false;
+    }
+    return true;
+}
+
+// --voice-export DIR: the lines of the project (and with --with-game every spoken game line) as voice_lines.csv / .json / scripts
+int voice_export_headless(const mk::AppOptions& opts, const VoiceCli& v) {
+    using namespace mk;
+    Project p;
+    if (!load_for_voice(opts, p)) return 1;
+    std::shared_ptr<GameData> game;
+    const std::string data_dir = !opts.data_dir.empty() ? opts.data_dir : Settings::load().data_dir;
+    if (!data_dir.empty()) {
+        try {
+            game = GameData::load(data_dir);
+        } catch (const std::exception& e) {
+            log_warn(std::string("game data not loaded (speaker voices and game lines are left out): ") + e.what());
+        }
+    }
+    const auto mod = project_lines(p, game.get());
+    std::vector<StringLine> gl;
+    if (v.with_game && game) gl = game_lines(*game);
+    mark_overridden(gl, mod);
+    std::vector<const StringLine*> lines;
+    for (auto& l : mod) lines.push_back(&l);
+    for (auto& l : gl)
+        if (!l.overridden) lines.push_back(&l);
+    VoiceExportOptions o;
+    o.languages = v.languages;
+    o.missing_only = v.missing;
+    o.spoken_only = !v.all_text;
+    o.scripts = !v.no_scripts;
+    const VoiceExportResult r = write_voice_export(p, lines, o, v.export_dir);
+    if (!r.ok) {
+        log_error("voice export: " + r.error);
+        return 1;
+    }
+    for (auto& w : r.written) log_info("written: " + w);
+    log_info(std::to_string(r.rows) + " rows exported");
+    return 0;
+}
+
+// --voice-import DIR: match the recordings, copy / convert them into the project's voice/ folder, assign them and save the project
+int voice_import_headless(const mk::AppOptions& opts, const VoiceCli& v) {
+    using namespace mk;
+    Project p;
+    if (!load_for_voice(opts, p)) return 1;
+    std::string err;
+    const std::string exe = locate_ffmpeg(v.ffmpeg, &err);
+    FfmpegInfo ff = probe_ffmpeg(exe, run_process);
+    if (!err.empty()) ff.error = err;
+    if (ff.ok) log_info("ffmpeg " + ff.version + " at " + ff.path + (ff.libvorbis ? "" : " (no libvorbis: conversions write WAV)"));
+    else log_warn("no ffmpeg (" + ff.error + "): files the game cannot play are skipped. " + ffmpeg_help());
+    VoiceImportOptions o;
+    o.convert.mono = !v.stereo;
+    o.convert.sample_rate = v.stereo ? 0 : 44100;
+    o.convert.normalize = v.normalize;
+    o.convert_all = v.convert_all;
+    const std::string lang = v.languages.empty() ? (p.mod.languages.empty() ? std::string("English") : p.mod.languages.front()) : v.languages.front();
+    const auto targets = project_lines(p);
+    VoicePreview pv = preview_voice_import(p, targets, v.import_dir, v.csv, lang, o, ff.ok ? &ff : nullptr);
+    if (!pv.error.empty()) {
+        log_error("voice import: " + pv.error);
+        return 1;
+    }
+    if (v.dry_run) {
+        std::printf("%s", voice_import_report(pv.rep, pv.steps).c_str());
+        return 0;
+    }
+    const std::string dir = u8str(u8(opts.project).parent_path());
+    const auto done = run_voice_import(pv.steps, dir, o, ff.ok ? &ff : nullptr, run_process, {}, nullptr);
+    std::printf("%s", voice_import_report(pv.rep, pv.steps).c_str());
+    const int changed = apply_voice_import(p, done);
+    try {
+        save_project_file(p, opts.project);
+    } catch (const std::exception& e) {
+        log_error(e.what());
+        return 1;
+    }
+    size_t errors = 0;
+    for (auto& s : pv.steps) errors += !s.error.empty();
+    log_info(std::to_string(done.size()) + " recording(s) imported, " + std::to_string(changed) + " line(s) changed, project saved");
+    return errors ? 1 : 0;
 }
 
 }  // namespace
@@ -136,6 +244,7 @@ int main(int argc, char** argv) {
     std::string export_dir, import_dir, save_path, convert_in, convert_out;
     mk::ModelOptions model_opt;
     bool from_data = false;
+    VoiceCli voice;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
         auto next = [&](const char* what) -> std::string {
@@ -181,6 +290,19 @@ int main(int argc, char** argv) {
         else if (a == "--import") import_dir = next("a mod folder");
         else if (a == "--save") save_path = next("a project file");
         else if (a == "--from-data") from_data = true;
+        else if (a == "--voice-export") voice.export_dir = next("a directory");
+        else if (a == "--voice-import") voice.import_dir = next("a directory of recordings");
+        else if (a == "--csv") voice.csv = next("a CSV file");
+        else if (a == "--language") voice.languages.push_back(next("a language"));
+        else if (a == "--missing") voice.missing = true;
+        else if (a == "--all-text") voice.all_text = true;
+        else if (a == "--with-game") voice.with_game = true;
+        else if (a == "--no-scripts") voice.no_scripts = true;
+        else if (a == "--normalize") voice.normalize = true;
+        else if (a == "--convert-all") voice.convert_all = true;
+        else if (a == "--stereo") voice.stereo = true;
+        else if (a == "--ffmpeg") voice.ffmpeg = next("the path of ffmpeg");
+        else if (a == "--dry-run") voice.dry_run = true;
         else if (a == "--verbose") mk::Log::get().set_echo_level(mk::Level::Debug);
         else if (a == "--size") {
             const std::string s = next("WxH");
@@ -206,6 +328,8 @@ int main(int argc, char** argv) {
         }
         return convert_model_headless(convert_in, convert_out, model_opt);
     }
+    if (!voice.export_dir.empty()) return voice_export_headless(opts, voice);
+    if (!voice.import_dir.empty()) return voice_import_headless(opts, voice);
     if (!export_dir.empty()) return export_headless(opts, export_dir);
     if (!import_dir.empty()) {
         if (save_path.empty()) {

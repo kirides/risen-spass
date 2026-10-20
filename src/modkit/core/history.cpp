@@ -7,6 +7,7 @@ void History::reset(const Project& p) {
     redo_.clear();
     current_ = saved_ = dump_project(p);
     touched_ = false;
+    ++revision_;
 }
 
 bool History::settle(const Project& p) {
@@ -18,6 +19,7 @@ bool History::settle(const Project& p) {
     if (undo_.size() > kMaxSteps) undo_.pop_front();
     redo_.clear();
     current_ = std::move(now);
+    ++revision_;
     return true;
 }
 
@@ -29,6 +31,7 @@ bool History::undo(Project& p) {
     redo_.push_back(std::move(current_));
     current_ = std::move(prev);
     touched_ = false;
+    ++revision_;
     return true;
 }
 
@@ -40,6 +43,7 @@ bool History::redo(Project& p) {
     undo_.push_back(std::move(current_));
     current_ = std::move(next);
     touched_ = false;
+    ++revision_;
     return true;
 }
 

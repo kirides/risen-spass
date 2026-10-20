@@ -23,12 +23,15 @@ public:
     bool dirty() const { return current_ != saved_; }
     void mark_saved() { saved_ = current_; }
     size_t undo_depth() const { return undo_.size(); }
+    // counts the changes of the model the history saw (a step, undo, redo, reset): views that cache what they show rebuild when it moves
+    size_t revision() const { return revision_; }
 
 private:
     static constexpr size_t kMaxSteps = 300;
     std::deque<std::string> undo_, redo_;
     std::string current_, saved_;
     bool touched_ = false;
+    size_t revision_ = 0;
 };
 
 }  // namespace mk

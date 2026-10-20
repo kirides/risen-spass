@@ -1,5 +1,4 @@
-// Panels for what no other panel owns: "Patches" (free property edits of any template: risen.template.patch), "Strings" (text rows of the game's string tables
-// that belong to no object of the project) and "Shipped dialogues" (XP rewards and trader refills added to shipped dialogue infos, teaching limits of placed
+// Panels for what no other panel owns: "Patches" (free property edits of any template: risen.template.patch) and "Shipped dialogues" (XP rewards and trader refills added to shipped dialogue infos, teaching limits of placed
 // NPCs). They are the editor's home for what a converted Risen mod (risen-pack2mod --project) changes besides items, recipes and NPCs.
 #include <imgui.h>
 #include <imgui_stdlib.h>
@@ -115,83 +114,6 @@ public:
 
 private:
     std::string sel_;
-};
-
-// ---------------------------------------------------------------------------------------------------------------------------------------------------------
-class StringsPanel : public Panel {
-public:
-    const char* title() const override { return kPanelStrings; }
-    void on_project_changed(App& app) override {
-        if (!find_by_uid(app.project.strings, sel_)) sel_.clear();
-    }
-    bool select(App& app, const std::string& key) override {
-        for (auto& x : app.project.strings)
-            if (x.uid == key || x.id == key) {
-                sel_ = x.uid;
-                app.focus_panel(title());
-                return true;
-            }
-        return false;
-    }
-    void draw(App& app) override {
-        if (!ImGui::Begin(title(), &open)) {
-            ImGui::End();
-            return;
-        }
-        Project& p = app.project;
-        ImGui::BeginChild("##list", ImVec2(320, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
-        if (ImGui::Button("+ Row")) {
-            StringRow s;
-            s.uid = new_uid();
-            s.id = "NEW_TEXT";
-            p.strings.push_back(s);
-            sel_ = s.uid;
-            app.touch();
-        }
-        ui::help("A text of the game's string tables (strings/*.csv of the exported mod) that no item, recipe or NPC of the project owns: a button label, a "
-                 "document, a changed line. The id is not case sensitive.");
-        ImGui::SetNextItemWidth(-FLT_MIN);
-        ImGui::InputTextWithHint("##filter", "filter", &filter_);
-        ImGui::Separator();
-        std::string remove;
-        const std::string f = pack2mod_lower(filter_);
-        for (auto& x : p.strings) {
-            if (!f.empty() && pack2mod_lower(x.id).find(f) == std::string::npos) continue;
-            ImGui::PushID(x.uid.c_str());
-            if (ImGui::Selectable(x.id.empty() ? "(no id)" : x.id.c_str(), sel_ == x.uid)) sel_ = x.uid;
-            if (ImGui::BeginPopupContextItem()) {
-                if (ImGui::MenuItem("Delete")) remove = x.uid;
-                ImGui::EndPopup();
-            }
-            ImGui::PopID();
-        }
-        if (!remove.empty()) {
-            remove_by_uid(p.strings, remove);
-            app.touch();
-        }
-        ImGui::EndChild();
-        ImGui::SameLine();
-        ImGui::BeginChild("##editor");
-        if (StringRow* x = find_by_uid(p.strings, sel_)) {
-            bool ch = false;
-            ImGui::PushItemWidth(std::min(480.0f, ImGui::GetContentRegionAvail().x * 0.6f));
-            ch |= ui::input_text("Id", x->id);
-            ImGui::PopItemWidth();
-            ui::section("Texts");
-            ch |= ui::lang_text("Text", x->text, p.mod.languages, true);
-            ui::section("Notes");
-            ch |= ui::input_multiline("##notes", x->notes, 2);
-            if (ch) app.touch();
-        } else {
-            ImGui::TextDisabled("%zu text rows. Select one to edit its texts.", p.strings.size());
-        }
-        ImGui::EndChild();
-        ImGui::End();
-    }
-
-private:
-    static std::string pack2mod_lower(const std::string& s) { return p2m::lower(s); }
-    std::string sel_, filter_;
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -556,7 +478,6 @@ private:
 }  // namespace
 
 std::unique_ptr<Panel> make_patches_panel() { return std::make_unique<PatchesPanel>(); }
-std::unique_ptr<Panel> make_strings_panel() { return std::make_unique<StringsPanel>(); }
 std::unique_ptr<Panel> make_shipped_dialogs_panel() { return std::make_unique<ShippedDialogsPanel>(); }
 
 }  // namespace mk

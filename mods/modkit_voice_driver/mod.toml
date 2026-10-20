@@ -1,0 +1,7 @@
+id          = "modkit_voice_driver"
+name        = "risen-modkit voice driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Development aid: checks the exported examples/modkit/voice.rmk.json (mods/modkit_voice: recordings imported and converted by the editor) as the risen.test scenario modkit_voice."
+main        = "main.lua"
+requires    = ["modkit_voice"]

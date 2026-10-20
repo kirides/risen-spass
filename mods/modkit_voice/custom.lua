@@ -1,0 +1,3 @@
+-- custom.lua: hand-written additions to the mod. risen-modkit creates this file once and never overwrites it.
+-- Everything of the layer's API is available (types/risen.d.lua, docs/MODDING_GUIDE.md); the exported content is
+-- installed before this file runs.

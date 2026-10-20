@@ -46,6 +46,15 @@ struct GameInfo {
     std::vector<InfoMember> commands, conditions;
 };
 
+// a row of a game string table (compiled/strings/*.tab) with the cells of its columns besides the texts (StageDir and WaveFile per language, Voice, Info,
+// Order, Quest, Owner, Role ...); the texts themselves are GameData::text(id, language)
+struct GameStringRow {
+    std::string table;  // the table's file name without ".tab", lower case: "infos", "items", "svms"
+    std::string id;     // "INFO_FILLERX2_00002231"
+    std::vector<std::pair<std::string, std::string>> cols;  // column -> cell, only non-empty cells ("English_WaveFile", "Voice", ...)
+    const std::string* col(const std::string& name) const;  // nullptr when the cell is empty
+};
+
 struct TemplateInfo {
     std::string name;   // the entity name the engine knows (RE.md section 48)
     std::string file;   // the file name without .tple
@@ -97,6 +106,9 @@ public:
     // texts: string id -> per language; languages are named as the layer does ("English", "German", ...)
     const std::vector<std::string>& languages() const { return languages_; }
     std::string text(const std::string& id, const std::string& language = "English") const;  // empty when absent; falls back to English
+    std::string text_exact(const std::string& id, const std::string& language) const;  // the language's own cell, no fallback
+    // every row of every string table in table and file order (a row id repeated in another table is a row there too)
+    const std::vector<GameStringRow>& string_rows() const { return string_rows_; }
     std::string label(const std::string& template_name, const std::string& language = "English") const { return text("FO_" + template_name, language); }
 
     // resources by compiled extension ("_xmsh", "_xmat", "_ximg", "_xmac", ...): sorted lists
@@ -139,7 +151,8 @@ private:
     std::unordered_map<std::string, TemplateInfo*> by_name_;  // lower-case name
     std::unordered_map<std::string, std::string> guid_names_;  // "@hex" -> template name
     std::vector<std::string> languages_;
-    std::unordered_map<std::string, std::vector<std::string>> texts_;  // id -> text per language (index into languages_)
+    std::unordered_map<std::string, std::vector<std::string>> texts_;
+    std::vector<GameStringRow> string_rows_;  // id -> text per language (index into languages_)
     std::map<std::string, std::vector<AssetEntry>> assets_;
     std::vector<std::string> worlds_;
     std::vector<GameQuest> quests_;

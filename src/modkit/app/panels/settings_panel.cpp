@@ -2,8 +2,11 @@
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
+#include <future>
+
 #include "app/panels/panels.h"
 #include "app/widgets.h"
+#include "core/audio_convert.h"
 #include "core/play.h"
 #include "core/paths.h"
 
@@ -78,12 +81,56 @@ public:
         ImGui::SetNextItemWidth(220);
         changed |= ImGui::Combo("Start with", &s.play_start, starts, 3);
         changed |= ImGui::Checkbox("Windowed (sets FullScreen=\"false\" in data\\ini\\ConfigLocal.xml, a backup is kept)", &s.play_windowed);
+        ui::section("Audio");
+        ImGui::TextWrapped("ffmpeg converts voice recordings the game cannot play (FLAC, Opus, M4A, AIFF, ...) to Ogg Vorbis (Strings > Import recordings). "
+                           "Leave the path empty to use the ffmpeg on PATH. It is not bundled.");
+        ImGui::SetNextItemWidth(-200);
+        changed |= ImGui::InputTextWithHint("##ffmpeg", "ffmpeg on PATH", &s.ffmpeg);
+        ImGui::SameLine();
+        if (ImGui::Button("Browse##ffmpeg")) {
+            const std::string f = dialog_open_file("ffmpeg", nullptr, "");
+            if (!f.empty()) {
+                s.ffmpeg = f;
+                changed = true;
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Test") && !probe_.valid()) {
+            const std::string configured = s.ffmpeg;
+            probe_ = std::async(std::launch::async, [configured] {
+                std::string err;
+                FfmpegInfo f = probe_ffmpeg(locate_ffmpeg(configured, &err), run_process);
+                if (!err.empty()) f.error = err;
+                return f;
+            });
+        }
+        if (probe_.valid() && probe_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+            const FfmpegInfo f = probe_.get();
+            probe_text_ = f.ok ? "ffmpeg " + f.version + " at " + f.path + (f.libvorbis ? " (libvorbis: Ogg Vorbis)" : " (no libvorbis: conversions write WAV)")
+                               : f.error + ". " + ffmpeg_help();
+            probe_ok_ = f.ok;
+        }
+        if (!probe_text_.empty()) {
+            ImGui::PushStyleColor(ImGuiCol_Text, probe_ok_ ? ImVec4(0.5f, 0.9f, 0.5f, 1) : ImVec4(1, 0.6f, 0.4f, 1));
+            ImGui::TextWrapped("%s", probe_text_.c_str());
+            ImGui::PopStyleColor();
+        }
+        if (ImGui::Checkbox("Convert to mono 44.1 kHz (like the game's speech)", &s.voice_mono)) {
+            s.voice_rate = s.voice_mono ? 44100 : 0;
+            changed = true;
+        }
+        changed |= ImGui::Checkbox("Normalise the loudness of converted files (EBU R128, -16 LUFS)", &s.voice_normalize);
         ui::section("Interface");
         changed |= ImGui::SliderFloat("UI scale", &s.ui_scale, 0.6f, 2.5f, "%.2f");
         if (changed && !ImGui::IsAnyItemActive()) s.save();
         if (ImGui::IsItemDeactivatedAfterEdit()) s.save();
         ImGui::End();
     }
+
+private:
+    std::future<FfmpegInfo> probe_;
+    std::string probe_text_;
+    bool probe_ok_ = false;
 };
 
 }  // namespace

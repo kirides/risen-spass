@@ -37,6 +37,7 @@ execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${CMAKE_CURRENT
 add_library(modkit_core STATIC
     core/actor.cpp
     core/assets.cpp
+    core/audio_convert.cpp
     core/behavior.cpp
     core/catalog.cpp
     core/dialog.cpp
@@ -55,6 +56,7 @@ add_library(modkit_core STATIC
     core/pack2project.cpp
     core/paths.cpp
     core/play.cpp
+    core/process.cpp
     core/project.cpp
     core/quest.cpp
     core/search.cpp
@@ -66,6 +68,7 @@ add_library(modkit_core STATIC
     core/spells.cpp
     core/tpl_inventory.cpp
     core/validate.cpp
+    core/voice.cpp
     core/wizards.cpp
     core/world.cpp
     core/sectors.cpp
@@ -118,6 +121,7 @@ add_executable(risen-modkit
     app/panels/problems_panel.cpp
     app/panels/events_panel.cpp
     app/panels/extras_panels.cpp
+    app/panels/strings_panel.cpp
     app/panels/layers_panel.cpp
     app/panels/quests_panel.cpp
     app/panels/recipes_panel.cpp

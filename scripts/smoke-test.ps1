@@ -31,6 +31,7 @@
       meshprobe    - a mesh converted from an OBJ by risen-modkit's model import, loaded by the engine and photographed (mods/meshprobe, mods/meshprobe_shots)
       chronicle    - the complete example project examples/modkit/chronicle.rmk.json (mods/chronicle_example, checked by mods/chronicle_driver): plays chapters 1-4 like a player, 78 checks
       evlive       - the event graphs and mod layers of risen-modkit (mods/modkit_events, made from examples/modkit/events.rmk.json, checked by mods/modkit_events_driver) and the sector API: chapter event, movement debounce, layer switching without duplicates after a load, a stock sector switched on
+      modkit_voice - the editor's voice recording workflow (mods/modkit_voice, made from examples/modkit/voice.rmk.json after --voice-import converted its recordings with ffmpeg, checked by mods/modkit_voice_driver); English, then German
       extras       - the editor's template patches, ordered modifier lists with modes, free string rows, edits of shipped dialogue infos and teaching limits (mods/modkit_extras, made from examples/modkit/extras.rmk.json, checked by mods/modkit_extras_driver)
       modkit       - the export of risen-modkit (mods/modkit_showcase, made from examples/modkit/showcase.rmk.json, checked by mods/modkit_driver): new and changed items, item group, texts
       geometry     - vectors, the engine's ray test and field of view, the render camera, random streams (M13, mods/geometry): yaw convention against real entities, open air / terrain / rock, can_see against the AI's CanSee, camera, risen.random.persist across a quick save + load
@@ -68,7 +69,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'behaviors', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'modmanager', 'options', 'modkit', 'evlive', 'extras', 'chronicle', 'meshprobe', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'behaviors', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'modmanager', 'options', 'modkit', 'evlive', 'extras', 'modkit_voice', 'chronicle', 'meshprobe', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -222,6 +223,12 @@ $scenarios = [ordered]@{
     meshprobe         = @{ Est = 80; Title = 'risen-modkit 3D model import (mesh in the engine)'; Kind = 'result'; Mods = @('meshprobe', 'meshprobe_shots'); Limit = 220 }
     chronicle         = @{ Est = 265; Title = 'risen-modkit chronicle example: chapters 1-4 played through (dialogues, quests, layers, sectors, events, quick save/load)'; Kind = 'result'; Mods = @('chronicle_example', 'chronicle_driver'); Limit = 700 }
     evlive            = @{ Est = 70; Title = 'risen-modkit events: graphs, layers, sectors, movement debounce'; Kind = 'result'; Mods = @('modkit_events', 'modkit_events_driver'); Limit = 500 }
+    # the voice recording workflow of risen-modkit: recordings imported and converted by the editor play for the NPC's and the hero's lines (English, then German)
+    modkit_voice      = @{ Est = 110; Title = 'risen-modkit voice recordings: imported, converted (ffmpeg) and played (en, de)'; Kind = 'result'; Mods = @('modkit_voice', 'modkit_voice_driver'); Limit = 300
+                           Phases = @(
+                               @{ Name = 'english'; Param = @('lang=English'); Start = 'new'; Keep = $false; Limit = 300 }
+                               @{ Name = 'german'; Param = @('lang=German'); VoiceLanguage = 'German'; Start = 'new'; Keep = $false; Limit = 300 }
+                           ) }
     extras            = @{ Est = 90; Title = 'risen-modkit extras: template patches, ordered modifier lists with modes, string rows, edits of shipped dialogue infos, teaching limits'; Kind = 'result'; Mods = @('modkit_extras', 'modkit_extras_driver'); Limit = 400 }
     modkit            = @{ Est = 45; Title = 'risen-modkit export (items, texts, item group)'; Kind = 'result'; Mods = @('modkit_showcase', 'modkit_driver'); Limit = 300 }
     # geometry (M13): one process: conventions against real entities, rays (air, terrain, rock, characters), can_see against the AI's CanSee, camera, risen.random.persist across a quick save + load

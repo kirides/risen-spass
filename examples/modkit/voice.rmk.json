@@ -1,0 +1,173 @@
+{
+  "format": "risen-modkit-project",
+  "format_version": 1,
+  "mod": {
+    "id": "modkit_voice",
+    "name": "risen-modkit voice recording example",
+    "version": "1.0.0",
+    "author": "risen-spass",
+    "description": "The voice recording workflow of the editor's Strings panel (docs/editor/USER_GUIDE.md \"Voice recording\"): recordings in voice_recordings/ imported with risen-modkit --voice-import (a FLAC converted to Ogg Vorbis by ffmpeg, a WAV copied), checked in the game by mods/modkit_voice_driver.",
+    "languages": [
+      "English",
+      "German"
+    ]
+  },
+  "items": [],
+  "item_groups": [],
+  "recipes": [],
+  "npc_templates": [],
+  "npcs": [
+    {
+      "uid": "8d0f4a5e6b7c48d9a1b2c3d4e5f60718",
+      "name": "MKV_Speaker",
+      "template": "Peasant_1_01",
+      "position": [
+        250.0,
+        0.0,
+        0.0
+      ],
+      "offset": true,
+      "label": {
+        "English": "Voice actor",
+        "German": "Sprecher"
+      },
+      "peaceful": true
+    }
+  ],
+  "dialogs": [
+    {
+      "uid": "5f1e2d3c4b5a49687766554433221100",
+      "name": "Speaker",
+      "owner": "MKV_Speaker",
+      "graph": {
+        "nodes": [
+          {
+            "uid": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+            "type": "option",
+            "pos": [
+              0.0,
+              0.0
+            ],
+            "data": {
+              "text": {
+                "English": "Can you hear me?",
+                "German": "Kannst du mich hoeren?"
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MKV_Hello",
+              "sound": {
+                "English": "modkit_voice_a1b2c3d4_English.ogg"
+              }
+            }
+          },
+          {
+            "uid": "b2c3d4e5f60718293a4b5c6d7e8f90a1",
+            "type": "line",
+            "pos": [
+              330.0,
+              0.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "Loud and clear. This line was recorded, converted and imported by the editor.",
+                "German": "Laut und deutlich. Diese Zeile wurde aufgenommen, umgewandelt und vom Editor eingefuegt."
+              },
+              "stage": {
+                "English": "proud, a little too loud",
+                "German": "stolz, etwas zu laut"
+              },
+              "sound": {
+                "English": "modkit_voice_b2c3d4e5_English.ogg",
+                "German": "modkit_voice_b2c3d4e5_German.wav"
+              }
+            }
+          },
+          {
+            "uid": "c3d4e5f60718293a4b5c6d7e8f90a1b2",
+            "type": "option",
+            "pos": [
+              0.0,
+              230.0
+            ],
+            "data": {
+              "text": {
+                "English": "Goodbye.",
+                "German": "Auf Wiedersehen."
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MKV_Bye"
+            }
+          },
+          {
+            "uid": "d4e5f60718293a4b5c6d7e8f90a1b2c3",
+            "type": "line",
+            "pos": [
+              330.0,
+              230.0
+            ],
+            "data": {
+              "speaker": "npc",
+              "text": {
+                "English": "This one has no recording yet.",
+                "German": "Diese Zeile ist noch nicht aufgenommen."
+              }
+            }
+          }
+        ],
+        "links": [
+          {
+            "uid": "e5f60718293a4b5c6d7e8f90a1b2c3d4",
+            "from": [
+              "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+              "then"
+            ],
+            "to": [
+              "b2c3d4e5f60718293a4b5c6d7e8f90a1",
+              "in"
+            ]
+          },
+          {
+            "uid": "f60718293a4b5c6d7e8f90a1b2c3d4e5",
+            "from": [
+              "c3d4e5f60718293a4b5c6d7e8f90a1b2",
+              "then"
+            ],
+            "to": [
+              "d4e5f60718293a4b5c6d7e8f90a1b2c3",
+              "in"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "quests": [],
+  "world": {
+    "world": "World",
+    "spawns": [],
+    "containers": [],
+    "removals": [],
+    "moves": []
+  },
+  "assets": [
+    {
+      "uid": "47bb2bcc0a792c498a68c0cc053cfc00",
+      "file": "voice/modkit_voice_b2c3d4e5_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "5c25140538e8ea581e24fba3ad5d5f74",
+      "file": "voice/modkit_voice_b2c3d4e5_German.wav",
+      "kind": "sound"
+    },
+    {
+      "uid": "22de2137f12ce0a29685d7fa93376fb6",
+      "file": "voice/modkit_voice_a1b2c3d4_English.ogg",
+      "kind": "sound"
+    }
+  ],
+  "editor": {}
+}

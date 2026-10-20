@@ -2,6 +2,7 @@
 //   modkit_tests [--data <Risen>\data] [filter]    --data also runs the tests that read the real game archives
 // A tiny self-contained runner, like tests/test_main.cpp. Test groups live in *.inc files next to this one.
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -17,6 +18,7 @@
 
 #include "common/sound_file.h"
 #include "core/assets.h"
+#include "core/audio_convert.h"
 #include "core/behavior.h"
 #include "core/catalog.h"
 #include "core/dialog.h"
@@ -34,6 +36,7 @@
 #include "core/project.h"
 #include "core/quest.h"
 #include "core/validate.h"
+#include "core/voice.h"
 #include "core/world.h"
 #include "pack2mod/convert.h"
 #include "pack2mod/internal.h"
@@ -355,6 +358,7 @@ TEST(gamedata_real_archives) {
 #include "pack2project_tests.inc"
 #include "extras_tests.inc"
 #include "chronicle_tests.inc"
+#include "voice_tests.inc"
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
