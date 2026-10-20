@@ -37,6 +37,9 @@ This is the language of the editor's own texts; the languages of your mod are se
 ## The window
 
 Panels can be dragged, docked and tabbed; **Window > Reset layout** brings back the default arrangement.
+**Ctrl+B** (the arrow button next to *Play*, or **Window > Collapse the side panels**) folds the panels docked in the left column (Mod and Browser in
+the default layout) into vertical tabs at the window's left edge, so the editors get the whole width; clicking a tab, the arrow or Ctrl+B again unfolds them. The editor remembers
+the choice; it starts expanded.
 
 | Panel | What it does |
 |---|---|
@@ -536,7 +539,8 @@ risen-modkit [project.rmk.json] [--data DIR]                       open the edit
 --lang CODE                                                        the UI language for this run (en, de, ...), see LOCALIZATION.md
 risen-modkit project.rmk.json --export DIR [--data DIR]            validate and export without a window (exit code 0 = exported)
 risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch] [--click x,y ...]
-                    [--drag x1,y1,x2,y2 ...]                       render (after the given clicks and drags, in order), save a PNG, exit (tests)
+                    [--drag x1,y1,x2,y2 ...] [--collapse-side]     render (after the given clicks and drags, in order), save a PNG, exit (tests);
+                                                                   --collapse-side folds the left column first (scripts/modkit-doc-shots.ps1)
 --verbose                                                          debug lines on stderr too
 risen-modkit project.rmk.json --game-dir <Risen folder> --play    the Play button (export, start the game or hot reload); --palette TEXT and --wizard fetch|weapon|trader open the palette / a wizard (screenshots)
 risen-modkit --convert-model model.(obj|gltf|glb) --out My_Mesh._xmsh --material X._xmat [--scale S] [--z-up] [--no-mirror]

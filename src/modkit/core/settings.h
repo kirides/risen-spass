@@ -16,6 +16,7 @@ struct Settings {
     std::string game_dir;                // the Risen folder Play starts (bin\Risen.exe); Play exports to its bin\spass\mods
     int play_start = 1;                  // PlayStart: 0 main menu, 1 new game, 2 last quick save
     bool play_windowed = true;           // Play sets FullScreen="false" in <game_dir>\data\ini\ConfigLocal.xml
+    bool side_collapsed = false;         // the left column (Mod, Browser) folded into vertical tabs (Window > Collapse the side panels)
     // voice recordings (core/audio_convert.h): the ffmpeg to run ("" = ffmpeg on PATH) and how files are converted
     std::string ffmpeg;
     bool voice_mono = true, voice_normalize = false;

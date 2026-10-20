@@ -21,7 +21,7 @@
 namespace {
 
 constexpr const char* kUsage =
-    "risen-modkit [project.rmk.json] [--data DIR] [--screenshot FILE [--frames N] [--panel TITLE] [--lang CODE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch] [--click x,y] [--drag x1,y1,x2,y2]]\n"
+    "risen-modkit [project.rmk.json] [--data DIR] [--screenshot FILE [--frames N] [--panel TITLE] [--lang CODE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch] [--collapse-side] [--click x,y] [--drag x1,y1,x2,y2]]\n"
     "risen-modkit project.rmk.json --export DIR [--data DIR]\n"
     "risen-modkit --import MODDIR --save project.rmk.json [--from-data]\n"
     "risen-modkit project.rmk.json --voice-export DIR [--language L]... [--missing] [--all-text] [--with-game] [--no-scripts] [--data DIR]\n"
@@ -265,6 +265,7 @@ int main(int argc, char** argv) {
         else if (a == "--lang") opts.language = next("a language code");
         else if (a == "--select") opts.select = next("a name");
         else if (a == "--camera") opts.camera = next("x,y,z,yaw,pitch");
+        else if (a == "--collapse-side") opts.collapse_side = true;
         else if (a == "--click") {
             float x = 0, y = 0;
             if (std::sscanf(next("x,y").c_str(), "%f,%f", &x, &y) != 2) {

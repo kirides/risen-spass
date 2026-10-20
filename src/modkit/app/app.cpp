@@ -12,6 +12,7 @@
 #include <ImGuizmo.h>
 
 #include <algorithm>
+#include <cmath>
 
 #include "app/audio.h"
 #include "app/icons.h"
@@ -202,7 +203,10 @@ void App::status(const std::string& text) {
     log_info(text);
 }
 
-void App::focus_panel(const char* title) { focus_request_ = title; }
+void App::focus_panel(const char* title) {
+    focus_request_ = title;
+    if (side_collapsed_ && std::find(side_panels_.begin(), side_panels_.end(), title) != side_panels_.end()) set_side_collapsed(false);
+}
 
 void App::select_in(const std::string& panel_title, const std::string& uid_or_name) {
     for (auto& p : panels_)
@@ -602,6 +606,7 @@ void App::handle_shortcuts() {
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_O, false)) request_open();
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_N, false)) new_project();
     if (ctrl && ImGui::IsKeyPressed(ImGuiKey_E, false)) request_export();
+    if (ctrl && ImGui::IsKeyPressed(ImGuiKey_B, false)) set_side_collapsed(!side_collapsed_);
     if (ImGui::IsKeyPressed(ImGuiKey_F5, false)) play();
 }
 
@@ -651,7 +656,11 @@ void App::draw_menu() {
     if (ImGui::BeginMenu(tr("Window"))) {
         for (auto& p : panels_) ImGui::MenuItem(tr(p->title()), nullptr, &p->open);
         ImGui::Separator();
-        if (ImGui::MenuItem(tr("Reset layout"))) layout_done_ = false;
+        if (ImGui::MenuItem(tr("Collapse the side panels"), "Ctrl+B", side_collapsed_)) set_side_collapsed(!side_collapsed_);
+        if (ImGui::MenuItem(tr("Reset layout"))) {
+            layout_done_ = false;
+            set_side_collapsed(false);
+        }
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu(tr("Game"))) {
@@ -679,6 +688,9 @@ void App::draw_menu() {
         ImGui::PopStyleColor(2);
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Export the mod into the game folder and start Risen (F5).\nA running game with hot reload picks the new files up."));
     }
+    if (ImGui::ArrowButton("##side", side_collapsed_ ? ImGuiDir_Right : ImGuiDir_Left)) defer([this] { set_side_collapsed(!side_collapsed_); });
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", side_collapsed_ ? tr("Expand the side panels (Ctrl+B)") : tr("Collapse the side panels into vertical tabs (Ctrl+B)"));
     ImGui::EndMainMenuBar();
 }
 
@@ -704,6 +716,94 @@ void App::draw_status_bar() {
     }
     ImGui::End();
     ImGui::PopStyleVar();
+}
+
+namespace {
+
+// a tab of the collapsed side bar: the title written bottom to top
+bool vertical_tab(const char* label) {
+    const ImGuiStyle& st = ImGui::GetStyle();
+    const ImVec2 ts = ImGui::CalcTextSize(label);
+    const ImVec2 size(ts.y + st.FramePadding.y * 2, ts.x + st.FramePadding.x * 4);
+    const ImVec2 p = ImGui::GetCursorScreenPos();
+    const bool clicked = ImGui::InvisibleButton(label, size);
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    dl->AddRectFilled(p, ImVec2(p.x + size.x, p.y + size.y), ImGui::GetColorU32(ImGui::IsItemHovered() ? ImGuiCol_TabHovered : ImGuiCol_TabDimmedSelected),
+                      st.TabRounding);
+    // the text is laid out horizontally around the button's centre, then its vertices are turned by -90 degrees; the clip rect covers both
+    // orientations so the font does not drop the glyphs outside the narrow strip before the turn
+    const ImVec2 c(p.x + size.x * 0.5f, p.y + size.y * 0.5f);
+    dl->PushClipRect(ImVec2(c.x - ts.x, c.y - ts.x), ImVec2(c.x + ts.x, c.y + ts.x), false);
+    const int first = dl->VtxBuffer.Size;
+    dl->AddText(ImVec2(c.x - ts.x * 0.5f, c.y - ts.y * 0.5f), ImGui::GetColorU32(ImGuiCol_Text), label);
+    for (int i = first; i < dl->VtxBuffer.Size; ++i) {
+        ImVec2& v = dl->VtxBuffer[i].pos;
+        const float dx = v.x - c.x, dy = v.y - c.y;
+        v = ImVec2(c.x + dy, c.y - dx);
+    }
+    dl->PopClipRect();
+    return clicked;
+}
+
+}  // namespace
+
+std::vector<std::string> App::left_column_panels() const {
+    std::vector<std::string> out;
+    const ImGuiDockNode* root = ImGui::DockBuilderGetNode(dock_id_);
+    if (!root) return out;
+    for (auto& p : panels_) {
+        if (!p->open) continue;
+        const ImGuiWindow* w = ImGui::FindWindowByName(ui::panel_id(p->title()).c_str());
+        const ImGuiDockNode* n = w ? w->DockNode : nullptr;
+        // a node at the dock space's left edge that does not span its width: the left column (Mod and Browser in the default layout)
+        if (!n || n->IsCentralNode() || std::abs(n->Pos.x - root->Pos.x) > 1 || n->Size.x >= root->Size.x - 1) continue;
+        out.push_back(p->title());
+    }
+    return out;
+}
+
+void App::set_side_collapsed(bool collapsed) {
+    if (collapsed == side_collapsed_) return;
+    if (collapsed) {
+        side_panels_ = left_column_panels();
+        if (side_panels_.empty()) {
+            status(tr("No panel is docked at the left edge"));
+            return;
+        }
+    }
+    side_collapsed_ = collapsed;
+    if (options.screenshot.empty() && settings.side_collapsed != collapsed) {
+        settings.side_collapsed = collapsed;
+        save_settings();
+    }
+}
+
+float App::draw_side_bar() {
+    if (!side_collapsed_) return 0;
+    const ImGuiViewport* vp = ImGui::GetMainViewport();
+    const ImGuiStyle& st = ImGui::GetStyle();
+    const float w = ImGui::GetFrameHeight() + st.WindowPadding.x;
+    ImGui::SetNextWindowPos(vp->WorkPos);
+    ImGui::SetNextWindowSize(ImVec2(w, vp->WorkSize.y - ImGui::GetFrameHeight()));
+    const ImGuiWindowFlags f = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking |
+                               ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoBringToFrontOnFocus;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(st.WindowPadding.x * 0.5f, 4));
+    if (ImGui::Begin("##sidebar", nullptr, f)) {
+        if (ImGui::ArrowButton("##expand", ImGuiDir_Right)) defer([this] { set_side_collapsed(false); });
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Expand the side panels (Ctrl+B)"));
+        for (auto& p : panels_) {
+            if (!p->open || std::find(side_panels_.begin(), side_panels_.end(), p->title()) == side_panels_.end()) continue;
+            ImGui::PushID(p->title());
+            if (vertical_tab(tr(p->title()))) {
+                const char* t = p->title();
+                defer([this, t] { focus_panel(t); });  // expands the bar
+            }
+            ImGui::PopID();
+        }
+    }
+    ImGui::End();
+    ImGui::PopStyleVar();
+    return w;
 }
 
 void App::draw_modals() {
@@ -757,9 +857,14 @@ void App::draw_frame() {
     wizards_->draw(*this);
     palette_->draw(*this);
     const ImGuiViewport* vp = ImGui::GetMainViewport();
-    // the dock space leaves room for the status bar
-    ImGui::SetNextWindowPos(vp->WorkPos);
-    ImGui::SetNextWindowSize(ImVec2(vp->WorkSize.x, vp->WorkSize.y - ImGui::GetFrameHeight()));
+    if (side_pending_ && frame_ >= 2) {
+        side_pending_ = false;
+        set_side_collapsed(true);
+    }
+    const float side = draw_side_bar();
+    // the dock space leaves room for the status bar (and the collapsed side bar)
+    ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + side, vp->WorkPos.y));
+    ImGui::SetNextWindowSize(ImVec2(vp->WorkSize.x - side, vp->WorkSize.y - ImGui::GetFrameHeight()));
     ImGui::SetNextWindowViewport(vp->ID);
     ImGuiWindowFlags host = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
                             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoBackground;
@@ -768,6 +873,7 @@ void App::draw_frame() {
     ImGui::Begin("##dockhost", nullptr, host);
     ImGui::PopStyleVar(2);
     const ImGuiID dock = ImGui::GetID("MainDock");
+    dock_id_ = dock;
     if (!layout_done_) {
         if (ImGui::DockBuilderGetNode(dock) == nullptr || frame_ == 0 || !ImGui::GetIO().IniFilename) setup_default_layout(dock);
         layout_done_ = true;
@@ -777,6 +883,8 @@ void App::draw_frame() {
 
     for (auto& p : panels_) {
         if (!p->open) continue;
+        // a folded panel is not submitted: its dock node hides and the rest of the layout takes the room
+        if (side_collapsed_ && std::find(side_panels_.begin(), side_panels_.end(), p->title()) != side_panels_.end()) continue;
         if (!focus_request_.empty() && focus_request_ == p->title() && frame_ >= 2) {
             ImGui::SetNextWindowFocus();
             focus_request_.clear();
@@ -842,6 +950,8 @@ int App::run() {
             if (options.panel == p->title()) p->open = true;
     }
     pending_select_ = options.select;
+    // screenshots start expanded like the default layout unless asked for
+    side_pending_ = options.collapse_side || (options.screenshot.empty() && settings.side_collapsed);
 
     int rc = 0;
     while (!glfwWindowShouldClose(window_)) {

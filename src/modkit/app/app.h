@@ -48,6 +48,7 @@ struct AppOptions {
     int width = 1600, height = 900;
     std::string select;      // select an object by name in its panel (screenshots)
     std::string camera;      // the World view's camera: "x,y,z,yaw,pitch" in game coordinates and degrees (screenshots)
+    bool collapse_side = false;  // --collapse-side: start with the left column folded into vertical tabs (screenshots)
     // left clicks and drags at window coordinates, one after the other once the app is idle (UI tests)
     struct Input {
         float x, y, x2 = 0, y2 = 0;
@@ -168,6 +169,10 @@ private:
     void apply_language(const std::string& code);  // activates a language file; call between frames (defer)
     void handle_shortcuts();
     void update_title();
+    // the side bar: the panels docked in the left column fold into vertical tabs at the window's left edge (Ctrl+B)
+    void set_side_collapsed(bool collapsed);
+    std::vector<std::string> left_column_panels() const;
+    float draw_side_bar();  // the strip's width (0 = expanded)
 
     GLFWwindow* window_ = nullptr;
     std::vector<std::unique_ptr<Panel>> panels_;
@@ -179,6 +184,9 @@ private:
     std::string title_shown_;
     int frame_ = 0, shot_frames_ = 0;
     std::string focus_request_, pending_select_;
+    unsigned int dock_id_ = 0;
+    bool side_collapsed_ = false, side_pending_ = false;  // pending: collapse once the panels are docked (start-up)
+    std::vector<std::string> side_panels_;                // the titles folded into the side bar
     std::vector<Problem> problems_;
     std::unique_ptr<gfx::ResourceCache> resources_;
     std::unique_ptr<AudioPlayer> audio_;

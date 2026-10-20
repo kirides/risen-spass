@@ -29,6 +29,7 @@ Settings Settings::load() {
         s.game_dir = j.value("game_dir", std::string());
         s.play_start = std::clamp(j.value("play_start", 1), 0, 2);
         s.play_windowed = j.value("play_windowed", true);
+        s.side_collapsed = j.value("side_collapsed", false);
         s.ffmpeg = j.value("ffmpeg", std::string());
         s.voice_mono = j.value("voice_mono", true);
         s.voice_normalize = j.value("voice_normalize", false);
@@ -52,6 +53,7 @@ void Settings::save() const {
     j["game_dir"] = game_dir;
     j["play_start"] = play_start;
     j["play_windowed"] = play_windowed;
+    j["side_collapsed"] = side_collapsed;
     j["ffmpeg"] = ffmpeg;
     j["voice_mono"] = voice_mono;
     j["voice_normalize"] = voice_normalize;
