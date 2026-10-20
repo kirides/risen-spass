@@ -10,6 +10,7 @@
 #include "app/panels/panels.h"
 #include "app/widgets.h"
 #include "core/catalog.h"
+#include "core/i18n.h"
 #include "core/spells.h"
 #include "core/validate.h"
 
@@ -36,7 +37,7 @@ public:
     }
 
     void draw(App& app) override {
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
@@ -47,7 +48,7 @@ public:
         ImGui::BeginChild("##editor");
         ImGui::PushItemWidth(std::min(480.0f, ImGui::GetContentRegionAvail().x * 0.6f));
         if (NpcGroup* g = find(app.project, sel_)) draw_group(app, *g);
-        else ImGui::TextDisabled("A group changes many NPC and monster templates at once, relative to their shipped values: a pattern on the name (\"^Wolf\"), a template group path (\"Monster/Kapitel 2\") or a list of names.");
+        else ImGui::TextDisabled("%s", tr("A group changes many NPC and monster templates at once, relative to their shipped values: a pattern on the name (\"^Wolf\"), a template group path (\"Monster/Kapitel 2\") or a list of names."));
         ImGui::PopItemWidth();
         ImGui::EndChild();
         ImGui::End();
@@ -61,14 +62,14 @@ private:
     }
     static std::string label_of(const NpcGroup& g, size_t i) {
         if (!g.group.empty()) return g.group;
-        if (!g.match.empty()) return "match " + g.match;
+        if (!g.match.empty()) return trf("match {0}", {g.match});
         if (!g.names.empty()) return g.names.front() + (g.names.size() > 1 ? ", ..." : "");
-        return "group " + std::to_string(i + 1);
+        return trf("group {0}", {std::to_string(i + 1)});
     }
 
     void draw_list(App& app) {
         Project& p = app.project;
-        if (ImGui::Button("+ Group")) {
+        if (ImGui::Button(tr("+ Group"))) {
             NpcGroup g;
             g.uid = new_uid();
             g.match = "^Wolf";
@@ -84,7 +85,7 @@ private:
             ImGui::PushID(g.uid.c_str());
             if (ImGui::Selectable(label_of(g, i).c_str(), sel_ == g.uid)) sel_ = g.uid;
             if (ImGui::BeginPopupContextItem()) {
-                if (ImGui::MenuItem("Duplicate")) {
+                if (ImGui::MenuItem(tr("Duplicate"))) {
                     NpcGroup d = g;
                     d.uid = new_uid();
                     p.npc_groups.insert(p.npc_groups.begin() + static_cast<std::ptrdiff_t>(i) + 1, d);
@@ -94,7 +95,7 @@ private:
                     ImGui::PopID();
                     break;
                 }
-                if (ImGui::MenuItem("Delete")) remove = g.uid;
+                if (ImGui::MenuItem(tr("Delete"))) remove = g.uid;
                 ImGui::EndPopup();
             }
             ImGui::PopID();
@@ -131,21 +132,21 @@ private:
     void draw_group(App& app, NpcGroup& g) {
         const GameData* gd = app.game.get();
         bool ch = false;
-        ui::section("Which templates");
-        ImGui::TextDisabled("Leave everything empty for every NPC and monster. The selectors combine: the group's templates, filtered by the patterns, plus the names.");
+        ui::section(tr("Which templates"));
+        ImGui::TextDisabled("%s", tr("Leave everything empty for every NPC and monster. The selectors combine: the group's templates, filtered by the patterns, plus the names."));
         if (gd) {
             std::string path = g.group;
-            if (ui::combo("Template group", path, group_paths(*gd), true)) {
+            if (ui::combo(tr("Template group"), path, group_paths(*gd), true)) {
                 g.group = path;
                 ch = true;
             }
         } else {
-            ch |= ui::input_text("Template group", g.group);
+            ch |= ui::input_text(tr("Template group"), g.group);
         }
-        ch |= ui::input_text("Pattern (Lua)", g.match);
-        ui::help("A Lua pattern on the template name: \"^Wolf\" (starts with Wolf), \"Dead$\" (ends with Dead). ^ and $ anchor, . any character, % escapes.");
-        ch |= ui::input_text("Leave out (Lua)", g.exclude);
-        ImGui::TextUnformatted("Also these names (one per line)");
+        ch |= ui::input_text(tr("Pattern (Lua)"), g.match);
+        ui::help(tr("A Lua pattern on the template name: \"^Wolf\" (starts with Wolf), \"Dead$\" (ends with Dead). ^ and $ anchor, . any character, % escapes."));
+        ch |= ui::input_text(tr("Leave out (Lua)"), g.exclude);
+        ImGui::TextUnformatted(tr("Also these names (one per line)"));
         ch |= ui::string_list("##names", g.names);
         // what the selector matches (recomputed when it changes)
         const std::string sig = g.group + "|" + g.match + "|" + g.exclude + "|" + [&] {
@@ -162,35 +163,35 @@ private:
             if (!match_error_.empty()) {
                 ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "%s", match_error_.c_str());
             } else if (matched_.empty()) {
-                ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "matches nothing: the layer refuses a selector that matches nothing");
+                ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "%s", tr("matches nothing: the layer refuses a selector that matches nothing"));
             } else {
                 std::string list;
                 for (size_t i = 0; i < matched_.size() && i < 14; ++i) list += (i ? ", " : "") + matched_[i];
                 if (matched_.size() > 14) list += ", ...";
-                ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.5f, 1), "%zu templates:", matched_.size());
+                ImGui::TextColored(ImVec4(0.5f, 0.9f, 0.5f, 1), tr("%zu templates:"), matched_.size());
                 ImGui::SameLine();
                 ImGui::TextWrapped("%s", list.c_str());
             }
         }
 
-        ui::section("Relative changes");
-        ImGui::TextDisabled("Factors and additions work on the SHIPPED values: applying them twice never compounds.");
-        ch |= ui::opt_double("Hit point factor", g.hp_mult, nullptr, 1.5);
-        ch |= ui::opt_double("Mana factor", g.mana_mult, nullptr, 1.0);
-        ch |= ui::opt_double("Level factor", g.level_mult, nullptr, 1.0);
-        ch |= ui::opt_int("Level added", g.level_add, nullptr, 1);
-        ch |= ui::opt_double("Experience factor", g.xp_mult, nullptr, 1.0);
-        ch |= ui::opt_double("Damage factor", g.damage_mult, nullptr, 1.0);
-        ui::help("Scales Strength (monsters bite with their Strength) and the template's own damage.");
-        ch |= ui::opt_skills("Add to skills", g.skills_add, IntMap{}, npc_skill_names(gd), "Added to the shipped value: { Strength = 10 }, negative values lower it. Results are clamped to the skill's range.");
+        ui::section(tr("Relative changes"));
+        ImGui::TextDisabled("%s", tr("Factors and additions work on the SHIPPED values: applying them twice never compounds."));
+        ch |= ui::opt_double(tr("Hit point factor"), g.hp_mult, nullptr, 1.5);
+        ch |= ui::opt_double(tr("Mana factor"), g.mana_mult, nullptr, 1.0);
+        ch |= ui::opt_double(tr("Level factor"), g.level_mult, nullptr, 1.0);
+        ch |= ui::opt_int(tr("Level added"), g.level_add, nullptr, 1);
+        ch |= ui::opt_double(tr("Experience factor"), g.xp_mult, nullptr, 1.0);
+        ch |= ui::opt_double(tr("Damage factor"), g.damage_mult, nullptr, 1.0);
+        ui::help(tr("Scales Strength (monsters bite with their Strength) and the template's own damage."));
+        ch |= ui::opt_skills(tr("Add to skills"), g.skills_add, IntMap{}, npc_skill_names(gd), tr("Added to the shipped value: { Strength = 10 }, negative values lower it. Results are clamped to the skill's range."));
         {
             bool on = g.skills_mult.has_value();
-            if (ImGui::Checkbox("Skill factors", &on)) {
+            if (ImGui::Checkbox(tr("Skill factors"), &on)) {
                 if (on) g.skills_mult = std::map<std::string, double>{};
                 else g.skills_mult.reset();
                 ch = true;
             }
-            ui::help("{ ProtEdge = 1.1 }: the shipped value times the factor.");
+            ui::help(tr("{ ProtEdge = 1.1 }: the shipped value times the factor."));
             if (g.skills_mult) {
                 std::string remove;
                 for (auto& [k, v] : *g.skills_mult) {
@@ -218,20 +219,20 @@ private:
             }
         }
 
-        ui::section("Identity");
-        ch |= ui::opt_choice("Guild", g.guild, guild_names(), "");
-        ch |= ui::opt_choice("Species", g.species, species_names(), "");
-        ch |= ui::opt_choice("Attitude", g.attitude, attitude_names(), "");
-        ch |= ui::opt_choice("Bravery", g.bravery, bravery_names(), "");
-        ch |= ui::opt_choice("Damage calculation", g.damage_calc, damage_calc_names(), "");
-        ch |= ui::opt_text("AI group", g.ai_group, nullptr);
+        ui::section(tr("Identity"));
+        ch |= ui::opt_choice(tr("Guild"), g.guild, guild_names(), "");
+        ch |= ui::opt_choice(tr("Species"), g.species, species_names(), "");
+        ch |= ui::opt_choice(tr("Attitude"), g.attitude, attitude_names(), "");
+        ch |= ui::opt_choice(tr("Bravery"), g.bravery, bravery_names(), "");
+        ch |= ui::opt_choice(tr("Damage calculation"), g.damage_calc, damage_calc_names(), "");
+        ch |= ui::opt_text(tr("AI group"), g.ai_group, nullptr);
         if (g.extra.is_object() && !g.extra.empty()) {
-            ui::section("Kept as imported");
+            ui::section(tr("Kept as imported"));
             std::string keys;
             for (auto& [k, v] : g.extra.items()) keys += (keys.empty() ? "" : ", ") + k;
-            ImGui::TextDisabled("Settings the editor has no field for: %s (exported unchanged)", keys.c_str());
+            ImGui::TextDisabled(tr("Settings the editor has no field for: %s (exported unchanged)"), keys.c_str());
         }
-        ui::section("Notes");
+        ui::section(tr("Notes"));
         ch |= ui::input_multiline("##notes", g.notes, 3);
         if (ch) {
             match_sig_.clear();

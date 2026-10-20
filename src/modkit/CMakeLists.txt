@@ -48,6 +48,7 @@ add_library(modkit_core STATIC
     core/gamelog.cpp
     core/graph.cpp
     core/history.cpp
+    core/i18n.cpp
     core/image.cpp
     core/imagelist.cpp
     core/import.cpp
@@ -144,6 +145,9 @@ if(SPASS_PCH)
     target_precompile_headers(risen-modkit PRIVATE
         <nlohmann/json.hpp> <imgui.h> <algorithm> <array> <cstdint> <filesystem> <map> <optional> <set> <string> <vector>)
 endif()
+# language files (docs/editor/LOCALIZATION.md) live next to the executable
+add_custom_command(TARGET risen-modkit POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/lang" "$<TARGET_FILE_DIR:risen-modkit>/lang")
 if(NOT WIN32)
     # miniaudio loads the audio backends at run time (ALSA, PulseAudio, Core Audio)
     find_package(Threads REQUIRED)

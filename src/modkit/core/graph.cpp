@@ -1,4 +1,6 @@
 #include "core/graph.h"
+
+#include "core/i18n.h"
 #include "core/events.h"
 
 #include <algorithm>
@@ -20,53 +22,53 @@ const PinDef kCondOut{"out", "", false, PinKind::Cond, true};
 
 std::vector<NodeTypeDef> dialog_types() {
     return {
-        {"option", "Option", "A choice in the conversation: the player says the text, then the sequence on 'then' plays. 'choices' are the sub-options "
-                             "shown after it (when the sequence does not end the conversation); 'when' takes conditions (several = all must hold).",
+        {"option", N_("Option"), N_("A choice in the conversation: the player says the text, then the sequence on 'then' plays. 'choices' are the sub-options "
+                             "shown after it (when the sequence does not end the conversation); 'when' takes conditions (several = all must hold)."),
          0xff3a6ea5,
          {{"parent", "parent", true, PinKind::Choice, false},
           {"when", "when", true, PinKind::Cond, true},
           {"then", "then", false, PinKind::Flow, false},
           {"choices", "choices", false, PinKind::Choice, true}}},
-        {"line", "Line", "A spoken line: the NPC, the player or another NPC (by unique name) says the text.", 0xff4a7a4a,
+        {"line", N_("Line"), N_("A spoken line: the NPC, the player or another NPC (by unique name) says the text."), 0xff4a7a4a,
          {{"in", "", true, PinKind::Flow, true}, {"next", "", false, PinKind::Flow, false}}},
-        {"command", "Command", "An engine dialogue command by name with its parameters (Give, GiveXP, SetGameEvent, DoTrade, ...).", 0xff8a6a2a,
+        {"command", N_("Command"), N_("An engine dialogue command by name with its parameters (Give, GiveXP, SetGameEvent, DoTrade, ...)."), 0xff8a6a2a,
          {{"in", "", true, PinKind::Flow, true}, {"next", "", false, PinKind::Flow, false}}},
-        {"quest", "Quest", "Starts, succeeds, fails or cancels a quest of the project.", 0xff8a3a8a,
+        {"quest", N_("Quest"), N_("Starts, succeeds, fails or cancels a quest of the project."), 0xff8a3a8a,
          {{"in", "", true, PinKind::Flow, true}, {"next", "", false, PinKind::Flow, false}}},
-        {"log", "Log entry", "Adds a line to a quest's log.", 0xff6a4a8a, {{"in", "", true, PinKind::Flow, true}, {"next", "", false, PinKind::Flow, false}}},
-        {"script", "Script", "Calls a script (risen.script.define in custom.lua, or a game script).", 0xff5a5a5a,
+        {"log", N_("Log entry"), N_("Adds a line to a quest's log."), 0xff6a4a8a, {{"in", "", true, PinKind::Flow, true}, {"next", "", false, PinKind::Flow, false}}},
+        {"script", N_("Script"), N_("Calls a script (risen.script.define in custom.lua, or a game script)."), 0xff5a5a5a,
          {{"in", "", true, PinKind::Flow, true}, {"next", "", false, PinKind::Flow, false}}},
-        {"end", "End", "Ends the conversation.", 0xffa53a3a, {{"in", "", true, PinKind::Flow, true}}},
-        {"cond", "Condition", "A condition: quest state, items carried, a game variable or event, a skill, a guild, an NPC dead or alive.", 0xff2a7a7a,
+        {"end", N_("End"), N_("Ends the conversation."), 0xffa53a3a, {{"in", "", true, PinKind::Flow, true}}},
+        {"cond", N_("Condition"), N_("A condition: quest state, items carried, a game variable or event, a skill, a guild, an NPC dead or alive."), 0xff2a7a7a,
          {kCondOut}},
-        {"all", "All of", "Holds when every linked condition holds.", 0xff2a6a6a, {{"in", "", true, PinKind::Cond, true}, kCondOut}},
-        {"any", "Any of", "Holds when one of the linked conditions holds.", 0xff2a6a6a, {{"in", "", true, PinKind::Cond, true}, kCondOut}},
-        {"not", "Not", "Holds when the linked condition does not.", 0xff2a6a6a, {{"in", "", true, PinKind::Cond, false}, kCondOut}},
-        {"comment", "Comment", "A note on the canvas; not exported.", 0xff404040, {}},
+        {"all", N_("All of"), N_("Holds when every linked condition holds."), 0xff2a6a6a, {{"in", "", true, PinKind::Cond, true}, kCondOut}},
+        {"any", N_("Any of"), N_("Holds when one of the linked conditions holds."), 0xff2a6a6a, {{"in", "", true, PinKind::Cond, true}, kCondOut}},
+        {"not", N_("Not"), N_("Holds when the linked condition does not."), 0xff2a6a6a, {{"in", "", true, PinKind::Cond, false}, kCondOut}},
+        {"comment", N_("Comment"), N_("A note on the canvas; not exported."), 0xff404040, {}},
     };
 }
 
 std::vector<NodeTypeDef> quest_types() {
     return {
-        {"start", "Start", "Where the quest begins: started by a dialogue's Quest node, or by a trigger (an item picked up, an NPC killed, a game "
-                           "variable, the start of a game).",
+        {"start", N_("Start"), N_("Where the quest begins: started by a dialogue's Quest node, or by a trigger (an item picked up, an NPC killed, a game "
+                           "variable, the start of a game)."),
          0xff3a8a3a,
          {{"next", "", false, PinKind::Flow, false}}},
-        {"objective", "Objective", "What the player has to do: bring items, kill, talk to someone (a dialogue option finished), a game variable.",
+        {"objective", N_("Objective"), N_("What the player has to do: bring items, kill, talk to someone (a dialogue option finished), a game variable."),
          0xff3a6ea5,
          {{"in", "", true, PinKind::Flow, true}, {"next", "", false, PinKind::Flow, false}}},
-        {"log", "Log entry", "Adds a line to the quest's log when the flow passes.", 0xff6a4a8a,
+        {"log", N_("Log entry"), N_("Adds a line to the quest's log when the flow passes."), 0xff6a4a8a,
          {{"in", "", true, PinKind::Flow, true}, {"next", "", false, PinKind::Flow, false}}},
-        {"reward", "Reward", "Gives experience, items or gold, sets a game variable.", 0xff8a6a2a,
+        {"reward", N_("Reward"), N_("Gives experience, items or gold, sets a game variable."), 0xff8a6a2a,
          {{"in", "", true, PinKind::Flow, true}, {"next", "", false, PinKind::Flow, false}}},
-        {"branch", "Either / or",
-         "Several ways to go on. Link each way's first Objective to the output: the quest waits for all of them at once, the first one the player completes "
-         "decides the path (the others are dropped) and the flow continues behind it. Paths do not join: each ends with its own Outcome.",
+        {"branch", N_("Either / or"),
+         N_("Several ways to go on. Link each way's first Objective to the output: the quest waits for all of them at once, the first one the player completes "
+         "decides the path (the others are dropped) and the flow continues behind it. Paths do not join: each ends with its own Outcome."),
          0xff7a5a9a,
          {{"in", "", true, PinKind::Flow, true}, {"next", "paths", false, PinKind::Flow, true}}},
-        {"outcome", "Outcome", "Ends the quest: success, failure or cancelled; may start a follow-up quest.", 0xffa53a3a,
+        {"outcome", N_("Outcome"), N_("Ends the quest: success, failure or cancelled; may start a follow-up quest."), 0xffa53a3a,
          {{"in", "", true, PinKind::Flow, true}}},
-        {"comment", "Comment", "A note on the canvas; not exported.", 0xff404040, {}},
+        {"comment", N_("Comment"), N_("A note on the canvas; not exported."), 0xff404040, {}},
     };
 }
 

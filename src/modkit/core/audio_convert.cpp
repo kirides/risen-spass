@@ -1,4 +1,5 @@
 #include "core/audio_convert.h"
+#include "core/i18n.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -43,7 +44,7 @@ bool is_file(const std::string& p) {
 std::string locate_ffmpeg(const std::string& configured, std::string* error) {
     if (!configured.empty()) {
         if (is_file(configured)) return configured;
-        if (error) *error = "the configured ffmpeg '" + configured + "' does not exist";
+        if (error) *error = trf("the configured ffmpeg '{0}' does not exist", {configured});
         return {};
     }
     const char* path = std::getenv("PATH");
@@ -58,17 +59,17 @@ FfmpegInfo probe_ffmpeg(const std::string& exe, const ProcessRunner& run) {
     FfmpegInfo f;
     f.path = exe;
     if (exe.empty()) {
-        f.error = "ffmpeg was not found";
+        f.error = tr("ffmpeg was not found");
         return f;
     }
     const ProcessResult v = run({exe, "-hide_banner", "-version"}, nullptr);
     if (!v.started) {
-        f.error = v.error.empty() ? "ffmpeg could not be started" : v.error;
+        f.error = v.error.empty() ? tr("ffmpeg could not be started") : v.error;
         return f;
     }
     const auto at = v.output.find("ffmpeg version ");
     if (v.exit_code != 0 || at == std::string::npos) {
-        f.error = exe + " is not ffmpeg (no version line): " + tail(v.output, 2);
+        f.error = trf("{0} is not ffmpeg (no version line): {1}", {exe, tail(v.output, 2)});
         return f;
     }
     const size_t s = at + 15, e = v.output.find_first_of(" \r\n", s);
@@ -81,13 +82,13 @@ FfmpegInfo probe_ffmpeg(const std::string& exe, const ProcessRunner& run) {
 
 std::string ffmpeg_help() {
 #ifdef _WIN32
-    return "ffmpeg is not bundled. Get a Windows build (https://www.gyan.dev/ffmpeg/builds/ or https://github.com/BtbN/FFmpeg-Builds/releases, or "
-           "'winget install Gyan.FFmpeg'), unpack it and either add its bin folder to PATH or set the path of ffmpeg.exe in Settings > Audio.";
+    return tr("ffmpeg is not bundled. Get a Windows build (https://www.gyan.dev/ffmpeg/builds/ or https://github.com/BtbN/FFmpeg-Builds/releases, or "
+           "'winget install Gyan.FFmpeg'), unpack it and either add its bin folder to PATH or set the path of ffmpeg.exe in Settings > Audio.");
 #elif defined(__APPLE__)
-    return "ffmpeg is not bundled. Install it with Homebrew ('brew install ffmpeg') or MacPorts, or set the path of an ffmpeg binary in Settings > Audio.";
+    return tr("ffmpeg is not bundled. Install it with Homebrew ('brew install ffmpeg') or MacPorts, or set the path of an ffmpeg binary in Settings > Audio.");
 #else
-    return "ffmpeg is not bundled. Install it with your package manager ('sudo apt install ffmpeg', 'sudo dnf install ffmpeg', 'sudo pacman -S ffmpeg') "
-           "or set the path of an ffmpeg binary in Settings > Audio.";
+    return tr("ffmpeg is not bundled. Install it with your package manager ('sudo apt install ffmpeg', 'sudo dnf install ffmpeg', 'sudo pacman -S ffmpeg') "
+           "or set the path of an ffmpeg binary in Settings > Audio.");
 #endif
 }
 
@@ -120,7 +121,7 @@ bool plays_as_is(const std::string& bytes, std::string& why) {
 
 std::string convert_audio(const FfmpegInfo& ff, const std::string& in, const std::string& out, const ConvertOptions& o, const ProcessRunner& run,
                           const std::atomic<bool>* cancel) {
-    if (!ff.ok) return ff.error.empty() ? std::string("ffmpeg is not available") : ff.error;
+    if (!ff.ok) return ff.error.empty() ? std::string(tr("ffmpeg is not available")) : ff.error;
     std::error_code ec;
     fs::create_directories(u8(out).parent_path(), ec);
     const std::string tmp = out + ".part";
@@ -128,28 +129,28 @@ std::string convert_audio(const FfmpegInfo& ff, const std::string& in, const std
     const ProcessResult r = run(args, cancel);
     if (r.cancelled) {
         fs::remove(u8(tmp), ec);
-        return "cancelled";
+        return tr("cancelled");
     }
     if (!r.started) return r.error;
     if (r.exit_code != 0) {
         fs::remove(u8(tmp), ec);
-        return "ffmpeg failed (exit code " + std::to_string(r.exit_code) + "): " + tail(r.output);
+        return trf("ffmpeg failed (exit code {0}): {1}", {std::to_string(r.exit_code), tail(r.output)});
     }
     std::string bytes, why;
     try {
         bytes = read_text(u8(tmp));
     } catch (const std::exception& e) {
-        return std::string("ffmpeg wrote no file: ") + e.what();
+        return trf("ffmpeg wrote no file: {0}", {e.what()});
     }
     if (!plays_as_is(bytes, why)) {
         fs::remove(u8(tmp), ec);
-        return "the converted file does not play: " + why;
+        return trf("the converted file does not play: {0}", {why});
     }
     fs::rename(u8(tmp), u8(out), ec);
     if (ec) {
         fs::remove(u8(out), ec);
         fs::rename(u8(tmp), u8(out), ec);
-        if (ec) return "cannot write " + out + ": " + ec.message();
+        if (ec) return trf("cannot write {0}: {1}", {out, ec.message()});
     }
     return {};
 }
@@ -200,7 +201,7 @@ std::vector<ImportedVoice> run_voice_import(std::vector<VoiceImportStep>& steps,
         ++i;
         if (s.skip) continue;
         if (cancel && cancel->load()) {
-            s.error = "cancelled";
+            s.error = tr("cancelled");
             continue;
         }
         const fs::path dest = base / u8(s.dest_rel);
@@ -210,7 +211,7 @@ std::vector<ImportedVoice> run_voice_import(std::vector<VoiceImportStep>& steps,
             s.error = convert_audio(*ff, s.match.file, u8str(dest), o.convert, run, cancel);
         } else {
             fs::copy_file(u8(s.match.file), dest, fs::copy_options::overwrite_existing, ec);
-            if (ec) s.error = "cannot copy: " + ec.message();
+            if (ec) s.error = trf("cannot copy: {0}", {ec.message()});
         }
         if (!s.error.empty()) continue;
         s.done = true;

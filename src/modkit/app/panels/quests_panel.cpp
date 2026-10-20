@@ -11,6 +11,7 @@
 #include "app/pickers.h"
 #include "app/widgets.h"
 #include "core/catalog.h"
+#include "core/i18n.h"
 #include "core/lua_writer.h"
 #include "core/quest.h"
 #include "core/validate.h"
@@ -81,7 +82,7 @@ public:
     }
 
     void draw(App& app) override {
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
@@ -92,8 +93,8 @@ public:
         if (sel_.empty() && !app.project.quests.empty()) sel_ = app.project.quests.front().uid;
         QuestDef* q = find(app.project, sel_);
         if (!q) {
-            ImGui::TextDisabled("Create a quest. Dialogues start, succeed or fail quests with their Quest node; a quest with a flow (Start -> objectives "
-                                "-> Outcome) follows the player's progress by itself.");
+            ImGui::TextDisabled("%s", tr("Create a quest. Dialogues start, succeed or fail quests with their Quest node; a quest with a flow (Start -> objectives "
+                                "-> Outcome) follows the player's progress by itself."));
             ImGui::End();
             return;
         }
@@ -149,14 +150,14 @@ private:
     }
 
     void draw_list(App& app) {
-        if (ImGui::Button("+ New quest")) add_quest(app);
+        if (ImGui::Button(tr("+ New quest"))) add_quest(app);
         ImGui::Separator();
         std::string remove;
         for (auto& q : app.project.quests) {
             ImGui::PushID(q.uid.c_str());
             if (ImGui::Selectable(q.name.c_str(), sel_ == q.uid)) sel_ = q.uid;
             if (ImGui::BeginPopupContextItem()) {
-                if (ImGui::MenuItem("Delete")) remove = q.uid;
+                if (ImGui::MenuItem(tr("Delete"))) remove = q.uid;
                 ImGui::EndPopup();
             }
             const std::string t = q.title.empty() ? std::string() : q.title.begin()->second;
@@ -173,19 +174,19 @@ private:
     void draw_header(App& app, QuestDef& q) {
         bool ch = false;
         ImGui::SetNextItemWidth(180);
-        ch |= ImGui::InputText("Name", &q.name);
-        ui::help("The quest's id (letters, digits, _): the key of its state in savegames. Keep it once released.");
+        ch |= ImGui::InputText(tr("Name"), &q.name);
+        ui::help(tr("The quest's id (letters, digits, _): the key of its state in savegames. Keep it once released."));
         ImGui::SameLine();
         ImGui::SetNextItemWidth(120);
-        ch |= ui::combo("Type", q.type, quest_types(), false);
+        ch |= ui::combo(tr("Type"), q.type, quest_types(), false);
         ImGui::SameLine();
         ImGui::PushItemWidth(110);
-        ch |= ui::opt_int("XP", q.xp, nullptr, 100);
+        ch |= ui::opt_int(tr("XP"), q.xp, nullptr, 100);
         ImGui::PopItemWidth();
         ImGui::SameLine();
-        ch |= ImGui::Checkbox("Silent", &q.silent);
-        ui::help("No \"quest started\" notification.");
-        if (ImGui::TreeNode("Title")) {
+        ch |= ImGui::Checkbox(tr("Silent"), &q.silent);
+        ui::help(tr("No \"quest started\" notification."));
+        if (ImGui::TreeNode(tr("Title"))) {
             ch |= ui::lang_text("##title", q.title, app.project.mod.languages);
             ImGui::TreePop();
         }
@@ -198,31 +199,31 @@ private:
         auto i = [&](const char* k, int def) { return std::to_string(d.value(k, def)); };
         if (n.type == "start") {
             const std::string t = s("trigger").empty() ? std::string("dialog") : s("trigger");
-            if (t == "dialog") return "started by a dialogue";
-            if (t == "game_start") return "at the start of a new game";
-            if (t == "item") return "when the player gets " + s("item");
-            if (t == "kill") return "when " + s("target") + " dies";
-            if (t == "var") return "when " + s("name") + " >= " + i("value", 1);
-            if (t == "quest") return "when " + s("quest") + " is " + (s("status").empty() ? std::string("Success") : s("status"));
+            if (t == "dialog") return tr("started by a dialogue");
+            if (t == "game_start") return tr("at the start of a new game");
+            if (t == "item") return trf("when the player gets {0}", {s("item")});
+            if (t == "kill") return trf("when {0} dies", {s("target")});
+            if (t == "var") return trf("when {0} >= {1}", {s("name"), i("value", 1)});
+            if (t == "quest") return trf("when {0} is {1}", {s("quest"), s("status").empty() ? std::string("Success") : s("status")});
             return t;
         }
         if (n.type == "objective") {
             const std::string k = s("kind");
             std::string out;
-            if (k == "items") out = "carry " + i("count", 1) + " " + s("item");
-            else if (k == "kill") out = "kill " + i("count", 1) + " " + s("target");
-            else if (k == "talk") out = "talk: " + s("info");
+            if (k == "items") out = trf("carry {0} {1}", {i("count", 1), s("item")});
+            else if (k == "kill") out = trf("kill {0} {1}", {i("count", 1), s("target")});
+            else if (k == "talk") out = trf("talk: {0}", {s("info")});
             else if (k == "var") out = s("name") + " >= " + i("value", 1);
             else if (k == "quest") out = s("quest") + " is " + (s("status").empty() ? std::string("Success") : s("status"));
             const std::string t = first_text(p, d.value("text", json::object()));
-            if (!t.empty()) out += "\nlog: " + t;
+            if (!t.empty()) out += trf("\nlog: {0}", {t});
             return out;
         }
         if (n.type == "log") return first_text(p, d.value("text", json::object()));
         if (n.type == "reward") {
             std::string out;
             if (d.value("xp", 0) > 0) out += i("xp", 0) + " XP\n";
-            if (d.value("gold", 0) > 0) out += i("gold", 0) + " gold\n";
+            if (d.value("gold", 0) > 0) out += trf("{0} gold\n", {i("gold", 0)});
             if (d.contains("items") && d["items"].is_array())
                 for (auto& it : d["items"])
                     if (it.is_array() && it.size() >= 2) out += std::to_string(it[1].get<int>()) + "x " + it[0].get<std::string>() + "\n";
@@ -232,10 +233,10 @@ private:
         }
         if (n.type == "outcome") {
             std::string out = s("result").empty() ? std::string("success") : s("result");
-            if (!s("next_quest").empty()) out += "\nthen " + s("next_quest");
+            if (!s("next_quest").empty()) out += trf("\nthen {0}", {s("next_quest")});
             return out;
         }
-        if (n.type == "branch") return "the first objective done decides";
+        if (n.type == "branch") return tr("the first objective done decides");
         if (n.type == "comment") return s("text");
         return {};
     }
@@ -243,14 +244,14 @@ private:
     void draw_inspector(App& app, QuestDef& q, const std::vector<DialogIssue>& issues, const json& flow) {
         GraphNode* n = q.graph.find(canvas_.selected());
         if (!n) {
-            ImGui::TextWrapped("Select a node to edit it.");
+            ImGui::TextWrapped("%s", tr("Select a node to edit it."));
             ImGui::Spacing();
-            ImGui::TextWrapped("The flow starts at Start and walks the chain: an Objective waits until the player did it, a Log entry and a Reward "
+            ImGui::TextWrapped("%s", tr("The flow starts at Start and walks the chain: an Objective waits until the player did it, a Log entry and a Reward "
                                "happen at once, an Outcome ends the quest (success, failure, cancelled) and may start a follow-up quest. A quest without "
                                "a Start is ended by its dialogues alone. An Either / or lets the player choose by doing: link the first Objective of each way "
-                               "to its output, the first one completed decides the path.");
+                               "to its output, the first one completed decides the path."));
             if (!flow.is_null()) {
-                ImGui::SeparatorText("Exported as");
+                ImGui::SeparatorText(tr("Exported as"));
                 std::string lua = lua_value(flow, 0, 60);
                 ImGui::InputTextMultiline("##lua", &lua, ImVec2(-FLT_MIN, 220), ImGuiInputTextFlags_ReadOnly);
             }
@@ -258,10 +259,10 @@ private:
             return;
         }
         const NodeTypeDef* t = node_type(GraphKind::Quest, n->type);
-        ImGui::SeparatorText(t ? t->title : n->type.c_str());
+        ImGui::SeparatorText(t ? tr(t->title) : n->type.c_str());
         if (t && t->help) {
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-            ImGui::TextWrapped("%s", t->help);
+            ImGui::TextWrapped("%s", tr(t->help));
             ImGui::PopStyleColor();
         }
         bool ch = false;
@@ -286,76 +287,76 @@ private:
                 d[key] = v;
                 ch = true;
             }
-            ui::help("A template (every wolf counts) or the unique name of one NPC.");
+            ui::help(tr("A template (every wolf counts) or the unique name of one NPC."));
         };
         if (n->type == "start") {
-            ch |= json_combo("Trigger", d, "trigger", quest_triggers());
-            const std::string tr = d.value("trigger", std::string("dialog"));
-            if (tr == "dialog") ImGui::TextDisabled("A dialogue's Quest node with the action 'start' starts it.");
-            if (tr == "item") item_pick("Item", "item");
-            if (tr == "kill") target_pick("Killed", "target");
-            if (tr == "var") {
-                ch |= json_str("Variable", d, "name");
-                ch |= json_int("Value", d, "value", 1, -1000000);
+            ch |= json_combo(tr("Trigger"), d, "trigger", quest_triggers());
+            const std::string trig = d.value("trigger", std::string("dialog"));
+            if (trig == "dialog") ImGui::TextDisabled("%s", tr("A dialogue's Quest node with the action 'start' starts it."));
+            if (trig == "item") item_pick(tr("Item"), "item");
+            if (trig == "kill") target_pick(tr("Killed"), "target");
+            if (trig == "var") {
+                ch |= json_str(tr("Variable"), d, "name");
+                ch |= json_int(tr("Value"), d, "value", 1, -1000000);
             }
-            if (tr == "quest") {
+            if (trig == "quest") {
                 std::string qv = d.value("quest", std::string());
-                if (ui::quest_picker("Quest", qv, app, q.name)) {
+                if (ui::quest_picker(tr("Quest"), qv, app, q.name)) {
                     d["quest"] = qv;
                     ch = true;
                 }
-                ui::help("A quest of this mod or any quest of the game.");
-                ch |= json_combo("Status", d, "status", quest_states());
+                ui::help(tr("A quest of this mod or any quest of the game."));
+                ch |= json_combo(tr("Status"), d, "status", quest_states());
             }
         } else if (n->type == "objective") {
-            ch |= json_combo("Kind", d, "kind", objective_kinds());
+            ch |= json_combo(tr("Kind"), d, "kind", objective_kinds());
             const std::string k = d.value("kind", std::string("items"));
             if (k == "items") {
-                item_pick("Item", "item");
-                ch |= json_int("Count", d, "count", 1, 1);
-                ImGui::TextDisabled("Done while the player carries that many.");
+                item_pick(tr("Item"), "item");
+                ch |= json_int(tr("Count"), d, "count", 1, 1);
+                ImGui::TextDisabled("%s", tr("Done while the player carries that many."));
             } else if (k == "kill") {
-                target_pick("Kill", "target");
-                ch |= json_int("Count", d, "count", 1, 1);
-                ImGui::TextDisabled("Deaths counted from the moment the objective begins.");
+                target_pick(tr("Kill"), "target");
+                ch |= json_int(tr("Count"), d, "count", 1, 1);
+                ImGui::TextDisabled("%s", tr("Deaths counted from the moment the objective begins."));
             } else if (k == "talk") {
-                ch |= json_combo("Option", d, "info", project_info_names(app.project), true);
-                ImGui::TextDisabled("Done when that dialogue option finished playing.");
+                ch |= json_combo(tr("Option"), d, "info", project_info_names(app.project), true);
+                ImGui::TextDisabled("%s", tr("Done when that dialogue option finished playing."));
             } else if (k == "var") {
-                ch |= json_str("Variable", d, "name");
-                ch |= json_int("At least", d, "value", 1, -1000000);
+                ch |= json_str(tr("Variable"), d, "name");
+                ch |= json_int(tr("At least"), d, "value", 1, -1000000);
             } else if (k == "quest") {
                 std::string qv = d.value("quest", std::string());
-                if (ui::quest_picker("Quest", qv, app, q.name)) {
+                if (ui::quest_picker(tr("Quest"), qv, app, q.name)) {
                     d["quest"] = qv;
                     ch = true;
                 }
-                ui::help("A quest of this mod or any quest of the game.");
-                ch |= json_combo("Status", d, "status", quest_states());
+                ui::help(tr("A quest of this mod or any quest of the game."));
+                ch |= json_combo(tr("Status"), d, "status", quest_states());
             }
-            ch |= json_text("Log entry when it begins", d["text"], langs, true);
+            ch |= json_text(tr("Log entry when it begins"), d["text"], langs, true);
         } else if (n->type == "log") {
-            ch |= json_text("Text", d["text"], langs, true);
+            ch |= json_text(tr("Text"), d["text"], langs, true);
         } else if (n->type == "reward") {
-            ch |= json_int("Experience", d, "xp", 0);
-            ch |= json_int("Gold", d, "gold", 0);
+            ch |= json_int(tr("Experience"), d, "xp", 0);
+            ch |= json_int(tr("Gold"), d, "gold", 0);
             std::vector<InvItem> items;
             if (d.contains("items") && d["items"].is_array())
                 for (auto& it : d["items"])
                     if (it.is_array() && it.size() >= 2) items.push_back({it[0].get<std::string>(), it[1].get<int>(), false});
-            ImGui::TextUnformatted("Items");
+            ImGui::TextUnformatted(tr("Items"));
             if (ui::inventory_list("items", items, app, ui::project_item_names(app.project), false)) {
                 json a = json::array();
                 for (auto& it : items) a.push_back(json::array({it.item, it.amount}));
                 d["items"] = a;
                 ch = true;
             }
-            ch |= json_str("Set variable", d, "var", "a game variable (optional)");
-            if (!d.value("var", std::string()).empty()) ch |= json_int("to", d, "var_value", 1, -1000000);
+            ch |= json_str(tr("Set variable"), d, "var", tr("a game variable (optional)"));
+            if (!d.value("var", std::string()).empty()) ch |= json_int(tr("to"), d, "var_value", 1, -1000000);
         } else if (n->type == "outcome") {
-            ch |= json_combo("Result", d, "result", outcome_results());
-            ch |= json_text("Log entry", d["text"], langs, true);
-            ch |= json_combo("Then start", d, "next_quest", quests, true);
+            ch |= json_combo(tr("Result"), d, "result", outcome_results());
+            ch |= json_text(tr("Log entry"), d["text"], langs, true);
+            ch |= json_combo(tr("Then start"), d, "next_quest", quests, true);
         } else if (n->type == "comment") {
             std::string s = d.value("text", std::string());
             if (ImGui::InputTextMultiline("##c", &s, ImVec2(-FLT_MIN, 120))) {
@@ -372,7 +373,7 @@ private:
         for (auto& i : issues) {
             if (i.node != node) continue;
             if (!header) {
-                ImGui::SeparatorText("Problems");
+                ImGui::SeparatorText(tr("Problems"));
                 header = true;
             }
             ImGui::TextColored(i.error ? ImVec4(1, 0.45f, 0.4f, 1) : ImVec4(1, 0.8f, 0.35f, 1), "%s", i.message.c_str());

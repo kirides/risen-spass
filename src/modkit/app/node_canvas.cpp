@@ -1,4 +1,5 @@
 #include "app/node_canvas.h"
+#include "core/i18n.h"
 
 #include <imgui.h>
 #include <imgui-node-editor/imgui_node_editor.h>
@@ -105,7 +106,7 @@ bool NodeCanvas::create_menu(Graph& g, double x, double y, std::string* created)
     // with a dragged pin only the node types that can take the link are offered
     const GraphNode* from = pending_node_.empty() ? nullptr : g.find(pending_node_);
     const PinDef* fp = from ? node_type(kind_, from->type)->pin(pending_pin_) : nullptr;
-    ImGui::TextDisabled(fp ? "Create and link" : "Create");
+    ImGui::TextDisabled("%s", fp ? tr("Create and link") : tr("Create"));
     ImGui::Separator();
     // node types with a group (event graphs) are offered in one submenu per group, in the order of first appearance
     std::vector<std::string> groups;
@@ -113,7 +114,7 @@ bool NodeCanvas::create_menu(Graph& g, double x, double y, std::string* created)
         if (t.group[0] && std::find(groups.begin(), groups.end(), t.group) == groups.end()) groups.push_back(t.group);
     for (size_t gi = 0; gi < std::max<size_t>(groups.size(), 1); ++gi) {
         const bool grouped = !groups.empty();
-        bool open_group = !grouped || ImGui::BeginMenu(groups[gi].c_str());
+        bool open_group = !grouped || ImGui::BeginMenu(tr(groups[gi].c_str()));
         if (!open_group) continue;
     for (auto& t : node_types(kind_)) {
         if (grouped && groups[gi] != t.group) continue;
@@ -122,7 +123,7 @@ bool NodeCanvas::create_menu(Graph& g, double x, double y, std::string* created)
             for (auto& p : t.pins) fits |= p.kind == fp->kind && p.input != fp->input;
             if (!fits) continue;
         }
-        if (ImGui::MenuItem(t.title)) {
+        if (ImGui::MenuItem(tr(t.title))) {
             GraphNode n = make_node(kind_, t.type, x, y);
             *created = n.uid;
             g.nodes.push_back(n);
@@ -136,7 +137,7 @@ bool NodeCanvas::create_menu(Graph& g, double x, double y, std::string* created)
                 }
             }
         }
-        if (ImGui::IsItemHovered() && t.help) ImGui::SetTooltip("%s", t.help);
+        if (ImGui::IsItemHovered() && t.help) ImGui::SetTooltip("%s", tr(t.help));
     }
         if (grouped) ImGui::EndMenu();
     }
@@ -200,7 +201,7 @@ bool NodeCanvas::draw(const std::string& key, Graph& g, const Summary& summary) 
         if (marked) ed::PushStyleColor(ed::StyleColor_NodeBorder, ImVec4(1, 0.35f, 0.3f, 1));
         ed::BeginNode(id);
         ImGui::PushID(n.uid.c_str());
-        ImGui::TextUnformatted(t->title);
+        ImGui::TextUnformatted(tr(t->title));
         const float header_bottom = ImGui::GetItemRectMax().y;
         // inputs | body | outputs
         ImGui::BeginGroup();
@@ -386,7 +387,7 @@ bool NodeCanvas::draw(const std::string& key, Graph& g, const Summary& summary) 
         pending_node_.clear();
     }
     if (ImGui::BeginPopup("##node_menu")) {
-        if (ImGui::MenuItem("Duplicate", "Ctrl+D")) {
+        if (ImGui::MenuItem(tr("Duplicate"), "Ctrl+D")) {
             duplicate_nodes(c, g, menu_nodes_);
             changed = true;
         }

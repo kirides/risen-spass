@@ -18,7 +18,8 @@
 namespace mk {
 
 enum class TplKind { Item, Recipe, Npc, Monster, Interactive, Object, Effect, Navigation, Sound, Other };
-const char* kind_name(TplKind k);
+const char* kind_name(TplKind k);   // English, for logic and messages
+const char* kind_label(TplKind k);  // translated, for the UI
 constexpr int kTplKindCount = 10;
 
 // a quest of the game (compiled_quests.bin): its id, as risen.quest and quest.status_changed name it, and the text id of its title (quests.tab)

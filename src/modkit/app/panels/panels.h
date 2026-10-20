@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "app/app.h"
+#include "core/i18n.h"
 
 namespace mk {
 
@@ -30,26 +31,26 @@ std::unique_ptr<Panel> make_strings_panel();
 std::unique_ptr<Panel> make_shipped_dialogs_panel();
 
 // window titles, used for the default docking layout
-inline constexpr const char* kPanelMod = "Mod";
-inline constexpr const char* kPanelLog = "Log";
-inline constexpr const char* kPanelSettings = "Settings";
-inline constexpr const char* kPanelBrowser = "Browser";
-inline constexpr const char* kPanelItems = "Items";
-inline constexpr const char* kPanelRecipes = "Recipes";
-inline constexpr const char* kPanelNpcs = "NPCs";
-inline constexpr const char* kPanelDialogs = "Dialogues";
-inline constexpr const char* kPanelQuests = "Quests";
-inline constexpr const char* kPanelEvents = "Events";
-inline constexpr const char* kPanelLayers = "Layers";
-inline constexpr const char* kPanelWorld = "World";
-inline constexpr const char* kPanelProblems = "Problems";
-inline constexpr const char* kPanelAssets = "Assets";
-inline constexpr const char* kPanelBehaviors = "Behaviours";
-inline constexpr const char* kPanelConversation = "Conversation";
-inline constexpr const char* kPanelSpells = "Spells";
-inline constexpr const char* kPanelNpcGroups = "NPC groups";
-inline constexpr const char* kPanelPatches = "Patches";
-inline constexpr const char* kPanelStrings = "Strings";
-inline constexpr const char* kPanelShippedDialogs = "Shipped dialogues";
+inline constexpr const char* kPanelMod = N_("Mod");
+inline constexpr const char* kPanelLog = N_("Log");
+inline constexpr const char* kPanelSettings = N_("Settings");
+inline constexpr const char* kPanelBrowser = N_("Browser");
+inline constexpr const char* kPanelItems = N_("Items");
+inline constexpr const char* kPanelRecipes = N_("Recipes");
+inline constexpr const char* kPanelNpcs = N_("NPCs");
+inline constexpr const char* kPanelDialogs = N_("Dialogues");
+inline constexpr const char* kPanelQuests = N_("Quests");
+inline constexpr const char* kPanelEvents = N_("Events");
+inline constexpr const char* kPanelLayers = N_("Layers");
+inline constexpr const char* kPanelWorld = N_("World");
+inline constexpr const char* kPanelProblems = N_("Problems");
+inline constexpr const char* kPanelAssets = N_("Assets");
+inline constexpr const char* kPanelBehaviors = N_("Behaviours");
+inline constexpr const char* kPanelConversation = N_("Conversation");
+inline constexpr const char* kPanelSpells = N_("Spells");
+inline constexpr const char* kPanelNpcGroups = N_("NPC groups");
+inline constexpr const char* kPanelPatches = N_("Patches");
+inline constexpr const char* kPanelStrings = N_("Strings");
+inline constexpr const char* kPanelShippedDialogs = N_("Shipped dialogues");
 
 }  // namespace mk

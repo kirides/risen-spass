@@ -1,4 +1,5 @@
 #include "app/widgets.h"
+#include "core/i18n.h"
 
 #include <imgui_stdlib.h>
 
@@ -17,7 +18,7 @@ bool set_box(const char* label, bool is_set, bool& toggled) {
     ImGui::PushID(label);
     bool on = is_set;
     toggled = ImGui::Checkbox("##set", &on);
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip(on ? "Set: the mod writes this value" : "Not set: the template keeps its own value");
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", on ? tr("Set: the mod writes this value") : tr("Not set: the template keeps its own value"));
     ImGui::PopID();
     ImGui::SameLine();
     return on;
@@ -143,8 +144,8 @@ bool int_map(const char* id, IntMap& m, const std::vector<std::string>& choices,
     ImGui::PushID(id);
     std::string remove;
     if (ImGui::BeginTable("##map", 3, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH)) {
-        ImGui::TableSetupColumn("name", ImGuiTableColumnFlags_WidthStretch, 3);
-        ImGui::TableSetupColumn("value", ImGuiTableColumnFlags_WidthStretch, 2);
+        ImGui::TableSetupColumn(tr("name"), ImGuiTableColumnFlags_WidthStretch, 3);
+        ImGui::TableSetupColumn(tr("value"), ImGuiTableColumnFlags_WidthStretch, 2);
         ImGui::TableSetupColumn("x", ImGuiTableColumnFlags_WidthFixed, 24);
         for (auto& [k, val] : m) {
             ImGui::TableNextRow();
@@ -185,9 +186,9 @@ bool int_map(const char* id, IntMap& m, const std::vector<std::string>& choices,
             ImGui::EndCombo();
         }
     } else {
-        ImGui::InputTextWithHint("##addname", "name", &pending);
+        ImGui::InputTextWithHint("##addname", tr("name"), &pending);
         ImGui::SameLine();
-        if (ImGui::Button("Add") && !pending.empty()) {
+        if (ImGui::Button(tr("Add")) && !pending.empty()) {
             m[pending] = def_value;
             pending.clear();
             changed = true;
@@ -216,7 +217,7 @@ void section(const char* title) {
 bool combo(const char* label, std::string& v, const std::vector<std::string>& items, bool allow_empty) {
     bool changed = false;
     if (ImGui::BeginCombo(label, v.empty() ? "(none)" : v.c_str(), ImGuiComboFlags_HeightLarge)) {
-        if (allow_empty && ImGui::Selectable("(none)", v.empty())) {
+        if (allow_empty && ImGui::Selectable(tr("(none)"), v.empty())) {
             v.clear();
             changed = true;
         }
@@ -235,5 +236,15 @@ void hint(const char* text) {
     ImGui::SameLine();
     ImGui::TextDisabled("%s", text);
 }
+
+bool combo_items(const char* label, int* cur, const char* const* items, int count) {
+    std::vector<const char*> shown;
+    for (int i = 0; i < count; ++i) shown.push_back(tr(items[i]));
+    return ImGui::Combo(label, cur, shown.data(), count);
+}
+
+std::string panel_label(const char* title) { return std::string(tr(title)) + "###" + title; }
+
+std::string panel_id(const char* title) { return std::string("###") + title; }
 
 }  // namespace mk::ui

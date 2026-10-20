@@ -1,5 +1,7 @@
 #include "core/events.h"
 
+#include "core/i18n.h"
+
 #include <algorithm>
 #include <cmath>
 #include <functional>
@@ -55,9 +57,9 @@ const std::vector<std::string> kOps = {"==", "~=", ">=", "<=", ">", "<"};
 const std::vector<std::string> kStatus = {"Open", "Running", "Success", "Failed", "Obsolete", "Cancelled", "Lost", "Won"};
 
 std::vector<F> position_fields(const char* point_label) {
-    return {fcombo("at", point_label, {"point", "entity"}, "point", "A point of the world (x, y, z in game units, 100 = 1 m) or the position of a named entity."),
+    return {fcombo("at", point_label, {"point", "entity"}, "point", N_("A point of the world (x, y, z in game units, 100 = 1 m) or the position of a named entity.")),
             when(fnum("x", "X", 0), "at=point"), when(fnum("y", "Y", 0), "at=point"), when(fnum("z", "Z", 0), "at=point"),
-            when(req(fstr("entity", "Entity", "", "The unique name of an NPC or object.")), "at=entity")};
+            when(req(fstr("entity", N_("Entity"), "", N_("The unique name of an NPC or object."))), "at=entity")};
 }
 
 std::vector<EvNodeSpec> make_specs() {
@@ -65,120 +67,120 @@ std::vector<EvNodeSpec> make_specs() {
     auto add = [&](EvNodeSpec s) { v.push_back(std::move(s)); };
     constexpr unsigned kTrig = 0xff3a8a3a, kCond = 0xff2a7a7a, kFlow = 0xff7a5a9a, kAct = 0xff3a6ea5, kEnd = 0xffa53a3a;
     // ---- triggers
-    add({"on_session", "Triggers", "On game start / load", "Fires when a world is ready: a new game, a loaded savegame, or both.", kTrig, true, {"next"},
-         {fcombo("mode", "When", {"new", "load", "any"}, "new")}});
-    add({"on_chapter", "Triggers", "On chapter", "Fires when the story chapter changes (looked at about every half second). Chapter 0 = any change.", kTrig, true, {"next"},
-         {fint("chapter", "Chapter", 0, 0, 20, "0 = every change")}});
-    add({"on_kill", "Triggers", "On kill", "Fires when an NPC or monster dies: a template (every wolf) or one NPC by unique name.", kTrig, true, {"next"},
-         {req(fkind(EvField::Target, "target", "Killed")), fbool("by_player", "Only if the player killed it", false)}});
-    add({"on_move", "Triggers", "On player moved",
-         "Fires when the player has moved at least this many metres since the last time it fired (or since the world was ready). Turning and tiny steps never fire it.", kTrig, true,
-         {"next"}, {fnum("min_m", "Metres", 1, 1, 100000, "At least 1 m: smaller values would only measure noise.")}});
+    add({"on_session", N_("Triggers"), N_("On game start / load"), N_("Fires when a world is ready: a new game, a loaded savegame, or both."), kTrig, true, {"next"},
+         {fcombo("mode", N_("When"), {"new", "load", "any"}, "new")}});
+    add({"on_chapter", N_("Triggers"), N_("On chapter"), N_("Fires when the story chapter changes (looked at about every half second). Chapter 0 = any change."), kTrig, true, {"next"},
+         {fint("chapter", N_("Chapter"), 0, 0, 20, N_("0 = every change"))}});
+    add({"on_kill", N_("Triggers"), N_("On kill"), N_("Fires when an NPC or monster dies: a template (every wolf) or one NPC by unique name."), kTrig, true, {"next"},
+         {req(fkind(EvField::Target, "target", N_("Killed"))), fbool("by_player", N_("Only if the player killed it"), false)}});
+    add({"on_move", N_("Triggers"), N_("On player moved"),
+         N_("Fires when the player has moved at least this many metres since the last time it fired (or since the world was ready). Turning and tiny steps never fire it."), kTrig, true,
+         {"next"}, {fnum("min_m", N_("Metres"), 1, 1, 100000, N_("At least 1 m: smaller values would only measure noise."))}});
     {
-        EvNodeSpec s{"on_area", "Triggers", "On enter / leave area", "Fires when the player enters or leaves a sphere around a point or a named entity. Judged on 1 m steps of movement.", kTrig,
+        EvNodeSpec s{"on_area", N_("Triggers"), N_("On enter / leave area"), N_("Fires when the player enters or leaves a sphere around a point or a named entity. Judged on 1 m steps of movement."), kTrig,
                      true, {"next"}, {}};
-        for (auto& f : position_fields("Centre")) s.fields.push_back(f);
-        s.fields.push_back(fnum("radius", "Radius (m)", 5, 1, 100000));
-        s.fields.push_back(fcombo("on", "Fires when the player", {"enters", "leaves", "enters or leaves"}, "enters"));
+        for (auto& f : position_fields(N_("Centre"))) s.fields.push_back(f);
+        s.fields.push_back(fnum("radius", N_("Radius (m)"), 5, 1, 100000));
+        s.fields.push_back(fcombo("on", N_("Fires when the player"), {"enters", "leaves", "enters or leaves"}, "enters"));
         add(std::move(s));
     }
-    add({"on_quest", "Triggers", "On quest status", "Fires when a quest changes its status (any quest when the name is empty).", kTrig, true, {"next"},
-         {fkind(EvField::Quest, "quest", "Quest"), fcombo("status", "Status", {"any", "Open", "Running", "Success", "Failed", "Obsolete", "Cancelled", "Lost", "Won"}, "Success")}});
-    add({"on_item", "Triggers", "On item", "Fires when the player's inventory changes in the chosen way (any item when the name is empty).", kTrig, true, {"next"},
-         {fkind(EvField::Item, "item", "Item"),
-          fcombo("what", "What happened", {"picked_up", "dropped", "equipped", "unequipped", "added", "removed", "consumed"}, "picked_up",
-                 "added / removed: every change of the amount, whatever the cause (picked_up: from the ground, dropped: thrown away).")}});
-    add({"on_dialogue", "Triggers", "On dialogue option", "Fires when a dialogue option finished playing.", kTrig, true, {"next"}, {req(fkind(EvField::Info, "info", "Option"))}});
-    add({"on_time", "Triggers", "On time of day", "Fires when the in-game clock reaches the time (once per game minute at most).", kTrig, true, {"next"},
-         {fint("hour", "Hour", 8, 0, 23), fint("minute", "Minute", 0, 0, 59)}});
-    add({"on_variable", "Triggers", "On variable changed", "Fires when a variable was set (a game variable, or a mod variable of Set variable nodes). With a comparison only when the new value passes it.",
+    add({"on_quest", N_("Triggers"), N_("On quest status"), N_("Fires when a quest changes its status (any quest when the name is empty)."), kTrig, true, {"next"},
+         {fkind(EvField::Quest, "quest", N_("Quest")), fcombo("status", N_("Status"), {"any", "Open", "Running", "Success", "Failed", "Obsolete", "Cancelled", "Lost", "Won"}, "Success")}});
+    add({"on_item", N_("Triggers"), N_("On item"), N_("Fires when the player's inventory changes in the chosen way (any item when the name is empty)."), kTrig, true, {"next"},
+         {fkind(EvField::Item, "item", N_("Item")),
+          fcombo("what", N_("What happened"), {"picked_up", "dropped", "equipped", "unequipped", "added", "removed", "consumed"}, "picked_up",
+                 N_("added / removed: every change of the amount, whatever the cause (picked_up: from the ground, dropped: thrown away)."))}});
+    add({"on_dialogue", N_("Triggers"), N_("On dialogue option"), N_("Fires when a dialogue option finished playing."), kTrig, true, {"next"}, {req(fkind(EvField::Info, "info", N_("Option")))}});
+    add({"on_time", N_("Triggers"), N_("On time of day"), N_("Fires when the in-game clock reaches the time (once per game minute at most)."), kTrig, true, {"next"},
+         {fint("hour", N_("Hour"), 8, 0, 23), fint("minute", N_("Minute"), 0, 0, 59)}});
+    add({"on_variable", N_("Triggers"), N_("On variable changed"), N_("Fires when a variable was set (a game variable, or a mod variable of Set variable nodes). With a comparison only when the new value passes it."),
          kTrig, true, {"next"},
-         {fcombo("scope", "Kind", {"game", "save"}, "game", "game: an engine game variable (dialogues and quests see it too); save: a mod variable kept in the savegame."),
-          req(fstr("name", "Variable")), fcombo("op", "Fires", {"changed", "==", "~=", ">=", "<=", ">", "<"}, "changed"), when(fint("value", "Value", 1), "op!=changed")}});
-    add({"on_timer", "Triggers", "On timer", "Fires after this many seconds of play (the clock stops in menus and is saved with the game); repeating fires again and again.", kTrig, true,
-         {"next"}, {fnum("seconds", "Seconds", 60, 1, 1e7), fbool("repeat", "Repeat", false)}});
-    add({"on_signal", "Triggers", "On signal", "Fires when a Send signal node (of any graph) sends this name: connects graphs.", kTrig, true, {"next"}, {req(fstr("name", "Signal"))}});
+         {fcombo("scope", N_("Kind"), {"game", "save"}, "game", N_("game: an engine game variable (dialogues and quests see it too); save: a mod variable kept in the savegame.")),
+          req(fstr("name", N_("Variable"))), fcombo("op", N_("Fires"), {"changed", "==", "~=", ">=", "<=", ">", "<"}, "changed"), when(fint("value", N_("Value"), 1), "op!=changed")}});
+    add({"on_timer", N_("Triggers"), N_("On timer"), N_("Fires after this many seconds of play (the clock stops in menus and is saved with the game); repeating fires again and again."), kTrig, true,
+         {"next"}, {fnum("seconds", N_("Seconds"), 60, 1, 1e7), fbool("repeat", N_("Repeat"), false)}});
+    add({"on_signal", N_("Triggers"), N_("On signal"), N_("Fires when a Send signal node (of any graph) sends this name: connects graphs."), kTrig, true, {"next"}, {req(fstr("name", N_("Signal")))}});
     // ---- conditions and flow
-    add({"condition", "Conditions", "Condition", "Tests one or more checks; goes on at 'then' when they hold, else at 'else'. Chain Condition nodes for nested and / or.", kCond, false,
-         {"then", "else"}, {fcombo("mode", "Combine", {"all", "any"}, "all", "all: every check must hold; any: one is enough."), fbool("negate", "Negate the result", false)}});
-    add({"once", "Flow", "Once", "Lets the first pass through at 'next' (per savegame); every later pass goes to 'again'.", kFlow, false, {"next", "again"}, {}});
-    add({"count", "Flow", "After N passes", "Passes at 'next' only on every N-th arrival (N = 3: the third, with Repeat also the sixth...); counted per savegame.", kFlow, false, {"next"},
-         {fint("n", "N", 3, 1, 1000000), fbool("repeat", "Every N-th time (else only the N-th)", false)}});
-    add({"cooldown", "Flow", "Cooldown", "Passes at most once per this many seconds of play; arrivals in between are dropped.", kFlow, false, {"next"}, {fnum("seconds", "Seconds", 10, 0, 1e7)}});
-    add({"delay", "Flow", "Delay", "Goes on after this many seconds of play. A pending delay is part of the savegame.", kFlow, false, {"next"}, {fnum("seconds", "Seconds", 5, 0, 1e7)}});
-    add({"repeat", "Flow", "Repeat", "Runs the 'body' branch N times in a row, then 'done'.", kFlow, false, {"body", "done"}, {fint("count", "Times", 3, 1, 50)}});
-    add({"sequence", "Flow", "Sequence", "Runs outputs 1, 2, 3, 4 one after the other. (An output linked to several nodes runs them all, top to bottom.)", kFlow, false, {"1", "2", "3", "4"}, {}});
-    add({"end", "Flow", "End", "Ends this path.", kEnd, false, {}, {}});
+    add({"condition", N_("Conditions"), N_("Condition"), N_("Tests one or more checks; goes on at 'then' when they hold, else at 'else'. Chain Condition nodes for nested and / or."), kCond, false,
+         {"then", "else"}, {fcombo("mode", N_("Combine"), {"all", "any"}, "all", N_("all: every check must hold; any: one is enough.")), fbool("negate", N_("Negate the result"), false)}});
+    add({"once", N_("Flow"), N_("Once"), N_("Lets the first pass through at 'next' (per savegame); every later pass goes to 'again'."), kFlow, false, {"next", "again"}, {}});
+    add({"count", N_("Flow"), N_("After N passes"), N_("Passes at 'next' only on every N-th arrival (N = 3: the third, with Repeat also the sixth...); counted per savegame."), kFlow, false, {"next"},
+         {fint("n", "N", 3, 1, 1000000), fbool("repeat", N_("Every N-th time (else only the N-th)"), false)}});
+    add({"cooldown", N_("Flow"), N_("Cooldown"), N_("Passes at most once per this many seconds of play; arrivals in between are dropped."), kFlow, false, {"next"}, {fnum("seconds", N_("Seconds"), 10, 0, 1e7)}});
+    add({"delay", N_("Flow"), N_("Delay"), N_("Goes on after this many seconds of play. A pending delay is part of the savegame."), kFlow, false, {"next"}, {fnum("seconds", N_("Seconds"), 5, 0, 1e7)}});
+    add({"repeat", N_("Flow"), N_("Repeat"), N_("Runs the 'body' branch N times in a row, then 'done'."), kFlow, false, {"body", "done"}, {fint("count", N_("Times"), 3, 1, 50)}});
+    add({"sequence", N_("Flow"), N_("Sequence"), N_("Runs outputs 1, 2, 3, 4 one after the other. (An output linked to several nodes runs them all, top to bottom.)"), kFlow, false, {"1", "2", "3", "4"}, {}});
+    add({"end", N_("Flow"), N_("End"), N_("Ends this path."), kEnd, false, {}, {}});
     // ---- actions
-    add({"set_variable", "Actions", "Set variable", "Sets, adds to or clears a variable. game: an engine game variable (whole numbers; dialogue and quest conditions read it); save: a mod variable kept in the savegame.",
+    add({"set_variable", N_("Actions"), N_("Set variable"), N_("Sets, adds to or clears a variable. game: an engine game variable (whole numbers; dialogue and quest conditions read it); save: a mod variable kept in the savegame."),
          kAct, false, {"next"},
-         {fcombo("scope", "Kind", {"game", "save"}, "game"), req(fstr("name", "Variable")), fcombo("op", "Operation", {"set", "add", "clear"}, "set"), when(fint("value", "Value", 1), "op!=clear")}});
+         {fcombo("scope", N_("Kind"), {"game", "save"}, "game"), req(fstr("name", N_("Variable"))), fcombo("op", N_("Operation"), {"set", "add", "clear"}, "set"), when(fint("value", N_("Value"), 1), "op!=clear")}});
     {
-        EvNodeSpec s{"spawn_npc", "Actions", "Spawn NPC", "Makes an NPC or monster of a template next to the player or at a point (saved with the game).", kAct, false, {"next"}, {}};
-        s.fields.push_back(req(fkind(EvField::Template, "template", "Template")));
-        s.fields.push_back(fstr("name", "Unique name", "", "Optional: a name to find it again (letters, digits, _ and -)."));
-        s.fields.push_back(fcombo("at", "Where", {"near_player", "point", "entity"}, "near_player", "near_player: x / y / z are an offset from the player."));
+        EvNodeSpec s{"spawn_npc", N_("Actions"), N_("Spawn NPC"), N_("Makes an NPC or monster of a template next to the player or at a point (saved with the game)."), kAct, false, {"next"}, {}};
+        s.fields.push_back(req(fkind(EvField::Template, "template", N_("Template"))));
+        s.fields.push_back(fstr("name", N_("Unique name"), "", N_("Optional: a name to find it again (letters, digits, _ and -).")));
+        s.fields.push_back(fcombo("at", N_("Where"), {"near_player", "point", "entity"}, "near_player", N_("near_player: x / y / z are an offset from the player.")));
         s.fields.push_back(fnum("x", "X", 300));
         s.fields.push_back(fnum("y", "Y", 0));
         s.fields.push_back(fnum("z", "Z", 0));
-        s.fields.push_back(when(req(fstr("entity", "Entity")), "at=entity"));
-        s.fields.push_back(fbool("peaceful", "Peaceful", false));
+        s.fields.push_back(when(req(fstr("entity", N_("Entity"))), "at=entity"));
+        s.fields.push_back(fbool("peaceful", N_("Peaceful"), false));
         add(std::move(s));
     }
-    add({"remove_npc", "Actions", "Remove NPC", "Removes one NPC by unique name, or every NPC of a template within the radius around the player.", kAct, false, {"next"},
-         {req(fkind(EvField::Target, "target", "NPC")), fnum("radius", "Radius (m, templates)", 50, 1, 100000)}});
-    add({"give_item", "Actions", "Give item", "Puts items into the player's inventory.", kAct, false, {"next"},
-         {req(fkind(EvField::Item, "item", "Item")), fint("count", "Count", 1, 1, 100000), fbool("show", "Show in the item log", true)}});
-    add({"take_item", "Actions", "Take item", "Takes items from the player's inventory (as many as he has, up to the count).", kAct, false, {"next"},
-         {req(fkind(EvField::Item, "item", "Item")), fint("count", "Count", 1, 1, 100000)}});
-    add({"give_xp", "Actions", "Give experience", "The player gets experience points (the game's own GiveXP).", kAct, false, {"next"}, {fint("amount", "Amount", 100, 1, 1000000)}});
-    add({"quest_action", "Actions", "Quest", "Starts, succeeds, fails or cancels a quest.", kAct, false, {"next"},
-         {req(fkind(EvField::Quest, "quest", "Quest")), fcombo("action", "Action", {"start", "succeed", "fail", "cancel"}, "start")}});
-    add({"quest_log", "Actions", "Quest log entry", "Adds a line to a quest's log.", kAct, false, {"next"}, {req(fkind(EvField::Quest, "quest", "Quest")), req(fkind(EvField::Text, "text", "Text"))}});
-    add({"hud_message", "Actions", "HUD message", "Prints a line into the game's on-screen log. {chapter}, {value}, {item}, {target} and {var:name} are replaced.", kAct, false, {"next"},
-         {req(fkind(EvField::Text, "text", "Text")), fcombo("style", "Style", {"log", "note", "experience"}, "note")}});
-    add({"play_sound", "Actions", "Play sound", "The player says a sound (a game sound name, or a sound file of the project: sounds/name.ogg).", kAct, false, {"next"}, {req(fstr("sound", "Sound"))}});
+    add({"remove_npc", N_("Actions"), N_("Remove NPC"), N_("Removes one NPC by unique name, or every NPC of a template within the radius around the player."), kAct, false, {"next"},
+         {req(fkind(EvField::Target, "target", N_("NPC"))), fnum("radius", N_("Radius (m, templates)"), 50, 1, 100000)}});
+    add({"give_item", N_("Actions"), N_("Give item"), N_("Puts items into the player's inventory."), kAct, false, {"next"},
+         {req(fkind(EvField::Item, "item", N_("Item"))), fint("count", N_("Count"), 1, 1, 100000), fbool("show", N_("Show in the item log"), true)}});
+    add({"take_item", N_("Actions"), N_("Take item"), N_("Takes items from the player's inventory (as many as he has, up to the count)."), kAct, false, {"next"},
+         {req(fkind(EvField::Item, "item", N_("Item"))), fint("count", N_("Count"), 1, 1, 100000)}});
+    add({"give_xp", N_("Actions"), N_("Give experience"), N_("The player gets experience points (the game's own GiveXP)."), kAct, false, {"next"}, {fint("amount", N_("Amount"), 100, 1, 1000000)}});
+    add({"quest_action", N_("Actions"), N_("Quest"), N_("Starts, succeeds, fails or cancels a quest."), kAct, false, {"next"},
+         {req(fkind(EvField::Quest, "quest", N_("Quest"))), fcombo("action", N_("Action"), {"start", "succeed", "fail", "cancel"}, "start")}});
+    add({"quest_log", N_("Actions"), N_("Quest log entry"), N_("Adds a line to a quest's log."), kAct, false, {"next"}, {req(fkind(EvField::Quest, "quest", N_("Quest"))), req(fkind(EvField::Text, "text", N_("Text")))}});
+    add({"hud_message", N_("Actions"), N_("HUD message"), N_("Prints a line into the game's on-screen log. {chapter}, {value}, {item}, {target} and {var:name} are replaced."), kAct, false, {"next"},
+         {req(fkind(EvField::Text, "text", N_("Text"))), fcombo("style", N_("Style"), {"log", "note", "experience"}, "note")}});
+    add({"play_sound", N_("Actions"), N_("Play sound"), N_("The player says a sound (a game sound name, or a sound file of the project: sounds/name.ogg)."), kAct, false, {"next"}, {req(fstr("sound", N_("Sound")))}});
     {
-        EvNodeSpec s{"teleport", "Actions", "Teleport player", "Moves the player at once (no collision test).", kAct, false, {"next"}, {}};
-        for (auto& f : position_fields("To")) s.fields.push_back(f);
+        EvNodeSpec s{"teleport", N_("Actions"), N_("Teleport player"), N_("Moves the player at once (no collision test)."), kAct, false, {"next"}, {}};
+        for (auto& f : position_fields(N_("To"))) s.fields.push_back(f);
         add(std::move(s));
     }
-    add({"layer", "Actions", "Layer", "Switches a mod layer (the Layers panel) on, off or the other way round: its NPCs, spawns and container fills appear / vanish as a group.", kAct, false, {"next"},
-         {req(fkind(EvField::Layer, "layer", "Layer")), fcombo("action", "Action", {"enable", "disable", "toggle"}, "enable")}});
-    add({"sector", "Actions", "Game sector", "Switches one of the game's story sectors (World::SetSectorStatus): e.g. Monastery_Story_LizardAttack_Off. The state is part of the savegame; entities already made stay when it is switched off.", kAct, false, {"next"},
-         {req(fkind(EvField::Sector, "sector", "Sector")), fcombo("action", "Action", {"enable", "disable"}, "enable")}});
-    add({"set_chapter", "Actions", "Set chapter", "Changes the story chapter (quests and infos synchronise; the chapter card is not shown).", kAct, false, {"next"}, {fint("chapter", "Chapter", 2, 1, 20)}});
-    add({"set_time", "Actions", "Set time of day", "Sets the in-game clock.", kAct, false, {"next"}, {fint("hour", "Hour", 12, 0, 23), fint("minute", "Minute", 0, 0, 59)}});
-    add({"heal", "Actions", "Heal / hurt player", "Adds hit points and mana to the player (negative values take them away).", kAct, false, {"next"}, {fint("hp", "Hit points", 50), fint("mana", "Mana", 0)}});
-    add({"run_script", "Actions", "Run script", "Calls a script by name: one defined with risen.script.define in custom.lua, or a game script (the player is self and other).", kAct, false, {"next"},
-         {req(fstr("script", "Script")), fint("arg", "Argument", 0)}});
-    add({"send_signal", "Actions", "Send signal", "Fires every On signal trigger of that name (in any graph) after this frame.", kAct, false, {"next"}, {req(fstr("name", "Signal"))}});
-    add({"log", "Actions", "Write to log", "Writes a line to spass.log (for testing).", kAct, false, {"next"}, {fstr("text", "Text", "event")}});
-    add({"comment", "Notes", "Comment", "A note on the canvas; not exported.", 0xff404040, false, {}, {fstr("text", "Text")}});
+    add({"layer", N_("Actions"), N_("Layer"), N_("Switches a mod layer (the Layers panel) on, off or the other way round: its NPCs, spawns and container fills appear / vanish as a group."), kAct, false, {"next"},
+         {req(fkind(EvField::Layer, "layer", N_("Layer"))), fcombo("action", N_("Action"), {"enable", "disable", "toggle"}, "enable")}});
+    add({"sector", N_("Actions"), N_("Game sector"), N_("Switches one of the game's story sectors (World::SetSectorStatus): e.g. Monastery_Story_LizardAttack_Off. The state is part of the savegame; entities already made stay when it is switched off."), kAct, false, {"next"},
+         {req(fkind(EvField::Sector, "sector", N_("Sector"))), fcombo("action", N_("Action"), {"enable", "disable"}, "enable")}});
+    add({"set_chapter", N_("Actions"), N_("Set chapter"), N_("Changes the story chapter (quests and infos synchronise; the chapter card is not shown)."), kAct, false, {"next"}, {fint("chapter", N_("Chapter"), 2, 1, 20)}});
+    add({"set_time", N_("Actions"), N_("Set time of day"), N_("Sets the in-game clock."), kAct, false, {"next"}, {fint("hour", N_("Hour"), 12, 0, 23), fint("minute", N_("Minute"), 0, 0, 59)}});
+    add({"heal", N_("Actions"), N_("Heal / hurt player"), N_("Adds hit points and mana to the player (negative values take them away)."), kAct, false, {"next"}, {fint("hp", N_("Hit points"), 50), fint("mana", N_("Mana"), 0)}});
+    add({"run_script", N_("Actions"), N_("Run script"), N_("Calls a script by name: one defined with risen.script.define in custom.lua, or a game script (the player is self and other)."), kAct, false, {"next"},
+         {req(fstr("script", N_("Script"))), fint("arg", N_("Argument"), 0)}});
+    add({"send_signal", N_("Actions"), N_("Send signal"), N_("Fires every On signal trigger of that name (in any graph) after this frame."), kAct, false, {"next"}, {req(fstr("name", N_("Signal")))}});
+    add({"log", N_("Actions"), N_("Write to log"), N_("Writes a line to spass.log (for testing)."), kAct, false, {"next"}, {fstr("text", N_("Text"), "event")}});
+    add({"comment", N_("Notes"), N_("Comment"), N_("A note on the canvas; not exported."), 0xff404040, false, {}, {fstr("text", N_("Text"))}});
     return v;
 }
 
 std::vector<EvTestSpec> make_tests() {
     return {
-        {"var", "Variable", {fcombo("scope", "Kind", {"game", "save"}, "game"), req(fstr("name", "Variable")), fcombo("op", "Is", kOps, "=="), fint("value", "Value", 1)}},
-        {"quest", "Quest status", {req(fkind(EvField::Quest, "quest", "Quest")), fcombo("status", "Status", {"Open", "Running", "Success", "Failed", "Obsolete", "Cancelled", "Lost", "Won", "None"}, "Running")}},
-        {"item", "Items carried", {req(fkind(EvField::Item, "item", "Item")), fint("count", "At least", 1, 1, 100000)}},
-        {"chapter", "Chapter", {fcombo("op", "Is", kOps, "=="), fint("value", "Chapter", 1, 0, 20)}},
-        {"level", "Player level", {fcombo("op", "Is", kOps, ">="), fint("value", "Level", 1, 0, 100)}},
-        {"skill", "Skill", {req(fstr("skill", "Skill", "", "Strength, Sword, Smith, ... (risen.balance.skills())")), fcombo("op", "Is", kOps, ">="), fint("value", "Value", 1, 0, 1000)}},
-        {"alive", "NPC is alive", {req(fstr("who", "NPC", "", "Unique name"))}},
-        {"dead", "NPC is dead", {req(fstr("who", "NPC", "", "Unique name"))}},
-        {"guild", "Player's guild", {fcombo("guild", "Guild", {"None", "Don", "Dig", "Grd", "Cit", "Inq", "Mag", "Pir"}, "Don")}},
-        {"event", "Game event happened", {req(fstr("name", "Event", "", "A game variable that exists (SetGameEvent)"))}},
-        {"time", "Time of day",
-         {fint("from", "From hour", 8, 0, 23), fint("to", "Until hour (excluded)", 20, 0, 23, "from 22 to 6 spans midnight; the same hour twice = always")}},
+        {"var", N_("Variable"), {fcombo("scope", N_("Kind"), {"game", "save"}, "game"), req(fstr("name", N_("Variable"))), fcombo("op", N_("Is"), kOps, "=="), fint("value", N_("Value"), 1)}},
+        {"quest", N_("Quest status"), {req(fkind(EvField::Quest, "quest", N_("Quest"))), fcombo("status", N_("Status"), {"Open", "Running", "Success", "Failed", "Obsolete", "Cancelled", "Lost", "Won", "None"}, "Running")}},
+        {"item", N_("Items carried"), {req(fkind(EvField::Item, "item", N_("Item"))), fint("count", N_("At least"), 1, 1, 100000)}},
+        {"chapter", N_("Chapter"), {fcombo("op", N_("Is"), kOps, "=="), fint("value", N_("Chapter"), 1, 0, 20)}},
+        {"level", N_("Player level"), {fcombo("op", N_("Is"), kOps, ">="), fint("value", N_("Level"), 1, 0, 100)}},
+        {"skill", N_("Skill"), {req(fstr("skill", N_("Skill"), "", N_("Strength, Sword, Smith, ... (risen.balance.skills())"))), fcombo("op", N_("Is"), kOps, ">="), fint("value", N_("Value"), 1, 0, 1000)}},
+        {"alive", N_("NPC is alive"), {req(fstr("who", N_("NPC"), "", N_("Unique name")))}},
+        {"dead", N_("NPC is dead"), {req(fstr("who", N_("NPC"), "", N_("Unique name")))}},
+        {"guild", N_("Player's guild"), {fcombo("guild", N_("Guild"), {"None", "Don", "Dig", "Grd", "Cit", "Inq", "Mag", "Pir"}, "Don")}},
+        {"event", N_("Game event happened"), {req(fstr("name", N_("Event"), "", N_("A game variable that exists (SetGameEvent)")))}},
+        {"time", N_("Time of day"),
+         {fint("from", N_("From hour"), 8, 0, 23), fint("to", N_("Until hour (excluded)"), 20, 0, 23, N_("from 22 to 6 spans midnight; the same hour twice = always"))}},
         {"area",
-         "Player is in an area",
-         {fcombo("at", "Centre", {"point", "entity"}, "point"), when(fnum("x", "X", 0), "at=point"), when(fnum("y", "Y", 0), "at=point"), when(fnum("z", "Z", 0), "at=point"),
-          when(req(fstr("entity", "Entity")), "at=entity"), fnum("radius", "Radius (m)", 5, 1, 100000)}},
-        {"layer", "Layer is on / off", {req(fkind(EvField::Layer, "layer", "Layer")), fcombo("state", "Is", {"enabled", "disabled"}, "enabled")}},
-        {"sector", "Game sector is on / off", {req(fkind(EvField::Sector, "sector", "Sector")), fcombo("state", "Is", {"enabled", "disabled"}, "enabled")}},
-        {"chance", "Random chance", {fint("percent", "Percent", 50, 1, 100)}},
+         N_("Player is in an area"),
+         {fcombo("at", N_("Centre"), {"point", "entity"}, "point"), when(fnum("x", "X", 0), "at=point"), when(fnum("y", "Y", 0), "at=point"), when(fnum("z", "Z", 0), "at=point"),
+          when(req(fstr("entity", N_("Entity"))), "at=entity"), fnum("radius", N_("Radius (m)"), 5, 1, 100000)}},
+        {"layer", N_("Layer is on / off"), {req(fkind(EvField::Layer, "layer", N_("Layer"))), fcombo("state", N_("Is"), {"enabled", "disabled"}, "enabled")}},
+        {"sector", N_("Game sector is on / off"), {req(fkind(EvField::Sector, "sector", N_("Sector"))), fcombo("state", N_("Is"), {"enabled", "disabled"}, "enabled")}},
+        {"chance", N_("Random chance"), {fint("percent", N_("Percent"), 50, 1, 100)}},
     };
 }
 
@@ -215,28 +217,28 @@ void check_fields(const std::vector<EvFieldDef>& fields, const json& d, const st
     for (auto& f : fields) {
         if (!event_field_visible(f, d)) continue;
         const bool present = d.contains(f.key) && !d[f.key].is_null();
-        const std::string label = f.label;
+        const std::string label = tr(f.label);
         switch (f.kind) {
             case EvField::Int:
             case EvField::Number: {
                 const double v = present && d[f.key].is_number() ? d[f.key].get<double>() : (f.def.is_number() ? f.def.get<double>() : 0);
-                if (!std::isfinite(v) || v < f.min || v > f.max) problem(true, label + ": " + std::to_string(v) + " is out of range");
+                if (!std::isfinite(v) || v < f.min || v > f.max) problem(true, trf("{0}: {1} is out of range", {label, std::to_string(v)}));
                 break;
             }
             case EvField::Bool:
                 break;
             case EvField::Text:
-                if (f.required && !has_text(present ? d[f.key] : json())) problem(true, label + " is empty");
+                if (f.required && !has_text(present ? d[f.key] : json())) problem(true, trf("{0} is empty", {label}));
                 break;
             case EvField::Combo: {
                 const std::string v = str(d, f.key);
-                if (std::find(f.options.begin(), f.options.end(), v) == f.options.end()) problem(true, label + ": '" + v + "' is not one of the choices");
+                if (std::find(f.options.begin(), f.options.end(), v) == f.options.end()) problem(true, trf("{0}: '{1}' is not one of the choices", {label, v}));
                 break;
             }
             default: {
                 const std::string v = str(d, f.key);
                 if (v.empty()) {
-                    if (f.required) problem(true, label + " is empty");
+                    if (f.required) problem(true, trf("{0} is empty", {label}));
                 } else if (refs) {
                     const char* kind = f.kind == EvField::Item ? "item" : f.kind == EvField::Quest ? "quest" : f.kind == EvField::Target ? "npc" : f.kind == EvField::Template ? "template" : f.kind == EvField::Layer ? "layer" : f.kind == EvField::Sector ? "sector" : nullptr;
                     if (kind) refs->push_back({kind, v});
@@ -322,16 +324,16 @@ json event_condition_set(const json& d) {
 void event_check_condition_set(const json& d, const std::function<void(bool, const std::string&)>& problem) {
     const json tests = d.is_object() ? d.value("tests", json::array()) : json::array();
     if (!tests.is_array() || tests.empty()) {
-        problem(true, "add at least one check");
+        problem(true, tr("add at least one check"));
         return;
     }
     for (auto& c : tests) {
         const EvTestSpec* ts = event_test(str(c, "kind"));
         if (!ts) {
-            problem(true, "unknown check '" + str(c, "kind") + "'");
+            problem(true, trf("unknown check '{0}'", {str(c, "kind")}));
             continue;
         }
-        check_fields(ts->fields, c, [&](bool error, const std::string& m) { problem(error, std::string(ts->title) + ": " + m); }, nullptr);
+        check_fields(ts->fields, c, [&](bool error, const std::string& m) { problem(error, std::string(tr(ts->title)) + ": " + m); }, nullptr);
     }
 }
 
@@ -371,19 +373,19 @@ std::string event_summary(const Project& p, const GraphNode& n) {
         return std::string();
     };
     const std::string& t = n.type;
-    auto pos = [&]() { return s("at") == "entity" ? "at " + s("entity") : "(" + num("x") + ", " + num("y") + ", " + num("z") + ")"; };
-    if (t == "on_session") return s("mode") == "any" ? "new game or load" : s("mode") == "load" ? "a savegame is loaded" : "a new game starts";
-    if (t == "on_chapter") return d.value("chapter", 0) == 0 ? "the chapter changes" : "chapter " + num("chapter") + " begins";
-    if (t == "on_kill") return s("target") + " dies" + (d.value("by_player", false) ? " (by the player)" : "");
-    if (t == "on_move") return "player moved " + num("min_m") + " m";
-    if (t == "on_area") return "player " + s("on") + " " + (s("at") == "entity" ? s("entity") : pos()) + " r " + num("radius") + " m";
-    if (t == "on_quest") return (s("quest").empty() ? std::string("any quest") : s("quest")) + " -> " + s("status");
-    if (t == "on_item") return (s("item").empty() ? std::string("any item") : s("item")) + " " + s("what");
-    if (t == "on_dialogue") return s("info") + " finished";
-    if (t == "on_time") return "clock reaches " + num("hour") + ":" + (d.value("minute", 0) < 10 ? "0" : "") + num("minute");
-    if (t == "on_variable") return s("name") + (s("op") == "changed" || s("op").empty() ? " changed" : " " + s("op") + " " + num("value"));
-    if (t == "on_timer") return std::string(d.value("repeat", false) ? "every " : "after ") + num("seconds") + " s";
-    if (t == "on_signal") return "signal " + s("name");
+    auto pos = [&]() { return s("at") == "entity" ? trf("at {0}", {s("entity")}) : "(" + num("x") + ", " + num("y") + ", " + num("z") + ")"; };
+    if (t == "on_session") return s("mode") == "any" ? tr("new game or load") : s("mode") == "load" ? tr("a savegame is loaded") : tr("a new game starts");
+    if (t == "on_chapter") return d.value("chapter", 0) == 0 ? std::string(tr("the chapter changes")) : trf("chapter {0} begins", {num("chapter")});
+    if (t == "on_kill") return trf("{0} dies", {s("target")}) + (d.value("by_player", false) ? tr(" (by the player)") : "");
+    if (t == "on_move") return trf("player moved {0} m", {num("min_m")});
+    if (t == "on_area") return trf("player {0} {1} r {2} m", {s("on"), s("at") == "entity" ? s("entity") : pos(), num("radius")});
+    if (t == "on_quest") return (s("quest").empty() ? std::string(tr("any quest")) : s("quest")) + " -> " + s("status");
+    if (t == "on_item") return (s("item").empty() ? std::string(tr("any item")) : s("item")) + " " + s("what");
+    if (t == "on_dialogue") return trf("{0} finished", {s("info")});
+    if (t == "on_time") return trf("clock reaches {0}", {num("hour") + ":" + (d.value("minute", 0) < 10 ? "0" : "") + num("minute")});
+    if (t == "on_variable") return s("name") + (s("op") == "changed" || s("op").empty() ? std::string(tr(" changed")) : " " + s("op") + " " + num("value"));
+    if (t == "on_timer") return d.value("repeat", false) ? trf("every {0} s", {num("seconds")}) : trf("after {0} s", {num("seconds")});
+    if (t == "on_signal") return trf("signal {0}", {s("name")});
     if (t == "condition") {
         std::string out;
         if (d.contains("tests") && d["tests"].is_array()) {
@@ -394,49 +396,49 @@ std::string event_summary(const Project& p, const GraphNode& n) {
                 auto cs = [&](const char* key) { return str(c, key); };
                 auto cn = [&](const char* key) { return c.contains(key) && c[key].is_number() ? std::to_string(c[key].get<long long>()) : std::string("?"); };
                 if (k == "var") one = cs("name") + " " + cs("op") + " " + cn("value");
-                else if (k == "quest") one = "quest " + cs("quest") + " is " + cs("status");
-                else if (k == "item") one = "has " + cn("count") + " " + cs("item");
-                else if (k == "chapter") one = "chapter " + cs("op") + " " + cn("value");
-                else if (k == "level") one = "level " + cs("op") + " " + cn("value");
+                else if (k == "quest") one = trf("quest {0} is {1}", {cs("quest"), cs("status")});
+                else if (k == "item") one = trf("has {0} {1}", {cn("count"), cs("item")});
+                else if (k == "chapter") one = trf("chapter {0} {1}", {cs("op"), cn("value")});
+                else if (k == "level") one = trf("level {0} {1}", {cs("op"), cn("value")});
                 else if (k == "skill") one = cs("skill") + " " + cs("op") + " " + cn("value");
-                else if (k == "alive") one = cs("who") + " alive";
-                else if (k == "dead") one = cs("who") + " dead";
-                else if (k == "guild") one = "guild " + cs("guild");
-                else if (k == "event") one = "event " + cs("name");
-                else if (k == "time") one = "time " + cn("from") + "-" + cn("to") + " h";
-                else if (k == "area") one = "in area r " + cn("radius") + " m";
-                else if (k == "chance") one = cn("percent") + " % chance";
-                else if (k == "layer") one = "layer " + cs("layer") + " is " + cs("state");
-                else if (k == "sector") one = "sector " + cs("sector") + " is " + cs("state");
-                out += (i++ ? (s("mode") == "any" ? "\nor " : "\nand ") : "") + one;
+                else if (k == "alive") one = trf("{0} alive", {cs("who")});
+                else if (k == "dead") one = trf("{0} dead", {cs("who")});
+                else if (k == "guild") one = trf("guild {0}", {cs("guild")});
+                else if (k == "event") one = trf("event {0}", {cs("name")});
+                else if (k == "time") one = trf("time {0}-{1} h", {cn("from"), cn("to")});
+                else if (k == "area") one = trf("in area r {0} m", {cn("radius")});
+                else if (k == "chance") one = trf("{0} % chance", {cn("percent")});
+                else if (k == "layer") one = trf("layer {0} is {1}", {cs("layer"), cs("state")});
+                else if (k == "sector") one = trf("sector {0} is {1}", {cs("sector"), cs("state")});
+                out += (i++ ? (s("mode") == "any" ? tr("\nor ") : tr("\nand ")) : "") + one;
             }
         }
-        return (d.value("negate", false) ? "not:\n" : "") + out;
+        return (d.value("negate", false) ? tr("not:\n") : "") + out;
     }
-    if (t == "count") return (d.value("repeat", false) ? "every " : "the ") + num("n") + (d.value("repeat", false) ? "th pass" : "th pass only");
-    if (t == "cooldown") return "at most every " + num("seconds") + " s";
-    if (t == "delay") return "wait " + num("seconds") + " s";
-    if (t == "repeat") return num("count") + " times";
+    if (t == "count") return d.value("repeat", false) ? trf("every {0}th pass", {num("n")}) : trf("the {0}th pass only", {num("n")});
+    if (t == "cooldown") return trf("at most every {0} s", {num("seconds")});
+    if (t == "delay") return trf("wait {0} s", {num("seconds")});
+    if (t == "repeat") return trf("{0} times", {num("count")});
     if (t == "set_variable") {
         const std::string op = s("op");
-        return s("name") + (op == "clear" ? " cleared" : op == "add" ? " += " + num("value") : " = " + num("value")) + (s("scope") == "save" ? "  (save)" : "");
+        return s("name") + (op == "clear" ? std::string(tr(" cleared")) : op == "add" ? " += " + num("value") : " = " + num("value")) + (s("scope") == "save" ? tr("  (save)") : "");
     }
-    if (t == "spawn_npc") return s("template") + (s("at") == "near_player" ? " near the player" : " " + pos());
+    if (t == "spawn_npc") return s("template") + (s("at") == "near_player" ? std::string(tr(" near the player")) : " " + pos());
     if (t == "remove_npc") return s("target");
     if (t == "give_item" || t == "take_item") return num("count") + "x " + s("item");
-    if (t == "give_xp") return num("amount") + " XP";
+    if (t == "give_xp") return trf("{0} XP", {num("amount")});
     if (t == "quest_action") return s("action") + " " + s("quest");
     if (t == "quest_log") return s("quest") + ": " + first_text(d.value("text", json::object()));
     if (t == "hud_message") return first_text(d.value("text", json::object()));
     if (t == "play_sound") return s("sound");
     if (t == "teleport") return pos();
-    if (t == "layer") return s("action") + " layer " + s("layer");
-    if (t == "sector") return s("action") + " sector " + s("sector");
-    if (t == "set_chapter") return "chapter " + num("chapter");
+    if (t == "layer") return trf("{0} layer {1}", {s("action"), s("layer")});
+    if (t == "sector") return trf("{0} sector {1}", {s("action"), s("sector")});
+    if (t == "set_chapter") return trf("chapter {0}", {num("chapter")});
     if (t == "set_time") return num("hour") + ":" + (d.value("minute", 0) < 10 ? "0" : "") + num("minute");
-    if (t == "heal") return num("hp") + " HP, " + num("mana") + " mana";
+    if (t == "heal") return trf("{0} HP, {1} mana", {num("hp"), num("mana")});
     if (t == "run_script") return s("script");
-    if (t == "send_signal") return "signal " + s("name");
+    if (t == "send_signal") return trf("signal {0}", {s("name")});
     if (t == "log") return s("text");
     if (t == "comment") return s("text");
     return {};
@@ -480,7 +482,7 @@ json compile_events(const Project& p, const EventGraphDef& eg, std::vector<Dialo
     for (auto& n : g.nodes) {
         const EvNodeSpec* spec = event_spec(n.type);
         if (!spec) {
-            err(n.uid, "unknown node type '" + n.type + "'");
+            err(n.uid, trf("unknown node type '{0}'", {n.type}));
             continue;
         }
         if (n.type == "comment") continue;
@@ -509,34 +511,34 @@ json compile_events(const Project& p, const EventGraphDef& eg, std::vector<Dialo
         e["outs"] = outs;
         nodes.push_back(sorted(e));
         // field checks
-        auto problem = [&](bool error, const std::string& m) { issues.push_back({error, n.uid, std::string(spec->title) + ": " + m}); };
+        auto problem = [&](bool error, const std::string& m) { issues.push_back({error, n.uid, std::string(tr(spec->title)) + ": " + m}); };
         check_fields(spec->fields, n.data, problem, nullptr);
         if (n.type == "on_variable" || n.type == "set_variable") {
-            if (!str(n.data, "name").empty() && !is_var_name(str(n.data, "name"))) err(n.uid, "the variable name may only contain letters, digits, _, . and -");
+            if (!str(n.data, "name").empty() && !is_var_name(str(n.data, "name"))) err(n.uid, tr("the variable name may only contain letters, digits, _, . and -"));
         }
         if (n.type == "spawn_npc" && !str(n.data, "name").empty()) {
             const std::string nm = str(n.data, "name");
             for (unsigned char c : nm)
                 if (!(std::isalnum(c) && c < 0x80) && c != '_' && c != '-') {
-                    err(n.uid, "the NPC's unique name may only contain letters, digits, _ and -");
+                    err(n.uid, tr("the NPC's unique name may only contain letters, digits, _ and -"));
                     break;
                 }
         }
         if (n.type == "condition") {
             const json tests = n.data.value("tests", json::array());
-            if (!tests.is_array() || tests.empty()) err(n.uid, "Condition: add at least one check");
+            if (!tests.is_array() || tests.empty()) err(n.uid, tr("Condition: add at least one check"));
             else
                 for (auto& c : tests) {
                     const EvTestSpec* ts = event_test(str(c, "kind"));
                     if (!ts) {
-                        err(n.uid, "Condition: unknown check '" + str(c, "kind") + "'");
+                        err(n.uid, trf("Condition: unknown check '{0}'", {str(c, "kind")}));
                         continue;
                     }
                     check_fields(ts->fields, c, [&](bool error, const std::string& m) { issues.push_back({error, n.uid, std::string("Condition (") + ts->title + "): " + m}); }, nullptr);
                 }
         }
     }
-    if (triggers.empty()) err("", "the graph has no trigger node (an 'On ...' node starts it)");
+    if (triggers.empty()) err("", tr("the graph has no trigger node (an 'On ...' node starts it)"));
     // reachability from the triggers
     std::set<std::string> reached;
     std::vector<const GraphNode*> todo(triggers.begin(), triggers.end());
@@ -550,12 +552,12 @@ json compile_events(const Project& p, const EventGraphDef& eg, std::vector<Dialo
     }
     for (auto& [uid, n] : by_uid) {
         if (reached.count(uid)) continue;
-        warn(uid, std::string(event_spec(n->type)->title) + " is not reached from any trigger: it never runs");
+        warn(uid, trf("{0} is not reached from any trigger: it never runs", {std::string(tr(event_spec(n->type)->title))}));
     }
     for (auto* t : triggers) {
         bool linked = false;
         for (auto& l : g.links) linked |= l.from_node == t->uid;
-        if (!linked) warn(t->uid, std::string(event_spec(t->type)->title) + " has nothing linked to it: it does nothing");
+        if (!linked) warn(t->uid, trf("{0} has nothing linked to it: it does nothing", {std::string(tr(event_spec(t->type)->title))}));
     }
     // a loop must contain a Delay (otherwise one event would never finish)
     {
@@ -577,7 +579,7 @@ json compile_events(const Project& p, const EventGraphDef& eg, std::vector<Dialo
         };
         for (auto& [uid, n] : by_uid)
             if (state[uid] == 0) dfs(n);
-        if (looped) err(at, "the links make a loop without a Delay node: it would never end");
+        if (looped) err(at, tr("the links make a loop without a Delay node: it would never end"));
     }
     out["nodes"] = nodes;
     return out;

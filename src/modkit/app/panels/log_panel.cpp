@@ -4,6 +4,8 @@
 #include <vector>
 
 #include "app/panels/panels.h"
+#include "app/widgets.h"
+#include "core/i18n.h"
 #include "core/log.h"
 
 namespace mk {
@@ -14,15 +16,15 @@ class LogPanel : public Panel {
 public:
     const char* title() const override { return kPanelLog; }
     void draw(App&) override {
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
         next_ = Log::get().copy_since(next_, lines_);
         if (lines_.size() > 20000) lines_.erase(lines_.begin(), lines_.begin() + static_cast<std::ptrdiff_t>(lines_.size() - 20000));
-        if (ImGui::Button("Clear")) lines_.clear();
+        if (ImGui::Button(tr("Clear"))) lines_.clear();
         ImGui::SameLine();
-        ImGui::Checkbox("Debug", &show_debug_);
+        ImGui::Checkbox(tr("Debug"), &show_debug_);
         ImGui::SameLine();
         filter_.Draw("Filter", 220);
         ImGui::Separator();

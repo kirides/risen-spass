@@ -1,4 +1,5 @@
 #include "core/quest.h"
+#include "core/i18n.h"
 
 #include <algorithm>
 #include <functional>
@@ -51,12 +52,12 @@ json compile_quest(const Project& p, const QuestDef& q, std::vector<DialogIssue>
         // a quest without a flow: started, succeeded and failed by the dialogues alone
         for (auto& n : g.nodes)
             if (n.type != "comment") {
-                warn(n.uid, "no Start node: this node is not part of the quest's flow");
+                warn(n.uid, tr("no Start node: this node is not part of the quest's flow"));
                 break;
             }
         return nullptr;
     }
-    if (starts.size() > 1) err(starts[1]->uid, "a quest has one Start node");
+    if (starts.size() > 1) err(starts[1]->uid, tr("a quest has one Start node"));
     const GraphNode& s = *starts.front();
     json out = json::object();
     json trig = json::object();
@@ -64,21 +65,21 @@ json compile_quest(const Project& p, const QuestDef& q, std::vector<DialogIssue>
     trig["kind"] = tk;
     if (tk == "item") {
         trig["item"] = str(s.data, "item");
-        if (trig["item"] == "") err(s.uid, "the trigger needs an item");
+        if (trig["item"] == "") err(s.uid, tr("the trigger needs an item"));
     } else if (tk == "kill") {
         trig["target"] = str(s.data, "target");
-        if (trig["target"] == "") err(s.uid, "the trigger needs a template or NPC name");
+        if (trig["target"] == "") err(s.uid, tr("the trigger needs a template or NPC name"));
     } else if (tk == "var") {
         trig["name"] = str(s.data, "name");
         trig["value"] = s.data.value("value", 1);
-        if (trig["name"] == "") err(s.uid, "the trigger needs a game variable");
+        if (trig["name"] == "") err(s.uid, tr("the trigger needs a game variable"));
     } else if (tk == "quest") {
         trig["quest"] = str(s.data, "quest");
         trig["status"] = str(s.data, "status").empty() ? std::string("Success") : str(s.data, "status");
-        if (trig["quest"] == "") err(s.uid, "the trigger needs a quest");
-        else if (trig["quest"] == q.name) err(s.uid, "a quest cannot start itself");
+        if (trig["quest"] == "") err(s.uid, tr("the trigger needs a quest"));
+        else if (trig["quest"] == q.name) err(s.uid, tr("a quest cannot start itself"));
     } else if (tk != "dialog" && tk != "game_start") {
-        err(s.uid, "unknown trigger '" + tk + "'");
+        err(s.uid, trf("unknown trigger '{0}'", {tk}));
     }
     out["trigger"] = trig;
 
@@ -97,30 +98,30 @@ json compile_quest(const Project& p, const QuestDef& q, std::vector<DialogIssue>
             if (k == "items") {
                 st["item"] = str(d, "item");
                 st["count"] = std::max(1, d.value("count", 1));
-                if (st["item"] == "") err(cur->uid, "the objective needs an item");
+                if (st["item"] == "") err(cur->uid, tr("the objective needs an item"));
             } else if (k == "kill") {
                 st["target"] = str(d, "target");
                 st["count"] = std::max(1, d.value("count", 1));
-                if (st["target"] == "") err(cur->uid, "the objective needs a template or NPC name");
+                if (st["target"] == "") err(cur->uid, tr("the objective needs a template or NPC name"));
             } else if (k == "talk") {
                 st["info"] = str(d, "info");
-                if (st["info"] == "") err(cur->uid, "the objective needs a dialogue option");
+                if (st["info"] == "") err(cur->uid, tr("the objective needs a dialogue option"));
             } else if (k == "var") {
                 st["name"] = str(d, "name");
                 st["value"] = d.value("value", 1);
-                if (st["name"] == "") err(cur->uid, "the objective needs a game variable");
+                if (st["name"] == "") err(cur->uid, tr("the objective needs a game variable"));
             } else if (k == "quest") {
                 st["quest"] = str(d, "quest");
                 st["status"] = str(d, "status").empty() ? std::string("Success") : str(d, "status");
-                if (st["quest"] == "") err(cur->uid, "the objective needs a quest");
+                if (st["quest"] == "") err(cur->uid, tr("the objective needs a quest"));
             } else {
-                err(cur->uid, "unknown objective '" + k + "'");
+                err(cur->uid, trf("unknown objective '{0}'", {k}));
             }
             const std::string t = first_text(p, d.value("text", json::object()));
             if (!t.empty()) st["log"] = t;
         } else if (cur->type == "log") {
             st["text"] = first_text(p, d.value("text", json::object()));
-            if (st["text"] == "") err(cur->uid, "the log entry has no text");
+            if (st["text"] == "") err(cur->uid, tr("the log entry has no text"));
         } else if (cur->type == "reward") {
             const int xp = d.value("xp", 0), gold = d.value("gold", 0);
             if (xp > 0) st["xp"] = xp;
@@ -134,7 +135,7 @@ json compile_quest(const Project& p, const QuestDef& q, std::vector<DialogIssue>
                 st["var"] = str(d, "var");
                 st["var_value"] = d.value("var_value", 1);
             }
-            if (st.size() == 1) warn(cur->uid, "the reward gives nothing");
+            if (st.size() == 1) warn(cur->uid, tr("the reward gives nothing"));
         } else if (cur->type == "outcome") {
             const std::string r = str(d, "result").empty() ? std::string("success") : str(d, "result");
             st["result"] = r;
@@ -142,12 +143,12 @@ json compile_quest(const Project& p, const QuestDef& q, std::vector<DialogIssue>
             if (!t.empty()) st["log"] = t;
             if (!str(d, "next_quest").empty()) {
                 st["next_quest"] = str(d, "next_quest");
-                if (!p.quest(str(d, "next_quest"))) err(cur->uid, "the follow-up quest '" + str(d, "next_quest") + "' is not in the project");
+                if (!p.quest(str(d, "next_quest"))) err(cur->uid, trf("the follow-up quest '{0}' is not in the project", {str(d, "next_quest")}));
             }
             ended = true;
             any_outcome = true;
         } else {
-            err(cur->uid, "a " + cur->type + " node cannot be part of a quest's flow");
+            err(cur->uid, trf("a {0} node cannot be part of a quest's flow", {cur->type}));
         }
         return st;
     };
@@ -155,7 +156,7 @@ json compile_quest(const Project& p, const QuestDef& q, std::vector<DialogIssue>
     std::function<bool(const GraphNode*)> walk = [&](const GraphNode* cur) -> bool {
         while (cur) {
             if (!seen.insert(cur->uid).second) {
-                err(cur->uid, "the quest's flow runs in a circle, or two paths lead to the same node (the paths of an Either / or do not join)");
+                err(cur->uid, tr("the quest's flow runs in a circle, or two paths lead to the same node (the paths of an Either / or do not join)"));
                 return true;
             }
             if (cur->type == "branch") {
@@ -163,13 +164,13 @@ json compile_quest(const Project& p, const QuestDef& q, std::vector<DialogIssue>
                 for (auto* l : links_from(g, cur->uid, "next"))
                     if (const GraphNode* t = g.find(l->to_node)) targets.push_back(t);
                 std::stable_sort(targets.begin(), targets.end(), [](const GraphNode* a, const GraphNode* b) { return a->y < b->y; });  // top to bottom
-                if (targets.size() < 2) err(cur->uid, "an Either / or needs at least two paths (link each path's first Objective to its output)");
+                if (targets.size() < 2) err(cur->uid, tr("an Either / or needs at least two paths (link each path's first Objective to its output)"));
                 const size_t race = steps.size();
                 steps.push_back(json::object({{"kind", "race"}}));
                 json paths = json::array();
                 for (const GraphNode* t : targets) {
                     if (t->type != "objective") {
-                        err(t->uid, "each path of an Either / or has to begin with an Objective: it is what decides the path");
+                        err(t->uid, tr("each path of an Either / or has to begin with an Objective: it is what decides the path"));
                         continue;
                     }
                     paths.push_back(static_cast<int>(steps.size()) + 1);  // 1-based, like the runtime's step numbers
@@ -189,10 +190,10 @@ json compile_quest(const Project& p, const QuestDef& q, std::vector<DialogIssue>
     {
         auto nx = links_from(g, s.uid, "next");
         const GraphNode* first = nx.empty() ? nullptr : g.find(nx.front()->to_node);
-        if (!first) err(s.uid, "the Start node leads nowhere");
+        if (!first) err(s.uid, tr("the Start node leads nowhere"));
         walk(first);
     }
-    if (!any_outcome) warn(s.uid, "the flow has no Outcome: the quest is only ended by a dialogue");
+    if (!any_outcome) warn(s.uid, tr("the flow has no Outcome: the quest is only ended by a dialogue"));
     out["steps"] = steps;
     return out;
 }

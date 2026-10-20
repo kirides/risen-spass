@@ -27,7 +27,12 @@ void help(const char* text);  // a (?) marker with a tooltip
 void section(const char* title);  // a separator with a title
 // a combo over strings; returns true on change
 bool combo(const char* label, std::string& v, const std::vector<std::string>& items, bool allow_empty = true);
+// ImGui::Combo over fixed English items (use N_("...") in the table): the items are shown translated, `cur` stays the index
+bool combo_items(const char* label, int* cur, const char* const* items, int count);
 // right-aligned small grey text
 void hint(const char* text);
+// The ImGui window name of a panel: the translated title shown to the user, the English title as the stable id (docking layout, imgui.ini)
+std::string panel_label(const char* title);
+std::string panel_id(const char* title);  // "###title": what DockBuilderDockWindow / SetWindowFocus take
 
 }  // namespace mk::ui

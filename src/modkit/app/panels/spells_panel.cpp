@@ -12,6 +12,7 @@
 #include "app/prop_editor.h"
 #include "app/widgets.h"
 #include "core/catalog.h"
+#include "core/i18n.h"
 #include "core/spells.h"
 #include "core/validate.h"
 
@@ -77,7 +78,7 @@ public:
     }
 
     void draw(App& app) override {
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
@@ -88,7 +89,7 @@ public:
         ImGui::BeginChild("##editor");
         ImGui::PushItemWidth(std::min(480.0f, ImGui::GetContentRegionAvail().x * 0.6f));
         if (SpellDef* s = find(app.project, sel_)) draw_spell(app, *s);
-        else ImGui::TextDisabled("Change a shipped spell (mana cost, requirements, projectile damage) or make a new one from the pieces of a shipped one.");
+        else ImGui::TextDisabled("%s", tr("Change a shipped spell (mana cost, requirements, projectile damage) or make a new one from the pieces of a shipped one."));
         ImGui::PopItemWidth();
         ImGui::EndChild();
         ImGui::End();
@@ -126,14 +127,14 @@ private:
 
     void draw_list(App& app) {
         Project& p = app.project;
-        if (ImGui::Button("+ Change shipped")) ImGui::OpenPopup("##pick_edit");
+        if (ImGui::Button(tr("+ Change shipped"))) ImGui::OpenPopup("##pick_edit");
         ImGui::SameLine();
-        if (ImGui::Button("+ New spell")) ImGui::OpenPopup("##pick_new");
+        if (ImGui::Button(tr("+ New spell"))) ImGui::OpenPopup("##pick_new");
         for (const char* pop : {"##pick_edit", "##pick_new"}) {
             if (!ImGui::BeginPopup(pop)) continue;
-            ImGui::TextUnformatted(pop[6] == 'e' ? "Which shipped spell?" : "Made from which shipped spell?");
+            ImGui::TextUnformatted(pop[6] == 'e' ? tr("Which shipped spell?") : tr("Made from which shipped spell?"));
             for (auto& s : shipped_spells()) {
-                if (ImGui::Selectable((s.name + (s.projectile ? "   (crystal, projectile)" : "   (rune, scroll, orb)")).c_str())) {
+                if (ImGui::Selectable((s.name + (s.projectile ? tr("   (crystal, projectile)") : tr("   (rune, scroll, orb)"))).c_str())) {
                     const std::string name = s.name;
                     const Mode m = pop[6] == 'e' ? Mode::Edit : Mode::New;
                     app.defer([this, &app, m, name] { add(app, m, name); });
@@ -146,9 +147,9 @@ private:
         std::string remove;
         for (auto& s : p.spells) {
             ImGui::PushID(s.uid.c_str());
-            if (ImGui::Selectable(s.name.empty() ? "(unnamed)" : s.name.c_str(), sel_ == s.uid)) sel_ = s.uid;
+            if (ImGui::Selectable(s.name.empty() ? tr("(unnamed)") : s.name.c_str(), sel_ == s.uid)) sel_ = s.uid;
             if (ImGui::BeginPopupContextItem()) {
-                if (ImGui::MenuItem("Delete")) remove = s.uid;
+                if (ImGui::MenuItem(tr("Delete"))) remove = s.uid;
                 ImGui::EndPopup();
             }
             ImGui::SameLine(170);
@@ -167,14 +168,14 @@ private:
         bool ch = false;
         const ShippedSpell* base = shipped_spell(s.mode == Mode::New ? s.base : s.name);
         if (s.mode == Mode::New) {
-            ImGui::TextDisabled("NEW SPELL: made of the pieces of a shipped spell (new item templates, risen.balance new_spells)");
-            ch |= ui::input_text("Name", s.name);
-            ui::help("The template name of the crystal / rune; scroll and orb get _Scroll and _Orb. Letters, digits and _, unique, at most 63 characters.");
+            ImGui::TextDisabled("%s", tr("NEW SPELL: made of the pieces of a shipped spell (new item templates, risen.balance new_spells)"));
+            ch |= ui::input_text(tr("Name"), s.name);
+            ui::help(tr("The template name of the crystal / rune; scroll and orb get _Scroll and _Orb. Letters, digits and _, unique, at most 63 characters."));
             if (std::string why = template_name_problem(s.name); !why.empty()) ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "%s", why.c_str());
             std::string b = s.base;
             std::vector<std::string> names;
             for (auto& sp : shipped_spells()) names.push_back(sp.name);
-            if (ui::combo("Base spell", b, names, false) && b != s.base) {
+            if (ui::combo(tr("Base spell"), b, names, false) && b != s.base) {
                 s.base = b;
                 const ShippedSpell* nb = shipped_spell(b);
                 s.forms.clear();
@@ -195,7 +196,7 @@ private:
                 base = nb;
             }
             if (base) {
-                ImGui::TextUnformatted("Forms to make");
+                ImGui::TextUnformatted(tr("Forms to make"));
                 ImGui::SameLine();
                 for (auto& f : base->forms) {
                     bool on = std::find(s.forms.begin(), s.forms.end(), f) != s.forms.end();
@@ -209,16 +210,16 @@ private:
                 ImGui::NewLine();
                 std::string made;
                 for (auto& f : s.forms) made += (made.empty() ? "" : ", ") + new_spell_template(s.name, f);
-                if (!made.empty()) ImGui::TextDisabled("makes: %s", made.c_str());
+                if (!made.empty()) ImGui::TextDisabled(tr("makes: %s"), made.c_str());
             }
-            ch |= ui::lang_text("Label", s.label, app.project.mod.languages);
-            ch |= ui::lang_text("Description", s.description, app.project.mod.languages, true);
+            ch |= ui::lang_text(tr("Label"), s.label, app.project.mod.languages);
+            ch |= ui::lang_text(tr("Description"), s.description, app.project.mod.languages, true);
         } else {
-            ImGui::TextDisabled("CHANGE OF A SHIPPED SPELL: the shipped items and projectiles are edited (every game, savegames keep the numbers they were saved with)");
+            ImGui::TextDisabled("%s", tr("CHANGE OF A SHIPPED SPELL: the shipped items and projectiles are edited (every game, savegames keep the numbers they were saved with)"));
             std::string n = s.name;
             std::vector<std::string> names;
             for (auto& sp : shipped_spells()) names.push_back(sp.name);
-            if (ui::combo("Spell", n, names, false)) {
+            if (ui::combo(tr("Spell"), n, names, false)) {
                 s.name = n;
                 ch = true;
                 base = shipped_spell(n);
@@ -235,8 +236,8 @@ private:
                 const std::string t = spell_form_template(*base, f);
                 if (!t.empty()) parts += (parts.empty() ? "" : "  ") + f + " " + t;
             }
-            if (base->projectile) parts += "   projectiles " + std::to_string(base->projectiles.size());
-            ImGui::TextDisabled("%s: %s", base->projectile ? "projectile spell" : "rune spell", parts.c_str());
+            if (base->projectile) parts += trf("   projectiles {0}", {std::to_string(base->projectiles.size())});
+            ImGui::TextDisabled("%s: %s", base->projectile ? tr("projectile spell") : tr("rune spell"), parts.c_str());
         }
         const std::string main_form = base->projectile ? "crystal" : "rune";
         const TemplateInfo* main = g ? g->tpl(spell_form_template(*base, main_form)) : nullptr;
@@ -248,36 +249,36 @@ private:
         auto hint_int = [](const std::optional<int>& v) { return v ? std::to_string(*v) : std::string(); };
 
         if (s.mode == Mode::New) {
-            ui::section("Item");
+            ui::section(tr("Item"));
             std::string ic = s.icon ? *s.icon : shipped.icon;
             ui::icon(ic, 32.0f);
             ImGui::SameLine();
-            ch |= ui::opt_text("Icon", s.icon, shipped.icon.c_str());
-            ch |= ui::opt_int("Value (gold)", s.value, hint_int(shipped.value).c_str(), shipped.value.value_or(500));
+            ch |= ui::opt_text(tr("Icon"), s.icon, shipped.icon.c_str());
+            ch |= ui::opt_int(tr("Value (gold)"), s.value, hint_int(shipped.value).c_str(), shipped.value.value_or(500));
         }
-        ui::section("Costs and requirements");
-        ch |= ui::opt_int("Mana cost", s.mana_cost, hint_int(shipped.mana_cost).c_str(), shipped.mana_cost.value_or(10));
-        ui::help("gCCastInfo_PS.ManaCost of the crystal / rune; the cast takes exactly this from the base mana.");
-        ch |= ui::opt_double("Mana factor", s.mana_mult, nullptr, 1.0);
-        ui::help("Crystal, rune and scroll cost = shipped * factor (an orb stays free). Excludes an absolute mana cost.");
-        if (s.mana_cost && s.mana_mult) ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "a mana cost and a factor exclude each other");
+        ui::section(tr("Costs and requirements"));
+        ch |= ui::opt_int(tr("Mana cost"), s.mana_cost, hint_int(shipped.mana_cost).c_str(), shipped.mana_cost.value_or(10));
+        ui::help(tr("gCCastInfo_PS.ManaCost of the crystal / rune; the cast takes exactly this from the base mana."));
+        ch |= ui::opt_double(tr("Mana factor"), s.mana_mult, nullptr, 1.0);
+        ui::help(tr("Crystal, rune and scroll cost = shipped * factor (an orb stays free). Excludes an absolute mana cost."));
+        if (s.mana_cost && s.mana_mult) ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "%s", tr("a mana cost and a factor exclude each other"));
         if (!base->projectile) {
-            ch |= ui::opt_int("Scroll mana cost", s.scroll_mana_cost, scroll ? shipped_num(scroll, "gCCastInfo_PS.ManaCost").c_str() : "", 10);
-            ch |= ui::opt_int("Orb mana cost", s.orb_mana_cost, orb ? shipped_num(orb, "gCCastInfo_PS.ManaCost").c_str() : "", 0);
+            ch |= ui::opt_int(tr("Scroll mana cost"), s.scroll_mana_cost, scroll ? shipped_num(scroll, "gCCastInfo_PS.ManaCost").c_str() : "", 10);
+            ch |= ui::opt_int(tr("Orb mana cost"), s.orb_mana_cost, orb ? shipped_num(orb, "gCCastInfo_PS.ManaCost").c_str() : "", 0);
         }
-        ch |= ui::opt_skills("Replace requirements", s.requirements, shipped.requirements, skill_names(g),
-                             base->projectile ? "The skill level to equip the crystal ({ Fireball = 2 })." : "The Circle level to equip the rune ({ Circle = 3 }); scrolls and orbs need nothing.");
-        ch |= opt_bool("Used up by a cast", s.consume, shipped_num(main, "gCCastInfo_PS.ConsumeItem"));
+        ch |= ui::opt_skills(tr("Replace requirements"), s.requirements, shipped.requirements, skill_names(g),
+                             base->projectile ? tr("The skill level to equip the crystal ({ Fireball = 2 }).") : tr("The Circle level to equip the rune ({ Circle = 3 }); scrolls and orbs need nothing."));
+        ch |= opt_bool(tr("Used up by a cast"), s.consume, shipped_num(main, "gCCastInfo_PS.ConsumeItem"));
 
         if (base->projectile) {
-            ui::section("Projectile");
-            ImGui::TextDisabled("The projectile templates (%zu level%s) carry the damage, speed and size.", base->projectiles.size(), base->projectiles.size() == 1 ? "" : "s");
+            ui::section(tr("Projectile"));
+            ImGui::TextDisabled(tr("The projectile templates (%zu level%s) carry the damage, speed and size."), base->projectiles.size(), base->projectiles.size() == 1 ? "" : "s");
             // damage: unchanged / one value / one per level
             int mode = s.damage.is_null() ? 0 : s.damage.is_array() ? 2 : 1;
             const int old_mode = mode;
-            const char* modes[] = {"unchanged", "same for every level", "one value per level"};
+            const char* modes[] = {tr("unchanged"), tr("same for every level"), tr("one value per level")};
             ImGui::SetNextItemWidth(220);
-            if (ImGui::Combo("Damage", &mode, modes, base->projectiles.size() > 1 ? 3 : 2) && mode != old_mode) {
+            if (ImGui::Combo(tr("Damage"), &mode, modes, base->projectiles.size() > 1 ? 3 : 2) && mode != old_mode) {
                 const double shipped_d = proj0 ? std::atof(shipped_num(proj0, "gCDamage_PS.DamageAmount").c_str()) : 100.0;
                 if (mode == 0) {
                     s.damage = nullptr;
@@ -296,11 +297,11 @@ private:
             }
             if (proj0) {
                 ImGui::SameLine();
-                ImGui::TextDisabled("(shipped %s)", shipped_num(proj0, "gCDamage_PS.DamageAmount").c_str());
+                ImGui::TextDisabled(tr("(shipped %s)"), shipped_num(proj0, "gCDamage_PS.DamageAmount").c_str());
             }
             if (s.damage.is_number()) {
                 double v = s.damage.get<double>();
-                if (ImGui::InputDouble("  damage", &v, 1, 10, "%.0f")) {
+                if (ImGui::InputDouble(tr("  damage"), &v, 1, 10, "%.0f")) {
                     s.damage = v;
                     ch = true;
                 }
@@ -308,32 +309,32 @@ private:
                 for (size_t i = 0; i < s.damage.size(); ++i) {
                     double v = s.damage[i].is_number() ? s.damage[i].get<double>() : 0;
                     ImGui::PushID(static_cast<int>(i));
-                    if (ImGui::InputDouble(("  level " + std::to_string(i)).c_str(), &v, 1, 10, "%.0f")) {
+                    if (ImGui::InputDouble(trf("  level {0}", {std::to_string(i)}).c_str(), &v, 1, 10, "%.0f")) {
                         s.damage[i] = v;
                         ch = true;
                     }
                     ImGui::PopID();
                 }
             }
-            ch |= ui::opt_double("Damage factor", s.damage_mult, nullptr, 1.0);
-            ch |= ui::opt_choice("Damage type", s.damage_type, spell_damage_types(), shipped_num(proj0, "gCDamage_PS.DamageType"));
-            ui::help("Picks the protection skill that is subtracted: Magic (ProtMagic), Ice, Fire, ...");
-            ch |= ui::opt_double("Speed", s.speed, shipped_num(proj0, "gCProjectile2_PS.StartVelocity").c_str(), 15.0);
-            ch |= ui::opt_double("Speed factor", s.speed_mult, nullptr, 1.0);
-            ch |= ui::opt_double("Radius", s.radius, shipped_num(proj0, "gCProjectile2_PS.SweepTestRadius").c_str(), 10.0);
-            ch |= ui::opt_double("Radius factor", s.radius_mult, nullptr, 1.0);
-            ch |= ui::opt_text("Flying effect", s.effect, shipped_num(proj0, "gCEffect_PS.Effect").c_str());
+            ch |= ui::opt_double(tr("Damage factor"), s.damage_mult, nullptr, 1.0);
+            ch |= ui::opt_choice(tr("Damage type"), s.damage_type, spell_damage_types(), shipped_num(proj0, "gCDamage_PS.DamageType"));
+            ui::help(tr("Picks the protection skill that is subtracted: Magic (ProtMagic), Ice, Fire, ..."));
+            ch |= ui::opt_double(tr("Speed"), s.speed, shipped_num(proj0, "gCProjectile2_PS.StartVelocity").c_str(), 15.0);
+            ch |= ui::opt_double(tr("Speed factor"), s.speed_mult, nullptr, 1.0);
+            ch |= ui::opt_double(tr("Radius"), s.radius, shipped_num(proj0, "gCProjectile2_PS.SweepTestRadius").c_str(), 10.0);
+            ch |= ui::opt_double(tr("Radius factor"), s.radius_mult, nullptr, 1.0);
+            ch |= ui::opt_text(tr("Flying effect"), s.effect, shipped_num(proj0, "gCEffect_PS.Effect").c_str());
         }
-        ui::section(("Other properties of the " + main_form).c_str());
-        ImGui::TextDisabled("Any property of the item by name (gCCastInfo_PS.StartTask re-uses another spell's effect), see docs/SPELL_PROPERTIES.md.");
+        ui::section(trf("Other properties of the {0}", {main_form}).c_str());
+        ImGui::TextDisabled("%s", tr("Any property of the item by name (gCCastInfo_PS.StartTask re-uses another spell's effect), see docs/SPELL_PROPERTIES.md."));
         ch |= ui::prop_edits("props", s.properties, g, main);
         if (s.extra.is_object() && !s.extra.empty()) {
-            ui::section("Kept as imported");
+            ui::section(tr("Kept as imported"));
             std::string keys;
             for (auto& [k, v] : s.extra.items()) keys += (keys.empty() ? "" : ", ") + k;
-            ImGui::TextDisabled("Settings the editor has no field for: %s (exported unchanged)", keys.c_str());
+            ImGui::TextDisabled(tr("Settings the editor has no field for: %s (exported unchanged)"), keys.c_str());
         }
-        ui::section("Notes");
+        ui::section(tr("Notes"));
         ch |= ui::input_multiline("##notes", s.notes, 3);
         if (ch) app.touch();
     }

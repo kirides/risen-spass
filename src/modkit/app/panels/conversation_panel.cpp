@@ -7,10 +7,12 @@
 #include <memory>
 
 #include "app/panels/panels.h"
+#include "app/widgets.h"
 #include "core/catalog.h"
 #include "core/dialog.h"
 #include "core/dialog_sim.h"
 #include "core/graph.h"
+#include "core/i18n.h"
 
 namespace mk {
 
@@ -36,13 +38,13 @@ public:
     void on_project_changed(App&) override { sim_.reset(); }
 
     void draw(App& app) override {
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
         const Project& p = app.project;
         if (p.dialogs.empty()) {
-            ImGui::TextDisabled("There is no dialogue in the project yet (Dialogues panel).");
+            ImGui::TextDisabled("%s", tr("There is no dialogue in the project yet (Dialogues panel)."));
             ImGui::End();
             return;
         }
@@ -82,19 +84,19 @@ private:
             ImGui::EndCombo();
         }
         ImGui::SameLine();
-        ImGui::TextDisabled("owner: %s", d.owner.empty() ? "(none)" : d.owner.c_str());
+        ImGui::TextDisabled(tr("owner: %s"), d.owner.empty() ? "(none)" : d.owner.c_str());
         ImGui::SameLine();
-        if (ImGui::Button("Talk again")) {
+        if (ImGui::Button(tr("Talk again"))) {
             if (sim_) sim_->restart();
         }
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Start a new conversation. What was used up (options that disappear after use) and the world stay.");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Start a new conversation. What was used up (options that disappear after use) and the world stay."));
         ImGui::SameLine();
-        if (ImGui::Button("New game")) {
+        if (ImGui::Button(tr("New game"))) {
             if (sim_) sim_->reset_all();
         }
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Everything back to the start: nothing used up, no quests, no items.");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Everything back to the start: nothing used up, no quests, no items."));
         ImGui::SameLine();
-        if (ImGui::Button("Edit")) app.select_in(kPanelDialogs, d.uid);
+        if (ImGui::Button(tr("Edit"))) app.select_in(kPanelDialogs, d.uid);
     }
 
     // the compiled dialogue changed (an edit in the Dialogues panel): rebuild, keeping the pretend world and what was used up
@@ -117,13 +119,13 @@ private:
     }
 
     void talk(App& app) {
-        if (errors_) ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), "The dialogue has %d errors (Dialogues panel): the export would be refused.", errors_);
+        if (errors_) ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), tr("The dialogue has %d errors (Dialogues panel): the export would be refused."), errors_);
         ImGui::BeginChild("##lines", ImVec2(0, -std::max(120.0f, ImGui::GetContentRegionAvail().y * 0.35f)));
         for (auto& l : sim_->transcript()) {
             switch (l.kind) {
                 case SimLine::Kind::Player:
                     ImGui::PushStyleColor(ImGuiCol_Text, kPlayerCol);
-                    ImGui::TextWrapped("You: %s", l.text.c_str());
+                    ImGui::TextWrapped(tr("You: %s"), l.text.c_str());
                     break;
                 case SimLine::Kind::Npc:
                     ImGui::PushStyleColor(ImGuiCol_Text, kNpcCol);
@@ -149,23 +151,23 @@ private:
         ImGui::EndChild();
         ImGui::Separator();
         if (sim_->ended()) {
-            ImGui::TextDisabled("The conversation is over.");
-            if (ImGui::Button("Talk again##end")) sim_->restart();
+            ImGui::TextDisabled("%s", tr("The conversation is over."));
+            if (ImGui::Button(tr("Talk again##end"))) sim_->restart();
             return;
         }
         const auto opts = sim_->options();
-        if (opts.empty()) ImGui::TextDisabled("No option is on offer (every condition is 'no' or all options are used up).");
+        if (opts.empty()) ImGui::TextDisabled("%s", tr("No option is on offer (every condition is 'no' or all options are used up)."));
         int n = 0;
         std::string chosen;
         for (auto& o : opts) {
             ImGui::PushID(o.info.c_str());
-            std::string label = std::to_string(++n) + ". " + (o.text.empty() ? "(no text)" : o.text);
+            std::string label = std::to_string(++n) + ". " + (o.text.empty() ? std::string(tr("(no text)")) : o.text);
             if (o.type != "Info") label += "  [" + o.type + "]";
             if (ImGui::Button(label.c_str(), ImVec2(-FLT_MIN, 0))) chosen = o.info;
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s%s", o.info.c_str(), o.permanent ? " (permanent)" : "");
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s%s", o.info.c_str(), o.permanent ? tr(" (permanent)") : "");
             ImGui::PopID();
         }
-        if (ImGui::Button("Leave", ImVec2(-FLT_MIN, 0))) {
+        if (ImGui::Button(tr("Leave"), ImVec2(-FLT_MIN, 0))) {
             sim_->leave();
             follow_ = true;
         }
@@ -180,9 +182,9 @@ private:
     void world_editor(App& app) {
         SimWorld& w = sim_->world;
         const auto& leaves = sim_->leaves();
-        ImGui::SeparatorText("Conditions of this dialogue");
-        if (leaves.empty()) ImGui::TextDisabled("No option has a condition.");
-        ImGui::TextDisabled("Change the world, or pin a condition to yes / no; the options update at once.");
+        ImGui::SeparatorText(tr("Conditions of this dialogue"));
+        if (leaves.empty()) ImGui::TextDisabled("%s", tr("No option has a condition."));
+        ImGui::TextDisabled("%s", tr("Change the world, or pin a condition to yes / no; the options update at once."));
         int i = 0;
         for (auto& leaf : leaves) {
             ImGui::PushID(i++);
@@ -197,23 +199,23 @@ private:
             ImGui::SetNextItemWidth(130);
             if (kind == "quest") {
                 const std::string q = str(1);
-                const char* states[] = {"(not started)", "Running", "Success", "Failed", "Cancelled"};
+                const char* states[] = {N_("(not started)"), N_("Running"), N_("Success"), N_("Failed"), N_("Cancelled")};
                 int cur = 0;
                 auto it = w.quests.find(q);
                 if (it != w.quests.end())
                     for (int s = 1; s < 5; ++s)
                         if (it->second == states[s]) cur = s;
-                if (ImGui::Combo("quest state", &cur, states, 5)) {
+                if (ui::combo_items(tr("quest state"), &cur, states, 5)) {
                     if (cur == 0) w.quests.erase(q);
                     else w.quests[q] = states[cur];
                 }
             } else if (kind == "item") {
                 int c = w.items.count(str(1)) ? w.items[str(1)] : 0;
-                if (ImGui::InputInt("carried", &c)) w.items[str(1)] = std::max(0, c);
+                if (ImGui::InputInt(tr("carried"), &c)) w.items[str(1)] = std::max(0, c);
             } else if (kind == "var") {
                 const std::string n = str(1);
                 bool ex = w.vars.count(n) > 0;
-                if (ImGui::Checkbox("exists", &ex)) {
+                if (ImGui::Checkbox(tr("exists"), &ex)) {
                     if (ex) w.vars[n] = 0;
                     else w.vars.erase(n);
                 }
@@ -221,26 +223,26 @@ private:
                     ImGui::SameLine();
                     double v = w.vars[n];
                     ImGui::SetNextItemWidth(100);
-                    if (ImGui::InputDouble("value", &v, 1, 10, "%.0f")) w.vars[n] = v;
+                    if (ImGui::InputDouble(tr("value"), &v, 1, 10, "%.0f")) w.vars[n] = v;
                 }
             } else if (kind == "event") {
                 bool ev = w.events.count(str(1)) > 0;
-                if (ImGui::Checkbox("happened", &ev)) {
+                if (ImGui::Checkbox(tr("happened"), &ev)) {
                     if (ev) w.events.insert(str(1));
                     else w.events.erase(str(1));
                 }
             } else if (kind == "skill") {
                 int s = w.skills.count(str(1)) ? w.skills[str(1)] : 0;
-                if (ImGui::InputInt("level", &s)) w.skills[str(1)] = std::max(0, s);
+                if (ImGui::InputInt(tr("level"), &s)) w.skills[str(1)] = std::max(0, s);
             } else if (kind == "guild") {
                 bool g = w.guilds.count(str(1)) > 0;
-                if (ImGui::Checkbox("member", &g)) {
+                if (ImGui::Checkbox(tr("member"), &g)) {
                     if (g) w.guilds.insert(str(1));
                     else w.guilds.erase(str(1));
                 }
             } else if (kind == "dead" || kind == "alive") {
                 bool dead = w.dead.count(str(1)) > 0;
-                if (ImGui::Checkbox("is dead", &dead)) {
+                if (ImGui::Checkbox(tr("is dead"), &dead)) {
                     if (dead) w.dead.insert(str(1));
                     else w.dead.erase(str(1));
                 }
@@ -250,21 +252,21 @@ private:
             if (auto f = w.forced.find(key); f != w.forced.end()) pin = f->second ? 1 : 2;
             ImGui::SameLine();
             ImGui::SetNextItemWidth(90);
-            const char* pins[] = {"as world", "pin yes", "pin no"};
-            if (ImGui::Combo("##pin", &pin, pins, 3)) {
+            const char* pins[] = {N_("as world"), N_("pin yes"), N_("pin no")};
+            if (ui::combo_items("##pin", &pin, pins, 3)) {
                 if (pin == 0) w.forced.erase(key);
                 else w.forced[key] = pin == 1;
             }
             ImGui::Unindent(18);
             ImGui::PopID();
         }
-        ImGui::SeparatorText("Quests now");
-        if (w.quests.empty()) ImGui::TextDisabled("none started");
+        ImGui::SeparatorText(tr("Quests now"));
+        if (w.quests.empty()) ImGui::TextDisabled("%s", tr("none started"));
         for (auto& [q, s] : w.quests) ImGui::BulletText("%s: %s", q.c_str(), s.c_str());
         const auto un = sim_->unreachable();
         if (!un.empty()) {
-            ImGui::SeparatorText("Never reachable");
-            for (auto& u : un) ImGui::BulletText("%s (its parent is no option of this dialogue)", u.c_str());
+            ImGui::SeparatorText(tr("Never reachable"));
+            for (auto& u : un) ImGui::BulletText(tr("%s (its parent is no option of this dialogue)"), u.c_str());
         }
         (void)app;
     }

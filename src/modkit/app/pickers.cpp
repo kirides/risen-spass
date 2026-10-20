@@ -5,6 +5,7 @@
 #include "app/icons.h"
 #include "app/widgets.h"
 #include "core/assets.h"
+#include "core/i18n.h"
 #include "pack2mod/util.h"
 
 #include <imgui.h>
@@ -64,7 +65,7 @@ bool template_picker(const char* label, std::string& name, const GameData* game,
     changed |= ImGui::InputText("##name", &name);
     if (!known) {
         ImGui::PopStyleColor();
-        if (ImGui::IsItemHovered() && !dragging()) ImGui::SetTooltip("No template with this name in the game data or the project");
+        if (ImGui::IsItemHovered() && !dragging()) ImGui::SetTooltip("%s", tr("No template with this name in the game data or the project"));
     }
     if (const DragTemplate* d = drop_target(kinds, extra)) {
         name = d->name;
@@ -80,7 +81,7 @@ bool template_picker(const char* label, std::string& name, const GameData* game,
     if (ImGui::BeginPopup("##pick")) {
         if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
         ImGui::SetNextItemWidth(360);
-        ImGui::InputTextWithHint("##filter", "filter by name or label", &filter);
+        ImGui::InputTextWithHint("##filter", tr("filter by name or label"), &filter);
         ImGui::BeginChild("##list", ImVec2(520, 360));
         auto row = [&](const std::string& n, const std::string& lbl, const char* tag) {
             if (!icontains(n, filter) && !icontains(lbl, filter)) return;
@@ -151,14 +152,14 @@ bool lookup_field(const char* label, std::string& value, const char* hint, float
     if (ImGui::BeginPopup("##pick")) {
         if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
         ImGui::SetNextItemWidth(420);
-        if (ImGui::InputTextWithHint("##filter", "filter: any part of the name, owner, quest, text ...", &filter)) dirty = true;
+        if (ImGui::InputTextWithHint("##filter", tr("filter: any part of the name, owner, quest, text ..."), &filter)) dirty = true;
         if (dirty || cached_for != label) {
             list.clear();
             rows(filter, list);
             cached_for = label;
             dirty = false;
         }
-        ImGui::TextDisabled("%zu matches", list.size());
+        ImGui::TextDisabled(tr("%zu matches"), list.size());
         ImGui::BeginChild("##list", ImVec2(col_c > 0 ? col_c + 260 : col_b + 240, 380));
         ImGuiListClipper clip;
         clip.Begin(static_cast<int>(list.size()));
@@ -234,7 +235,7 @@ bool info_picker(const char* label, std::string& name, App& app, float width) {
             out.push_back({i.name, i.owner.empty() ? "-" : i.owner, i.quest.empty() ? "-" : i.quest, clip_text(line, 90)});
         }
     };
-    const bool ch = lookup_field(label, name, "dialogue info (FILLERX2_00029)", width, known, "No dialogue info of the game has this name", rows, 190, 300, 480);
+    const bool ch = lookup_field(label, name, tr("dialogue info (FILLERX2_00029)"), width, known, tr("No dialogue info of the game has this name"), rows, 190, 300, 480);
     if (g && !name.empty() && ImGui::IsItemHovered() && known) {
         const std::string line = g->info_text(name);
         if (!line.empty()) ImGui::SetTooltip("%s", clip_text(line, 200).c_str());
@@ -261,12 +262,12 @@ bool npc_name_picker(const char* label, std::string& name, App& app, float width
         if (!w) return;
         for (const NpcName& n : world_npc_names(*w)) {
             if (!icontains(n.name, filter) && !icontains(n.template_name, filter) && !icontains(n.layer, filter)) continue;
-            out.push_back({n.name, n.count > 1 ? std::to_string(n.count) + " in the world" : "1 in the world", n.template_name, n.layer});
+            out.push_back({n.name, n.count > 1 ? trf("{0} in the world", {std::to_string(n.count)}) : std::string(tr("1 in the world")), n.template_name, n.layer});
         }
     };
     if (!app.world) ImGui::BeginDisabled();
-    const bool ch = lookup_field(label, name, app.world ? "NPC name" : "loading the world...", width, known || !app.world,
-                                 "No NPC with this name in the world or the project", rows, 230, 380, 560);
+    const bool ch = lookup_field(label, name, app.world ? tr("NPC name") : tr("loading the world..."), width, known || !app.world,
+                                 tr("No NPC with this name in the world or the project"), rows, 230, 380, 560);
     if (!app.world) ImGui::EndDisabled();
     return ch;
 }
@@ -287,7 +288,7 @@ bool entity_id_picker(const char* label, std::string& guid, App& app, const std:
             out.push_back({e.guid, e.name, layer, std::string(pos) + (e.template_name.empty() ? "" : "   " + e.template_name)});
         }
     };
-    const bool ch = lookup_field(label, guid, w ? "entity ID" : "loading the world...", width, known, "No entity of the world has this ID", rows, 300, 460, 640);
+    const bool ch = lookup_field(label, guid, w ? tr("entity ID") : tr("loading the world..."), width, known, tr("No entity of the world has this ID"), rows, 300, 460, 640);
     if (ch && name && w)
         if (const WorldEntity* e = w->by_guid(guid))
             if (e->name != *name) *name = e->name;
@@ -303,14 +304,14 @@ bool quest_picker(const char* label, std::string& name, App& app, const std::str
         if (q.name == name) known = true;
     if (!known) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.65f, 0.3f, 1));
     ImGui::SetNextItemWidth(width > 0 ? width : ImGui::CalcItemWidth() - ImGui::GetFrameHeight() - ImGui::GetStyle().ItemInnerSpacing.x);
-    changed |= ImGui::InputTextWithHint("##name", "quest id", &name);
+    changed |= ImGui::InputTextWithHint("##name", tr("quest id"), &name);
     if (!known) {
         ImGui::PopStyleColor();
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("No quest with this id in the project or the game");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("No quest with this id in the project or the game"));
     } else if (g && !name.empty() && ImGui::IsItemHovered()) {
         if (const GameQuest* gq = g->quest(name)) {
             const std::string t = gq->title_id.empty() ? std::string() : g->text(gq->title_id);
-            ImGui::SetTooltip("a quest of the game%s%s", t.empty() ? "" : ": ", t.c_str());
+            ImGui::SetTooltip(tr("a quest of the game%s%s"), t.empty() ? "" : ": ", t.c_str());
         }
     }
     ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
@@ -323,7 +324,7 @@ bool quest_picker(const char* label, std::string& name, App& app, const std::str
     if (ImGui::BeginPopup("##pick")) {
         if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
         ImGui::SetNextItemWidth(360);
-        ImGui::InputTextWithHint("##filter", "filter by id or title", &filter);
+        ImGui::InputTextWithHint("##filter", tr("filter by id or title"), &filter);
         ImGui::BeginChild("##list", ImVec2(620, 380));
         struct Row {
             std::string id, title;
@@ -354,11 +355,11 @@ bool quest_picker(const char* label, std::string& name, App& app, const std::str
                 }
                 if (r.mod) ImGui::PopStyleColor();
                 ImGui::SameLine(300);
-                ImGui::TextDisabled("%s%s%s", r.mod ? "(mod) " : "", r.title.c_str(), r.silent ? "  [silent]" : "");
+                ImGui::TextDisabled("%s%s%s", r.mod ? tr("(mod) ") : "", r.title.c_str(), r.silent ? tr("  [silent]") : "");
                 ImGui::PopID();
             }
         ImGui::EndChild();
-        ImGui::TextDisabled("%zu quests%s", rows.size(), g ? "" : " (load the game data to see the game's quests)");
+        ImGui::TextDisabled(tr("%zu quests%s"), rows.size(), g ? "" : tr(" (load the game data to see the game's quests)"));
         ImGui::EndPopup();
     }
     ImGui::PopID();
@@ -380,7 +381,7 @@ bool asset_picker(const char* label, std::string& name, const GameData* game, co
     if (ImGui::BeginPopup("##pick")) {
         if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
         ImGui::SetNextItemWidth(360);
-        ImGui::InputTextWithHint("##filter", "filter", &filter);
+        ImGui::InputTextWithHint("##filter", tr("filter"), &filter);
         ImGui::BeginChild("##list", ImVec2(520, 360));
         if (game) {
             std::vector<std::string> list;
@@ -403,7 +404,7 @@ bool asset_picker(const char* label, std::string& name, const GameData* game, co
                         ImGui::CloseCurrentPopup();
                     }
         } else {
-            ImGui::TextDisabled("load the game data first (Settings)");
+            ImGui::TextDisabled("%s", tr("load the game data first (Settings)"));
         }
         ImGui::EndChild();
         ImGui::EndPopup();
@@ -433,7 +434,7 @@ bool sound_picker(const char* label, std::string& ref, App& app, bool raw_name, 
     ImGui::PushID(label);
     const float play_w = ImGui::CalcTextSize("Stop").x + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetStyle().ItemInnerSpacing.x;
     ImGui::SetNextItemWidth(width > 0 ? width : ImGui::CalcItemWidth() - ImGui::GetFrameHeight() - ImGui::GetStyle().ItemInnerSpacing.x - play_w);
-    changed |= ImGui::InputTextWithHint("##name", raw_name ? "X.wav" : "a sound", &ref);
+    changed |= ImGui::InputTextWithHint("##name", raw_name ? "X.wav" : tr("a sound"), &ref);
     ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
     static std::string filter;
     static int group = 0;  // 0 all, 1.. a voice language, last = effects (no language)
@@ -445,13 +446,13 @@ bool sound_picker(const char* label, std::string& ref, App& app, bool raw_name, 
     sound_button(app, compiled_of(ref));
     visible_label(label);
     if (ImGui::BeginPopup("##pick")) {
-        static const char* kGroups[] = {"all", "English", "German", "French", "Russian", "effects and other"};
+        static const char* kGroups[] = {N_("all"), N_("English"), N_("German"), N_("French"), N_("Russian"), N_("effects and other")};
         if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
         ImGui::SetNextItemWidth(360);
-        ImGui::InputTextWithHint("##filter", "filter", &filter);
+        ImGui::InputTextWithHint("##filter", tr("filter"), &filter);
         ImGui::SameLine();
         ImGui::SetNextItemWidth(160);
-        ImGui::Combo("##group", &group, kGroups, IM_ARRAYSIZE(kGroups));
+        ui::combo_items("##group", &group, kGroups, IM_ARRAYSIZE(kGroups));
         ImGui::BeginChild("##list", ImVec2(640, 380));
         struct Row {
             std::string value, play;  // what is stored, what is played
@@ -473,7 +474,7 @@ bool sound_picker(const char* label, std::string& ref, App& app, bool raw_name, 
                 list.push_back({raw_name ? sound_raw_name(a.name) : a.name, a.name, false});
             }
         } else {
-            ImGui::TextDisabled("load the game data (Settings) to see the game's sounds");
+            ImGui::TextDisabled("%s", tr("load the game data (Settings) to see the game's sounds"));
         }
         ImGuiListClipper clip;
         clip.Begin(static_cast<int>(list.size()));
@@ -483,7 +484,7 @@ bool sound_picker(const char* label, std::string& ref, App& app, bool raw_name, 
                 sound_button(app, list[i].play);
                 ImGui::SameLine();
                 if (list[i].project) {
-                    ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1.0f), "project");
+                    ImGui::TextColored(ImVec4(0.55f, 0.8f, 1.0f, 1.0f), "%s", tr("project"));
                     ImGui::SameLine();
                 }
                 if (ImGui::Selectable(list[i].value.c_str(), list[i].value == ref)) {
@@ -494,7 +495,7 @@ bool sound_picker(const char* label, std::string& ref, App& app, bool raw_name, 
                 ImGui::PopID();
             }
         ImGui::EndChild();
-        ImGui::TextDisabled("%zu sounds", list.size());
+        ImGui::TextDisabled(tr("%zu sounds"), list.size());
         ImGui::EndPopup();
     }
     ImGui::PopID();
@@ -507,8 +508,8 @@ bool sound_rows(const char* label, json& sound, App& app) {
     ImGui::PushID(label);
     ImGui::TextUnformatted(label);
     ImGui::SameLine();
-    help("Spoken audio for the line: an audio file of the project (Assets panel: Ogg Vorbis, WAV, MP3) or a sound of the game. 'every' plays in "
-         "every voice language; a language row replaces it for that voice language. The export writes the files into sounds/ of the mod.");
+    help(tr("Spoken audio for the line: an audio file of the project (Assets panel: Ogg Vorbis, WAV, MP3) or a sound of the game. 'every' plays in "
+         "every voice language; a language row replaces it for that voice language. The export writes the files into sounds/ of the mod."));
     std::vector<std::string> rows = {"default"};
     for (auto& l : app.project.mod.languages) rows.push_back(l);
     for (auto& r : rows) {

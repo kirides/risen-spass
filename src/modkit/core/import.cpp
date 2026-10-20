@@ -1,4 +1,5 @@
 #include "core/import.h"
+#include "core/i18n.h"
 #include "core/events.h"
 #include "core/layers.h"
 
@@ -751,7 +752,7 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
         return r;
     }
     if (!fs::exists(root / "mod.toml", ec)) {
-        r.error = dir + " has no mod.toml: not a mod folder";
+        r.error = trf("{0} has no mod.toml: not a mod folder", {dir});
         return r;
     }
     Project& p = r.project;

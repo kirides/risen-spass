@@ -1,4 +1,5 @@
 #include "core/dialog.h"
+#include "core/i18n.h"
 
 #include "core/assets.h"
 
@@ -143,9 +144,9 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
             placed.insert(o->uid);
         }
     }
-    if (ordered.size() < options.size()) err("", "the options' parent links make a loop");
+    if (ordered.size() < options.size()) err("", tr("the options' parent links make a loop"));
 
-    if (d.owner.empty()) err("", "the dialogue has no owner NPC");
+    if (d.owner.empty()) err("", tr("the dialogue has no owner NPC"));
     json infos = json::array();
     for (const GraphNode* o : ordered) {
         json info = json::object();
@@ -163,7 +164,7 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
 
         json lines = json::array();
         json first = line_text(p, o->data.value("text", json::object()));
-        if (first.is_null()) err(o->uid, "the option has no text (what the player says)");
+        if (first.is_null()) err(o->uid, tr("the option has no text (what the player says)"));
         lines.push_back(json::object({{"speaker", "player"}, {"listener", "npc"}, {"text", first.is_null() ? json("...") : first}}));
         add_sound(*o, lines.back());
         // the sequence on "then"
@@ -173,13 +174,13 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
         const GraphNode* cur = out.empty() ? nullptr : g.find(out.front()->to_node);
         while (cur) {
             if (!seen.insert(cur->uid).second) {
-                err(o->uid, "the sequence of this option runs in a circle");
+                err(o->uid, tr("the sequence of this option runs in a circle"));
                 break;
             }
             const json& dd = cur->data;
             if (cur->type == "line") {
                 json t = line_text(p, dd.value("text", json::object()));
-                if (t.is_null()) err(cur->uid, "the line has no text");
+                if (t.is_null()) err(cur->uid, tr("the line has no text"));
                 std::string speaker = dd.value("speaker", std::string("npc"));
                 if (speaker.empty()) speaker = "npc";
                 const std::string listener = speaker == "player" ? "npc" : "player";
@@ -188,7 +189,7 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
             } else if (cur->type == "command") {
                 const std::string cmd = dd.value("command", std::string());
                 const CommandDef* def = dialog_command(cmd);
-                if (!def) err(cur->uid, "unknown dialogue command '" + cmd + "'");
+                if (!def) err(cur->uid, trf("unknown dialogue command '{0}'", {cmd}));
                 json l = json::object({{"command", cmd}});
                 if (dd.contains("params") && dd["params"].is_object()) {
                     const json& ps = dd["params"];
@@ -198,7 +199,7 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
                             if (ps.contains(cp.name) && !(ps[cp.name].is_string() && ps[cp.name].get<std::string>().empty())) l[cp.name] = ps[cp.name];
                     for (auto& [k, v] : ps.items()) {
                         if (def && std::none_of(def->params.begin(), def->params.end(), [&](const CommandParam& cp) { return cp.name == k; })) {
-                            err(cur->uid, cmd + " has no parameter '" + k + "'");
+                            err(cur->uid, trf("{0} has no parameter '{1}'", {cmd, k}));
                             l[k] = v;
                         } else if (!def && !(v.is_string() && v.get<std::string>().empty())) {
                             l[k] = v;
@@ -212,7 +213,7 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
                 // a custom sound only means something for SaySound (the layer compiles it and sets SoundName)
                 if (cmd == "SaySound") add_sound(*cur, l);
                 else if (std::vector<std::string> ignored; dd.contains("sound") && !line_sound(p, dd["sound"], ignored).is_null())
-                    warn(cur->uid, "only Say lines and SaySound play a sound: the sound of this " + cmd + " is not exported");
+                    warn(cur->uid, trf("only Say lines and SaySound play a sound: the sound of this {0} is not exported", {cmd}));
                 lines.push_back(l);
                 if (cmd == "End") {
                     ended = true;
@@ -220,19 +221,19 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
                 }
             } else if (cur->type == "quest") {
                 const std::string q = dd.value("quest", std::string()), a = dd.value("action", std::string("start"));
-                if (q.empty()) err(cur->uid, "the Quest node names no quest");
-                else if (!p.quest(q)) warn(cur->uid, "'" + q + "' is not a quest of the project");
+                if (q.empty()) err(cur->uid, tr("the Quest node names no quest"));
+                else if (!p.quest(q)) warn(cur->uid, trf("'{0}' is not a quest of the project", {q}));
                 const std::string script = quest_action_script(q, a);
                 lines.push_back(json::object({{"script", script}}));
                 if (actions) actions->push_back(json::object({{"script", script}, {"quest", q}, {"action", a}}));
             } else if (cur->type == "log") {
                 const std::string q = dd.value("quest", std::string());
                 const std::string t = text_first(p, dd.value("text", json::object()));
-                if (q.empty() || t.empty()) err(cur->uid, "a log entry needs a quest and a text");
+                if (q.empty() || t.empty()) err(cur->uid, tr("a log entry needs a quest and a text"));
                 lines.push_back(json::object({{"log", json::object({{"quest", q}, {"text", t}})}}));
             } else if (cur->type == "script") {
                 const std::string s = dd.value("script", std::string());
-                if (s.empty()) err(cur->uid, "the Script node names no script");
+                if (s.empty()) err(cur->uid, tr("the Script node names no script"));
                 lines.push_back(json::object({{"script", s}}));
             } else if (cur->type == "end") {
                 lines.push_back(json::object({{"command", "End"}}));
@@ -243,7 +244,7 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
             cur = nx.empty() ? nullptr : g.find(nx.front()->to_node);
         }
         const bool has_children = !links_from(g, o->uid, "choices").empty();
-        if (ended && has_children) warn(o->uid, "the sequence ends the conversation, so the sub-options are never shown");
+        if (ended && has_children) warn(o->uid, tr("the sequence ends the conversation, so the sub-options are never shown"));
         // an open conversation blocks saving: an option without sub-options ends it
         if (!ended && !has_children) lines.push_back(json::object({{"command", "End"}}));
         info["lines"] = lines;

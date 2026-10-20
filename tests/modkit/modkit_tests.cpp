@@ -25,6 +25,7 @@
 #include "core/export.h"
 #include "core/gamedata.h"
 #include "core/history.h"
+#include "core/i18n.h"
 #include "core/image.h"
 #include "core/imagelist.h"
 #include "core/import.h"
@@ -359,6 +360,7 @@ TEST(gamedata_real_archives) {
 #include "extras_tests.inc"
 #include "chronicle_tests.inc"
 #include "voice_tests.inc"
+#include "i18n_tests.inc"
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);

@@ -14,6 +14,7 @@
 #include "app/pickers.h"
 #include "app/widgets.h"
 #include "core/audio_convert.h"
+#include "core/i18n.h"
 #include "core/paths.h"
 #include "core/voice.h"
 #include "pack2mod/util.h"
@@ -72,7 +73,7 @@ public:
     }
 
     void draw(App& app) override {
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
@@ -166,15 +167,15 @@ private:
     void draw_toolbar(App& app) {
         bool ch = false;
         ImGui::SetNextItemWidth(260);
-        ch |= ImGui::InputTextWithHint("##filter", "filter: text, id, speaker ...", &filter_);
+        ch |= ImGui::InputTextWithHint("##filter", tr("filter: text, id, speaker ..."), &filter_);
         ImGui::SameLine();
-        const char* sources[] = {"Mod and game", "Mod", "Game"};
+        const char* sources[] = {tr("Mod and game"), tr("Mod"), tr("Game")};
         ImGui::SetNextItemWidth(140);
         ch |= ImGui::Combo("##source", &source_, sources, 3);
         ImGui::SameLine();
         ImGui::SetNextItemWidth(130);
-        if (ImGui::BeginCombo("##kind", kind_.empty() ? "every kind" : kind_.c_str())) {
-            if (ImGui::Selectable("every kind", kind_.empty())) {
+        if (ImGui::BeginCombo("##kind", kind_.empty() ? tr("every kind") : kind_.c_str())) {
+            if (ImGui::Selectable(tr("every kind"), kind_.empty())) {
                 kind_.clear();
                 ch = true;
             }
@@ -187,10 +188,10 @@ private:
         }
         ImGui::SameLine();
         ImGui::SetNextItemWidth(120);
-        ch |= ImGui::InputTextWithHint("##speaker", "speaker / voice", &speaker_);
+        ch |= ImGui::InputTextWithHint("##speaker", tr("speaker / voice"), &speaker_);
         ImGui::SameLine();
         ImGui::SetNextItemWidth(150);
-        ch |= ImGui::InputTextWithHint("##ctx", "dialogue / quest / info", &context_);
+        ch |= ImGui::InputTextWithHint("##ctx", tr("dialogue / quest / info"), &context_);
         ImGui::SameLine();
         ImGui::SetNextItemWidth(100);
         if (ImGui::BeginCombo("##lang", lang_.c_str())) {
@@ -201,18 +202,18 @@ private:
                 }
             ImGui::EndCombo();
         }
-        ui::help("The language of the Text column and of the 'missing audio' filter.");
-        ch |= ImGui::Checkbox("Spoken", &spoken_only_);
+        ui::help(tr("The language of the Text column and of the 'missing audio' filter."));
+        ch |= ImGui::Checkbox(tr("Spoken"), &spoken_only_);
         ImGui::SameLine();
-        ch |= ImGui::Checkbox("Missing audio", &missing_only_);
+        ch |= ImGui::Checkbox(tr("Missing audio"), &missing_only_);
         ImGui::SameLine();
-        ch |= ImGui::Checkbox("Overridden", &show_overridden_);
-        ui::help("Also list the game rows that a row of the mod replaces (they are hidden otherwise).");
+        ch |= ImGui::Checkbox(tr("Overridden"), &show_overridden_);
+        ui::help(tr("Also list the game rows that a row of the mod replaces (they are hidden otherwise)."));
         if (ch) filter_dirty_ = true;
         ImGui::SameLine();
         ImGui::TextDisabled("|");
         ImGui::SameLine();
-        if (ImGui::Button("+ String row")) {
+        if (ImGui::Button(tr("+ String row"))) {
             StringRow s;
             s.uid = new_uid();
             s.id = "NEW_TEXT";
@@ -221,17 +222,17 @@ private:
             scroll_to_sel_ = true;
             app.touch();
         }
-        ui::help("A text of the game's string tables (strings/*.csv of the exported mod) that no item, recipe or NPC of the project owns: a button label, a "
-                 "document, a changed line. The id is not case sensitive.");
+        ui::help(tr("A text of the game's string tables (strings/*.csv of the exported mod) that no item, recipe or NPC of the project owns: a button label, a "
+                 "document, a changed line. The id is not case sensitive."));
         ImGui::SameLine();
-        if (ImGui::Button("Export for voice recording...")) {
+        if (ImGui::Button(tr("Export for voice recording..."))) {
             export_open_ = true;
             export_report_.clear();
             if (export_dir_.empty() && !app.project_path.empty()) export_dir_ = u8str(u8(app.project_path).parent_path() / "voice_export");
         }
-        ui::help("Writes the shown lines (the filter above) as voice_lines.csv (UTF-8, opens in Excel), voice_lines.json and one script per speaker and language.");
+        ui::help(tr("Writes the shown lines (the filter above) as voice_lines.csv (UTF-8, opens in Excel), voice_lines.json and one script per speaker and language."));
         ImGui::SameLine();
-        if (ImGui::Button("Import recordings...")) {
+        if (ImGui::Button(tr("Import recordings..."))) {
             import_open_ = true;
             preview_.reset();
             start_ffmpeg_probe(app);
@@ -248,10 +249,10 @@ private:
                 }
             }
         }
-        ui::help("Assigns a folder of recordings to the shown dialogue lines: by file name (<line id>_<Language>.ogg, as the export names them) or by the "
-                 "'file' column of a filled CSV. Files the game cannot play are converted with ffmpeg.");
+        ui::help(tr("Assigns a folder of recordings to the shown dialogue lines: by file name (<line id>_<Language>.ogg, as the export names them) or by the "
+                 "'file' column of a filled CSV. Files the game cannot play are converted with ffmpeg."));
         ImGui::SameLine();
-        ImGui::TextDisabled("%zu of %zu rows  |  %zu spoken, %zu without %s audio%s", shown_.size(), mod_.size() + game_.size(), shown_spoken_, shown_missing_, lang_.c_str(),
+        ImGui::TextDisabled(tr("%zu of %zu rows  |  %zu spoken, %zu without %s audio%s"), shown_.size(), mod_.size() + game_.size(), shown_spoken_, shown_missing_, lang_.c_str(),
                             game_future_.valid() ? "  |  reading the game's strings..." : !app.game ? "  |  no game data (Settings)" : "");
     }
 
@@ -263,13 +264,13 @@ private:
                                                       ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit))
             return;
         ImGui::TableSetupScrollFreeze(1, 1);
-        ImGui::TableSetupColumn("Id", ImGuiTableColumnFlags_WidthFixed, 210);
-        ImGui::TableSetupColumn("Source", ImGuiTableColumnFlags_WidthFixed, 120);
-        ImGui::TableSetupColumn("Speaker", ImGuiTableColumnFlags_WidthFixed, 110);
-        for (auto& l : audio_langs) ImGui::TableSetupColumn(("Audio " + l).c_str(), ImGuiTableColumnFlags_WidthFixed, 90);
-        ImGui::TableSetupColumn(("Text (" + lang_ + ")").c_str(), ImGuiTableColumnFlags_WidthFixed, 420);
-        ImGui::TableSetupColumn("Stage direction", ImGuiTableColumnFlags_WidthFixed, 150);
-        ImGui::TableSetupColumn("Context", ImGuiTableColumnFlags_WidthFixed, 300);
+        ImGui::TableSetupColumn(tr("Id"), ImGuiTableColumnFlags_WidthFixed, 210);
+        ImGui::TableSetupColumn(tr("Source"), ImGuiTableColumnFlags_WidthFixed, 120);
+        ImGui::TableSetupColumn(tr("Speaker"), ImGuiTableColumnFlags_WidthFixed, 110);
+        for (auto& l : audio_langs) ImGui::TableSetupColumn(trf("Audio {0}", {l}).c_str(), ImGuiTableColumnFlags_WidthFixed, 90);
+        ImGui::TableSetupColumn(trf("Text ({0})", {lang_}).c_str(), ImGuiTableColumnFlags_WidthFixed, 420);
+        ImGui::TableSetupColumn(tr("Stage direction"), ImGuiTableColumnFlags_WidthFixed, 150);
+        ImGui::TableSetupColumn(tr("Context"), ImGuiTableColumnFlags_WidthFixed, 300);
         ImGui::TableHeadersRow();
         ImGuiListClipper clip;
         clip.Begin(static_cast<int>(shown_.size()));
@@ -295,14 +296,14 @@ private:
                     scroll_to_sel_ = false;
                 }
                 ImGui::TableNextColumn();
-                ImGui::TextUnformatted(l.game ? ("game: " + l.kind).c_str() : (l.kind + (l.field.empty() ? "" : " " + l.field)).c_str());
+                ImGui::TextUnformatted(l.game ? trf("game: {0}", {l.kind}).c_str() : (l.kind + (l.field.empty() ? "" : " " + l.field)).c_str());
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(l.speaker.c_str());
                 for (auto& lang : audio_langs) {
                     ImGui::TableNextColumn();
                     switch (audio_status(app.project, l, lang)) {
-                        case AudioStatus::Recorded: ImGui::TextColored(kGreen, "recorded"); break;
-                        case AudioStatus::Missing: ImGui::TextColored(kRed, "missing"); break;
+                        case AudioStatus::Recorded: ImGui::TextColored(kGreen, "%s", tr("recorded")); break;
+                        case AudioStatus::Missing: ImGui::TextColored(kRed, "%s", tr("missing")); break;
                         default: ImGui::TextDisabled("-"); break;
                     }
                 }
@@ -337,32 +338,32 @@ private:
     void draw_detail(App& app) {
         StringLine* l = selected();
         if (!l) {
-            ImGui::TextDisabled("Select a row. Rows of the mod are edited here; game rows are read-only (Override in the mod copies one into the project).");
+            ImGui::TextDisabled("%s", tr("Select a row. Rows of the mod are edited here; game rows are read-only (Override in the mod copies one into the project)."));
             return;
         }
         Project& p = app.project;
         ImGui::Text("%s", l->id.c_str());
         ImGui::SameLine();
-        ImGui::TextDisabled("%s%s", l->game ? "game table " : "", l->context.c_str());
+        ImGui::TextDisabled("%s%s", l->game ? tr("game table ") : "", l->context.c_str());
         if (!l->speaker.empty()) {
             ImGui::SameLine();
-            ImGui::TextDisabled("| speaker %s%s%s", l->speaker.c_str(), l->voice.empty() ? "" : ", voice ", l->voice.c_str());
+            ImGui::TextDisabled(tr("| speaker %s%s%s"), l->speaker.c_str(), l->voice.empty() ? "" : tr(", voice "), l->voice.c_str());
         }
         if (!l->game) {
             if (const char* panel = panel_of(l->kind)) {
                 ImGui::SameLine();
-                if (ImGui::SmallButton("Open")) app.select_in(panel, l->object_uid);
+                if (ImGui::SmallButton(tr("Open"))) app.select_in(panel, l->object_uid);
             }
         } else {
             ImGui::SameLine();
-            if (l->overridden) ImGui::TextColored(kOrange, "overridden by the mod");
-            else if (ImGui::SmallButton("Override in the mod")) {
+            if (l->overridden) ImGui::TextColored(kOrange, "%s", tr("overridden by the mod"));
+            else if (ImGui::SmallButton(tr("Override in the mod"))) {
                 const std::string uid = override_game_line(p, *l, p.mod.languages);
                 if (!uid.empty()) {
                     sel_ = "m:" + l->id;
                     scroll_to_sel_ = true;
                     app.touch();
-                    app.status("the text " + l->id + " is now a string row of the mod");
+                    app.status(trf("the text {0} is now a string row of the mod", {l->id}));
                     return;
                 }
             }
@@ -371,12 +372,12 @@ private:
             for (auto& s : p.strings)
                 if (s.uid == l->object_uid) {
                     ImGui::SetNextItemWidth(320);
-                    if (ui::input_text("Id", s.id)) {
+                    if (ui::input_text(tr("Id"), s.id)) {
                         app.touch();
                         sel_ = "m:" + s.id;
                     }
                     ImGui::SameLine();
-                    if (ImGui::SmallButton("Delete row")) {
+                    if (ImGui::SmallButton(tr("Delete row"))) {
                         const std::string uid = s.uid;
                         p.strings.erase(std::remove_if(p.strings.begin(), p.strings.end(), [&](const StringRow& r) { return r.uid == uid; }), p.strings.end());
                         app.touch();
@@ -389,10 +390,10 @@ private:
         const std::vector<std::string>& langs = l->game ? languages_ : p.mod.languages;
         const bool can_stage = !l->game && !l->node_uid.empty() && l->spoken;
         if (ImGui::BeginTable("##texts", 4, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH)) {
-            ImGui::TableSetupColumn("Language", ImGuiTableColumnFlags_WidthFixed, 70);
-            ImGui::TableSetupColumn("Text", ImGuiTableColumnFlags_WidthStretch, 3);
-            ImGui::TableSetupColumn("Stage direction", ImGuiTableColumnFlags_WidthStretch, 1.2f);
-            ImGui::TableSetupColumn("Audio", ImGuiTableColumnFlags_WidthStretch, 1.6f);
+            ImGui::TableSetupColumn(tr("Language"), ImGuiTableColumnFlags_WidthFixed, 70);
+            ImGui::TableSetupColumn(tr("Text"), ImGuiTableColumnFlags_WidthStretch, 3);
+            ImGui::TableSetupColumn(tr("Stage direction"), ImGuiTableColumnFlags_WidthStretch, 1.2f);
+            ImGui::TableSetupColumn(tr("Audio"), ImGuiTableColumnFlags_WidthStretch, 1.6f);
             ImGui::TableHeadersRow();
             for (const std::string& lang : langs) {
                 ImGui::PushID(lang.c_str());
@@ -416,7 +417,7 @@ private:
                 std::string sd = l->stage.count(lang) ? l->stage.at(lang) : std::string();
                 if (can_stage) {
                     ImGui::SetNextItemWidth(-FLT_MIN);
-                    if (ImGui::InputTextWithHint("##s", "(whispering)", &sd) && set_line_stage(p, *l, lang, sd)) {
+                    if (ImGui::InputTextWithHint("##s", tr("(whispering)"), &sd) && set_line_stage(p, *l, lang, sd)) {
                         if (sd.empty()) l->stage.erase(lang);
                         else l->stage[lang] = sd;
                         app.touch();
@@ -439,7 +440,7 @@ private:
                         ImGui::SameLine();
                         ImGui::TextColored(kGreen, "%s", p2m::bare_name(ref).c_str());
                     } else {
-                        ImGui::TextColored(kRed, "missing");
+                        ImGui::TextColored(kRed, "%s", tr("missing"));
                         ImGui::SameLine();
                         ImGui::TextDisabled("%s", expected_audio_file(*l, lang).c_str());
                     }
@@ -449,29 +450,29 @@ private:
             ImGui::EndTable();
         }
         if (!l->game && l->spoken && !l->runtime_key.empty())
-            ImGui::TextDisabled("Plays as %s (key %s)", runtime_sound(p, *l, lang_).c_str(), l->runtime_key.c_str());
+            ImGui::TextDisabled(tr("Plays as %s (key %s)"), runtime_sound(p, *l, lang_).c_str(), l->runtime_key.c_str());
     }
 
     // ---- export ------------------------------------------------------------------------------------------------------------------------------------
     void draw_export_modal(App& app) {
         if (export_open_) {
-            ImGui::OpenPopup("Export for voice recording");
+            ImGui::OpenPopup(tr("Export for voice recording"));
             export_open_ = false;
             if (export_langs_.empty()) export_langs_ = app.project.mod.languages;
         }
         ImGui::SetNextWindowSize(ImVec2(720, 0), ImGuiCond_Appearing);
-        if (!ImGui::BeginPopupModal("Export for voice recording", nullptr)) return;
-        ImGui::TextWrapped("Writes the %zu rows the Strings table shows now (its filter) for a recording studio: voice_lines.csv (UTF-8 with BOM: Excel opens it), "
-                           "voice_lines.json and scripts/<speaker>_<Language>.txt. Every row has a stable line id and the file name the import expects.",
+        if (!ImGui::BeginPopupModal(tr("Export for voice recording"), nullptr)) return;
+        ImGui::TextWrapped(tr("Writes the %zu rows the Strings table shows now (its filter) for a recording studio: voice_lines.csv (UTF-8 with BOM: Excel opens it), "
+                           "voice_lines.json and scripts/<speaker>_<Language>.txt. Every row has a stable line id and the file name the import expects."),
                            shown_.size());
         ImGui::SetNextItemWidth(-90);
         ImGui::InputText("##dir", &export_dir_);
         ImGui::SameLine();
-        if (ImGui::Button("Browse")) {
+        if (ImGui::Button(tr("Browse"))) {
             const std::string d = dialog_pick_folder(export_dir_);
             if (!d.empty()) export_dir_ = d;
         }
-        ImGui::Text("Languages:");
+        ImGui::Text("%s", tr("Languages:"));
         for (auto& l : languages_) {
             ImGui::SameLine();
             bool on = std::find(export_langs_.begin(), export_langs_.end(), l) != export_langs_.end();
@@ -480,13 +481,13 @@ private:
                 else export_langs_.erase(std::remove(export_langs_.begin(), export_langs_.end(), l), export_langs_.end());
             }
         }
-        ImGui::Checkbox("Only lines without a recording", &exp_missing_);
+        ImGui::Checkbox(tr("Only lines without a recording"), &exp_missing_);
         ImGui::SameLine();
-        ImGui::Checkbox("Only spoken lines", &exp_spoken_);
-        ui::help("Off: every text of the selection (item names, descriptions, quest texts, HUD messages) for translators; their status is empty.");
+        ImGui::Checkbox(tr("Only spoken lines"), &exp_spoken_);
+        ui::help(tr("Off: every text of the selection (item names, descriptions, quest texts, HUD messages) for translators; their status is empty."));
         ImGui::SameLine();
-        ImGui::Checkbox("Scripts per speaker", &exp_scripts_);
-        if (ImGui::Button("Export", ImVec2(120, 0))) {
+        ImGui::Checkbox(tr("Scripts per speaker"), &exp_scripts_);
+        if (ImGui::Button(tr("Export"), ImVec2(120, 0))) {
             VoiceExportOptions o;
             o.languages = export_langs_;
             o.missing_only = exp_missing_;
@@ -495,17 +496,17 @@ private:
             std::vector<const StringLine*> lines;
             for (size_t ix : shown_) lines.push_back(row(ix));
             if (export_dir_.empty()) {
-                export_report_ = "choose a folder";
+                export_report_ = tr("choose a folder");
             } else {
                 const VoiceExportResult r = write_voice_export(app.project, lines, o, export_dir_);
-                export_report_ = r.ok ? std::to_string(r.rows) + " rows, " + std::to_string(r.written.size()) + " files written to " + export_dir_ : r.error;
-                if (r.ok) app.status("voice export: " + export_report_);
+                export_report_ = r.ok ? trf("{0} rows, {1} files written to {2}", {std::to_string(r.rows), std::to_string(r.written.size()), export_dir_}) : r.error;
+                if (r.ok) app.status(trf("voice export: {0}", {export_report_}));
             }
         }
         ImGui::SameLine();
-        if (ImGui::Button("Open folder") && !export_dir_.empty()) open_in_os(export_dir_);
+        if (ImGui::Button(tr("Open folder")) && !export_dir_.empty()) open_in_os(export_dir_);
         ImGui::SameLine();
-        if (ImGui::Button("Close", ImVec2(120, 0))) ImGui::CloseCurrentPopup();
+        if (ImGui::Button(tr("Close"), ImVec2(120, 0))) ImGui::CloseCurrentPopup();
         if (!export_report_.empty()) ImGui::TextWrapped("%s", export_report_.c_str());
         ImGui::EndPopup();
     }
@@ -539,32 +540,32 @@ private:
             preview_ = std::make_unique<VoicePreview>(preview_future_.get());
         poll_job(app);
         if (import_open_) {
-            ImGui::OpenPopup("Import recordings");
+            ImGui::OpenPopup(tr("Import recordings"));
             import_open_ = false;
             if (imp_lang_.empty()) imp_lang_ = app.project.mod.languages.empty() ? std::string("English") : app.project.mod.languages.front();
         }
         ImGui::SetNextWindowSize(ImVec2(900, 640), ImGuiCond_Appearing);
-        if (!ImGui::BeginPopupModal("Import recordings", nullptr)) return;
+        if (!ImGui::BeginPopupModal(tr("Import recordings"), nullptr)) return;
         Project& p = app.project;
         const bool running = job_ && !job_->done;
-        if (app.project_path.empty()) ImGui::TextColored(kOrange, "Save the project first: the recordings are copied into its folder (voice/).");
+        if (app.project_path.empty()) ImGui::TextColored(kOrange, "%s", tr("Save the project first: the recordings are copied into its folder (voice/)."));
         ImGui::BeginDisabled(running);
-        ImGui::TextUnformatted("Folder with the recordings");
+        ImGui::TextUnformatted(tr("Folder with the recordings"));
         ImGui::SetNextItemWidth(-90);
         bool ch = ImGui::InputText("##folder", &imp_folder_);
         ImGui::SameLine();
-        if (ImGui::Button("Browse##f")) {
+        if (ImGui::Button(tr("Browse##f"))) {
             const std::string d = dialog_pick_folder(imp_folder_);
             if (!d.empty()) {
                 imp_folder_ = d;
                 ch = true;
             }
         }
-        ImGui::TextUnformatted("Filled CSV (optional: its 'file' column names the recording of each line)");
+        ImGui::TextUnformatted(tr("Filled CSV (optional: its 'file' column names the recording of each line)"));
         ImGui::SetNextItemWidth(-90);
         ch |= ImGui::InputText("##csv", &imp_csv_);
         ImGui::SameLine();
-        if (ImGui::Button("Browse##c")) {
+        if (ImGui::Button(tr("Browse##c"))) {
             const std::string f = dialog_open_file("CSV", "csv", imp_folder_);
             if (!f.empty()) {
                 imp_csv_ = f;
@@ -572,7 +573,7 @@ private:
             }
         }
         ImGui::SetNextItemWidth(140);
-        if (ImGui::BeginCombo("Language of files without one", imp_lang_.c_str())) {
+        if (ImGui::BeginCombo(tr("Language of files without one"), imp_lang_.c_str())) {
             for (auto& l : p.mod.languages)
                 if (ImGui::Selectable(l.c_str(), imp_lang_ == l)) {
                     imp_lang_ = l;
@@ -580,36 +581,36 @@ private:
                 }
             ImGui::EndCombo();
         }
-        ui::help("A file named after the line id alone (<line id>.wav) is for this language; <line id>_<Language>.ogg names its own.");
+        ui::help(tr("A file named after the line id alone (<line id>.wav) is for this language; <line id>_<Language>.ogg names its own."));
         ImGui::SameLine();
-        ch |= ImGui::Checkbox("Only the shown lines", &imp_shown_only_);
-        ch |= ImGui::Checkbox("Normalise loudness (EBU R128, -16 LUFS)", &app.settings.voice_normalize);
+        ch |= ImGui::Checkbox(tr("Only the shown lines"), &imp_shown_only_);
+        ch |= ImGui::Checkbox(tr("Normalise loudness (EBU R128, -16 LUFS)"), &app.settings.voice_normalize);
         ImGui::SameLine();
-        ch |= ImGui::Checkbox("Mono 44.1 kHz like the game's speech", &app.settings.voice_mono);
+        ch |= ImGui::Checkbox(tr("Mono 44.1 kHz like the game's speech"), &app.settings.voice_mono);
         if (ch) app.settings.voice_rate = app.settings.voice_mono ? 44100 : 0;
         ImGui::SameLine();
-        ch |= ImGui::Checkbox("Convert every file", &imp_convert_all_);
-        ui::help("Off: files the game plays as they are (Ogg Vorbis, WAV, MP3) are copied unchanged and only the others go through ffmpeg.");
+        ch |= ImGui::Checkbox(tr("Convert every file"), &imp_convert_all_);
+        ui::help(tr("Off: files the game plays as they are (Ogg Vorbis, WAV, MP3) are copied unchanged and only the others go through ffmpeg."));
         if (ch) {
             preview_.reset();
             app.save_settings();
         }
         ImGui::EndDisabled();
         // ffmpeg
-        if (ff_future_.valid()) ImGui::TextDisabled("looking for ffmpeg...");
+        if (ff_future_.valid()) ImGui::TextDisabled("%s", tr("looking for ffmpeg..."));
         else if (ff_ && ff_->ok)
-            ImGui::TextColored(kGreen, "ffmpeg %s (%s)%s", ff_->version.c_str(), ff_->path.c_str(), ff_->libvorbis ? "" : " - no libvorbis: conversions write 16-bit WAV");
+            ImGui::TextColored(kGreen, tr("ffmpeg %s (%s)%s"), ff_->version.c_str(), ff_->path.c_str(), ff_->libvorbis ? "" : tr(" - no libvorbis: conversions write 16-bit WAV"));
         else if (ff_) {
-            ImGui::TextColored(kOrange, "No ffmpeg: %s. Files the game plays are imported, the others are listed.", ff_->error.c_str());
+            ImGui::TextColored(kOrange, tr("No ffmpeg: %s. Files the game plays are imported, the others are listed."), ff_->error.c_str());
             ImGui::TextWrapped("%s", ffmpeg_help().c_str());
         }
         ImGui::BeginDisabled(running || preview_future_.valid() || imp_folder_.empty());
-        if (ImGui::Button("Preview", ImVec2(120, 0))) start_preview(app);
+        if (ImGui::Button(tr("Preview"), ImVec2(120, 0))) start_preview(app);
         ImGui::EndDisabled();
         ImGui::SameLine();
         const size_t doable = preview_ ? std::count_if(preview_->steps.begin(), preview_->steps.end(), [](const VoiceImportStep& s) { return !s.skip; }) : 0;
         ImGui::BeginDisabled(running || !preview_ || doable == 0 || app.project_path.empty());
-        if (ImGui::Button(("Import " + std::to_string(doable) + " file(s)").c_str(), ImVec2(160, 0))) start_job(app);
+        if (ImGui::Button(trf("Import {0} file(s)", {std::to_string(doable)}).c_str(), ImVec2(160, 0))) start_job(app);
         ImGui::EndDisabled();
         ImGui::SameLine();
         if (running) {
@@ -623,16 +624,16 @@ private:
             }
             ImGui::ProgressBar(n ? static_cast<float>(i) / static_cast<float>(n) : 0.0f, ImVec2(220, 0), (std::to_string(i) + " / " + std::to_string(n)).c_str());
             ImGui::SameLine();
-            if (ImGui::Button("Cancel")) job_->cancel = true;
+            if (ImGui::Button(tr("Cancel"))) job_->cancel = true;
             ImGui::TextDisabled("%s", p2m::bare_name(cur).c_str());
-        } else if (ImGui::Button("Close", ImVec2(120, 0))) {
+        } else if (ImGui::Button(tr("Close"), ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
         }
         if (want_preview_ && !ff_future_.valid() && !preview_future_.valid() && !running && !imp_folder_.empty()) {
             want_preview_ = false;
             start_preview(app);
         }
-        if (preview_future_.valid()) ImGui::TextDisabled("reading the folder...");
+        if (preview_future_.valid()) ImGui::TextDisabled("%s", tr("reading the folder..."));
         if (!job_report_.empty()) ImGui::TextColored(kGreen, "%s", job_report_.c_str());
         if (preview_) draw_preview(*preview_);
         ImGui::EndPopup();
@@ -643,16 +644,16 @@ private:
             ImGui::TextColored(kRed, "%s", pv.error.c_str());
             return;
         }
-        ImGui::Text("%zu audio files: %zu matched, %zu unmatched, %zu ambiguous, %zu duplicate", pv.files, pv.rep.matched.size(), pv.rep.unmatched.size(),
+        ImGui::Text(tr("%zu audio files: %zu matched, %zu unmatched, %zu ambiguous, %zu duplicate"), pv.files, pv.rep.matched.size(), pv.rep.unmatched.size(),
                     pv.rep.ambiguous.size(), pv.rep.duplicates.size());
         if (!ImGui::BeginTable("##preview", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersInnerV,
                                ImVec2(0, ImGui::GetContentRegionAvail().y)))
             return;
         ImGui::TableSetupScrollFreeze(0, 1);
-        ImGui::TableSetupColumn("File", ImGuiTableColumnFlags_WidthStretch, 2);
-        ImGui::TableSetupColumn("Result", ImGuiTableColumnFlags_WidthFixed, 90);
-        ImGui::TableSetupColumn("Line / language", ImGuiTableColumnFlags_WidthStretch, 2);
-        ImGui::TableSetupColumn("Note", ImGuiTableColumnFlags_WidthStretch, 3);
+        ImGui::TableSetupColumn(tr("File"), ImGuiTableColumnFlags_WidthStretch, 2);
+        ImGui::TableSetupColumn(tr("Result"), ImGuiTableColumnFlags_WidthFixed, 90);
+        ImGui::TableSetupColumn(tr("Line / language"), ImGuiTableColumnFlags_WidthStretch, 2);
+        ImGui::TableSetupColumn(tr("Note"), ImGuiTableColumnFlags_WidthStretch, 3);
         ImGui::TableHeadersRow();
         auto rowf = [](const std::string& file, const ImVec4& c, const char* res, const std::string& line, const std::string& note) {
             ImGui::TableNextRow();
@@ -667,8 +668,8 @@ private:
         };
         for (auto& s : pv.steps) {
             std::string note = s.why + (s.dest_rel.empty() ? "" : " -> " + s.dest_rel);
-            if (s.done) note = "imported: " + s.dest_rel;
-            if (!s.error.empty()) note = "error: " + s.error;
+            if (s.done) note = trf("imported: {0}", {s.dest_rel});
+            if (!s.error.empty()) note = trf("error: {0}", {s.error});
             rowf(s.match.file, s.skip || !s.error.empty() ? kRed : s.done ? kGreen : ImVec4(0.8f, 0.9f, 1, 1),
                  s.skip ? "cannot" : s.done ? "done" : s.convert ? "convert" : "copy", s.match.line_id + " / " + s.match.language, note);
         }
@@ -742,7 +743,7 @@ private:
             app.touch();
             app.refresh_assets(true);
         }
-        app.status("voice import: " + job_report_);
+        app.status(trf("voice import: {0}", {job_report_}));
     }
 
     // index

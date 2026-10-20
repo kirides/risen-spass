@@ -11,6 +11,7 @@
 #include "app/panels/panels.h"
 #include "app/widgets.h"
 #include "core/behavior.h"
+#include "core/i18n.h"
 #include "core/paths.h"
 
 namespace mk {
@@ -36,22 +37,22 @@ public:
     }
 
     void draw(App& app) override {
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
         Project& p = app.project;
-        if (ImGui::Button("+ New behaviour")) app.defer([this, &app] { create(app); });
-        ui::help("Creates a Lua script next to the project (behaviors/<name>.lua) from a commented template and opens it in your editor. A behaviour "
+        if (ImGui::Button(tr("+ New behaviour"))) app.defer([this, &app] { create(app); });
+        ui::help(tr("Creates a Lua script next to the project (behaviors/<name>.lua) from a commented template and opens it in your editor. A behaviour "
                  "runs on every NPC it is attached to: start, update every few seconds, and handlers for death, damage, talk, items, any quest of "
-                 "the game, the player coming near.");
+                 "the game, the player coming near."));
         ImGui::SameLine();
-        if (ImGui::Button("Add a script...")) {
+        if (ImGui::Button(tr("Add a script..."))) {
             const std::string dir = app.project_path.empty() ? std::string() : u8str(u8(app.project_path).parent_path());
             for (auto& f : dialog_open_files("Lua scripts", "lua", dir)) add(app, f);
         }
         if (app.project_path.empty())
-            ImGui::TextColored(ImVec4(1, 0.7f, 0.3f, 1), "Save the project first: new scripts are written next to the project file.");
+            ImGui::TextColored(ImVec4(1, 0.7f, 0.3f, 1), "%s", tr("Save the project first: new scripts are written next to the project file."));
 
         const float list_w = 240;
         ImGui::BeginChild("##list", ImVec2(list_w, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
@@ -60,18 +61,18 @@ public:
             ImGui::PushID(b.uid.c_str());
             const BehaviorInfo info = behavior_info(app.project_file(b.file));
             if (!info.ok) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0.5f, 0.4f, 1));
-            if (ImGui::Selectable(b.name.empty() ? "(unnamed)" : b.name.c_str(), sel_ == b.uid)) sel_ = b.uid;
+            if (ImGui::Selectable(b.name.empty() ? tr("(unnamed)") : b.name.c_str(), sel_ == b.uid)) sel_ = b.uid;
             if (!info.ok) ImGui::PopStyleColor();
             ui::drag_behavior_source(b.name);
             if (ImGui::IsItemHovered() && !ImGui::GetDragDropPayload())
-                ImGui::SetTooltip("%s", info.ok ? (info.description.empty() ? "drag it onto an NPC" : info.description.c_str()) : info.error.c_str());
+                ImGui::SetTooltip("%s", info.ok ? (info.description.empty() ? tr("drag it onto an NPC") : info.description.c_str()) : info.error.c_str());
             if (ImGui::BeginPopupContextItem()) {
-                if (ImGui::MenuItem("Remove from the project (the file stays)")) remove = b.uid;
+                if (ImGui::MenuItem(tr("Remove from the project (the file stays)"))) remove = b.uid;
                 ImGui::EndPopup();
             }
             ImGui::PopID();
         }
-        if (p.behaviors.empty()) ImGui::TextDisabled("No behaviours yet.");
+        if (p.behaviors.empty()) ImGui::TextDisabled("%s", tr("No behaviours yet."));
         ImGui::EndChild();
         if (!remove.empty()) {
             p.behaviors.erase(std::remove_if(p.behaviors.begin(), p.behaviors.end(), [&](const BehaviorScript& b) { return b.uid == remove; }), p.behaviors.end());
@@ -84,7 +85,7 @@ public:
         for (auto& x : p.behaviors)
             if (x.uid == sel_) b = &x;
         if (b) draw_detail(app, *b);
-        else ImGui::TextDisabled("Select a behaviour, or create one. Drag a behaviour onto a placed NPC or an NPC template (NPCs panel) to attach it.");
+        else ImGui::TextDisabled("%s", tr("Select a behaviour, or create one. Drag a behaviour onto a placed NPC or an NPC template (NPCs panel) to attach it."));
         ImGui::EndChild();
         ImGui::End();
     }
@@ -92,7 +93,7 @@ public:
 private:
     void create(App& app) {
         if (app.project_path.empty()) {
-            app.status("Save the project first: the script is written next to the project file");
+            app.status(tr("Save the project first: the script is written next to the project file"));
             return;
         }
         std::string name;
@@ -105,7 +106,7 @@ private:
         try {
             write_text(u8(app.project_file(rel)), behavior_template(name));
         } catch (const std::exception& e) {
-            app.status(std::string("Cannot write the script: ") + e.what());
+            app.status(trf("Cannot write the script: {0}", {e.what()}));
             return;
         }
         BehaviorScript s{new_uid(), name, rel};
@@ -113,7 +114,7 @@ private:
         sel_ = s.uid;
         app.touch();
         open_in_os(app.project_file(rel));
-        app.status("Created " + rel + " and opened it in your editor");
+        app.status(trf("Created {0} and opened it in your editor", {rel}));
     }
 
     void add(App& app, const std::string& file) {
@@ -141,7 +142,7 @@ private:
             edit_name_ = b.name;
         }
         ImGui::SetNextItemWidth(260);
-        ImGui::InputText("Name", &edit_name_);
+        ImGui::InputText(tr("Name"), &edit_name_);
         if ((ImGui::IsItemDeactivatedAfterEdit() || (ImGui::IsItemActive() && ImGui::IsKeyPressed(ImGuiKey_Enter))) && edit_name_ != b.name) {
             const std::string old_name = b.name;
             b.name = edit_name_;
@@ -157,11 +158,11 @@ private:
         const std::string path = app.project_file(b.file);
         ImGui::TextDisabled("%s", b.file.c_str());
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", path.c_str());
-        if (ImGui::Button("Open in your editor")) {
-            if (!open_in_os(path)) app.status("Cannot open " + path);
+        if (ImGui::Button(tr("Open in your editor"))) {
+            if (!open_in_os(path)) app.status(trf("Cannot open {0}", {path}));
         }
         ImGui::SameLine();
-        if (ImGui::Button("Change file...")) {
+        if (ImGui::Button(tr("Change file..."))) {
             const std::string dir = app.project_path.empty() ? std::string() : u8str(u8(app.project_path).parent_path());
             const std::string f = dialog_open_file("Lua scripts", "lua", dir);
             if (!f.empty()) {
@@ -174,10 +175,10 @@ private:
             }
         }
         ImGui::SameLine();
-        ImGui::TextDisabled("(changes on disk are read again at once)");
+        ImGui::TextDisabled("%s", tr("(changes on disk are read again at once)"));
 
         const BehaviorInfo info = behavior_info(path);
-        ui::section("What the editor read from it");
+        ui::section(tr("What the editor read from it"));
         if (!info.ok) {
             ImGui::PushTextWrapPos(0);
             ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "%s", info.error.c_str());
@@ -187,13 +188,13 @@ private:
             std::string hs;
             for (auto& h : info.handlers) hs += (hs.empty() ? "" : ", ") + h;
             for (auto& e : info.events) hs += (hs.empty() ? "" : ", ") + ("events[" + e + "]");
-            ImGui::TextDisabled("handlers: %s", hs.empty() ? "none" : hs.c_str());
-            if (info.interval >= 0) ImGui::TextDisabled("update every %.2f s", info.interval);
-            if (info.near >= 0) ImGui::TextDisabled("player near at %.0f units", info.near);
-            if (info.params.empty()) ImGui::TextDisabled("no parameters");
+            ImGui::TextDisabled(tr("handlers: %s"), hs.empty() ? "none" : hs.c_str());
+            if (info.interval >= 0) ImGui::TextDisabled(tr("update every %.2f s"), info.interval);
+            if (info.near >= 0) ImGui::TextDisabled(tr("player near at %.0f units"), info.near);
+            if (info.params.empty()) ImGui::TextDisabled("%s", tr("no parameters"));
             else if (ImGui::BeginTable("##params", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV)) {
-                ImGui::TableSetupColumn("Parameter");
-                ImGui::TableSetupColumn("Default");
+                ImGui::TableSetupColumn(tr("Parameter"));
+                ImGui::TableSetupColumn(tr("Default"));
                 ImGui::TableHeadersRow();
                 for (auto& [k, v] : info.params.items()) {
                     ImGui::TableNextRow();
@@ -205,7 +206,7 @@ private:
                 ImGui::EndTable();
             }
         }
-        ui::section("Attached to");
+        ui::section(tr("Attached to"));
         int n = 0;
         auto row = [&](const std::string& who, const std::string& uid, const char* what) {
             ImGui::PushID(uid.c_str());
@@ -220,11 +221,11 @@ private:
         };
         for (auto& x : app.project.npcs)
             for (auto& u : x.behaviors)
-                if (u.behavior == b.name) row(x.name, x.uid, "placed NPC");
+                if (u.behavior == b.name) row(x.name, x.uid, tr("placed NPC"));
         for (auto& x : app.project.npc_templates)
             for (auto& u : x.behaviors)
-                if (u.behavior == b.name) row(x.name, x.uid, "every NPC of this template");
-        if (!n) ImGui::TextDisabled("Nothing yet: drag the behaviour from the list onto an NPC's Behaviours section (NPCs panel).");
+                if (u.behavior == b.name) row(x.name, x.uid, tr("every NPC of this template"));
+        if (!n) ImGui::TextDisabled("%s", tr("Nothing yet: drag the behaviour from the list onto an NPC's Behaviours section (NPCs panel)."));
         if (ch) app.touch();
     }
 

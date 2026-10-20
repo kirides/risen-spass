@@ -15,6 +15,7 @@
 #include "app/render/resources.h"
 #include "app/widgets.h"
 #include "core/assets.h"
+#include "core/i18n.h"
 #include "core/image.h"
 #include "core/mesh.h"
 #include "core/model_import.h"
@@ -53,7 +54,7 @@ public:
             if (!base.empty() && path_within(p, base)) stored = u8str(fs::relative(p, base));
             std::replace(stored.begin(), stored.end(), '\\', '/');
             if (find_asset(app.project, u8str(p.filename()))) {
-                app.status(u8str(p.filename()) + " is already an asset of the project");
+                app.status(trf("{0} is already an asset of the project", {u8str(p.filename())}));
                 continue;
             }
             AssetFile a{new_uid(), stored, asset_kind(u8str(p.filename()))};
@@ -63,40 +64,40 @@ public:
         }
         if (added) {
             app.touch();
-            app.status(std::to_string(added) + " asset file(s) added");
+            app.status(trf("{0} asset file(s) added", {std::to_string(added)}));
         }
     }
 
     void draw(App& app) override {
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
-        if (ImGui::Button("Add files...")) {
+        if (ImGui::Button(tr("Add files..."))) {
             const std::string dir = app.project_path.empty() ? std::string() : u8str(u8(app.project_path).parent_path());
             add_files(app, dialog_open_files("Resources, pictures and audio", "_xmsh,_xmat,_ximg,_xmac,_xmot,_xsnd,ximl,png,tga,jpg,jpeg,bmp,ogg,wav,mp3", dir));
         }
         ImGui::SameLine();
-        if (ImGui::Button("Import 3D model...")) begin_model_import(app);
-        ui::help("A model of your own (Wavefront OBJ, glTF, GLB) becomes a compiled mesh (._xmsh) in the project's assets folder. Pick the game materials it uses.");
+        if (ImGui::Button(tr("Import 3D model..."))) begin_model_import(app);
+        ui::help(tr("A model of your own (Wavefront OBJ, glTF, GLB) becomes a compiled mesh (._xmsh) in the project's assets folder. Pick the game materials it uses."));
         ImGui::SameLine();
-        if (ImGui::Button("Reload")) {
+        if (ImGui::Button(tr("Reload"))) {
             app.refresh_assets(true);
             info_.clear();
         }
-        ui::help("Reads the files again (after you changed them outside the editor).");
+        ui::help(tr("Reads the files again (after you changed them outside the editor)."));
         ImGui::SameLine();
-        ImGui::TextDisabled("%zu files", app.project.assets.size());
+        ImGui::TextDisabled(tr("%zu files"), app.project.assets.size());
         if (app.project_path.empty())
-            ImGui::TextColored(ImVec4(1, 0.7f, 0.3f, 1), "Save the project first to store the files relative to the project folder.");
+            ImGui::TextColored(ImVec4(1, 0.7f, 0.3f, 1), "%s", tr("Save the project first to store the files relative to the project folder."));
 
         ImGui::BeginChild("##list", ImVec2(0, ImGui::GetContentRegionAvail().y * 0.45f), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY);
         std::string remove;
         if (ImGui::BeginTable("##assets", 5, ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp)) {
-            ImGui::TableSetupColumn("File", ImGuiTableColumnFlags_WidthStretch, 3);
-            ImGui::TableSetupColumn("Kind", ImGuiTableColumnFlags_WidthStretch, 1);
-            ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthStretch, 1);
-            ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthStretch, 2);
+            ImGui::TableSetupColumn(tr("File"), ImGuiTableColumnFlags_WidthStretch, 3);
+            ImGui::TableSetupColumn(tr("Kind"), ImGuiTableColumnFlags_WidthStretch, 1);
+            ImGui::TableSetupColumn(tr("Size"), ImGuiTableColumnFlags_WidthStretch, 1);
+            ImGui::TableSetupColumn(tr("State"), ImGuiTableColumnFlags_WidthStretch, 2);
             ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 110);
             ImGui::TableSetupScrollFreeze(0, 1);
             ImGui::TableHeadersRow();
@@ -114,21 +115,21 @@ public:
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(asset_kind(name).c_str());
                 ImGui::TableNextColumn();
-                if (exists) ImGui::Text("%.1f KB", static_cast<double>(fs::file_size(path, ec)) / 1024.0);
+                if (exists) ImGui::Text(tr("%.1f KB"), static_cast<double>(fs::file_size(path, ec)) / 1024.0);
                 ImGui::TableNextColumn();
                 const bool icon = std::find(icons.begin(), icons.end(), p2m::lower(name)) != icons.end();
                 const std::string target = is_picture(name) ? picture_compiled_name(name) : name;
-                if (!exists) ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "missing");
-                else if (icon) ImGui::TextDisabled("-> icon %s", project_icon_name(app.project.mod.id, name).c_str());
-                else if (!is_raw_audio(name) && app.game && app.game->exists(target)) ImGui::TextColored(ImVec4(1, 0.75f, 0.3f, 1), "replaces the game's %s", target.c_str());
-                else if (is_raw_audio(name)) ImGui::TextDisabled("-> sounds/");
-                else ImGui::TextDisabled("-> assets/%s", target.c_str());
+                if (!exists) ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "%s", tr("missing"));
+                else if (icon) ImGui::TextDisabled(tr("-> icon %s"), project_icon_name(app.project.mod.id, name).c_str());
+                else if (!is_raw_audio(name) && app.game && app.game->exists(target)) ImGui::TextColored(ImVec4(1, 0.75f, 0.3f, 1), tr("replaces the game's %s"), target.c_str());
+                else if (is_raw_audio(name)) ImGui::TextDisabled("%s", tr("-> sounds/"));
+                else ImGui::TextDisabled(tr("-> assets/%s"), target.c_str());
                 ImGui::TableNextColumn();
                 if (asset_kind(name) == "sound") {
                     ui::sound_button(app, name);
                     ImGui::SameLine();
                 }
-                if (ImGui::SmallButton("Remove")) remove = a.uid;
+                if (ImGui::SmallButton(tr("Remove"))) remove = a.uid;
                 ImGui::PopID();
             }
             ImGui::EndTable();
@@ -143,7 +144,7 @@ public:
 
         draw_model_import(app);
         if (const AssetFile* a = selected(app)) draw_details(app, *a);
-        else ImGui::TextDisabled("Add the files of your mod: compiled resources of the engine (made with the game's tools or risen.assets) and audio for voiced lines.");
+        else ImGui::TextDisabled("%s", tr("Add the files of your mod: compiled resources of the engine (made with the game's tools or risen.assets) and audio for voiced lines."));
         ImGui::End();
     }
 
@@ -160,7 +161,7 @@ private:
 
     void begin_model_import(App& app) {
         if (app.project_path.empty()) {
-            app.status("Save the project first: the mesh is stored in its assets folder");
+            app.status(tr("Save the project first: the mesh is stored in its assets folder"));
             return;
         }
         const std::string dir = u8str(u8(app.project_path).parent_path());
@@ -232,60 +233,60 @@ private:
         info_.clear();
         size_t tris = 0;
         for (auto& p : mesh.parts) tris += p.indices.size() / 3;
-        app.status("Imported " + bare + ": " + std::to_string(mesh.parts.size()) + " part(s), " + std::to_string(tris) + " triangles");
+        app.status(trf("Imported {0}: {1} part(s), {2} triangles", {bare, std::to_string(mesh.parts.size()), std::to_string(tris)}));
         mi_.open = false;
     }
 
     void draw_model_import(App& app) {
         if (mi_.want_open) {
-            ImGui::OpenPopup("Import 3D model");
+            ImGui::OpenPopup(tr("Import 3D model"));
             mi_.want_open = false;
             mi_.open = true;
         }
         ImGui::SetNextWindowSize(ImVec2(640, 0), ImGuiCond_Appearing);
-        if (!ImGui::BeginPopupModal("Import 3D model", nullptr)) return;
+        if (!ImGui::BeginPopupModal(tr("Import 3D model"), nullptr)) return;
         ImGui::TextWrapped("%s", mi_.path.c_str());
         if (!mi_.source.error.empty()) {
             ImGui::TextColored(ImVec4(1, 0.45f, 0.4f, 1), "%s", mi_.source.error.c_str());
-            if (ImGui::Button("Close")) ImGui::CloseCurrentPopup();
+            if (ImGui::Button(tr("Close"))) ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
             return;
         }
-        ImGui::Text("%zu triangles in %zu material group(s)", mi_.source.triangles(), mi_.source.groups.size());
+        ImGui::Text(tr("%zu triangles in %zu material group(s)"), mi_.source.triangles(), mi_.source.groups.size());
         for (auto& w : mi_.source.warnings) ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), "%s", w.c_str());
         ImGui::PushItemWidth(300);
-        ui::input_text("Name of the mesh", mi_.name);
+        ui::input_text(tr("Name of the mesh"), mi_.name);
         ImGui::SameLine();
-        ImGui::TextDisabled("-> assets/%s._xmsh", mi_.name.c_str());
-        ImGui::InputDouble("Scale", &mi_.options.scale, 1, 10, "%g");
-        ui::help("The game's units are about centimetres: a human is 180 units high, so a glTF model in metres wants 100.");
-        ImGui::Checkbox("The model's up axis is +Z", &mi_.options.z_up);
-        ui::help("Blender and CAD models are often +Z up; the game is +Y up.");
-        ImGui::Checkbox("Mirror Z (right-handed model)", &mi_.options.mirror_z);
-        ui::help("OBJ and glTF are right-handed, the game is left-handed: z is negated (which also turns the front faces the way the game wants them). Untick if the model looks mirrored.");
+        ImGui::TextDisabled(tr("-> assets/%s._xmsh"), mi_.name.c_str());
+        ImGui::InputDouble(tr("Scale"), &mi_.options.scale, 1, 10, "%g");
+        ui::help(tr("The game's units are about centimetres: a human is 180 units high, so a glTF model in metres wants 100."));
+        ImGui::Checkbox(tr("The model's up axis is +Z"), &mi_.options.z_up);
+        ui::help(tr("Blender and CAD models are often +Z up; the game is +Y up."));
+        ImGui::Checkbox(tr("Mirror Z (right-handed model)"), &mi_.options.mirror_z);
+        ui::help(tr("OBJ and glTF are right-handed, the game is left-handed: z is negated (which also turns the front faces the way the game wants them). Untick if the model looks mirrored."));
         ImGui::PopItemWidth();
-        ImGui::SeparatorText("Materials");
-        ImGui::TextDisabled("A mesh names game materials (._xmat); the textures come from them. Pick what each material of the model should become.");
-        ui::asset_picker("Default material", mi_.material, app.game.get(), "_xmat", false, 420);
+        ImGui::SeparatorText(tr("Materials"));
+        ImGui::TextDisabled("%s", tr("A mesh names game materials (._xmat); the textures come from them. Pick what each material of the model should become."));
+        ui::asset_picker(tr("Default material"), mi_.material, app.game.get(), "_xmat", false, 420);
         if (mi_.source_materials.size() > 1 || (mi_.source_materials.size() == 1 && !mi_.source_materials[0].empty())) {
             for (auto& m : mi_.source_materials) {
                 ImGui::PushID(m.c_str());
                 std::string v = mi_.mapped[m];
                 ImGui::AlignTextToFramePadding();
-                ImGui::Text("%s", m.empty() ? "(no material)" : m.c_str());
+                ImGui::Text("%s", m.empty() ? tr("(no material)") : m.c_str());
                 ImGui::SameLine(200);
                 if (ui::asset_picker("##map", v, app.game.get(), "_xmat", false, 420)) mi_.mapped[m] = v;
                 ImGui::PopID();
             }
-            ImGui::TextDisabled("An empty field uses the default material.");
+            ImGui::TextDisabled("%s", tr("An empty field uses the default material."));
         }
         if (!mi_.error.empty()) ImGui::TextColored(ImVec4(1, 0.45f, 0.4f, 1), "%s", mi_.error.c_str());
         const bool ok = !mi_.name.empty() && !mi_.material.empty();
         ImGui::BeginDisabled(!ok);
-        if (ImGui::Button("Import", ImVec2(120, 0))) do_model_import(app);
+        if (ImGui::Button(tr("Import"), ImVec2(120, 0))) do_model_import(app);
         ImGui::EndDisabled();
         ImGui::SameLine();
-        if (ImGui::Button("Cancel", ImVec2(100, 0)) || !mi_.open) ImGui::CloseCurrentPopup();
+        if (ImGui::Button(tr("Cancel"), ImVec2(100, 0)) || !mi_.open) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
 
@@ -322,7 +323,7 @@ private:
                 std::string why;
                 if (auto s = open_sound(read_text(u8(path)), why)) {
                     char buf[160];
-                    std::snprintf(buf, sizeof buf, "%s%s, %d channel(s), %d Hz, %.2f s", s->compiled ? "compiled sound, " : "", s->format.c_str(), s->channels,
+                    std::snprintf(buf, sizeof buf, tr("%s%s, %d channel(s), %d Hz, %.2f s"), s->compiled ? tr("compiled sound, ") : "", s->format.c_str(), s->channels,
                                   s->sample_rate, static_cast<double>(s->duration_ms) / 1000.0);
                     in.text = buf;
                 } else {
@@ -334,17 +335,17 @@ private:
                 for (auto& s : m.submeshes) tris += s.index_count / 3;
                 std::string mats;
                 for (auto& s : m.submeshes) mats += (mats.empty() ? "" : ", ") + s.material;
-                in.text = std::to_string(m.submeshes.size()) + " sub-mesh(es), " + std::to_string(tris) + " triangles; materials: " + mats;
+                in.text = trf("{0} sub-mesh(es), {1} triangles; materials: {2}", {std::to_string(m.submeshes.size()), std::to_string(tris), mats});
             } else if (asset_kind(name) == "material") {
                 const std::string tex = material_texture(read_text(u8(path)));
-                in.text = tex.empty() ? std::string("no texture found") : "texture: " + tex;
+                in.text = tex.empty() ? std::string(tr("no texture found")) : trf("texture: {0}", {tex});
             } else if (asset_kind(name) == "image") {
                 const ImageData img = decode_image(read_text(u8(path)));
                 in.text = std::to_string(img.width) + " x " + std::to_string(img.height);
             } else if (asset_kind(name) == "picture") {
                 std::string why;
                 if (auto pic = load_picture(read_text(u8(path)), why)) {
-                    in.text = std::to_string(pic->width) + " x " + std::to_string(pic->height) + (pic->has_alpha() ? ", with alpha" : "");
+                    in.text = std::to_string(pic->width) + " x " + std::to_string(pic->height) + (pic->has_alpha() ? tr(", with alpha") : "");
                     in.picture = std::move(*pic);
                 } else {
                     in.error = why;
@@ -371,20 +372,20 @@ private:
                 const float len = app.audio().length();
                 ImGui::ProgressBar(len > 0 ? app.audio().position() / len : 0, ImVec2(240, 0));
             }
-            ImGui::TextDisabled(is_raw_audio(name) ? "Use it as the Sound of a dialogue line (Dialogues panel)."
-                                                   : "A compiled sound: SoundName of a SaySound command (as %s), or it replaces a game sound of the same name.");
+            ImGui::TextDisabled(is_raw_audio(name) ? tr("Use it as the Sound of a dialogue line (Dialogues panel).")
+                                                   : tr("A compiled sound: SoundName of a SaySound command (as %s), or it replaces a game sound of the same name."));
             if (!is_raw_audio(name)) {
                 ImGui::SameLine(0, 0);
                 ImGui::TextDisabled(" %s", sound_raw_name(name).c_str());
             }
         } else if (kind == "mesh") {
             if (app.game) preview_.draw(app, name, ImVec2(ImGui::GetContentRegionAvail().x, std::max(160.0f, ImGui::GetContentRegionAvail().y)));
-            else ImGui::TextDisabled("load the game data to see the mesh (its materials and textures may come from the game)");
+            else ImGui::TextDisabled("%s", tr("load the game data to see the mesh (its materials and textures may come from the game)"));
         } else if (kind == "picture") {
             const auto icons = icon_pictures(app.project);
             const bool icon = std::find(icons.begin(), icons.end(), p2m::lower(name)) != icons.end();
-            if (icon) ImGui::TextDisabled("An item icon: exported into the icon atlas of the mod as %s.", project_icon_name(app.project.mod.id, name).c_str());
-            else ImGui::TextDisabled("Exported as the texture %s (DXT, with mip maps). Choose it as an item's icon to make it an icon instead.",
+            if (icon) ImGui::TextDisabled(tr("An item icon: exported into the icon atlas of the mod as %s."), project_icon_name(app.project.mod.id, name).c_str());
+            else ImGui::TextDisabled(tr("Exported as the texture %s (DXT, with mip maps). Choose it as an item's icon to make it an icon instead."),
                                      picture_compiled_name(name).c_str());
             if (!in.picture.rgba.empty()) {
                 if (picture_of_ != a.uid) {

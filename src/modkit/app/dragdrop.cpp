@@ -1,4 +1,5 @@
 #include "app/dragdrop.h"
+#include "core/i18n.h"
 
 #include <imgui.h>
 
@@ -41,7 +42,7 @@ void drag_source(const std::string& name, TplKind kind, bool entity, bool projec
     ImGui::SetDragDropPayload(kDragTemplate, &d, sizeof d);
     ImGui::TextUnformatted(name.c_str());
     ImGui::SameLine();
-    ImGui::TextDisabled("%s%s", entity ? "placed NPC" : kind_name(kind), project ? " (mod)" : "");
+    ImGui::TextDisabled("%s%s", entity ? tr("placed NPC") : kind_label(kind), project ? tr(" (mod)") : "");
     if (!label.empty()) ImGui::TextDisabled("%s", label.c_str());
     ImGui::EndDragDropSource();
 }
@@ -78,8 +79,8 @@ void drag_behavior_source(const std::string& name) {
     char buf[128] = {};
     std::strncpy(buf, name.c_str(), sizeof buf - 1);
     ImGui::SetDragDropPayload(kDragBehavior, buf, sizeof buf);
-    ImGui::Text("behaviour %s", name.c_str());
-    ImGui::TextDisabled("drop it on an NPC's Behaviours section");
+    ImGui::Text(tr("behaviour %s"), name.c_str());
+    ImGui::TextDisabled("%s", tr("drop it on an NPC's Behaviours section"));
     ImGui::EndDragDropSource();
 }
 

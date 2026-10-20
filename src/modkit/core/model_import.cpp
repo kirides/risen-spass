@@ -1,4 +1,5 @@
 #include "core/model_import.h"
+#include "core/i18n.h"
 
 #include <algorithm>
 #include <cmath>
@@ -82,7 +83,7 @@ ModelSource parse_obj(const std::string& text) {
         if (tag == "v") {
             std::array<float, 3> p{};
             if (!(ls >> p[0] >> p[1] >> p[2])) {
-                src.error = "line " + std::to_string(line_no) + ": a vertex needs three numbers";
+                src.error = trf("line {0}: a vertex needs three numbers", {std::to_string(line_no)});
                 return src;
             }
             pos.push_back(p);
@@ -119,7 +120,7 @@ ModelSource parse_obj(const std::string& text) {
                 auto resolve = [](int i, size_t n) { return i > 0 ? i - 1 : i < 0 ? static_cast<int>(n) + i : -1; };
                 const Key k{resolve(ix[0], pos.size()), resolve(ix[1], uv.size()), resolve(ix[2], nrm.size())};
                 if (k.v < 0 || k.v >= static_cast<int>(pos.size())) {
-                    src.error = "line " + std::to_string(line_no) + ": a face names a vertex that does not exist";
+                    src.error = trf("line {0}: a face names a vertex that does not exist", {std::to_string(line_no)});
                     return src;
                 }
                 ModelGroup& g = src.groups[current];
@@ -151,7 +152,7 @@ ModelSource parse_obj(const std::string& text) {
     if (!any_normal) src.warnings.push_back("some faces have no normals: they are computed from the triangles");
     if (!any_uv) src.warnings.push_back("some faces have no texture coordinates: the material shows its first pixel there");
     src.groups.erase(std::remove_if(src.groups.begin(), src.groups.end(), [](const ModelGroup& g) { return g.indices.empty(); }), src.groups.end());
-    if (src.groups.empty() && src.error.empty()) src.error = "the OBJ file has no faces";
+    if (src.groups.empty() && src.error.empty()) src.error = tr("the OBJ file has no faces");
     return src;
 }
 
@@ -210,7 +211,7 @@ struct GltfData {
         if (index < 0 || !doc.contains("accessors") || static_cast<size_t>(index) >= doc["accessors"].size()) return false;
         const json& a = doc["accessors"][static_cast<size_t>(index)];
         if (a.contains("sparse")) {
-            error = "sparse accessors are not supported";
+            error = tr("sparse accessors are not supported");
             return false;
         }
         count = a.value("count", 0u);
@@ -265,7 +266,7 @@ ModelSource parse_gltf(const std::string& bytes, bool glb, const std::function<s
     try {
         if (glb) {
             if (bytes.size() < 20 || std::memcmp(bytes.data(), "glTF", 4) != 0) {
-                src.error = "not a GLB file";
+                src.error = tr("not a GLB file");
                 return src;
             }
             size_t p = 12;
@@ -285,7 +286,7 @@ ModelSource parse_gltf(const std::string& bytes, bool glb, const std::function<s
             g.doc = json::parse(bytes);
         }
         if (g.doc.value("asset", json::object()).value("version", std::string("2")).rfind("2", 0) != 0) {
-            src.error = "only glTF 2.0 is read";
+            src.error = tr("only glTF 2.0 is read");
             return src;
         }
         for (auto& b : g.doc.value("buffers", json::array())) {
@@ -303,7 +304,7 @@ ModelSource parse_gltf(const std::string& bytes, bool glb, const std::function<s
                 g.buffers.emplace_back();
             }
             if (g.buffers.back().empty()) {
-                src.error = "the buffer '" + uri.substr(0, 60) + "' cannot be read (a .gltf file's .bin has to lie next to it)";
+                src.error = trf("the buffer '{0}' cannot be read (a .gltf file's .bin has to lie next to it)", {uri.substr(0, 60)});
                 return src;
             }
         }
@@ -354,7 +355,7 @@ ModelSource parse_gltf(const std::string& bytes, bool glb, const std::function<s
                 std::vector<double> P, N, T, I;
                 size_t np = 0, nn = 0, nt = 0, ni = 0;
                 if (!g.read_accessor(attrs["POSITION"].get<int>(), 3, P, np, false)) {
-                    src.error = g.error.empty() ? "a position accessor cannot be read" : g.error;
+                    src.error = g.error.empty() ? tr("a position accessor cannot be read") : g.error;
                     return src;
                 }
                 const bool has_n = attrs.contains("NORMAL") && g.read_accessor(attrs["NORMAL"].get<int>(), 3, N, nn, false) && nn == np;
@@ -395,7 +396,7 @@ ModelSource parse_gltf(const std::string& bytes, bool glb, const std::function<s
                 if (!(has_t && group_had_t)) grp.uvs.clear();
                 if (prim.contains("indices")) {
                     if (!g.read_accessor(prim["indices"].get<int>(), 1, I, ni)) {
-                        src.error = "an index accessor cannot be read";
+                        src.error = tr("an index accessor cannot be read");
                         return src;
                     }
                 } else {
@@ -406,7 +407,7 @@ ModelSource parse_gltf(const std::string& bytes, bool glb, const std::function<s
                 for (size_t i = 0; i + 2 < ni; i += 3) {
                     const uint32_t a0 = static_cast<uint32_t>(I[i]), a1 = static_cast<uint32_t>(I[i + 1]), a2 = static_cast<uint32_t>(I[i + 2]);
                     if (a0 >= np || a1 >= np || a2 >= np) {
-                        src.error = "an index is out of range";
+                        src.error = tr("an index is out of range");
                         return src;
                     }
                     grp.indices.push_back(base + a0);
@@ -416,12 +417,12 @@ ModelSource parse_gltf(const std::string& bytes, bool glb, const std::function<s
             }
         }
     } catch (const std::exception& e) {
-        src.error = std::string("the glTF file is damaged: ") + e.what();
+        src.error = trf("the glTF file is damaged: {0}", {e.what()});
         src.groups.clear();
         return src;
     }
     src.groups.erase(std::remove_if(src.groups.begin(), src.groups.end(), [](const ModelGroup& gr) { return gr.indices.empty(); }), src.groups.end());
-    if (src.groups.empty() && src.error.empty()) src.error = "the glTF file has no triangles";
+    if (src.groups.empty() && src.error.empty()) src.error = tr("the glTF file has no triangles");
     return src;
 }
 
@@ -433,7 +434,7 @@ ModelSource parse_model(const std::string& bytes, const std::string& name, const
     if (ends_with(n, ".gltf")) return parse_gltf(bytes, false, read_neighbour);
     if (ends_with(n, ".glb")) return parse_gltf(bytes, true, read_neighbour);
     ModelSource s;
-    s.error = "unknown model format (OBJ, glTF and GLB are read)";
+    s.error = tr("unknown model format (OBJ, glTF and GLB are read)");
     return s;
 }
 
@@ -445,7 +446,7 @@ MeshBuild model_to_mesh(const ModelSource& src, const ModelOptions& opt, std::st
         auto it = opt.materials.find(g.material);
         const std::string mat = it != opt.materials.end() && !it->second.empty() ? it->second : opt.material;
         if (mat.empty()) {
-            error = "choose a game material" + (g.material.empty() ? std::string() : " for '" + g.material + "'");
+            error = trf("choose a game material{0}", {(g.material.empty() ? std::string() : " for '" + g.material + "'")});
             return {};
         }
         auto pit = part_of.find(mat);
@@ -482,7 +483,7 @@ MeshBuild model_to_mesh(const ModelSource& src, const ModelOptions& opt, std::st
             part.indices.push_back(base + (opt.mirror_z ? g.indices[i + 2] : g.indices[i + 1]));
         }
     }
-    if (out.parts.empty()) error = "the model has no triangles";
+    if (out.parts.empty()) error = tr("the model has no triangles");
     return out;
 }
 

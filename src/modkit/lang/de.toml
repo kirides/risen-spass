@@ -1,0 +1,3010 @@
+# risen-modkit language file (docs/editor/LOCALIZATION.md). The English text is the key; an empty value means "not translated yet".
+# python tools/i18n.py update <code> adds new texts, python tools/i18n.py check <code> verifies placeholders.
+
+[meta]
+code = "de"
+name = "Deutsch"
+english_name = "German"
+author = "risen-spass"
+
+[strings]
+# src/modkit/app/app.cpp:177
+"Game data: {0} templates from {1} archives" = "Spieldaten: {0} Vorlagen aus {1} Archiven"
+# src/modkit/app/app.cpp:180
+"Cannot read the game data: {0}" = "Die Spieldaten können nicht gelesen werden: {0}"
+# src/modkit/app/app.cpp:243
+"{0} is neither an asset file of the project nor a sound of the game" = "{0} ist weder eine Ressourcendatei des Projekts noch ein Klang des Spiels"
+# src/modkit/app/app.cpp:268
+"playing {0} ({1}, {2} s)" = "spiele {0} ab ({1}, {2} s)"
+# src/modkit/app/app.cpp:271
+"cannot play {0}: {1}" = "{0} kann nicht abgespielt werden: {1}"
+# src/modkit/app/app.cpp:339
+"{0} errors in the project: fix them first (Problems panel)" = "{0} Fehler im Projekt: bitte zuerst beheben (Bereich Probleme)"
+# src/modkit/app/app.cpp:350 (+1)
+"Export failed: {0}" = "Export fehlgeschlagen: {0}"
+# src/modkit/app/app.cpp:359
+"Play: {0}" = "Spielen: {0}"
+# src/modkit/app/app.cpp:383 (+1)
+"Export mod" = "Mod exportieren"
+# src/modkit/app/app.cpp:391
+"The mod is written into this folder (normally <Risen>\\bin\\spass\\mods\\<id>). The export only writes into an empty folder or one it wrote before." = "Die Mod wird in diesen Ordner geschrieben (normalerweise <Risen>\\bin\\spass\\mods\\<id>). Der Export schreibt nur in einen leeren Ordner oder in einen, in den er schon einmal geschrieben hat."
+# src/modkit/app/app.cpp:395 (+7)
+"Browse" = "Durchsuchen"
+# src/modkit/app/app.cpp:402
+"%zu errors: see the Problems panel. The export is refused until they are fixed." = "%zu Fehler: siehe Bereich Probleme. Der Export wird abgelehnt, bis sie behoben sind."
+# src/modkit/app/app.cpp:403
+"%zu warnings (see Problems)" = "%zu Warnungen (siehe Probleme)"
+# src/modkit/app/app.cpp:405 (+2)
+"Export" = "Exportieren"
+# src/modkit/app/app.cpp:412 (+2)
+"error: {0}" = "Fehler: {0}"
+# src/modkit/app/app.cpp:413
+"written: {0}" = "geschrieben: {0}"
+# src/modkit/app/app.cpp:414
+"removed: {0}" = "entfernt: {0}"
+# src/modkit/app/app.cpp:416
+"{0} files written, {1} unchanged" = "{0} Dateien geschrieben, {1} unverändert"
+# src/modkit/app/app.cpp:417
+"Exported to {0}" = "Exportiert nach {0}"
+# src/modkit/app/app.cpp:425 (+4)
+"Close" = "Schließen"
+# src/modkit/app/app.cpp:447 (+2)
+"New project" = "Neues Projekt"
+# src/modkit/app/app.cpp:468
+"Opened {0}" = "{0} geöffnet"
+# src/modkit/app/app.cpp:471
+"Cannot open the project: {0}" = "Das Projekt kann nicht geöffnet werden: {0}"
+# src/modkit/app/app.cpp:487
+"Import failed: {0}" = "Import fehlgeschlagen: {0}"
+# src/modkit/app/app.cpp:495
+"Read the project the mod was exported from (modkit/project.json)." = "Das Projekt wurde gelesen, aus dem die Mod exportiert wurde (modkit/project.json)."
+# src/modkit/app/app.cpp:496
+"Rebuilt the project from the mod's data files (the graphs were laid out anew)." = "Das Projekt wurde aus den Datendateien der Mod neu aufgebaut (die Graphen wurden neu angeordnet)."
+# src/modkit/app/app.cpp:498
+"Imported {0}: save the project to keep it" = "{0} importiert: Projekt speichern, um es zu behalten"
+# src/modkit/app/app.cpp:537
+"Saved {0}" = "{0} gespeichert"
+# src/modkit/app/app.cpp:541
+"Cannot save: {0}" = "Speichern nicht möglich: {0}"
+# src/modkit/app/app.cpp:547
+"(unsaved project)" = "(ungespeichertes Projekt)"
+# src/modkit/app/app.cpp:605 (+2)
+"File" = "Datei"
+# src/modkit/app/app.cpp:607 (+1)
+"Open project..." = "Projekt öffnen..."
+# src/modkit/app/app.cpp:608
+"Open recent" = "Zuletzt geöffnet"
+# src/modkit/app/app.cpp:614 (+1)
+"Save" = "Speichern"
+# src/modkit/app/app.cpp:615
+"Save as..." = "Speichern unter..."
+# src/modkit/app/app.cpp:617 (+1)
+"Export mod..." = "Mod exportieren..."
+# src/modkit/app/app.cpp:618
+"Import mod" = "Mod importieren"
+# src/modkit/app/app.cpp:619
+"From its project (modkit/project.json)..." = "Aus ihrem Projekt (modkit/project.json)..."
+# src/modkit/app/app.cpp:623
+"From its data files (after hand edits)..." = "Aus ihren Datendateien (nach Handarbeit)..."
+# src/modkit/app/app.cpp:630
+"Quit" = "Beenden"
+# src/modkit/app/app.cpp:633 (+1)
+"Edit" = "Bearbeiten"
+# src/modkit/app/app.cpp:634
+"Undo" = "Rückgängig"
+# src/modkit/app/app.cpp:635
+"Redo" = "Wiederholen"
+# src/modkit/app/app.cpp:637
+"Command palette..." = "Befehlspalette..."
+# src/modkit/app/app.cpp:640
+"Wizards" = "Assistenten"
+# src/modkit/app/app.cpp:641
+"Fetch quest..." = "Hol-Quest..."
+# src/modkit/app/app.cpp:642
+"New weapon with a recipe..." = "Neue Waffe mit Rezept..."
+# src/modkit/app/app.cpp:643
+"Trader with stock..." = "Händler mit Sortiment..."
+# src/modkit/app/app.cpp:646
+"Window" = "Fenster"
+# src/modkit/app/app.cpp:649
+"Reset layout" = "Layout zurücksetzen"
+# src/modkit/app/app.cpp:652 (+1)
+"Game" = "Spiel"
+# src/modkit/app/app.cpp:653
+"Play: export and start / reload" = "Spielen: exportieren und starten / neu laden"
+# src/modkit/app/app.cpp:654 (+1)
+"Start with" = "Starten mit"
+# src/modkit/app/app.cpp:655
+"Main menu" = "Hauptmenü"
+# src/modkit/app/app.cpp:656 (+1)
+"A new game" = "Neues Spiel"
+# src/modkit/app/app.cpp:657 (+1)
+"The last quick save" = "Letzter Schnellspielstand"
+# src/modkit/app/app.cpp:660
+"Open the game's log" = "Protokoll des Spiels öffnen"
+# src/modkit/app/app.cpp:664
+"Forget the game's errors" = "Fehler des Spiels vergessen"
+# src/modkit/app/app.cpp:673
+"  Play  " = "  Spielen"
+# src/modkit/app/app.cpp:675
+"Export the mod into the game folder and start Risen (F5).\nA running game with hot reload picks the new files up." = "Exportiert die Mod in den Spielordner und startet Risen (F5).\nEin laufendes Spiel mit Hot Reload übernimmt die neuen Dateien."
+# src/modkit/app/app.cpp:691
+"loading {0}" = "lade {0}"
+# src/modkit/app/app.cpp:693
+"%s (%zu templates)" = "%s (%zu Vorlagen)"
+# src/modkit/app/app.cpp:695
+"No game data directory (Settings)" = "Kein Spieldatenverzeichnis (Einstellungen)"
+# src/modkit/app/app.cpp:695
+"Game data not loaded" = "Spieldaten nicht geladen"
+# src/modkit/app/app.cpp:706 (+1)
+"Unsaved changes" = "Ungespeicherte Änderungen"
+# src/modkit/app/app.cpp:710 (+2)
+"Import" = "Importieren"
+# src/modkit/app/app.cpp:720
+"The project has unsaved changes." = "Das Projekt hat ungespeicherte Änderungen."
+# src/modkit/app/app.cpp:727
+"Discard" = "Verwerfen"
+# src/modkit/app/app.cpp:734 (+3)
+"Cancel" = "Abbrechen"
+# src/modkit/app/dragdrop.cpp:45 (+2)
+"placed NPC" = "platzierter NPC"
+# src/modkit/app/dragdrop.cpp:45
+" (mod)" = " (Mod)"
+# src/modkit/app/dragdrop.cpp:82
+"behaviour %s" = "Verhalten %s"
+# src/modkit/app/dragdrop.cpp:83
+"drop it on an NPC's Behaviours section" = "auf den Abschnitt „Verhalten“ eines NPCs ziehen"
+# src/modkit/app/editor_util.cpp:39
+"or drop items here" = "oder Gegenstände hierher ziehen"
+# src/modkit/app/editor_util.cpp:116 (+2)
+"shipped: %s" = "mitgeliefert: %s"
+# src/modkit/app/editor_util.cpp:150
+"+ ingredient" = "+ Zutat"
+# src/modkit/app/editor_util.cpp:184
+"equip" = "anlegen"
+# src/modkit/app/editor_util.cpp:199
+"+ item" = "+ Gegenstand"
+# src/modkit/app/editor_util.cpp:219 (+6)
+"Kind" = "Art"
+# src/modkit/app/editor_util.cpp:229
+"player (empty), npc or a unique name" = "Spieler (leer), npc oder ein eindeutiger Name"
+# src/modkit/app/editor_util.cpp:232 (+10)
+"Quest" = "Quest"
+# src/modkit/app/editor_util.cpp:236
+"A quest of this mod or ANY quest of the game (the list shows the game's 370 quests with their titles). The condition holds while the quest has the status (Success: it was solved)." = "Eine Quest dieser Mod oder JEDE Quest des Spiels (die Liste zeigt die 370 Quests des Spiels mit ihren Titeln). Die Bedingung gilt, solange die Quest den Status hat (Erfolg: sie wurde gelöst)."
+# src/modkit/app/editor_util.cpp:238 (+4)
+"Status" = "Status"
+# src/modkit/app/editor_util.cpp:241 (+11)
+"Item" = "Gegenstand"
+# src/modkit/app/editor_util.cpp:246 (+4)
+"Count" = "Anzahl"
+# src/modkit/app/editor_util.cpp:250
+"Holder" = "Besitzer"
+# src/modkit/app/editor_util.cpp:252 (+6)
+"Variable" = "Variable"
+# src/modkit/app/editor_util.cpp:254
+"Compare a value" = "Wert vergleichen"
+# src/modkit/app/editor_util.cpp:264 (+8)
+"Value" = "Wert"
+# src/modkit/app/editor_util.cpp:268 (+1)
+"Compare" = "Vergleich"
+# src/modkit/app/editor_util.cpp:271 (+1)
+"Event" = "Ereignis"
+# src/modkit/app/editor_util.cpp:272
+"A game event: set by the dialogue command SetGameEvent (a game variable with the value 0)." = "Ein Spielereignis: wird vom Dialogbefehl SetGameEvent gesetzt (eine Spielvariable mit dem Wert 0)."
+# src/modkit/app/editor_util.cpp:274 (+3)
+"Skill" = "Fertigkeit"
+# src/modkit/app/editor_util.cpp:281 (+2)
+"Who" = "Wer"
+# src/modkit/app/editor_util.cpp:283 (+4)
+"Guild" = "Gilde"
+# src/modkit/app/editor_util.cpp:287 (+8)
+"NPC" = "NPC"
+# src/modkit/app/editor_util.cpp:293 (+3)
+"or a unique name" = "oder ein eindeutiger Name"
+# src/modkit/app/editor_util.cpp:326
+"Replace by a simple list (drops this condition)" = "Durch eine einfache Liste ersetzen (verwirft diese Bedingung)"
+# src/modkit/app/editor_util.cpp:331
+"all of these hold" = "alle diese treffen zu"
+# src/modkit/app/editor_util.cpp:331
+"any of these holds" = "eine dieser trifft zu"
+# src/modkit/app/editor_util.cpp:356
+"  (incomplete)" = "  (unvollständig)"
+# src/modkit/app/editor_util.cpp:370
+"+ condition" = "+ Bedingung"
+# src/modkit/app/editor_util.cpp:423
+"a table, written as JSON (Enter takes it)" = "eine Tabelle, als JSON geschrieben (Enter übernimmt sie)"
+# src/modkit/app/editor_util.cpp:427
+"default" = "Standard"
+# src/modkit/app/editor_util.cpp:432
+"back to the script's default %s" = "zurück zum Standard des Skripts %s"
+# src/modkit/app/editor_util.cpp:456
+"no behaviour of this name in the project (Behaviours panel)" = "kein Verhalten mit diesem Namen im Projekt (Bereich Verhalten)"
+# src/modkit/app/editor_util.cpp:469 (+1)
+"no parameters" = "keine Parameter"
+# src/modkit/app/editor_util.cpp:475
+"'%s' is no parameter of the script any more" = "„%s“ ist kein Parameter des Skripts mehr"
+# src/modkit/app/editor_util.cpp:477
+"drop it" = "entfernen"
+# src/modkit/app/editor_util.cpp:492
+"attach a behaviour..." = "Verhalten zuweisen..."
+# src/modkit/app/editor_util.cpp:500
+"none yet: create one in the Behaviours panel" = "noch keines: eines im Bereich Verhalten anlegen"
+# src/modkit/app/editor_util.cpp:504
+"or drop a behaviour here" = "oder ein Verhalten hierher ziehen"
+# src/modkit/app/editor_util.cpp:519 (+1)
+"{0} (the project's world)" = "{0} (die Welt des Projekts)"
+# src/modkit/app/editor_util.cpp:537
+"The world this belongs to: the mod makes it (or changes the entity) only while that world is active. The game's island is \"World\"; test levels and worlds of other mods have their own names." = "Die Welt, zu der dies gehört: Die Mod erzeugt es (oder ändert die Figur) nur, solange diese Welt aktiv ist. Die Insel des Spiels heißt „World“; Testlevel und Welten anderer Mods haben eigene Namen."
+# src/modkit/app/event_ui.cpp:109
+"A template (every wolf) or the unique name of one NPC." = "Eine Vorlage (jeder Wolf) oder der eindeutige Name eines einzelnen NPCs."
+# src/modkit/app/event_ui.cpp:132
+"No layers yet: make one in the Layers panel." = "Noch keine Ebenen: im Bereich Ebenen eine anlegen."
+# src/modkit/app/event_ui.cpp:137
+"(choose)" = "(wählen)"
+# src/modkit/app/event_ui.cpp:139
+"   (starts off)" = "   (startet aus)"
+# src/modkit/app/event_ui.cpp:152
+"A sector of the game's world by file base name; the ones that start off are switched by the story (docs/RE.md section 55)." = "Ein Sektor der Spielwelt nach Dateiname ohne Endung; die, die ausgeschaltet starten, werden von der Geschichte geschaltet (docs/RE.md Abschnitt 55)."
+# src/modkit/app/event_ui.cpp:197 (+1)
+"Combine" = "Kombinieren"
+# src/modkit/app/event_ui.cpp:202 (+1)
+"Negate the result" = "Ergebnis umkehren"
+# src/modkit/app/event_ui.cpp:226
+"+ Add a check..." = "+ Prüfung hinzufügen..."
+# src/modkit/app/node_canvas.cpp:109
+"Create and link" = "Erstellen und verknüpfen"
+# src/modkit/app/node_canvas.cpp:109 (+1)
+"Create" = "Erstellen"
+# src/modkit/app/node_canvas.cpp:390 (+4)
+"Duplicate" = "Duplizieren"
+# src/modkit/app/palette.cpp:48
+"Shipped {0}" = "Mitgeliefert: {0}"
+# src/modkit/app/palette.cpp:58 (+9)
+"Command" = "Befehl"
+# src/modkit/app/palette.cpp:58 (+1)
+"Play" = "Spielen"
+# src/modkit/app/palette.cpp:58
+"export and start the game (F5)" = "exportieren und das Spiel starten (F5)"
+# src/modkit/app/palette.cpp:59
+"write the mod into a folder (Ctrl+E)" = "die Mod in einen Ordner schreiben (Strg+E)"
+# src/modkit/app/palette.cpp:60
+"Save project" = "Projekt speichern"
+# src/modkit/app/palette.cpp:63 (+1)
+"Wizard: fetch quest" = "Assistent: Hol-Quest"
+# src/modkit/app/palette.cpp:63
+"an NPC asks for items; quest and dialogue" = "ein NPC bittet um Gegenstände; Quest und Dialog"
+# src/modkit/app/palette.cpp:64 (+1)
+"Wizard: new weapon with a recipe" = "Assistent: neue Waffe mit Rezept"
+# src/modkit/app/palette.cpp:64
+"an item and the recipe that crafts it" = "ein Gegenstand und das Rezept, mit dem man ihn herstellt"
+# src/modkit/app/palette.cpp:65 (+1)
+"Wizard: trader with stock" = "Assistent: Händler mit Sortiment"
+# src/modkit/app/palette.cpp:65
+"an NPC who sells things" = "ein NPC, der Waren verkauft"
+# src/modkit/app/palette.cpp:67
+"Panel" = "Bereich"
+# src/modkit/app/palette.cpp:67
+"open the panel" = "den Bereich öffnen"
+# src/modkit/app/palette.cpp:76 (+1)
+" (change)" = " (ändern)"
+# src/modkit/app/palette.cpp:76
+" (new)" = " (neu)"
+# src/modkit/app/palette.cpp:78
+" (template)" = " (Vorlage)"
+# src/modkit/app/palette.cpp:79
+" (placed, {0})" = " (platziert, {0})"
+# src/modkit/app/palette.cpp:80
+"owner {0}" = "Besitzer {0}"
+# src/modkit/app/palette.cpp:82
+"new, made of {0}" = "neu, gebaut aus {0}"
+# src/modkit/app/palette.cpp:82
+"change" = "ändern"
+# src/modkit/app/palette.cpp:85 (+1)
+"group {0}" = "Gruppe {0}"
+# src/modkit/app/palette.cpp:128
+"Search objects, shipped templates, panels, commands..." = "Objekte, mitgelieferte Vorlagen, Bereiche, Befehle suchen..."
+# src/modkit/app/palette.cpp:150
+"Type to search." = "Zum Suchen tippen."
+# src/modkit/app/palette.cpp:150
+"Nothing matches." = "Nichts passt."
+# src/modkit/app/palette.cpp:152
+"Up / Down choose, Enter opens, Esc closes" = "Auf/Ab wählen, Enter öffnet, Esc schließt"
+# src/modkit/app/panels/assets_panel.cpp:57
+"{0} is already an asset of the project" = "{0} ist schon eine Ressource des Projekts"
+# src/modkit/app/panels/assets_panel.cpp:67
+"{0} asset file(s) added" = "{0} Ressourcendatei(en) hinzugefügt"
+# src/modkit/app/panels/assets_panel.cpp:76
+"Add files..." = "Dateien hinzufügen..."
+# src/modkit/app/panels/assets_panel.cpp:81
+"Import 3D model..." = "3D-Modell importieren..."
+# src/modkit/app/panels/assets_panel.cpp:82
+"A model of your own (Wavefront OBJ, glTF, GLB) becomes a compiled mesh (._xmsh) in the project's assets folder. Pick the game materials it uses." = "Ein eigenes Modell (Wavefront OBJ, glTF, GLB) wird zu einem kompilierten Mesh (._xmsh) im Ressourcenordner des Projekts. Wähle die Spielmaterialien, die es verwendet."
+# src/modkit/app/panels/assets_panel.cpp:84
+"Reload" = "Neu laden"
+# src/modkit/app/panels/assets_panel.cpp:88
+"Reads the files again (after you changed them outside the editor)." = "Liest die Dateien erneut (nachdem du sie außerhalb des Editors geändert hast)."
+# src/modkit/app/panels/assets_panel.cpp:90
+"%zu files" = "%zu Dateien"
+# src/modkit/app/panels/assets_panel.cpp:92
+"Save the project first to store the files relative to the project folder." = "Speichere zuerst das Projekt, damit die Dateien relativ zum Projektordner abgelegt werden."
+# src/modkit/app/panels/assets_panel.cpp:99
+"Size" = "Größe"
+# src/modkit/app/panels/assets_panel.cpp:100
+"State" = "Zustand"
+# src/modkit/app/panels/assets_panel.cpp:118
+"%.1f KB" = "%.1f KB"
+# src/modkit/app/panels/assets_panel.cpp:122 (+2)
+"missing" = "fehlt"
+# src/modkit/app/panels/assets_panel.cpp:123
+"-> icon %s" = "-> Symbol %s"
+# src/modkit/app/panels/assets_panel.cpp:124
+"replaces the game's %s" = "ersetzt %s des Spiels"
+# src/modkit/app/panels/assets_panel.cpp:125
+"-> sounds/" = "-> sounds/"
+# src/modkit/app/panels/assets_panel.cpp:126
+"-> assets/%s" = "-> assets/%s"
+# src/modkit/app/panels/assets_panel.cpp:132
+"Remove" = "Entfernen"
+# src/modkit/app/panels/assets_panel.cpp:147
+"Add the files of your mod: compiled resources of the engine (made with the game's tools or risen.assets) and audio for voiced lines." = "Füge die Dateien deiner Mod hinzu: kompilierte Ressourcen der Engine (mit den Werkzeugen des Spiels oder risen.assets erstellt) und Audio für vertonte Zeilen."
+# src/modkit/app/panels/assets_panel.cpp:164
+"Save the project first: the mesh is stored in its assets folder" = "Speichere zuerst das Projekt: das Mesh wird in seinem Ressourcenordner abgelegt"
+# src/modkit/app/panels/assets_panel.cpp:236
+"Imported {0}: {1} part(s), {2} triangles" = "{0} importiert: {1} Teil(e), {2} Dreiecke"
+# src/modkit/app/panels/assets_panel.cpp:242 (+1)
+"Import 3D model" = "3D-Modell importieren"
+# src/modkit/app/panels/assets_panel.cpp:255
+"%zu triangles in %zu material group(s)" = "%zu Dreiecke in %zu Materialgruppe(n)"
+# src/modkit/app/panels/assets_panel.cpp:258
+"Name of the mesh" = "Name des Meshes"
+# src/modkit/app/panels/assets_panel.cpp:260
+"-> assets/%s._xmsh" = "-> assets/%s._xmsh"
+# src/modkit/app/panels/assets_panel.cpp:261
+"Scale" = "Maßstab"
+# src/modkit/app/panels/assets_panel.cpp:262
+"The game's units are about centimetres: a human is 180 units high, so a glTF model in metres wants 100." = "Die Einheiten des Spiels sind etwa Zentimeter: Ein Mensch ist 180 Einheiten groß, ein glTF-Modell in Metern braucht also 100."
+# src/modkit/app/panels/assets_panel.cpp:263
+"The model's up axis is +Z" = "Die Aufwärtsachse des Modells ist +Z"
+# src/modkit/app/panels/assets_panel.cpp:264
+"Blender and CAD models are often +Z up; the game is +Y up." = "Blender- und CAD-Modelle sind oft +Z nach oben; das Spiel hat +Y nach oben."
+# src/modkit/app/panels/assets_panel.cpp:265
+"Mirror Z (right-handed model)" = "Z spiegeln (rechtshändiges Modell)"
+# src/modkit/app/panels/assets_panel.cpp:266
+"OBJ and glTF are right-handed, the game is left-handed: z is negated (which also turns the front faces the way the game wants them). Untick if the model looks mirrored." = "OBJ und glTF sind rechtshändig, das Spiel ist linkshändig: z wird negiert (dadurch drehen sich auch die Vorderseiten so, wie das Spiel sie braucht). Abschalten, wenn das Modell gespiegelt aussieht."
+# src/modkit/app/panels/assets_panel.cpp:268
+"Materials" = "Materialien"
+# src/modkit/app/panels/assets_panel.cpp:269
+"A mesh names game materials (._xmat); the textures come from them. Pick what each material of the model should become." = "Ein Mesh nennt Spielmaterialien (._xmat); die Texturen stammen von ihnen. Wähle, was jedes Material des Modells werden soll."
+# src/modkit/app/panels/assets_panel.cpp:270
+"Default material" = "Standardmaterial"
+# src/modkit/app/panels/assets_panel.cpp:276
+"(no material)" = "(kein Material)"
+# src/modkit/app/panels/assets_panel.cpp:281
+"An empty field uses the default material." = "Ein leeres Feld verwendet das Standardmaterial."
+# src/modkit/app/panels/assets_panel.cpp:326
+"%s%s, %d channel(s), %d Hz, %.2f s" = "%s%s, %d Kanal/Kanäle, %d Hz, %.2f s"
+# src/modkit/app/panels/assets_panel.cpp:326
+"compiled sound, " = "kompilierter Klang,"
+# src/modkit/app/panels/assets_panel.cpp:338
+"{0} sub-mesh(es), {1} triangles; materials: {2}" = "{0} Teilmesh(es), {1} Dreiecke; Materialien: {2}"
+# src/modkit/app/panels/assets_panel.cpp:341
+"no texture found" = "keine Textur gefunden"
+# src/modkit/app/panels/assets_panel.cpp:341
+"texture: {0}" = "Textur: {0}"
+# src/modkit/app/panels/assets_panel.cpp:348
+", with alpha" = ", mit Alpha"
+# src/modkit/app/panels/assets_panel.cpp:375
+"Use it as the Sound of a dialogue line (Dialogues panel)." = "Als Klang einer Dialogzeile verwenden (Bereich Dialoge)."
+# src/modkit/app/panels/assets_panel.cpp:376
+"A compiled sound: SoundName of a SaySound command (as %s), or it replaces a game sound of the same name." = "Ein kompilierter Klang: SoundName eines SaySound-Befehls (als %s) oder er ersetzt einen Spielklang gleichen Namens."
+# src/modkit/app/panels/assets_panel.cpp:383
+"load the game data to see the mesh (its materials and textures may come from the game)" = "Spieldaten laden, um das Mesh zu sehen (Materialien und Texturen können aus dem Spiel stammen)"
+# src/modkit/app/panels/assets_panel.cpp:387
+"An item icon: exported into the icon atlas of the mod as %s." = "Ein Gegenstandssymbol: wird als %s in den Symbolatlas der Mod exportiert."
+# src/modkit/app/panels/assets_panel.cpp:388
+"Exported as the texture %s (DXT, with mip maps). Choose it as an item's icon to make it an icon instead." = "Wird als Textur %s exportiert (DXT, mit Mip-Maps). Als Symbol eines Gegenstands gewählt, wird es stattdessen ein Symbol."
+# src/modkit/app/panels/behaviors_panel.cpp:45
+"+ New behaviour" = "+ Neues Verhalten"
+# src/modkit/app/panels/behaviors_panel.cpp:46
+"Creates a Lua script next to the project (behaviors/<name>.lua) from a commented template and opens it in your editor. A behaviour runs on every NPC it is attached to: start, update every few seconds, and handlers for death, damage, talk, items, any quest of the game, the player coming near." = "Erstellt ein Lua-Skript neben dem Projekt (behaviors/<Name>.lua) aus einer kommentierten Vorlage und öffnet es in deinem Editor. Ein Verhalten läuft auf jedem NPC, dem es zugewiesen ist: Start, Aktualisierung alle paar Sekunden und Handler für Tod, Schaden, Gespräch, Gegenstände, jede Quest des Spiels, Annäherung des Spielers."
+# src/modkit/app/panels/behaviors_panel.cpp:50
+"Add a script..." = "Skript hinzufügen..."
+# src/modkit/app/panels/behaviors_panel.cpp:55
+"Save the project first: new scripts are written next to the project file." = "Speichere zuerst das Projekt: neue Skripte werden neben die Projektdatei geschrieben."
+# src/modkit/app/panels/behaviors_panel.cpp:64 (+5)
+"(unnamed)" = "(unbenannt)"
+# src/modkit/app/panels/behaviors_panel.cpp:68
+"drag it onto an NPC" = "auf einen NPC ziehen"
+# src/modkit/app/panels/behaviors_panel.cpp:70
+"Remove from the project (the file stays)" = "Aus dem Projekt entfernen (die Datei bleibt)"
+# src/modkit/app/panels/behaviors_panel.cpp:75
+"No behaviours yet." = "Noch keine Verhalten."
+# src/modkit/app/panels/behaviors_panel.cpp:88
+"Select a behaviour, or create one. Drag a behaviour onto a placed NPC or an NPC template (NPCs panel) to attach it." = "Wähle ein Verhalten oder lege eines an. Ziehe ein Verhalten auf einen platzierten NPC oder eine NPC-Vorlage (Bereich NPCs), um es zuzuweisen."
+# src/modkit/app/panels/behaviors_panel.cpp:96
+"Save the project first: the script is written next to the project file" = "Speichere zuerst das Projekt: das Skript wird neben die Projektdatei geschrieben"
+# src/modkit/app/panels/behaviors_panel.cpp:109
+"Cannot write the script: {0}" = "Das Skript kann nicht geschrieben werden: {0}"
+# src/modkit/app/panels/behaviors_panel.cpp:117
+"Created {0} and opened it in your editor" = "{0} erstellt und in deinem Editor geöffnet"
+# src/modkit/app/panels/behaviors_panel.cpp:145 (+10)
+"Name" = "Name"
+# src/modkit/app/panels/behaviors_panel.cpp:161
+"Open in your editor" = "In deinem Editor öffnen"
+# src/modkit/app/panels/behaviors_panel.cpp:162
+"Cannot open {0}" = "{0} kann nicht geöffnet werden"
+# src/modkit/app/panels/behaviors_panel.cpp:165
+"Change file..." = "Datei ändern..."
+# src/modkit/app/panels/behaviors_panel.cpp:178
+"(changes on disk are read again at once)" = "(Änderungen auf dem Datenträger werden sofort neu gelesen)"
+# src/modkit/app/panels/behaviors_panel.cpp:181
+"What the editor read from it" = "Was der Editor daraus gelesen hat"
+# src/modkit/app/panels/behaviors_panel.cpp:191
+"handlers: %s" = "Handler: %s"
+# src/modkit/app/panels/behaviors_panel.cpp:192
+"update every %.2f s" = "Aktualisierung alle %.2f s"
+# src/modkit/app/panels/behaviors_panel.cpp:193
+"player near at %.0f units" = "Spieler in der Nähe bei %.0f Einheiten"
+# src/modkit/app/panels/behaviors_panel.cpp:196
+"Parameter" = "Parameter"
+# src/modkit/app/panels/behaviors_panel.cpp:197
+"Default" = "Standard"
+# src/modkit/app/panels/behaviors_panel.cpp:209
+"Attached to" = "Zugewiesen an"
+# src/modkit/app/panels/behaviors_panel.cpp:227
+"every NPC of this template" = "jeden NPC dieser Vorlage"
+# src/modkit/app/panels/behaviors_panel.cpp:228
+"Nothing yet: drag the behaviour from the list onto an NPC's Behaviours section (NPCs panel)." = "Noch nichts: ziehe das Verhalten aus der Liste auf den Abschnitt „Verhalten“ eines NPCs (Bereich NPCs)."
+# src/modkit/app/panels/browser_panel.cpp:69 (+3)
+"Items" = "Gegenstände"
+# src/modkit/app/panels/browser_panel.cpp:72 (+2)
+"Recipes" = "Rezepte"
+# src/modkit/app/panels/browser_panel.cpp:75 (+1)
+"NPC templates" = "NPC-Vorlagen"
+# src/modkit/app/panels/browser_panel.cpp:77 (+2)
+"Placed NPCs" = "Platzierte NPCs"
+# src/modkit/app/panels/browser_panel.cpp:109 (+1)
+"Reading the game data..." = "Spieldaten werden gelesen..."
+# src/modkit/app/panels/browser_panel.cpp:109 (+1)
+"No game data. Choose the game's data directory in Settings." = "Keine Spieldaten. Wähle in den Einstellungen das Datenverzeichnis des Spiels."
+# src/modkit/app/panels/browser_panel.cpp:110
+"Open Settings" = "Einstellungen öffnen"
+# src/modkit/app/panels/browser_panel.cpp:117
+"Include mod" = "Mod einbeziehen"
+# src/modkit/app/panels/browser_panel.cpp:118
+"Also list what the mod makes: its new items, recipes, NPC templates and placed NPCs (group Mod). Drag any row into a template field, an inventory or loot list, or the World view." = "Listet auch, was die Mod erzeugt: ihre neuen Gegenstände, Rezepte, NPC-Vorlagen und platzierten NPCs (Gruppe Mod). Jede Zeile lässt sich in ein Vorlagenfeld, eine Inventar- oder Beuteliste oder in die Weltansicht ziehen."
+# src/modkit/app/panels/browser_panel.cpp:122
+"search name or label" = "Name oder Bezeichnung suchen"
+# src/modkit/app/panels/browser_panel.cpp:125 (+1)
+"All kinds" = "Alle Arten"
+# src/modkit/app/panels/browser_panel.cpp:201
+"Mod  (%zu)" = "Mod  (%zu)"
+# src/modkit/app/panels/browser_panel.cpp:272
+"Select a template." = "Wähle eine Vorlage."
+# src/modkit/app/panels/browser_panel.cpp:282
+"%s   %s   %s.tple" = "%s   %s   %s.tple"
+# src/modkit/app/panels/browser_panel.cpp:283
+"mesh %s" = "Mesh %s"
+# src/modkit/app/panels/browser_panel.cpp:287
+"icon %s" = "Symbol %s"
+# src/modkit/app/panels/browser_panel.cpp:315
+"placed NPC of the mod, template %s" = "platzierter NPC der Mod, Vorlage %s"
+# src/modkit/app/panels/browser_panel.cpp:316
+"%s new in the mod%s%s" = "%s neu in der Mod%s%s"
+# src/modkit/app/panels/browser_panel.cpp:316
+", based on " = ", basierend auf"
+# src/modkit/app/panels/browser_panel.cpp:317
+"Open in {0}" = "In {0} öffnen"
+# src/modkit/app/panels/browser_panel.cpp:323 (+1)
+"Template in Browser" = "Vorlage im Browser"
+# src/modkit/app/panels/browser_panel.cpp:323
+"Base in Browser" = "Basis im Browser"
+# src/modkit/app/panels/browser_panel.cpp:329
+"Drag the name from the list into a template field, an inventory or the World view." = "Ziehe den Namen aus der Liste in ein Vorlagenfeld, ein Inventar oder die Weltansicht."
+# src/modkit/app/panels/browser_panel.cpp:333
+"Properties of the template" = "Eigenschaften der Vorlage"
+# src/modkit/app/panels/browser_panel.cpp:333
+"Properties of the base (the mod's changes are in its editor)" = "Eigenschaften der Basis (die Änderungen der Mod stehen in ihrem Editor)"
+# src/modkit/app/panels/browser_panel.cpp:341
+"filter properties" = "Eigenschaften filtern"
+# src/modkit/app/panels/browser_panel.cpp:343
+"Property" = "Eigenschaft"
+# src/modkit/app/panels/browser_panel.cpp:345 (+2)
+"Type" = "Typ"
+# src/modkit/app/panels/conversation_panel.cpp:47
+"There is no dialogue in the project yet (Dialogues panel)." = "Im Projekt gibt es noch keinen Dialog (Bereich Dialoge)."
+# src/modkit/app/panels/conversation_panel.cpp:87
+"owner: %s" = "Besitzer: %s"
+# src/modkit/app/panels/conversation_panel.cpp:89 (+1)
+"Talk again" = "Noch einmal sprechen"
+# src/modkit/app/panels/conversation_panel.cpp:92
+"Start a new conversation. What was used up (options that disappear after use) and the world stay." = "Beginnt ein neues Gespräch. Was verbraucht wurde (Optionen, die nach der Benutzung verschwinden) und die Welt bleiben."
+# src/modkit/app/panels/conversation_panel.cpp:94
+"New game" = "Neues Spiel"
+# src/modkit/app/panels/conversation_panel.cpp:97
+"Everything back to the start: nothing used up, no quests, no items." = "Alles zurück auf Anfang: nichts verbraucht, keine Quests, keine Gegenstände."
+# src/modkit/app/panels/conversation_panel.cpp:122
+"The dialogue has %d errors (Dialogues panel): the export would be refused." = "Der Dialog hat %d Fehler (Bereich Dialoge): der Export würde abgelehnt."
+# src/modkit/app/panels/conversation_panel.cpp:128
+"You: %s" = "Du: %s"
+# src/modkit/app/panels/conversation_panel.cpp:154
+"The conversation is over." = "Das Gespräch ist zu Ende."
+# src/modkit/app/panels/conversation_panel.cpp:159
+"No option is on offer (every condition is 'no' or all options are used up)." = "Keine Option steht zur Wahl (jede Bedingung ist „nein“ oder alle Optionen sind verbraucht)."
+# src/modkit/app/panels/conversation_panel.cpp:164
+"(no text)" = "(kein Text)"
+# src/modkit/app/panels/conversation_panel.cpp:167
+" (permanent)" = " (dauerhaft)"
+# src/modkit/app/panels/conversation_panel.cpp:170
+"Leave" = "Gehen"
+# src/modkit/app/panels/conversation_panel.cpp:185
+"Conditions of this dialogue" = "Bedingungen dieses Dialogs"
+# src/modkit/app/panels/conversation_panel.cpp:186
+"No option has a condition." = "Keine Option hat eine Bedingung."
+# src/modkit/app/panels/conversation_panel.cpp:187
+"Change the world, or pin a condition to yes / no; the options update at once." = "Ändere die Welt oder lege eine Bedingung auf ja / nein fest; die Optionen aktualisieren sich sofort."
+# src/modkit/app/panels/conversation_panel.cpp:202
+"(not started)" = "(nicht begonnen)"
+# src/modkit/app/panels/conversation_panel.cpp:202
+"Running" = "Läuft"
+# src/modkit/app/panels/conversation_panel.cpp:202
+"Success" = "Erfolg"
+# src/modkit/app/panels/conversation_panel.cpp:202
+"Failed" = "Gescheitert"
+# src/modkit/app/panels/conversation_panel.cpp:202
+"Cancelled" = "Abgebrochen"
+# src/modkit/app/panels/conversation_panel.cpp:208
+"quest state" = "Queststatus"
+# src/modkit/app/panels/conversation_panel.cpp:214
+"carried" = "getragen"
+# src/modkit/app/panels/conversation_panel.cpp:218
+"exists" = "vorhanden"
+# src/modkit/app/panels/conversation_panel.cpp:226 (+2)
+"value" = "Wert"
+# src/modkit/app/panels/conversation_panel.cpp:230
+"happened" = "eingetreten"
+# src/modkit/app/panels/conversation_panel.cpp:236
+"level" = "Stufe"
+# src/modkit/app/panels/conversation_panel.cpp:239
+"member" = "Mitglied"
+# src/modkit/app/panels/conversation_panel.cpp:245
+"is dead" = "ist tot"
+# src/modkit/app/panels/conversation_panel.cpp:255
+"as world" = "wie die Welt"
+# src/modkit/app/panels/conversation_panel.cpp:255
+"pin yes" = "erzwingen: ja"
+# src/modkit/app/panels/conversation_panel.cpp:255
+"pin no" = "erzwingen: nein"
+# src/modkit/app/panels/conversation_panel.cpp:263
+"Quests now" = "Quests jetzt"
+# src/modkit/app/panels/conversation_panel.cpp:264
+"none started" = "keine begonnen"
+# src/modkit/app/panels/conversation_panel.cpp:268
+"Never reachable" = "Nie erreichbar"
+# src/modkit/app/panels/conversation_panel.cpp:269
+"%s (its parent is no option of this dialogue)" = "%s (sein Elternteil ist keine Option dieses Dialogs)"
+# src/modkit/app/panels/dialogs_panel.cpp:104
+"Create a dialogue: a conversation of one NPC (the owner) with the player." = "Erstelle einen Dialog: ein Gespräch eines NPCs (des Besitzers) mit dem Spieler."
+# src/modkit/app/panels/dialogs_panel.cpp:176
+"+ New dialogue" = "+ Neuer Dialog"
+# src/modkit/app/panels/dialogs_panel.cpp:183 (+13)
+"Delete" = "Löschen"
+# src/modkit/app/panels/dialogs_panel.cpp:186
+"(no owner)" = "(kein Besitzer)"
+# src/modkit/app/panels/dialogs_panel.cpp:212
+"NPCs of {0}" = "NPCs von {0}"
+# src/modkit/app/panels/dialogs_panel.cpp:215 (+6)
+"filter" = "Filter"
+# src/modkit/app/panels/dialogs_panel.cpp:229
+"Owner NPC" = "Besitzer-NPC"
+# src/modkit/app/panels/dialogs_panel.cpp:234
+"The NPC who owns the options: a placed NPC of the project (pick it, or drag it here from the NPCs panel or the Browser), or the unique entity name of an NPC in the world." = "Der NPC, dem die Optionen gehören: ein platzierter NPC des Projekts (wähle ihn oder ziehe ihn aus dem Bereich NPCs oder dem Browser hierher) oder der eindeutige Entitätsname eines NPCs in der Welt."
+# src/modkit/app/panels/dialogs_panel.cpp:237
+"Play through" = "Durchspielen"
+# src/modkit/app/panels/dialogs_panel.cpp:242
+"  right-click: new node · drag from a pin into space: new linked node · Del: delete" = "  Rechtsklick: neuer Knoten · von einem Pin ins Leere ziehen: neuer verknüpfter Knoten · Entf: löschen"
+# src/modkit/app/panels/dialogs_panel.cpp:250
+"\n[sound: {0}]" = "\n[Klang: {0}]"
+# src/modkit/app/panels/dialogs_panel.cpp:251
+"\n[sound: {0} variants]" = "\n[Klang: {0} Varianten]"
+# src/modkit/app/panels/dialogs_panel.cpp:295 (+1)
+"Select a node to edit it." = "Wähle einen Knoten, um ihn zu bearbeiten."
+# src/modkit/app/panels/dialogs_panel.cpp:297
+"An Option is what the player says; its 'then' pin leads to the lines and commands that follow, its 'choices' pin to sub-options, 'when' takes conditions. A sequence without an End returns to the list of options (an option without sub-options gets an End by itself)." = "Eine Option ist, was der Spieler sagt; ihr Pin „then“ führt zu den folgenden Zeilen und Befehlen, ihr Pin „choices“ zu Unteroptionen, „when“ nimmt Bedingungen auf. Eine Folge ohne End kehrt zur Liste der Optionen zurück (eine Option ohne Unteroptionen bekommt von selbst ein End)."
+# src/modkit/app/panels/dialogs_panel.cpp:314 (+1)
+"Player says" = "Spieler sagt"
+# src/modkit/app/panels/dialogs_panel.cpp:315 (+3)
+"Sound" = "Klang"
+# src/modkit/app/panels/dialogs_panel.cpp:317
+"Info: offered in the list. Important: the NPC starts with it. Comment, News, Refuse, Parent: special kinds of the engine." = "Info: wird in der Liste angeboten. Important: der NPC beginnt damit. Comment, News, Refuse, Parent: besondere Arten der Engine."
+# src/modkit/app/panels/dialogs_panel.cpp:319
+"Permanent (stays after use)" = "Dauerhaft (bleibt nach der Benutzung)"
+# src/modkit/app/panels/dialogs_panel.cpp:324
+"Info name" = "Info-Name"
+# src/modkit/app/panels/dialogs_panel.cpp:328
+"The option's unique name: the engine saves 'option used' under it. Keep it once released." = "Der eindeutige Name der Option: die Engine speichert „Option benutzt“ unter ihm. Nach der Veröffentlichung nicht mehr ändern."
+# src/modkit/app/panels/dialogs_panel.cpp:329
+"Add a sub-option" = "Unteroption hinzufügen"
+# src/modkit/app/panels/dialogs_panel.cpp:340
+"Add a condition" = "Bedingung hinzufügen"
+# src/modkit/app/panels/dialogs_panel.cpp:353 (+2)
+"Exported as" = "Exportiert als"
+# src/modkit/app/panels/dialogs_panel.cpp:361 (+1)
+"Speaker" = "Sprecher"
+# src/modkit/app/panels/dialogs_panel.cpp:365
+"Other NPC" = "Anderer NPC"
+# src/modkit/app/panels/dialogs_panel.cpp:366 (+7)
+"Text" = "Text"
+# src/modkit/app/panels/dialogs_panel.cpp:399
+"SoundName" = "SoundName"
+# src/modkit/app/panels/dialogs_panel.cpp:404
+"The raw name of a sound the engine knows (a game sound or a compiled ._xsnd of the project): played as it is, without subtitle, in every voice language. Or leave it empty and give a custom sound below." = "Der Rohname eines Klangs, den die Engine kennt (ein Spielklang oder eine kompilierte ._xsnd des Projekts): wird unverändert abgespielt, ohne Untertitel, in jeder Sprachausgabe. Oder leer lassen und unten einen eigenen Klang angeben."
+# src/modkit/app/panels/dialogs_panel.cpp:414
+"player, npc or a unique name" = "Spieler, npc oder ein eindeutiger Name"
+# src/modkit/app/panels/dialogs_panel.cpp:418
+"Custom sound" = "Eigener Klang"
+# src/modkit/app/panels/dialogs_panel.cpp:425 (+3)
+"Action" = "Aktion"
+# src/modkit/app/panels/dialogs_panel.cpp:432 (+2)
+"Script" = "Skript"
+# src/modkit/app/panels/dialogs_panel.cpp:432
+"a script name" = "ein Skriptname"
+# src/modkit/app/panels/dialogs_panel.cpp:453 (+3)
+"Problems" = "Probleme"
+# src/modkit/app/panels/events_panel.cpp:55
+"Create an event graph. A trigger node (\"On chapter\", \"On player moved\", \"On kill\", ...) starts it; conditions, flow nodes and actions follow. Example: On chapter 3 -> Condition (intro = 0) -> Set variable (intro = 1) -> HUD message -> End." = "Erstelle einen Ereignisgraphen. Ein Auslöserknoten („Bei Kapitel“, „Bei Bewegung des Spielers“, „Bei Tötung“, ...) startet ihn; Bedingungen, Ablaufknoten und Aktionen folgen. Beispiel: Bei Kapitel 3 -> Bedingung (intro = 0) -> Variable setzen (intro = 1) -> HUD-Meldung -> Ende."
+# src/modkit/app/panels/events_panel.cpp:121
+"+ New event graph" = "+ Neuer Ereignisgraph"
+# src/modkit/app/panels/events_panel.cpp:151
+"Enabled" = "Aktiv"
+# src/modkit/app/panels/events_panel.cpp:152
+"A disabled graph is exported but never starts (custom.lua can turn it on with require(\"modkit.events\").set_enabled(name, true))." = "Ein deaktivierter Graph wird exportiert, startet aber nie (custom.lua kann ihn mit require(\"modkit.events\").set_enabled(name, true) einschalten)."
+# src/modkit/app/panels/events_panel.cpp:159
+"Select a node to edit it. Right-click the canvas to add nodes; drag from an output pin into empty space to add a linked node." = "Wähle einen Knoten, um ihn zu bearbeiten. Rechtsklick auf die Zeichenfläche fügt Knoten hinzu; von einem Ausgangspin ins Leere ziehen fügt einen verknüpften Knoten hinzu."
+# src/modkit/app/panels/events_panel.cpp:161
+"A graph starts at a trigger (green) and runs along its links. A Condition goes on at 'then' or 'else'. An output linked to several nodes runs them all, top to bottom. Once, After N passes and Cooldown keep their state in the savegame; a Delay too. Variables are game variables (dialogues and quests can read them) or mod variables kept in the savegame." = "Ein Graph beginnt an einem Auslöser (grün) und läuft entlang seiner Verknüpfungen. Eine Bedingung geht bei „then“ oder „else“ weiter. Ein Ausgang, der mit mehreren Knoten verknüpft ist, führt sie alle von oben nach unten aus. „Einmal“, „Nach N Durchgängen“ und „Abkühlzeit“ behalten ihren Zustand im Spielstand; „Verzögerung“ ebenso. Variablen sind Spielvariablen (Dialoge und Quests können sie lesen) oder Mod-Variablen, die im Spielstand gehalten werden."
+# src/modkit/app/panels/events_panel.cpp:164 (+10)
+"Notes" = "Notizen"
+# src/modkit/app/panels/extras_panels.cpp:50
+"Patch this template's properties" = "Eigenschaften dieser Vorlage ändern"
+# src/modkit/app/panels/extras_panels.cpp:68
+"+ Patch" = "+ Änderung"
+# src/modkit/app/panels/extras_panels.cpp:75
+"A patch writes properties of any template of the game (or of the project): the range of a light, the flight of a projectile, an NPC's voice... It is applied on the first tick and again with the live entities on every session start, like the balance data." = "Eine Änderung schreibt Eigenschaften einer beliebigen Vorlage des Spiels (oder des Projekts): die Reichweite eines Lichts, den Flug eines Geschosses, die Stimme eines NPCs... Sie wird beim ersten Tick angewendet und bei jedem Sitzungsbeginn erneut auf die lebenden Entitäten, wie die Balancedaten."
+# src/modkit/app/panels/extras_panels.cpp:100 (+3)
+"Template" = "Vorlage"
+# src/modkit/app/panels/extras_panels.cpp:103 (+1)
+"Properties" = "Eigenschaften"
+# src/modkit/app/panels/extras_panels.cpp:104
+"Only the properties you list are written. A property set the template lacks cannot be added at run time." = "Nur die aufgeführten Eigenschaften werden geschrieben. Eine Eigenschaft, die die Vorlage nicht hat, kann zur Laufzeit nicht hinzugefügt werden."
+# src/modkit/app/panels/extras_panels.cpp:110
+"Select a patch, or add one from the Browser (\"Patch this template's properties\")." = "Wähle eine Änderung oder füge eine aus dem Browser hinzu („Eigenschaften dieser Vorlage ändern“)."
+# src/modkit/app/panels/extras_panels.cpp:190
+"Dialogue edits" = "Dialogänderungen"
+# src/modkit/app/panels/extras_panels.cpp:194
+"Teacher limits" = "Lehrergrenzen"
+# src/modkit/app/panels/extras_panels.cpp:207
+"+ Edit of a shipped info" = "+ Änderung einer mitgelieferten Info"
+# src/modkit/app/panels/extras_panels.cpp:214
+"Adds commands to a dialogue info of the game when the game starts (risen.dialog.get): an XP reward, or trader refills (the stock a trader gets when the info runs, e.g. at a chapter change). The new dialogues of the Dialogues panel are separate." = "Fügt einer Dialog-Info des Spiels beim Spielstart Befehle hinzu (risen.dialog.get): eine XP-Belohnung oder Händler-Nachschub (das Sortiment, das ein Händler bekommt, wenn die Info läuft, z. B. bei einem Kapitelwechsel). Die neuen Dialoge des Bereichs Dialoge sind davon getrennt."
+# src/modkit/app/panels/extras_panels.cpp:220
+"(choose an info)" = "(Info wählen)"
+# src/modkit/app/panels/extras_panels.cpp:237
+"Info" = "Info"
+# src/modkit/app/panels/extras_panels.cpp:238
+"The name of a shipped dialogue info, as the game's dialogue data and risen.dialog.get know it (\"FILLERX2_00029\"). Type to search the game's dialogue infos by name, speaker, quest or the words of the first line; the arrow opens the list." = "Der Name einer mitgelieferten Dialog-Info, wie ihn die Dialogdaten des Spiels und risen.dialog.get kennen („FILLERX2_00029“). Tippe, um die Dialog-Infos des Spiels nach Name, Sprecher, Quest oder den Worten der ersten Zeile zu durchsuchen; der Pfeil öffnet die Liste."
+# src/modkit/app/panels/extras_panels.cpp:241
+"XP reward" = "XP-Belohnung"
+# src/modkit/app/panels/extras_panels.cpp:242
+"Add a reward" = "Belohnung hinzufügen"
+# src/modkit/app/panels/extras_panels.cpp:243
+"Appends a GiveXP command with this amount at the end of the info." = "Hängt am Ende der Info einen GiveXP-Befehl mit dieser Menge an."
+# src/modkit/app/panels/extras_panels.cpp:246
+"Change a reward" = "Belohnung ändern"
+# src/modkit/app/panels/extras_panels.cpp:256
+"Finds the info's GiveXP command that gives the old amount and gives the new one instead." = "Findet den GiveXP-Befehl der Info, der die alte Menge gibt, und gibt stattdessen die neue."
+# src/modkit/app/panels/extras_panels.cpp:260
+"from" = "von"
+# src/modkit/app/panels/extras_panels.cpp:262 (+1)
+"to" = "zu"
+# src/modkit/app/panels/extras_panels.cpp:265
+"Property edits" = "Eigenschaftsänderungen"
+# src/modkit/app/panels/extras_panels.cpp:267
+"Change a value of the info, one of its commands or conditions where it still has the old one; or append a condition. Pick the command or condition from what the info has, then its property: the current value is filled in as the old value. Applied before the XP edits." = "Ändert einen Wert der Info, eines ihrer Befehle oder Bedingungen, wo sie noch den alten hat; oder hängt eine Bedingung an. Wähle den Befehl oder die Bedingung aus dem, was die Info hat, dann ihre Eigenschaft: der aktuelle Wert wird als alter Wert eingetragen. Wird vor den XP-Änderungen angewendet."
+# src/modkit/app/panels/extras_panels.cpp:289
+"which command" = "welcher Befehl"
+# src/modkit/app/panels/extras_panels.cpp:289
+"which condition" = "welche Bedingung"
+# src/modkit/app/panels/extras_panels.cpp:308
+"condition class" = "Bedingungsklasse"
+# src/modkit/app/panels/extras_panels.cpp:329 (+2)
+"property" = "Eigenschaft"
+# src/modkit/app/panels/extras_panels.cpp:344
+"old value" = "alter Wert"
+# src/modkit/app/panels/extras_panels.cpp:348
+"new value" = "neuer Wert"
+# src/modkit/app/panels/extras_panels.cpp:357
+"+ property edit" = "+ Eigenschaftsänderung"
+# src/modkit/app/panels/extras_panels.cpp:365
+"Trader refills" = "Händler-Nachschub"
+# src/modkit/app/panels/extras_panels.cpp:366 (+4)
+"Chapter" = "Kapitel"
+# src/modkit/app/panels/extras_panels.cpp:367
+"The chapter the info belongs to. Refills of chapter 1 are also handed out when a new game starts (the traders sell them from the beginning)." = "Das Kapitel, zu dem die Info gehört. Nachschub von Kapitel 1 wird auch bei Beginn eines neuen Spiels ausgegeben (die Händler verkaufen ihn von Anfang an)."
+# src/modkit/app/panels/extras_panels.cpp:389
+"+ refill" = "+ Nachschub"
+# src/modkit/app/panels/extras_panels.cpp:397
+"Select an edit, or add one." = "Wähle eine Änderung oder füge eine hinzu."
+# src/modkit/app/panels/extras_panels.cpp:405
+"+ Teacher limit" = "+ Lehrergrenze"
+# src/modkit/app/panels/extras_panels.cpp:413
+"The highest value a placed NPC brings the player's skill to (risen.npc.set_teach_limit); applied on every world start. The NPC is found by his entity ID (World panel: select the NPC)." = "Der höchste Wert, bis zu dem ein platzierter NPC die Fertigkeit des Spielers bringt (risen.npc.set_teach_limit); wird bei jedem Weltstart angewendet. Der NPC wird über seine Entitäts-ID gefunden (Bereich Welt: den NPC auswählen)."
+# src/modkit/app/panels/extras_panels.cpp:456
+"The NPC's entity name: type to search the NPCs of the loaded world (and the project's placed NPCs). A name that exists once fills in the ID." = "Der Entitätsname des NPCs: tippe, um die NPCs der geladenen Welt (und die platzierten NPCs des Projekts) zu durchsuchen. Ein Name, der einmal vorkommt, trägt die ID ein."
+# src/modkit/app/panels/extras_panels.cpp:457
+"Entity ID" = "Entitäts-ID"
+# src/modkit/app/panels/extras_panels.cpp:458
+"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx: the ID of the placed NPC in the world (risen.entity.by_id). The list holds the entities that carry the NPC name above (several NPCs share a name, e.g. guards), with their layer and position; with no name it lists every NPC of the world." = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx: die ID des platzierten NPCs in der Welt (risen.entity.by_id). Die Liste enthält die Entitäten mit dem NPC-Namen oben (mehrere NPCs teilen sich einen Namen, z. B. Wachen), mit ihrer Ebene und Position; ohne Namen listet sie jeden NPC der Welt."
+# src/modkit/app/panels/extras_panels.cpp:462
+"Limit" = "Grenze"
+# src/modkit/app/panels/extras_panels.cpp:466
+"The highest value he teaches the skill up to." = "Der höchste Wert, bis zu dem er die Fertigkeit lehrt."
+# src/modkit/app/panels/extras_panels.cpp:467 (+2)
+"World" = "Welt"
+# src/modkit/app/panels/extras_panels.cpp:471
+"Select a limit, or add one." = "Wähle eine Grenze oder füge eine hinzu."
+# src/modkit/app/panels/items_panel.cpp:53
+"skill" = "Fertigkeit"
+# src/modkit/app/panels/items_panel.cpp:54 (+1)
+"amount" = "Menge"
+# src/modkit/app/panels/items_panel.cpp:55
+"mode" = "Modus"
+# src/modkit/app/panels/items_panel.cpp:56
+"order" = "Reihenfolge"
+# src/modkit/app/panels/items_panel.cpp:125
+"New item based on this" = "Neuer Gegenstand auf dieser Basis"
+# src/modkit/app/panels/items_panel.cpp:126
+"Change this item" = "Diesen Gegenstand ändern"
+# src/modkit/app/panels/items_panel.cpp:188
+"Create an item, change a shipped one (also from the Browser: select an item there), or add an item group." = "Erstelle einen Gegenstand, ändere einen mitgelieferten (auch im Browser: wähle dort einen Gegenstand) oder füge eine Gegenstandsgruppe hinzu."
+# src/modkit/app/panels/items_panel.cpp:208
+"+ New item" = "+ Neuer Gegenstand"
+# src/modkit/app/panels/items_panel.cpp:210 (+3)
+"+ Change shipped" = "+ Mitgelieferten ändern"
+# src/modkit/app/panels/items_panel.cpp:212 (+1)
+"+ Group" = "+ Gruppe"
+# src/modkit/app/panels/items_panel.cpp:223
+"Which shipped item?" = "Welcher mitgelieferte Gegenstand?"
+# src/modkit/app/panels/items_panel.cpp:225 (+4)
+"Add" = "Hinzufügen"
+# src/modkit/app/panels/items_panel.cpp:261
+"Item groups" = "Gegenstandsgruppen"
+# src/modkit/app/panels/items_panel.cpp:289
+"NEW ITEM: a clone of the base with its own name, texts and numbers (risen.template.create)" = "NEUER GEGENSTAND: ein Klon der Basis mit eigenem Namen, eigenen Texten und Zahlen (risen.template.create)"
+# src/modkit/app/panels/items_panel.cpp:291
+"The template name: letters, digits and _, unique, at most 63 characters. It is the key of the item in savegames: keep it once released." = "Der Vorlagenname: Buchstaben, Ziffern und _, eindeutig, höchstens 63 Zeichen. Er ist der Schlüssel des Gegenstands in Spielständen: nach der Veröffentlichung nicht mehr ändern."
+# src/modkit/app/panels/items_panel.cpp:293
+"a game template has this name" = "eine Spielvorlage hat diesen Namen"
+# src/modkit/app/panels/items_panel.cpp:294
+"Base item" = "Basisgegenstand"
+# src/modkit/app/panels/items_panel.cpp:300
+"CHANGE OF A SHIPPED ITEM: only the values you set are changed" = "ÄNDERUNG EINES MITGELIEFERTEN GEGENSTANDS: nur die gesetzten Werte werden geändert"
+# src/modkit/app/panels/items_panel.cpp:308 (+2)
+"Texts" = "Texte"
+# src/modkit/app/panels/items_panel.cpp:309
+"Leave empty to keep the game's texts." = "Leer lassen, um die Texte des Spiels zu behalten."
+# src/modkit/app/panels/items_panel.cpp:310 (+7)
+"Label" = "Bezeichnung"
+# src/modkit/app/panels/items_panel.cpp:311 (+5)
+"Description" = "Beschreibung"
+# src/modkit/app/panels/items_panel.cpp:313 (+1)
+"Numbers" = "Zahlen"
+# src/modkit/app/panels/items_panel.cpp:314 (+2)
+"Value (gold)" = "Wert (Gold)"
+# src/modkit/app/panels/items_panel.cpp:315 (+2)
+"Damage" = "Schaden"
+# src/modkit/app/panels/items_panel.cpp:316
+"gCDamage_PS.DamageAmount. Melee damage = multiplier * (DamageAmount + the wielder's Strength)." = "gCDamage_PS.DamageAmount. Nahkampfschaden = Multiplikator * (DamageAmount + Stärke des Trägers)."
+# src/modkit/app/panels/items_panel.cpp:317 (+1)
+"Mana cost" = "Manakosten"
+# src/modkit/app/panels/items_panel.cpp:318
+"Runes and scrolls only (gCCastInfo_PS.ManaCost)." = "Nur Runen und Schriftrollen (gCCastInfo_PS.ManaCost)."
+# src/modkit/app/panels/items_panel.cpp:320
+"Requirements and effects" = "Voraussetzungen und Wirkungen"
+# src/modkit/app/panels/items_panel.cpp:322 (+1)
+"Replace requirements" = "Voraussetzungen ersetzen"
+# src/modkit/app/panels/items_panel.cpp:323
+"What the player needs to equip or use the item (attributes, combat skills, ...). Only the player is held to them. The order of the list is kept (^ moves a row up)." = "Was der Spieler braucht, um den Gegenstand anzulegen oder zu benutzen (Attribute, Kampffertigkeiten, ...). Nur der Spieler muss sie erfüllen. Die Reihenfolge der Liste bleibt erhalten (^ verschiebt eine Zeile nach oben)."
+# src/modkit/app/panels/items_panel.cpp:324
+"Replace modifiers" = "Modifikatoren ersetzen"
+# src/modkit/app/panels/items_panel.cpp:325
+"What the item adds while worn or when used: HitPoints for a potion, ProtEdge for armour, ... Modes: add (default), set (to the value), max (to the maximum), percent (of the maximum)." = "Was der Gegenstand beim Tragen oder Benutzen hinzufügt: HitPoints bei einem Trank, ProtEdge bei einer Rüstung, ... Modi: add (Standard), set (auf den Wert), max (auf das Maximum), percent (vom Maximum)."
+# src/modkit/app/panels/items_panel.cpp:328
+"Use type" = "Verwendungsart"
+# src/modkit/app/panels/items_panel.cpp:329
+"Category" = "Kategorie"
+# src/modkit/app/panels/items_panel.cpp:331
+"Appearance" = "Aussehen"
+# src/modkit/app/panels/items_panel.cpp:342
+"Mesh" = "Mesh"
+# src/modkit/app/panels/items_panel.cpp:360 (+1)
+"Icon" = "Symbol"
+# src/modkit/app/panels/items_panel.cpp:385
+"Material switch" = "Materialwechsel"
+# src/modkit/app/panels/items_panel.cpp:387
+"Drag to turn" = "Zum Drehen ziehen"
+# src/modkit/app/panels/items_panel.cpp:389 (+1)
+"Other properties" = "Weitere Eigenschaften"
+# src/modkit/app/panels/items_panel.cpp:390
+"Any property of the template by name (see docs/ITEM_PROPERTIES.md)." = "Jede Eigenschaft der Vorlage nach Namen (siehe docs/ITEM_PROPERTIES.md)."
+# src/modkit/app/panels/items_panel.cpp:400
+"ITEM GROUP: relative settings for every item a selector matches (computed from the shipped values)" = "GEGENSTANDSGRUPPE: relative Einstellungen für jeden Gegenstand, auf den ein Selektor passt (aus den mitgelieferten Werten berechnet)"
+# src/modkit/app/panels/items_panel.cpp:401
+"Group path" = "Gruppenpfad"
+# src/modkit/app/panels/items_panel.cpp:402
+"A template group: Items/Potions, Items/Weapons_Swords, ... (the Browser shows the groups)." = "Eine Vorlagengruppe: Items/Potions, Items/Weapons_Swords, ... (der Browser zeigt die Gruppen)."
+# src/modkit/app/panels/items_panel.cpp:403
+"Name pattern" = "Namensmuster"
+# src/modkit/app/panels/items_panel.cpp:404
+"A Lua pattern on the template name, e.g. ^It_Po_" = "Ein Lua-Muster auf den Vorlagennamen, z. B. ^It_Po_"
+# src/modkit/app/panels/items_panel.cpp:405
+"Exclude pattern" = "Ausschlussmuster"
+# src/modkit/app/panels/items_panel.cpp:406
+"Also these items (one per line)" = "Auch diese Gegenstände (einer pro Zeile)"
+# src/modkit/app/panels/items_panel.cpp:407
+"Type the names or drag items here from the Browser." = "Tippe die Namen oder ziehe Gegenstände aus dem Browser hierher."
+# src/modkit/app/panels/items_panel.cpp:413 (+1)
+"Settings" = "Einstellungen"
+# src/modkit/app/panels/items_panel.cpp:414
+"Value factor" = "Wertfaktor"
+# src/modkit/app/panels/items_panel.cpp:415 (+3)
+"Damage factor" = "Schadensfaktor"
+# src/modkit/app/panels/items_panel.cpp:423
+"The group path selects %zu items (patterns are evaluated by the layer)." = "Der Gruppenpfad wählt %zu Gegenstände (die Muster wertet die Ebene aus)."
+# src/modkit/app/panels/layers_panel.cpp:63
+"Create a layer: a group of placed NPCs, world spawns and container fills that is switched on and off as a whole (like the game's story sectors). It can switch itself when a condition first holds, and the event graphs switch it with a Layer node." = "Erstelle eine Ebene: eine Gruppe platzierter NPCs, Weltspawns und Behälterfüllungen, die als Ganzes ein- und ausgeschaltet wird (wie die Story-Sektoren des Spiels). Sie kann sich selbst schalten, wenn eine Bedingung zum ersten Mal zutrifft, und die Ereignisgraphen schalten sie mit einem Ebenen-Knoten."
+# src/modkit/app/panels/layers_panel.cpp:103
+"+ New layer" = "+ Neue Ebene"
+# src/modkit/app/panels/layers_panel.cpp:117
+"   %s, %zu NPCs, %zu spawns, %zu fills" = "   %s, %zu NPCs, %zu Spawns, %zu Füllungen"
+# src/modkit/app/panels/layers_panel.cpp:117
+"on at start" = "an beim Start"
+# src/modkit/app/panels/layers_panel.cpp:117 (+1)
+"off at start" = "aus beim Start"
+# src/modkit/app/panels/layers_panel.cpp:150
+"Letters, digits, _: the key of the layer's state in savegames. Keep it once released." = "Buchstaben, Ziffern, _: der Schlüssel des Ebenenzustands in Spielständen. Nach der Veröffentlichung nicht mehr ändern."
+# src/modkit/app/panels/layers_panel.cpp:151
+"On when a game starts" = "An, wenn ein Spiel beginnt"
+# src/modkit/app/panels/layers_panel.cpp:152
+"Off: the members are not made until something switches the layer on (a condition below, or an event graph)." = "Aus: Die Mitglieder werden nicht erzeugt, bis etwas die Ebene einschaltet (eine Bedingung unten oder ein Ereignisgraph)."
+# src/modkit/app/panels/layers_panel.cpp:153
+"Switches by itself" = "Schaltet sich selbst"
+# src/modkit/app/panels/layers_panel.cpp:154
+"Switches on when" = "Schaltet ein, wenn"
+# src/modkit/app/panels/layers_panel.cpp:154
+"The first time this holds (looked at about twice a second; once per savegame) the layer goes on." = "Sobald dies zum ersten Mal zutrifft (etwa zweimal pro Sekunde geprüft; einmal pro Spielstand), geht die Ebene an."
+# src/modkit/app/panels/layers_panel.cpp:155
+"Switches off when" = "Schaltet aus, wenn"
+# src/modkit/app/panels/layers_panel.cpp:155
+"The first time this holds the layer goes off (once per savegame)." = "Sobald dies zum ersten Mal zutrifft, geht die Ebene aus (einmal pro Spielstand)."
+# src/modkit/app/panels/layers_panel.cpp:156
+"Members" = "Mitglieder"
+# src/modkit/app/panels/layers_panel.cpp:157
+"NPCs are made while the layer is on and removed when it goes off. World spawns are made when it is on and taken away when it goes off. Container fills happen once, the first time the layer is on. An object belongs to one layer." = "NPCs werden erzeugt, solange die Ebene an ist, und entfernt, wenn sie ausgeht. Weltspawns werden erzeugt, wenn sie an ist, und weggenommen, wenn sie ausgeht. Behälterfüllungen geschehen einmal, wenn die Ebene zum ersten Mal an ist. Ein Objekt gehört zu einer Ebene."
+# src/modkit/app/panels/layers_panel.cpp:169 (+1)
+"NPCs" = "NPCs"
+# src/modkit/app/panels/layers_panel.cpp:182
+"+ Add a placed NPC..." = "+ Platzierten NPC hinzufügen..."
+# src/modkit/app/panels/layers_panel.cpp:193
+"World spawns" = "Weltspawns"
+# src/modkit/app/panels/layers_panel.cpp:206
+"+ Add a world spawn..." = "+ Weltspawn hinzufügen..."
+# src/modkit/app/panels/layers_panel.cpp:217
+"Container fills" = "Behälterfüllungen"
+# src/modkit/app/panels/layers_panel.cpp:230
+"+ Add a container fill..." = "+ Behälterfüllung hinzufügen..."
+# src/modkit/app/panels/layers_panel.cpp:250
+"(missing spawn)" = "(fehlender Spawn)"
+# src/modkit/app/panels/layers_panel.cpp:254
+"{0}  ({1} items)" = "{0}  ({1} Gegenstände)"
+# src/modkit/app/panels/layers_panel.cpp:255
+"(missing container)" = "(fehlender Behälter)"
+# src/modkit/app/panels/layers_panel.cpp:273
+"Plan (x / z)" = "Plan (x / z)"
+# src/modkit/app/panels/layers_panel.cpp:279
+"Placed NPCs and world spawns with a position appear here." = "Platzierte NPCs und Weltspawns mit einer Position erscheinen hier."
+# src/modkit/app/panels/layers_panel.cpp:315
+"layer %s (%s at start)" = "Ebene %s (%s beim Start)"
+# src/modkit/app/panels/layers_panel.cpp:316
+"in no layer" = "in keiner Ebene"
+# src/modkit/app/panels/layers_panel.cpp:317
+"x %.0f  z %.0f" = "x %.0f  z %.0f"
+# src/modkit/app/panels/log_panel.cpp:25
+"Clear" = "Leeren"
+# src/modkit/app/panels/log_panel.cpp:27
+"Debug" = "Debug"
+# src/modkit/app/panels/npc_groups_panel.cpp:51
+"A group changes many NPC and monster templates at once, relative to their shipped values: a pattern on the name (\"^Wolf\"), a template group path (\"Monster/Kapitel 2\") or a list of names." = "Eine Gruppe ändert viele NPC- und Monstervorlagen auf einmal, relativ zu ihren mitgelieferten Werten: ein Muster auf den Namen („^Wolf“), ein Vorlagengruppenpfad („Monster/Kapitel 2“) oder eine Namensliste."
+# src/modkit/app/panels/npc_groups_panel.cpp:65
+"match {0}" = "passt auf {0}"
+# src/modkit/app/panels/npc_groups_panel.cpp:135
+"Which templates" = "Welche Vorlagen"
+# src/modkit/app/panels/npc_groups_panel.cpp:136
+"Leave everything empty for every NPC and monster. The selectors combine: the group's templates, filtered by the patterns, plus the names." = "Alles leer lassen für jeden NPC und jedes Monster. Die Selektoren verbinden sich: die Vorlagen der Gruppe, gefiltert durch die Muster, plus die Namen."
+# src/modkit/app/panels/npc_groups_panel.cpp:139 (+1)
+"Template group" = "Vorlagengruppe"
+# src/modkit/app/panels/npc_groups_panel.cpp:146
+"Pattern (Lua)" = "Muster (Lua)"
+# src/modkit/app/panels/npc_groups_panel.cpp:147
+"A Lua pattern on the template name: \"^Wolf\" (starts with Wolf), \"Dead$\" (ends with Dead). ^ and $ anchor, . any character, % escapes." = "Ein Lua-Muster auf den Vorlagennamen: „^Wolf“ (beginnt mit Wolf), „Dead$“ (endet auf Dead). ^ und $ verankern, . steht für ein beliebiges Zeichen, % maskiert."
+# src/modkit/app/panels/npc_groups_panel.cpp:148
+"Leave out (Lua)" = "Auslassen (Lua)"
+# src/modkit/app/panels/npc_groups_panel.cpp:149
+"Also these names (one per line)" = "Auch diese Namen (einer pro Zeile)"
+# src/modkit/app/panels/npc_groups_panel.cpp:166
+"matches nothing: the layer refuses a selector that matches nothing" = "trifft auf nichts zu: die Ebene lehnt einen Selektor ab, der auf nichts zutrifft"
+# src/modkit/app/panels/npc_groups_panel.cpp:171
+"%zu templates:" = "%zu Vorlagen:"
+# src/modkit/app/panels/npc_groups_panel.cpp:177
+"Relative changes" = "Relative Änderungen"
+# src/modkit/app/panels/npc_groups_panel.cpp:178
+"Factors and additions work on the SHIPPED values: applying them twice never compounds." = "Faktoren und Zuschläge wirken auf die MITGELIEFERTEN Werte: zweimal angewendet, summieren sie sich nie."
+# src/modkit/app/panels/npc_groups_panel.cpp:179 (+1)
+"Hit point factor" = "Lebenspunktefaktor"
+# src/modkit/app/panels/npc_groups_panel.cpp:180 (+1)
+"Mana factor" = "Manafaktor"
+# src/modkit/app/panels/npc_groups_panel.cpp:181
+"Level factor" = "Stufenfaktor"
+# src/modkit/app/panels/npc_groups_panel.cpp:182 (+1)
+"Level added" = "Stufen hinzu"
+# src/modkit/app/panels/npc_groups_panel.cpp:183
+"Experience factor" = "Erfahrungsfaktor"
+# src/modkit/app/panels/npc_groups_panel.cpp:185
+"Scales Strength (monsters bite with their Strength) and the template's own damage." = "Skaliert Stärke (Monster beißen mit ihrer Stärke) und den eigenen Schaden der Vorlage."
+# src/modkit/app/panels/npc_groups_panel.cpp:186
+"Add to skills" = "Zu Fertigkeiten addieren"
+# src/modkit/app/panels/npc_groups_panel.cpp:186
+"Added to the shipped value: { Strength = 10 }, negative values lower it. Results are clamped to the skill's range." = "Wird zum mitgelieferten Wert addiert: { Strength = 10 }, negative Werte senken ihn. Die Ergebnisse werden auf den Bereich der Fertigkeit begrenzt."
+# src/modkit/app/panels/npc_groups_panel.cpp:189
+"Skill factors" = "Fertigkeitsfaktoren"
+# src/modkit/app/panels/npc_groups_panel.cpp:194
+"{ ProtEdge = 1.1 }: the shipped value times the factor." = "{ ProtEdge = 1.1 }: der mitgelieferte Wert mal dem Faktor."
+# src/modkit/app/panels/npc_groups_panel.cpp:222 (+1)
+"Identity" = "Identität"
+# src/modkit/app/panels/npc_groups_panel.cpp:224 (+1)
+"Species" = "Spezies"
+# src/modkit/app/panels/npc_groups_panel.cpp:225 (+1)
+"Attitude" = "Haltung"
+# src/modkit/app/panels/npc_groups_panel.cpp:226 (+1)
+"Bravery" = "Mut"
+# src/modkit/app/panels/npc_groups_panel.cpp:227 (+1)
+"Damage calculation" = "Schadensberechnung"
+# src/modkit/app/panels/npc_groups_panel.cpp:228 (+1)
+"AI group" = "KI-Gruppe"
+# src/modkit/app/panels/npc_groups_panel.cpp:230 (+1)
+"Kept as imported" = "Wie importiert beibehalten"
+# src/modkit/app/panels/npc_groups_panel.cpp:233 (+1)
+"Settings the editor has no field for: %s (exported unchanged)" = "Einstellungen, für die der Editor kein Feld hat: %s (unverändert exportiert)"
+# src/modkit/app/panels/npcs_panel.cpp:37 (+1)
+"dx dy dz" = "dx dy dz"
+# src/modkit/app/panels/npcs_panel.cpp:46
+"kind" = "Art"
+# src/modkit/app/panels/npcs_panel.cpp:52 (+1)
+"yaw" = "Drehung"
+# src/modkit/app/panels/npcs_panel.cpp:61
+"%.0f deg" = "%.0f °"
+# src/modkit/app/panels/npcs_panel.cpp:72 (+1)
+"none" = "keine"
+# src/modkit/app/panels/npcs_panel.cpp:72
+"one post" = "ein Posten"
+# src/modkit/app/panels/npcs_panel.cpp:72
+"day / evening / night" = "Tag / Abend / Nacht"
+# src/modkit/app/panels/npcs_panel.cpp:72
+"patrol" = "Patrouille"
+# src/modkit/app/panels/npcs_panel.cpp:80 (+1)
+"Routine" = "Tagesablauf"
+# src/modkit/app/panels/npcs_panel.cpp:97
+"Points are relative to the NPC's home (where he is made). Humans work 6:00-20:00, relax from 20:00, sleep before 6:00. A post the NPC cannot walk to leaves him standing: choose connected points near his home." = "Die Punkte sind relativ zum Zuhause des NPCs (wo er erzeugt wird). Menschen arbeiten von 6:00 bis 20:00, ruhen ab 20:00 und schlafen vor 6:00. Ein Posten, den der NPC nicht erreichen kann, lässt ihn stehen: wähle verbundene Punkte in der Nähe seines Zuhauses."
+# src/modkit/app/panels/npcs_panel.cpp:126
+"+ waypoint" = "+ Wegpunkt"
+# src/modkit/app/panels/npcs_panel.cpp:132
+"Patrol group name" = "Name der Patrouillengruppe"
+# src/modkit/app/panels/npcs_panel.cpp:146
+"New NPC template based on this" = "Neue NPC-Vorlage auf dieser Basis"
+# src/modkit/app/panels/npcs_panel.cpp:148
+"Change this NPC" = "Diesen NPC ändern"
+# src/modkit/app/panels/npcs_panel.cpp:149 (+1)
+"Place one" = "Einen platzieren"
+# src/modkit/app/panels/npcs_panel.cpp:218
+"NPC templates are kinds of NPCs and monsters (numbers, guild, loot); placed NPCs are persons in the world (a name, a place, an inventory, a routine). Select an NPC or monster in the Browser for more actions." = "NPC-Vorlagen sind Arten von NPCs und Monstern (Zahlen, Gilde, Beute); platzierte NPCs sind Personen in der Welt (ein Name, ein Ort, ein Inventar, ein Tagesablauf). Wähle im Browser einen NPC oder ein Monster für weitere Aktionen."
+# src/modkit/app/panels/npcs_panel.cpp:239
+"+ Template" = "+ Vorlage"
+# src/modkit/app/panels/npcs_panel.cpp:243
+"+ Place NPC" = "+ NPC platzieren"
+# src/modkit/app/panels/npcs_panel.cpp:246
+"Which shipped NPC or monster?" = "Welcher mitgelieferte NPC oder welches Monster?"
+# src/modkit/app/panels/npcs_panel.cpp:256
+"Templates" = "Vorlagen"
+# src/modkit/app/panels/npcs_panel.cpp:310
+"NEW NPC TEMPLATE: a clone of the base (a human looks like his base: heads and body parts are separate items)" = "NEUE NPC-VORLAGE: ein Klon der Basis (ein Mensch sieht aus wie seine Basis: Köpfe und Körperteile sind eigene Gegenstände)"
+# src/modkit/app/panels/npcs_panel.cpp:313
+"Base" = "Basis"
+# src/modkit/app/panels/npcs_panel.cpp:315
+"CHANGE OF A SHIPPED NPC OR MONSTER: new spawns follow at once, the ones in the world are rewritten at the session start" = "ÄNDERUNG EINES MITGELIEFERTEN NPCS ODER MONSTERS: neue Spawns folgen sofort, die in der Welt werden beim Sitzungsbeginn umgeschrieben"
+# src/modkit/app/panels/npcs_panel.cpp:325 (+2)
+"Hit points" = "Lebenspunkte"
+# src/modkit/app/panels/npcs_panel.cpp:327 (+2)
+"Level" = "Stufe"
+# src/modkit/app/panels/npcs_panel.cpp:329
+"Experience for a kill" = "Erfahrung für einen Kill"
+# src/modkit/app/panels/npcs_panel.cpp:330
+"A kill pays 10 * level, at least 50: setting the experience sets the level." = "Ein Kill bringt 10 * Stufe, mindestens 50: Wer die Erfahrung setzt, setzt die Stufe."
+# src/modkit/app/panels/npcs_panel.cpp:331 (+1)
+"Mana" = "Mana"
+# src/modkit/app/panels/npcs_panel.cpp:333
+"Scales Strength (monsters bite with their Strength) and the NPC's own damage." = "Skaliert Stärke (Monster beißen mit ihrer Stärke) und den eigenen Schaden des NPCs."
+# src/modkit/app/panels/npcs_panel.cpp:334 (+1)
+"Replace skills" = "Fertigkeiten ersetzen"
+# src/modkit/app/panels/npcs_panel.cpp:335
+"Attributes (Strength, Dexterity, Intelligence 0..200), protection (ProtEdge ...), combat skills (Sword ... 0..10), magic." = "Attribute (Strength, Dexterity, Intelligence 0..200), Schutz (ProtEdge ...), Kampffertigkeiten (Sword ... 0..10), Magie."
+# src/modkit/app/panels/npcs_panel.cpp:343
+"Combat species" = "Kampfspezies"
+# src/modkit/app/panels/npcs_panel.cpp:355
+"Actor (monsters)" = "Akteur (Monster)"
+# src/modkit/app/panels/npcs_panel.cpp:364
+"Loot" = "Beute"
+# src/modkit/app/panels/npcs_panel.cpp:371
+"Shipped: carries nothing." = "Mitgeliefert: trägt nichts."
+# src/modkit/app/panels/npcs_panel.cpp:373
+"Shipped:" = "Mitgeliefert:"
+# src/modkit/app/panels/npcs_panel.cpp:384
+"Wears: %s" = "Trägt: %s"
+# src/modkit/app/panels/npcs_panel.cpp:387
+"Shipped: not readable for this template." = "Mitgeliefert: für diese Vorlage nicht lesbar."
+# src/modkit/app/panels/npcs_panel.cpp:390
+"Set loot amounts" = "Beutemengen festlegen"
+# src/modkit/app/panels/npcs_panel.cpp:395
+"Target amounts the template carries ({ It_Apple = 3 }; 0 removes). Reaches NPCs spawned afterwards, not existing ones." = "Zielmengen, die die Vorlage trägt ({ It_Apple = 3 }; 0 entfernt). Gilt für danach erzeugte NPCs, nicht für vorhandene."
+# src/modkit/app/panels/npcs_panel.cpp:397
+"Start from the shipped loot" = "Von der mitgelieferten Beute ausgehen"
+# src/modkit/app/panels/npcs_panel.cpp:404
+"an amount of 0 takes the item away, an item the template does not carry is added" = "eine Menge von 0 nimmt den Gegenstand weg, ein Gegenstand, den die Vorlage nicht trägt, wird hinzugefügt"
+# src/modkit/app/panels/npcs_panel.cpp:418
+"Behaviours (every NPC of this template)" = "Verhalten (jeder NPC dieser Vorlage)"
+# src/modkit/app/panels/npcs_panel.cpp:420
+"Scripts that run on every NPC of this template: the ones in the world and every later spawn (risen.behavior.attach_template). Works on a shipped template too (Change shipped): every wolf of the game, ..." = "Skripte, die auf jedem NPC dieser Vorlage laufen: auf denen in der Welt und jedem späteren Spawn (risen.behavior.attach_template). Funktioniert auch bei einer mitgelieferten Vorlage (Mitgelieferten ändern): jeder Wolf des Spiels, ..."
+# src/modkit/app/panels/npcs_panel.cpp:430
+"PLACED NPC: made in a new game, restored after a load, never twice (risen.npc.persistent)" = "PLATZIERTER NPC: wird in einem neuen Spiel erzeugt, nach einem Laden wiederhergestellt, nie doppelt (risen.npc.persistent)"
+# src/modkit/app/panels/npcs_panel.cpp:431 (+4)
+"Unique name" = "Eindeutiger Name"
+# src/modkit/app/panels/npcs_panel.cpp:432
+"The entity name (letters, digits, _ and -): dialogues name their owner by it; it is the key of the NPC in savegames." = "Der Entitätsname (Buchstaben, Ziffern, _ und -): Dialoge nennen ihren Besitzer dabei; er ist der Schlüssel des NPCs in Spielständen."
+# src/modkit/app/panels/npcs_panel.cpp:440 (+2)
+"Where" = "Wo"
+# src/modkit/app/panels/npcs_panel.cpp:442
+"Offset from the player (when first made in a savegame)" = "Versatz vom Spieler (wenn er zum ersten Mal in einem Spielstand erzeugt wird)"
+# src/modkit/app/panels/npcs_panel.cpp:444
+"x y z" = "x y z"
+# src/modkit/app/panels/npcs_panel.cpp:448
+"+y is up. The World view (a later stage) places NPCs with the mouse; until then type a position or use an offset from the player." = "+y ist oben. Die Weltansicht (eine spätere Stufe) platziert NPCs mit der Maus; bis dahin eine Position eintippen oder einen Versatz vom Spieler verwenden."
+# src/modkit/app/panels/npcs_panel.cpp:450
+"Person" = "Person"
+# src/modkit/app/panels/npcs_panel.cpp:451 (+1)
+"Peaceful" = "Friedlich"
+# src/modkit/app/panels/npcs_panel.cpp:452
+"A citizen unless a guild is given: pirates, guards and monsters leave him alone (a shopkeeper, a quest giver)." = "Ein Bürger, sofern keine Gilde angegeben ist: Piraten, Wachen und Monster lassen ihn in Ruhe (ein Ladenbesitzer, ein Questgeber)."
+# src/modkit/app/panels/npcs_panel.cpp:456 (+1)
+"Inventory" = "Inventar"
+# src/modkit/app/panels/npcs_panel.cpp:457
+"Items he carries; \"equip\" wears / holds the item when he is made." = "Gegenstände, die er trägt; „anlegen“ trägt / hält den Gegenstand, wenn er erzeugt wird."
+# src/modkit/app/panels/npcs_panel.cpp:461 (+1)
+"Behaviours" = "Verhalten"
+# src/modkit/app/panels/npcs_panel.cpp:463
+"Scripts that run on him while he is in the world (Behaviours panel): greet the player, guard a spot, react to a quest of the game, ... Their parameters can be set per NPC." = "Skripte, die auf ihm laufen, solange er in der Welt ist (Bereich Verhalten): den Spieler begrüßen, einen Ort bewachen, auf eine Quest des Spiels reagieren, ... Ihre Parameter lassen sich pro NPC einstellen."
+# src/modkit/app/panels/npcs_panel.cpp:465
+"Appears when" = "Erscheint, wenn"
+# src/modkit/app/panels/npcs_panel.cpp:466
+"from the start of a game" = "ab dem Beginn eines Spiels"
+# src/modkit/app/panels/npcs_panel.cpp:467
+"He comes into the world only once this holds, e.g. after a quest of the game was solved (quest Rufo_GoToDruidHut is Success): enemies that ambush the player afterwards, a messenger, a new trader. Nothing of him exists before; checked again after every load." = "Er kommt erst in die Welt, sobald dies zutrifft, z. B. nachdem eine Quest des Spiels gelöst wurde (Quest Rufo_GoToDruidHut ist Success): Feinde, die dem Spieler danach auflauern, ein Bote, ein neuer Händler. Vorher existiert nichts von ihm; wird nach jedem Laden erneut geprüft."
+# src/modkit/app/panels/npcs_panel.cpp:469
+"Leaves when" = "Geht, wenn"
+# src/modkit/app/panels/npcs_panel.cpp:471
+"He is removed from the world once this holds (a quest is over, a variable is set)." = "Er wird aus der Welt entfernt, sobald dies zutrifft (eine Quest ist vorbei, eine Variable ist gesetzt)."
+# src/modkit/app/panels/npcs_panel.cpp:472
+"Lifetime" = "Lebensdauer"
+# src/modkit/app/panels/npcs_panel.cpp:473
+"Respawn when dead (at the next start or load)" = "Wiederbeleben, wenn tot (beim nächsten Start oder Laden)"
+# src/modkit/app/panels/npcs_panel.cpp:475 (+1)
+"Version" = "Version"
+# src/modkit/app/panels/npcs_panel.cpp:476
+"Raise it to replace the NPC saved in existing savegames by one made from this declaration." = "Erhöhen, um den in vorhandenen Spielständen gespeicherten NPC durch einen nach dieser Deklaration erzeugten zu ersetzen."
+# src/modkit/app/panels/panels.h:34 (+2)
+"Mod" = "Mod"
+# src/modkit/app/panels/panels.h:35
+"Log" = "Protokoll"
+# src/modkit/app/panels/panels.h:37
+"Browser" = "Browser"
+# src/modkit/app/panels/panels.h:41
+"Dialogues" = "Dialoge"
+# src/modkit/app/panels/panels.h:42
+"Quests" = "Quests"
+# src/modkit/app/panels/panels.h:43
+"Events" = "Ereignisse"
+# src/modkit/app/panels/panels.h:44 (+1)
+"Layers" = "Ebenen"
+# src/modkit/app/panels/panels.h:47
+"Assets" = "Ressourcen"
+# src/modkit/app/panels/panels.h:49
+"Conversation" = "Gespräch"
+# src/modkit/app/panels/panels.h:50
+"Spells" = "Zauber"
+# src/modkit/app/panels/panels.h:51
+"NPC groups" = "NPC-Gruppen"
+# src/modkit/app/panels/panels.h:52
+"Patches" = "Änderungen"
+# src/modkit/app/panels/panels.h:53
+"Strings" = "Texte"
+# src/modkit/app/panels/panels.h:54
+"Shipped dialogues" = "Mitgelieferte Dialoge"
+# src/modkit/app/panels/problems_panel.cpp:28
+"No problems." = "Keine Probleme."
+# src/modkit/app/panels/problems_panel.cpp:28
+"No problems (without the game data only the project itself is checked)." = "Keine Probleme (ohne Spieldaten wird nur das Projekt selbst geprüft)."
+# src/modkit/app/panels/problems_panel.cpp:30
+"%zu errors, %zu warnings%s" = "%zu Fehler, %zu Warnungen%s"
+# src/modkit/app/panels/problems_panel.cpp:30
+": the export is refused while errors exist" = ": der Export wird abgelehnt, solange Fehler bestehen"
+# src/modkit/app/panels/problems_panel.cpp:34
+"From the game (spass.log)" = "Aus dem Spiel (spass.log)"
+# src/modkit/app/panels/problems_panel.cpp:35
+"Errors and warnings the running game logged for this mod; a click selects the object they name. Game > Forget the game's errors clears the list." = "Fehler und Warnungen, die das laufende Spiel für diese Mod protokolliert hat; ein Klick wählt das genannte Objekt aus. Spiel > Fehler des Spiels vergessen leert die Liste."
+# src/modkit/app/panels/problems_panel.cpp:45
+"What" = "Was"
+# src/modkit/app/panels/problems_panel.cpp:46
+"Problem" = "Problem"
+# src/modkit/app/panels/project_panel.cpp:31 (+2)
+"Id" = "Id"
+# src/modkit/app/panels/project_panel.cpp:32
+"The mod's folder name and id: a-z, 0-9 and _. It names the save data and the log lines of the mod; keep it stable once released." = "Ordnername und Id der Mod: a-z, 0-9 und _. Sie benennt die Speicherdaten und die Logzeilen der Mod; nach der Veröffentlichung stabil halten."
+# src/modkit/app/panels/project_panel.cpp:33
+"only a-z, 0-9 and _ are allowed" = "nur a-z, 0-9 und _ sind erlaubt"
+# src/modkit/app/panels/project_panel.cpp:36
+"Author" = "Autor"
+# src/modkit/app/panels/project_panel.cpp:39
+"Languages" = "Sprachen"
+# src/modkit/app/panels/project_panel.cpp:40
+"Texts are entered per language; the first language is used for every language without its own text." = "Texte werden pro Sprache eingegeben; die erste Sprache gilt für jede Sprache ohne eigenen Text."
+# src/modkit/app/panels/project_panel.cpp:46
+"Dependencies" = "Abhängigkeiten"
+# src/modkit/app/panels/project_panel.cpp:47
+"Requires (one mod id per line)" = "Benötigt (eine Mod-Id pro Zeile)"
+# src/modkit/app/panels/project_panel.cpp:49
+"Load after (one mod id per line)" = "Laden nach (eine Mod-Id pro Zeile)"
+# src/modkit/app/panels/project_panel.cpp:53
+"Content" = "Inhalt"
+# src/modkit/app/panels/project_panel.cpp:55
+"%zu items, %zu item groups" = "%zu Gegenstände, %zu Gegenstandsgruppen"
+# src/modkit/app/panels/project_panel.cpp:56
+"%zu recipes" = "%zu Rezepte"
+# src/modkit/app/panels/project_panel.cpp:57
+"%zu spells, %zu NPC groups" = "%zu Zauber, %zu NPC-Gruppen"
+# src/modkit/app/panels/project_panel.cpp:58
+"%zu NPC templates, %zu placed NPCs" = "%zu NPC-Vorlagen, %zu platzierte NPCs"
+# src/modkit/app/panels/project_panel.cpp:59
+"%zu dialogues, %zu quests" = "%zu Dialoge, %zu Quests"
+# src/modkit/app/panels/project_panel.cpp:60
+"%zu template patches, %zu string rows, %zu shipped dialogue edits, %zu teacher limits" = "%zu Vorlagenänderungen, %zu Textzeilen, %zu Änderungen mitgelieferter Dialoge, %zu Lehrergrenzen"
+# src/modkit/app/panels/project_panel.cpp:62
+"%zu world spawns, %zu containers, %zu removals, %zu moves" = "%zu Weltspawns, %zu Behälter, %zu Entfernungen, %zu Verschiebungen"
+# src/modkit/app/panels/project_panel.cpp:64
+"%zu asset files" = "%zu Ressourcendateien"
+# src/modkit/app/panels/quests_panel.cpp:96
+"Create a quest. Dialogues start, succeed or fail quests with their Quest node; a quest with a flow (Start -> objectives -> Outcome) follows the player's progress by itself." = "Erstelle eine Quest. Dialoge starten, erfüllen oder scheitern Quests mit ihrem Quest-Knoten; eine Quest mit Ablauf (Start -> Ziele -> Ergebnis) folgt dem Fortschritt des Spielers von selbst."
+# src/modkit/app/panels/quests_panel.cpp:153
+"+ New quest" = "+ Neue Quest"
+# src/modkit/app/panels/quests_panel.cpp:178
+"The quest's id (letters, digits, _): the key of its state in savegames. Keep it once released." = "Die Id der Quest (Buchstaben, Ziffern, _): der Schlüssel ihres Zustands in Spielständen. Nach der Veröffentlichung nicht mehr ändern."
+# src/modkit/app/panels/quests_panel.cpp:184
+"XP" = "EP"
+# src/modkit/app/panels/quests_panel.cpp:187
+"Silent" = "Still"
+# src/modkit/app/panels/quests_panel.cpp:188
+"No \"quest started\" notification." = "Keine Meldung „Quest begonnen“."
+# src/modkit/app/panels/quests_panel.cpp:189
+"Title" = "Titel"
+# src/modkit/app/panels/quests_panel.cpp:202
+"started by a dialogue" = "von einem Dialog gestartet"
+# src/modkit/app/panels/quests_panel.cpp:203
+"at the start of a new game" = "zu Beginn eines neuen Spiels"
+# src/modkit/app/panels/quests_panel.cpp:204
+"when the player gets {0}" = "wenn der Spieler {0} bekommt"
+# src/modkit/app/panels/quests_panel.cpp:205
+"when {0} dies" = "wenn {0} stirbt"
+# src/modkit/app/panels/quests_panel.cpp:206
+"when {0} >= {1}" = "wenn {0} >= {1}"
+# src/modkit/app/panels/quests_panel.cpp:207
+"when {0} is {1}" = "wenn {0} {1} ist"
+# src/modkit/app/panels/quests_panel.cpp:213
+"carry {0} {1}" = "{0} {1} tragen"
+# src/modkit/app/panels/quests_panel.cpp:214
+"kill {0} {1}" = "{0} {1} töten"
+# src/modkit/app/panels/quests_panel.cpp:215
+"talk: {0}" = "sprechen: {0}"
+# src/modkit/app/panels/quests_panel.cpp:219
+"\nlog: {0}" = "\nLog: {0}"
+# src/modkit/app/panels/quests_panel.cpp:226
+"{0} gold\n" = "{0} Gold\n"
+# src/modkit/app/panels/quests_panel.cpp:236
+"\nthen {0}" = "\ndann {0}"
+# src/modkit/app/panels/quests_panel.cpp:239
+"the first objective done decides" = "das erste erledigte Ziel entscheidet"
+# src/modkit/app/panels/quests_panel.cpp:249
+"The flow starts at Start and walks the chain: an Objective waits until the player did it, a Log entry and a Reward happen at once, an Outcome ends the quest (success, failure, cancelled) and may start a follow-up quest. A quest without a Start is ended by its dialogues alone. An Either / or lets the player choose by doing: link the first Objective of each way to its output, the first one completed decides the path." = "Der Ablauf beginnt bei Start und folgt der Kette: Ein Ziel wartet, bis der Spieler es erledigt hat, ein Logeintrag und eine Belohnung geschehen sofort, ein Ergebnis beendet die Quest (Erfolg, Misserfolg, abgebrochen) und kann eine Folgequest starten. Eine Quest ohne Start wird allein durch ihre Dialoge beendet. Ein Entweder / oder lässt den Spieler durch Handeln wählen: verknüpfe das erste Ziel jedes Wegs mit seinem Ausgang, das zuerst erledigte entscheidet den Weg."
+# src/modkit/app/panels/quests_panel.cpp:290
+"A template (every wolf counts) or the unique name of one NPC." = "Eine Vorlage (jeder Wolf zählt) oder der eindeutige Name eines einzelnen NPCs."
+# src/modkit/app/panels/quests_panel.cpp:293
+"Trigger" = "Auslöser"
+# src/modkit/app/panels/quests_panel.cpp:295
+"A dialogue's Quest node with the action 'start' starts it." = "Der Quest-Knoten eines Dialogs mit der Aktion „start“ startet sie."
+# src/modkit/app/panels/quests_panel.cpp:297 (+1)
+"Killed" = "Getötet"
+# src/modkit/app/panels/quests_panel.cpp:308 (+1)
+"A quest of this mod or any quest of the game." = "Eine Quest dieser Mod oder irgendeine Quest des Spiels."
+# src/modkit/app/panels/quests_panel.cpp:317
+"Done while the player carries that many." = "Erledigt, solange der Spieler so viele trägt."
+# src/modkit/app/panels/quests_panel.cpp:319
+"Kill" = "Töten"
+# src/modkit/app/panels/quests_panel.cpp:321
+"Deaths counted from the moment the objective begins." = "Tode werden ab dem Moment gezählt, in dem das Ziel beginnt."
+# src/modkit/app/panels/quests_panel.cpp:323 (+2)
+"Option" = "Option"
+# src/modkit/app/panels/quests_panel.cpp:324
+"Done when that dialogue option finished playing." = "Erledigt, wenn diese Dialogoption zu Ende gespielt wurde."
+# src/modkit/app/panels/quests_panel.cpp:327 (+1)
+"At least" = "Mindestens"
+# src/modkit/app/panels/quests_panel.cpp:337
+"Log entry when it begins" = "Logeintrag zu Beginn"
+# src/modkit/app/panels/quests_panel.cpp:341 (+1)
+"Experience" = "Erfahrung"
+# src/modkit/app/panels/quests_panel.cpp:342 (+1)
+"Gold" = "Gold"
+# src/modkit/app/panels/quests_panel.cpp:354 (+1)
+"Set variable" = "Variable setzen"
+# src/modkit/app/panels/quests_panel.cpp:354
+"a game variable (optional)" = "eine Spielvariable (optional)"
+# src/modkit/app/panels/quests_panel.cpp:357 (+1)
+"Result" = "Ergebnis"
+# src/modkit/app/panels/quests_panel.cpp:358 (+2)
+"Log entry" = "Logeintrag"
+# src/modkit/app/panels/quests_panel.cpp:359
+"Then start" = "Dann starten"
+# src/modkit/app/panels/recipes_panel.cpp:28
+"Change this recipe" = "Dieses Rezept ändern"
+# src/modkit/app/panels/recipes_panel.cpp:29
+"New recipe for this item" = "Neues Rezept für diesen Gegenstand"
+# src/modkit/app/panels/recipes_panel.cpp:87
+"Create a recipe or change a shipped one (the Browser offers both for a selected item / recipe)." = "Erstelle ein Rezept oder ändere ein mitgeliefertes (der Browser bietet beides für einen ausgewählten Gegenstand / ein ausgewähltes Rezept an)."
+# src/modkit/app/panels/recipes_panel.cpp:102
+"+ New recipe" = "+ Neues Rezept"
+# src/modkit/app/panels/recipes_panel.cpp:107
+"Which shipped recipe?" = "Welches mitgelieferte Rezept?"
+# src/modkit/app/panels/recipes_panel.cpp:108 (+5)
+"Recipe" = "Rezept"
+# src/modkit/app/panels/recipes_panel.cpp:158
+"NEW RECIPE: a recipe item; the player knows the recipe while he carries it" = "NEUES REZEPT: ein Rezeptgegenstand; der Spieler kennt das Rezept, solange er ihn trägt"
+# src/modkit/app/panels/recipes_panel.cpp:160
+"The template name of the recipe item (the plan): letters, digits and _, unique. It is the key in savegames." = "Der Vorlagenname des Rezeptgegenstands (des Plans): Buchstaben, Ziffern und _, eindeutig. Er ist der Schlüssel in Spielständen."
+# src/modkit/app/panels/recipes_panel.cpp:163 (+2)
+"Station" = "Station"
+# src/modkit/app/panels/recipes_panel.cpp:165 (+1)
+"Result item" = "Ergebnisgegenstand"
+# src/modkit/app/panels/recipes_panel.cpp:169 (+1)
+"Ingredients" = "Zutaten"
+# src/modkit/app/panels/recipes_panel.cpp:174
+"+ required skills" = "+ benötigte Fertigkeiten"
+# src/modkit/app/panels/recipes_panel.cpp:179
+"Skills of the crafter" = "Fertigkeiten des Herstellers"
+# src/modkit/app/panels/recipes_panel.cpp:182
+"Give the plan to the player once per savegame (learn)" = "Dem Spieler den Plan einmal pro Spielstand geben (lernen)"
+# src/modkit/app/panels/recipes_panel.cpp:183
+"The recipe item" = "Der Rezeptgegenstand"
+# src/modkit/app/panels/recipes_panel.cpp:185
+"Empty: \"Recipe: <result label>\"" = "Leer: „Rezept: <Bezeichnung des Ergebnisses>“"
+# src/modkit/app/panels/recipes_panel.cpp:187
+"Base recipe item" = "Basis-Rezeptgegenstand"
+# src/modkit/app/panels/recipes_panel.cpp:188
+"The shipped recipe item that is cloned (default It_Recipe_Health_01: a written recipe with the paper icon)." = "Der mitgelieferte Rezeptgegenstand, der geklont wird (Standard It_Recipe_Health_01: ein geschriebenes Rezept mit dem Papiersymbol)."
+# src/modkit/app/panels/recipes_panel.cpp:191
+"CHANGE OF A SHIPPED RECIPE: only what you set is changed" = "ÄNDERUNG EINES MITGELIEFERTEN REZEPTS: nur das Gesetzte wird geändert"
+# src/modkit/app/panels/recipes_panel.cpp:196
+"shipped: %s at %s -> %s" = "mitgeliefert: %s bei %s -> %s"
+# src/modkit/app/panels/recipes_panel.cpp:205
+"Replace ingredients" = "Zutaten ersetzen"
+# src/modkit/app/panels/recipes_panel.cpp:211
+"The skills the crafter needs." = "Die Fertigkeiten, die der Hersteller braucht."
+# src/modkit/app/panels/recipes_panel.cpp:226
+"Texts of the recipe item" = "Texte des Rezeptgegenstands"
+# src/modkit/app/panels/recipes_panel.cpp:230
+"Other properties of the recipe item" = "Weitere Eigenschaften des Rezeptgegenstands"
+# src/modkit/app/panels/settings_panel.cpp:28
+"Game data" = "Spieldaten"
+# src/modkit/app/panels/settings_panel.cpp:29
+"The game's data directory: <Risen>\\data, the folder with common\\*.pak and compiled\\*.pak. It is only read." = "Das Datenverzeichnis des Spiels: <Risen>\\data, der Ordner mit common\\*.pak und compiled\\*.pak. Es wird nur gelesen."
+# src/modkit/app/panels/settings_panel.cpp:40
+"Reload game data" = "Spieldaten neu laden"
+# src/modkit/app/panels/settings_panel.cpp:40
+"Load game data" = "Spieldaten laden"
+# src/modkit/app/panels/settings_panel.cpp:48
+"common and compiled found" = "common und compiled gefunden"
+# src/modkit/app/panels/settings_panel.cpp:49
+"this folder has no common / compiled sub-folders" = "dieser Ordner hat keine Unterordner common / compiled"
+# src/modkit/app/panels/settings_panel.cpp:52
+"Default folder for exported mods, usually <Risen>\\bin\\spass\\mods." = "Standardordner für exportierte Mods, normalerweise <Risen>\\bin\\spass\\mods."
+# src/modkit/app/panels/settings_panel.cpp:64
+"The Risen folder (with bin\\Risen.exe and the mod layer) that Play starts. Play exports the mod into its bin\\spass\\mods and starts the game, or, when the game runs with hot reload, lets it reload the mod. The game's errors for this mod appear in the Problems panel." = "Der Risen-Ordner (mit bin\\Risen.exe und der Mod-Schicht), den „Spielen“ startet. „Spielen“ exportiert die Mod nach bin\\spass\\mods und startet das Spiel oder, wenn das Spiel mit Hot Reload läuft, lässt es die Mod neu laden. Die Fehler des Spiels für diese Mod erscheinen im Bereich Probleme."
+# src/modkit/app/panels/settings_panel.cpp:78
+"Risen.exe found" = "Risen.exe gefunden"
+# src/modkit/app/panels/settings_panel.cpp:81
+"The main menu" = "Das Hauptmenü"
+# src/modkit/app/panels/settings_panel.cpp:84
+"Windowed (sets FullScreen=\"false\" in data\\ini\\ConfigLocal.xml, a backup is kept)" = "Fenstermodus (setzt FullScreen=\"false\" in data\\ini\\ConfigLocal.xml, eine Sicherung bleibt erhalten)"
+# src/modkit/app/panels/settings_panel.cpp:85 (+1)
+"Audio" = "Audio"
+# src/modkit/app/panels/settings_panel.cpp:86
+"ffmpeg converts voice recordings the game cannot play (FLAC, Opus, M4A, AIFF, ...) to Ogg Vorbis (Strings > Import recordings). Leave the path empty to use the ffmpeg on PATH. It is not bundled." = "ffmpeg wandelt Sprachaufnahmen, die das Spiel nicht abspielen kann (FLAC, Opus, M4A, AIFF, ...), in Ogg Vorbis um (Texte > Aufnahmen importieren). Pfad leer lassen, um das ffmpeg im PATH zu verwenden. Es wird nicht mitgeliefert."
+# src/modkit/app/panels/settings_panel.cpp:89
+"ffmpeg on PATH" = "ffmpeg im PATH"
+# src/modkit/app/panels/settings_panel.cpp:99
+"Test" = "Testen"
+# src/modkit/app/panels/settings_panel.cpp:110
+" (libvorbis: Ogg Vorbis)" = " (libvorbis: Ogg Vorbis)"
+# src/modkit/app/panels/settings_panel.cpp:110
+" (no libvorbis: conversions write WAV)" = " (kein libvorbis: Umwandlungen schreiben WAV)"
+# src/modkit/app/panels/settings_panel.cpp:119
+"Convert to mono 44.1 kHz (like the game's speech)" = "In Mono 44,1 kHz umwandeln (wie die Sprache des Spiels)"
+# src/modkit/app/panels/settings_panel.cpp:123
+"Normalise the loudness of converted files (EBU R128, -16 LUFS)" = "Lautstärke umgewandelter Dateien normalisieren (EBU R128, -16 LUFS)"
+# src/modkit/app/panels/settings_panel.cpp:124
+"Interface" = "Oberfläche"
+# src/modkit/app/panels/settings_panel.cpp:126
+"UI scale" = "Skalierung der Oberfläche"
+# src/modkit/app/panels/settings_panel.cpp:140 (+1)
+"Automatic (system language)" = "Automatisch (Systemsprache)"
+# src/modkit/app/panels/settings_panel.cpp:144 (+1)
+"Language" = "Sprache"
+# src/modkit/app/panels/settings_panel.cpp:152
+"Reload language files" = "Sprachdateien neu laden"
+# src/modkit/app/panels/settings_panel.cpp:156
+"Language files are TOML files in a lang folder next to the editor or in the editor's configuration folder (docs/editor/LOCALIZATION.md). Texts a file does not translate stay English." = "Sprachdateien sind TOML-Dateien in einem Ordner lang neben dem Editor oder im Konfigurationsordner des Editors (docs/editor/LOCALIZATION.md). Texte, die eine Datei nicht übersetzt, bleiben englisch."
+# src/modkit/app/panels/spells_panel.cpp:92
+"Change a shipped spell (mana cost, requirements, projectile damage) or make a new one from the pieces of a shipped one." = "Ändere einen mitgelieferten Zauber (Manakosten, Voraussetzungen, Geschossschaden) oder baue einen neuen aus den Teilen eines mitgelieferten."
+# src/modkit/app/panels/spells_panel.cpp:132
+"+ New spell" = "+ Neuer Zauber"
+# src/modkit/app/panels/spells_panel.cpp:135
+"Which shipped spell?" = "Welcher mitgelieferte Zauber?"
+# src/modkit/app/panels/spells_panel.cpp:135
+"Made from which shipped spell?" = "Aus welchem mitgelieferten Zauber gebaut?"
+# src/modkit/app/panels/spells_panel.cpp:137
+"   (crystal, projectile)" = "   (Kristall, Geschoss)"
+# src/modkit/app/panels/spells_panel.cpp:137
+"   (rune, scroll, orb)" = "   (Rune, Schriftrolle, Kugel)"
+# src/modkit/app/panels/spells_panel.cpp:171
+"NEW SPELL: made of the pieces of a shipped spell (new item templates, risen.balance new_spells)" = "NEUER ZAUBER: aus den Teilen eines mitgelieferten Zaubers gebaut (neue Gegenstandsvorlagen, risen.balance new_spells)"
+# src/modkit/app/panels/spells_panel.cpp:173
+"The template name of the crystal / rune; scroll and orb get _Scroll and _Orb. Letters, digits and _, unique, at most 63 characters." = "Der Vorlagenname des Kristalls / der Rune; Schriftrolle und Kugel bekommen _Scroll und _Orb. Buchstaben, Ziffern und _, eindeutig, höchstens 63 Zeichen."
+# src/modkit/app/panels/spells_panel.cpp:178
+"Base spell" = "Basiszauber"
+# src/modkit/app/panels/spells_panel.cpp:199
+"Forms to make" = "Zu erzeugende Formen"
+# src/modkit/app/panels/spells_panel.cpp:213
+"makes: %s" = "erzeugt: %s"
+# src/modkit/app/panels/spells_panel.cpp:218
+"CHANGE OF A SHIPPED SPELL: the shipped items and projectiles are edited (every game, savegames keep the numbers they were saved with)" = "ÄNDERUNG EINES MITGELIEFERTEN ZAUBERS: die mitgelieferten Gegenstände und Geschosse werden bearbeitet (gilt für jedes Spiel, Spielstände behalten die Zahlen, mit denen sie gespeichert wurden)"
+# src/modkit/app/panels/spells_panel.cpp:222
+"Spell" = "Zauber"
+# src/modkit/app/panels/spells_panel.cpp:239
+"   projectiles {0}" = "   Geschosse {0}"
+# src/modkit/app/panels/spells_panel.cpp:240
+"projectile spell" = "Geschosszauber"
+# src/modkit/app/panels/spells_panel.cpp:240
+"rune spell" = "Runenzauber"
+# src/modkit/app/panels/spells_panel.cpp:259
+"Costs and requirements" = "Kosten und Voraussetzungen"
+# src/modkit/app/panels/spells_panel.cpp:261
+"gCCastInfo_PS.ManaCost of the crystal / rune; the cast takes exactly this from the base mana." = "gCCastInfo_PS.ManaCost des Kristalls / der Rune; der Zauber zieht genau diesen Wert vom Basismana ab."
+# src/modkit/app/panels/spells_panel.cpp:263
+"Crystal, rune and scroll cost = shipped * factor (an orb stays free). Excludes an absolute mana cost." = "Kosten von Kristall, Rune und Schriftrolle = mitgeliefert * Faktor (eine Kugel bleibt kostenlos). Schließt absolute Manakosten aus."
+# src/modkit/app/panels/spells_panel.cpp:264
+"a mana cost and a factor exclude each other" = "Manakosten und Faktor schließen sich aus"
+# src/modkit/app/panels/spells_panel.cpp:266
+"Scroll mana cost" = "Manakosten der Schriftrolle"
+# src/modkit/app/panels/spells_panel.cpp:267
+"Orb mana cost" = "Manakosten der Kugel"
+# src/modkit/app/panels/spells_panel.cpp:270
+"The skill level to equip the crystal ({ Fireball = 2 })." = "Die Fertigkeitsstufe, um den Kristall anzulegen ({ Fireball = 2 })."
+# src/modkit/app/panels/spells_panel.cpp:270
+"The Circle level to equip the rune ({ Circle = 3 }); scrolls and orbs need nothing." = "Die Kreisstufe, um die Rune anzulegen ({ Circle = 3 }); Schriftrollen und Kugeln brauchen nichts."
+# src/modkit/app/panels/spells_panel.cpp:271
+"Used up by a cast" = "Beim Wirken verbraucht"
+# src/modkit/app/panels/spells_panel.cpp:274
+"Projectile" = "Geschoss"
+# src/modkit/app/panels/spells_panel.cpp:275
+"The projectile templates (%zu level%s) carry the damage, speed and size." = "Die Geschossvorlagen (%zu Stufe%s) tragen Schaden, Geschwindigkeit und Größe."
+# src/modkit/app/panels/spells_panel.cpp:279
+"unchanged" = "unverändert"
+# src/modkit/app/panels/spells_panel.cpp:279
+"same for every level" = "gleich für jede Stufe"
+# src/modkit/app/panels/spells_panel.cpp:279
+"one value per level" = "ein Wert pro Stufe"
+# src/modkit/app/panels/spells_panel.cpp:300
+"(shipped %s)" = "(mitgeliefert %s)"
+# src/modkit/app/panels/spells_panel.cpp:304
+"  damage" = "  Schaden"
+# src/modkit/app/panels/spells_panel.cpp:312
+"  level {0}" = "  Stufe {0}"
+# src/modkit/app/panels/spells_panel.cpp:320
+"Damage type" = "Schadensart"
+# src/modkit/app/panels/spells_panel.cpp:321
+"Picks the protection skill that is subtracted: Magic (ProtMagic), Ice, Fire, ..." = "Wählt die Schutzfertigkeit, die abgezogen wird: Magic (ProtMagic), Ice, Fire, ..."
+# src/modkit/app/panels/spells_panel.cpp:322
+"Speed" = "Geschwindigkeit"
+# src/modkit/app/panels/spells_panel.cpp:323
+"Speed factor" = "Geschwindigkeitsfaktor"
+# src/modkit/app/panels/spells_panel.cpp:324
+"Radius" = "Radius"
+# src/modkit/app/panels/spells_panel.cpp:325
+"Radius factor" = "Radiusfaktor"
+# src/modkit/app/panels/spells_panel.cpp:326
+"Flying effect" = "Flugeffekt"
+# src/modkit/app/panels/spells_panel.cpp:328
+"Other properties of the {0}" = "Weitere Eigenschaften von {0}"
+# src/modkit/app/panels/spells_panel.cpp:329
+"Any property of the item by name (gCCastInfo_PS.StartTask re-uses another spell's effect), see docs/SPELL_PROPERTIES.md." = "Jede Eigenschaft des Gegenstands nach Namen (gCCastInfo_PS.StartTask verwendet den Effekt eines anderen Zaubers wieder), siehe docs/SPELL_PROPERTIES.md."
+# src/modkit/app/panels/strings_panel.cpp:170
+"filter: text, id, speaker ..." = "Filter: Text, Id, Sprecher ..."
+# src/modkit/app/panels/strings_panel.cpp:172
+"Mod and game" = "Mod und Spiel"
+# src/modkit/app/panels/strings_panel.cpp:177 (+1)
+"every kind" = "jede Art"
+# src/modkit/app/panels/strings_panel.cpp:191
+"speaker / voice" = "Sprecher / Stimme"
+# src/modkit/app/panels/strings_panel.cpp:194
+"dialogue / quest / info" = "Dialog / Quest / Info"
+# src/modkit/app/panels/strings_panel.cpp:205
+"The language of the Text column and of the 'missing audio' filter." = "Die Sprache der Spalte Text und des Filters „Audio fehlt“."
+# src/modkit/app/panels/strings_panel.cpp:206
+"Spoken" = "Gesprochen"
+# src/modkit/app/panels/strings_panel.cpp:208
+"Missing audio" = "Audio fehlt"
+# src/modkit/app/panels/strings_panel.cpp:210
+"Overridden" = "Überschrieben"
+# src/modkit/app/panels/strings_panel.cpp:211
+"Also list the game rows that a row of the mod replaces (they are hidden otherwise)." = "Listet auch die Spielzeilen, die eine Zeile der Mod ersetzt (sonst sind sie ausgeblendet)."
+# src/modkit/app/panels/strings_panel.cpp:216
+"+ String row" = "+ Textzeile"
+# src/modkit/app/panels/strings_panel.cpp:225
+"A text of the game's string tables (strings/*.csv of the exported mod) that no item, recipe or NPC of the project owns: a button label, a document, a changed line. The id is not case sensitive." = "Ein Text aus den Stringtabellen des Spiels (strings/*.csv der exportierten Mod), den kein Gegenstand, Rezept oder NPC des Projekts besitzt: eine Schaltflächenbeschriftung, ein Dokument, eine geänderte Zeile. Die Id unterscheidet nicht zwischen Groß- und Kleinschreibung."
+# src/modkit/app/panels/strings_panel.cpp:228
+"Export for voice recording..." = "Für Sprachaufnahme exportieren..."
+# src/modkit/app/panels/strings_panel.cpp:233
+"Writes the shown lines (the filter above) as voice_lines.csv (UTF-8, opens in Excel), voice_lines.json and one script per speaker and language." = "Schreibt die angezeigten Zeilen (der Filter oben) als voice_lines.csv (UTF-8, öffnet sich in Excel), voice_lines.json und je ein Skript pro Sprecher und Sprache."
+# src/modkit/app/panels/strings_panel.cpp:235
+"Import recordings..." = "Aufnahmen importieren..."
+# src/modkit/app/panels/strings_panel.cpp:252
+"Assigns a folder of recordings to the shown dialogue lines: by file name (<line id>_<Language>.ogg, as the export names them) or by the 'file' column of a filled CSV. Files the game cannot play are converted with ffmpeg." = "Ordnet einen Ordner mit Aufnahmen den angezeigten Dialogzeilen zu: nach Dateinamen (<Zeilen-Id>_<Sprache>.ogg, wie der Export sie benennt) oder nach der Spalte „file“ einer ausgefüllten CSV. Dateien, die das Spiel nicht abspielen kann, werden mit ffmpeg umgewandelt."
+# src/modkit/app/panels/strings_panel.cpp:255
+"%zu of %zu rows  |  %zu spoken, %zu without %s audio%s" = "%zu von %zu Zeilen  |  %zu gesprochen, %zu ohne %s-Audio%s"
+# src/modkit/app/panels/strings_panel.cpp:268
+"Source" = "Quelle"
+# src/modkit/app/panels/strings_panel.cpp:270
+"Audio {0}" = "Audio {0}"
+# src/modkit/app/panels/strings_panel.cpp:271
+"Text ({0})" = "Text ({0})"
+# src/modkit/app/panels/strings_panel.cpp:272 (+1)
+"Stage direction" = "Regieanweisung"
+# src/modkit/app/panels/strings_panel.cpp:273
+"Context" = "Kontext"
+# src/modkit/app/panels/strings_panel.cpp:299
+"game: {0}" = "Spiel: {0}"
+# src/modkit/app/panels/strings_panel.cpp:305
+"recorded" = "aufgenommen"
+# src/modkit/app/panels/strings_panel.cpp:341
+"Select a row. Rows of the mod are edited here; game rows are read-only (Override in the mod copies one into the project)." = "Wähle eine Zeile. Zeilen der Mod werden hier bearbeitet; Spielzeilen sind schreibgeschützt („In der Mod überschreiben“ kopiert eine ins Projekt)."
+# src/modkit/app/panels/strings_panel.cpp:347
+"game table " = "Spieltabelle"
+# src/modkit/app/panels/strings_panel.cpp:350
+"| speaker %s%s%s" = "| Sprecher %s%s%s"
+# src/modkit/app/panels/strings_panel.cpp:350
+", voice " = ", Stimme"
+# src/modkit/app/panels/strings_panel.cpp:355
+"Open" = "Öffnen"
+# src/modkit/app/panels/strings_panel.cpp:359
+"overridden by the mod" = "von der Mod überschrieben"
+# src/modkit/app/panels/strings_panel.cpp:360
+"Override in the mod" = "In der Mod überschreiben"
+# src/modkit/app/panels/strings_panel.cpp:366
+"the text {0} is now a string row of the mod" = "der Text {0} ist jetzt eine Textzeile der Mod"
+# src/modkit/app/panels/strings_panel.cpp:380
+"Delete row" = "Zeile löschen"
+# src/modkit/app/panels/strings_panel.cpp:420
+"(whispering)" = "(flüsternd)"
+# src/modkit/app/panels/strings_panel.cpp:453
+"Plays as %s (key %s)" = "Wird als %s abgespielt (Schlüssel %s)"
+# src/modkit/app/panels/strings_panel.cpp:459 (+1)
+"Export for voice recording" = "Für Sprachaufnahme exportieren"
+# src/modkit/app/panels/strings_panel.cpp:465
+"Writes the %zu rows the Strings table shows now (its filter) for a recording studio: voice_lines.csv (UTF-8 with BOM: Excel opens it), voice_lines.json and scripts/<speaker>_<Language>.txt. Every row has a stable line id and the file name the import expects." = "Schreibt die %zu Zeilen, die die Texttabelle jetzt zeigt (ihr Filter), für ein Tonstudio: voice_lines.csv (UTF-8 mit BOM: Excel öffnet sie), voice_lines.json und scripts/<Sprecher>_<Sprache>.txt. Jede Zeile hat eine stabile Zeilen-Id und den Dateinamen, den der Import erwartet."
+# src/modkit/app/panels/strings_panel.cpp:475
+"Languages:" = "Sprachen:"
+# src/modkit/app/panels/strings_panel.cpp:484
+"Only lines without a recording" = "Nur Zeilen ohne Aufnahme"
+# src/modkit/app/panels/strings_panel.cpp:486
+"Only spoken lines" = "Nur gesprochene Zeilen"
+# src/modkit/app/panels/strings_panel.cpp:487
+"Off: every text of the selection (item names, descriptions, quest texts, HUD messages) for translators; their status is empty." = "Aus: jeder Text der Auswahl (Gegenstandsnamen, Beschreibungen, Questtexte, HUD-Meldungen) für Übersetzer; ihr Status ist leer."
+# src/modkit/app/panels/strings_panel.cpp:489
+"Scripts per speaker" = "Skripte pro Sprecher"
+# src/modkit/app/panels/strings_panel.cpp:499
+"choose a folder" = "Ordner wählen"
+# src/modkit/app/panels/strings_panel.cpp:502
+"{0} rows, {1} files written to {2}" = "{0} Zeilen, {1} Dateien geschrieben nach {2}"
+# src/modkit/app/panels/strings_panel.cpp:503
+"voice export: {0}" = "Sprachexport: {0}"
+# src/modkit/app/panels/strings_panel.cpp:507
+"Open folder" = "Ordner öffnen"
+# src/modkit/app/panels/strings_panel.cpp:543 (+1)
+"Import recordings" = "Aufnahmen importieren"
+# src/modkit/app/panels/strings_panel.cpp:551
+"Save the project first: the recordings are copied into its folder (voice/)." = "Speichere zuerst das Projekt: die Aufnahmen werden in seinen Ordner kopiert (voice/)."
+# src/modkit/app/panels/strings_panel.cpp:553
+"Folder with the recordings" = "Ordner mit den Aufnahmen"
+# src/modkit/app/panels/strings_panel.cpp:564
+"Filled CSV (optional: its 'file' column names the recording of each line)" = "Ausgefüllte CSV (optional: ihre Spalte „file“ nennt die Aufnahme jeder Zeile)"
+# src/modkit/app/panels/strings_panel.cpp:576
+"Language of files without one" = "Sprache von Dateien ohne Angabe"
+# src/modkit/app/panels/strings_panel.cpp:584
+"A file named after the line id alone (<line id>.wav) is for this language; <line id>_<Language>.ogg names its own." = "Eine nur nach der Zeilen-Id benannte Datei (<Zeilen-Id>.wav) gehört zu dieser Sprache; <Zeilen-Id>_<Sprache>.ogg nennt ihre eigene."
+# src/modkit/app/panels/strings_panel.cpp:586
+"Only the shown lines" = "Nur die angezeigten Zeilen"
+# src/modkit/app/panels/strings_panel.cpp:587
+"Normalise loudness (EBU R128, -16 LUFS)" = "Lautstärke normalisieren (EBU R128, -16 LUFS)"
+# src/modkit/app/panels/strings_panel.cpp:589
+"Mono 44.1 kHz like the game's speech" = "Mono 44,1 kHz wie die Sprache des Spiels"
+# src/modkit/app/panels/strings_panel.cpp:592
+"Convert every file" = "Jede Datei umwandeln"
+# src/modkit/app/panels/strings_panel.cpp:593
+"Off: files the game plays as they are (Ogg Vorbis, WAV, MP3) are copied unchanged and only the others go through ffmpeg." = "Aus: Dateien, die das Spiel unverändert abspielt (Ogg Vorbis, WAV, MP3), werden unverändert kopiert; nur die anderen laufen durch ffmpeg."
+# src/modkit/app/panels/strings_panel.cpp:600
+"looking for ffmpeg..." = "suche ffmpeg..."
+# src/modkit/app/panels/strings_panel.cpp:602
+"ffmpeg %s (%s)%s" = "ffmpeg %s (%s)%s"
+# src/modkit/app/panels/strings_panel.cpp:602
+" - no libvorbis: conversions write 16-bit WAV" = " - kein libvorbis: Umwandlungen schreiben 16-Bit-WAV"
+# src/modkit/app/panels/strings_panel.cpp:604
+"No ffmpeg: %s. Files the game plays are imported, the others are listed." = "Kein ffmpeg: %s. Dateien, die das Spiel abspielt, werden importiert, die anderen aufgelistet."
+# src/modkit/app/panels/strings_panel.cpp:608
+"Preview" = "Vorschau"
+# src/modkit/app/panels/strings_panel.cpp:613
+"Import {0} file(s)" = "{0} Datei(en) importieren"
+# src/modkit/app/panels/strings_panel.cpp:636
+"reading the folder..." = "lese den Ordner..."
+# src/modkit/app/panels/strings_panel.cpp:647
+"%zu audio files: %zu matched, %zu unmatched, %zu ambiguous, %zu duplicate" = "%zu Audiodateien: %zu zugeordnet, %zu nicht zugeordnet, %zu mehrdeutig, %zu doppelt"
+# src/modkit/app/panels/strings_panel.cpp:655
+"Line / language" = "Zeile / Sprache"
+# src/modkit/app/panels/strings_panel.cpp:656
+"Note" = "Hinweis"
+# src/modkit/app/panels/strings_panel.cpp:671
+"imported: {0}" = "importiert: {0}"
+# src/modkit/app/panels/strings_panel.cpp:746
+"voice import: {0}" = "Sprachimport: {0}"
+# src/modkit/app/panels/world_panel.cpp:156
+"Loading the world..." = "Welt wird geladen..."
+# src/modkit/app/panels/world_panel.cpp:156
+"No world loaded." = "Keine Welt geladen."
+# src/modkit/app/panels/world_panel.cpp:251
+"World {0}: {1} entities" = "Welt {0}: {1} Entitäten"
+# src/modkit/app/panels/world_panel.cpp:267
+"loading..." = "lade..."
+# src/modkit/app/panels/world_panel.cpp:269
+"%zu entities, %zu layers" = "%zu Entitäten, %zu Ebenen"
+# src/modkit/app/panels/world_panel.cpp:273
+"find an entity by name" = "Entität nach Namen suchen"
+# src/modkit/app/panels/world_panel.cpp:279
+"{0}{1} found" = "{0}{1} gefunden"
+# src/modkit/app/panels/world_panel.cpp:295
+"Select" = "Auswählen"
+# src/modkit/app/panels/world_panel.cpp:297
+"Place NPC" = "NPC platzieren"
+# src/modkit/app/panels/world_panel.cpp:299
+"Place item / object" = "Gegenstand / Objekt platzieren"
+# src/modkit/app/panels/world_panel.cpp:306 (+1)
+"a new NPC of the template" = "ein neuer NPC der Vorlage"
+# src/modkit/app/panels/world_panel.cpp:332
+"gizmo:" = "Gizmo:"
+# src/modkit/app/panels/world_panel.cpp:334
+"move" = "verschieben"
+# src/modkit/app/panels/world_panel.cpp:336
+"turn" = "drehen"
+# src/modkit/app/panels/world_panel.cpp:337
+"right mouse: look, WASD/QE: move, wheel: speed, click: %s, F: focus, End: align with mesh, gizmo: move / turn the selected project object" = "Rechte Maustaste: umsehen, WASD/QE: bewegen, Mausrad: Geschwindigkeit, Klick: %s, F: fokussieren, Ende: am Mesh ausrichten, Gizmo: das ausgewählte Projektobjekt verschieben / drehen"
+# src/modkit/app/panels/world_panel.cpp:338
+"select" = "auswählen"
+# src/modkit/app/panels/world_panel.cpp:338
+"place on the ground" = "auf dem Boden platzieren"
+# src/modkit/app/panels/world_panel.cpp:342
+"Show" = "Anzeigen"
+# src/modkit/app/panels/world_panel.cpp:353
+"Level meshes (huge boxes)" = "Levelmeshes (riesige Quader)"
+# src/modkit/app/panels/world_panel.cpp:354
+"Hide story sectors (off at the start)" = "Story-Sektoren ausblenden (beim Start aus)"
+# src/modkit/app/panels/world_panel.cpp:355
+"Some sectors are switched off when a game starts and a chapter, a quest or a dialogue switches them on: the NPCs and monsters in them are not there at first. They are marked in the layer list and the inspector says what switches them on (docs/RE.md section 55)." = "Manche Sektoren sind beim Spielstart ausgeschaltet, und ein Kapitel, eine Quest oder ein Dialog schaltet sie ein: Die NPCs und Monster darin sind zunächst nicht da. Sie sind in der Ebenenliste markiert, und der Inspektor sagt, was sie einschaltet (docs/RE.md Abschnitt 55)."
+# src/modkit/app/panels/world_panel.cpp:357
+"Draw" = "Zeichnen"
+# src/modkit/app/panels/world_panel.cpp:358
+"Meshes and textures" = "Meshes und Texturen"
+# src/modkit/app/panels/world_panel.cpp:360
+"mesh distance %.0f" = "Mesh-Entfernung %.0f"
+# src/modkit/app/panels/world_panel.cpp:361
+"Boxes of entities with a mesh" = "Quader von Entitäten mit Mesh"
+# src/modkit/app/panels/world_panel.cpp:362
+"Boxes of objects without a mesh" = "Quader von Objekten ohne Mesh"
+# src/modkit/app/panels/world_panel.cpp:363
+"Mostly the vegetation (SpeedTree), lights and helpers: the editor has no meshes for them." = "Meist die Vegetation (SpeedTree), Lichter und Hilfsobjekte: Der Editor hat keine Meshes dafür."
+# src/modkit/app/panels/world_panel.cpp:364
+"%zu meshes loaded, %zu waiting%s" = "%zu Meshes geladen, %zu wartend%s"
+# src/modkit/app/panels/world_panel.cpp:364
+", CPU textures" = ", CPU-Texturen"
+# src/modkit/app/panels/world_panel.cpp:367 (+1)
+"all" = "alle"
+# src/modkit/app/panels/world_panel.cpp:391
+"(root)" = "(Wurzel)"
+# src/modkit/app/panels/world_panel.cpp:403
+"story" = "Story"
+# src/modkit/app/panels/world_panel.cpp:420
+"Sector %s" = "Sektor %s"
+# src/modkit/app/panels/world_panel.cpp:422
+"on when a game starts" = "an, wenn ein Spiel beginnt"
+# src/modkit/app/panels/world_panel.cpp:422
+"OFF when a game starts: its entities are not in the world yet" = "AUS, wenn ein Spiel beginnt: seine Entitäten sind noch nicht in der Welt"
+# src/modkit/app/panels/world_panel.cpp:425
+"Nothing in the game switches it on (the demo's or an unused story sector)." = "Nichts im Spiel schaltet ihn ein (ein Sektor der Demo oder ein unbenutzter Story-Sektor)."
+# src/modkit/app/panels/world_panel.cpp:430
+"%s by %s %s" = "%s durch %s %s"
+# src/modkit/app/panels/world_panel.cpp:430
+"switched ON" = "EINGESCHALTET"
+# src/modkit/app/panels/world_panel.cpp:430
+"switched OFF" = "AUSGESCHALTET"
+# src/modkit/app/panels/world_panel.cpp:430
+"dialogue info" = "Dialog-Info"
+# src/modkit/app/panels/world_panel.cpp:430
+"script" = "Skript"
+# src/modkit/app/panels/world_panel.cpp:450
+"Mod layers" = "Mod-Ebenen"
+# src/modkit/app/panels/world_panel.cpp:452
+"none (Layers panel)" = "keine (Bereich Ebenen)"
+# src/modkit/app/panels/world_panel.cpp:462
+"(no name)" = "(kein Name)"
+# src/modkit/app/panels/world_panel.cpp:470
+"on" = "an"
+# src/modkit/app/panels/world_panel.cpp:475
+"Mod layer %s: %zu NPCs, %zu spawns, %zu container fills" = "Mod-Ebene %s: %zu NPCs, %zu Spawns, %zu Behälterfüllungen"
+# src/modkit/app/panels/world_panel.cpp:476
+"On when a game starts." = "An, wenn ein Spiel beginnt."
+# src/modkit/app/panels/world_panel.cpp:476
+"Off when a game starts: its members are not in the world until it is switched on." = "Aus, wenn ein Spiel beginnt: ihre Mitglieder sind nicht in der Welt, bis sie eingeschaltet wird."
+# src/modkit/app/panels/world_panel.cpp:477
+"Switches itself on when its condition first holds." = "Schaltet sich selbst ein, wenn ihre Bedingung zum ersten Mal zutrifft."
+# src/modkit/app/panels/world_panel.cpp:478
+"Switches itself off when its condition first holds." = "Schaltet sich selbst aus, wenn ihre Bedingung zum ersten Mal zutrifft."
+# src/modkit/app/panels/world_panel.cpp:479
+"Event graphs switch it with the Layer node. Members are drawn in its colour, a cross on top marks a layer that starts off." = "Ereignisgraphen schalten sie mit dem Ebenen-Knoten. Mitglieder werden in ihrer Farbe gezeichnet, ein Kreuz darüber kennzeichnet eine Ebene, die ausgeschaltet startet."
+# src/modkit/app/panels/world_panel.cpp:483
+"Edit in Layers" = "In Ebenen bearbeiten"
+# src/modkit/app/panels/world_panel.cpp:504
+"Mod layer" = "Mod-Ebene"
+# src/modkit/app/panels/world_panel.cpp:504 (+1)
+"(none: always there)" = "(keine: immer da)"
+# src/modkit/app/panels/world_panel.cpp:520
+"   (off at start)" = "   (aus beim Start)"
+# src/modkit/app/panels/world_panel.cpp:525
+"A mod layer switches its members on and off as a whole (Layers panel, the Layer node of the event graphs). Without one the object is always there." = "Eine Mod-Ebene schaltet ihre Mitglieder als Ganzes ein und aus (Bereich Ebenen, der Ebenen-Knoten der Ereignisgraphen). Ohne Ebene ist das Objekt immer da."
+# src/modkit/app/panels/world_panel.cpp:528
+"Edit layer" = "Ebene bearbeiten"
+# src/modkit/app/panels/world_panel.cpp:744
+"camera %.0f %.0f %.0f   speed %.0f   %zu meshes drawn" = "Kamera %.0f %.0f %.0f   Geschwindigkeit %.0f   %zu Meshes gezeichnet"
+# src/modkit/app/panels/world_panel.cpp:846
+"Nothing under the cursor to place on (the sky?)" = "Unter dem Cursor ist nichts zum Platzieren (der Himmel?)"
+# src/modkit/app/panels/world_panel.cpp:856
+"Choose the template of the new NPC first" = "Wähle zuerst die Vorlage des neuen NPCs"
+# src/modkit/app/panels/world_panel.cpp:859
+"Choose the item to place first" = "Wähle zuerst den Gegenstand zum Platzieren"
+# src/modkit/app/panels/world_panel.cpp:882
+"Move %s here" = "%s hierher verschieben"
+# src/modkit/app/panels/world_panel.cpp:883
+"A new NPC of %s here" = "Ein neuer NPC von %s hier"
+# src/modkit/app/panels/world_panel.cpp:884
+"Spawn %s here" = "%s hier spawnen"
+# src/modkit/app/panels/world_panel.cpp:885
+"%s cannot be placed in the world" = "%s kann nicht in der Welt platziert werden"
+# src/modkit/app/panels/world_panel.cpp:901 (+1)
+"Placed {0}" = "{0} platziert"
+# src/modkit/app/panels/world_panel.cpp:913
+"Placed {0} (a new NPC: name, inventory and routine in the NPCs panel)" = "{0} platziert (ein neuer NPC: Name, Inventar und Tagesablauf im Bereich NPCs)"
+# src/modkit/app/panels/world_panel.cpp:1108
+"Select a placed NPC, a spawned object or a moved entity of the project to align it" = "Wähle einen platzierten NPC, ein gespawntes Objekt oder eine verschobene Entität des Projekts, um sie auszurichten"
+# src/modkit/app/panels/world_panel.cpp:1180
+"Nothing below {0} to align it with (meshes further than the draw distance are not drawn)" = "Unter {0} ist nichts, woran es sich ausrichten ließe (Meshes jenseits der Zeichenentfernung werden nicht gezeichnet)"
+# src/modkit/app/panels/world_panel.cpp:1186
+"{0} already rests on the mesh below" = "{0} liegt schon auf dem Mesh darunter"
+# src/modkit/app/panels/world_panel.cpp:1192
+"Placed {0} with the mesh below (height {1})" = "{0} auf dem Mesh darunter platziert (Höhe {1})"
+# src/modkit/app/panels/world_panel.cpp:1192
+"Aligned {0} with the mesh below (height {1})" = "{0} am Mesh darunter ausgerichtet (Höhe {1})"
+# src/modkit/app/panels/world_panel.cpp:1197
+"Align with mesh" = "Am Mesh ausrichten"
+# src/modkit/app/panels/world_panel.cpp:1198
+"Lets the object down (or up) onto the surface below it: the table under an apple, the ground under a crate. Its lowest point goes onto the highest point of what is below its footprint. Key: End (in the view)." = "Setzt das Objekt auf die Fläche darunter ab (oder hebt es hinauf): den Tisch unter einen Apfel, den Boden unter eine Kiste. Sein tiefster Punkt kommt auf den höchsten Punkt dessen, was unter seiner Grundfläche liegt. Taste: Ende (in der Ansicht)."
+# src/modkit/app/panels/world_panel.cpp:1207
+"placed NPC of the project (%s)" = "platzierter NPC des Projekts (%s)"
+# src/modkit/app/panels/world_panel.cpp:1209 (+2)
+"position" = "Position"
+# src/modkit/app/panels/world_panel.cpp:1215 (+1)
+"world" = "Welt"
+# src/modkit/app/panels/world_panel.cpp:1217
+"Edit in NPCs" = "In NPCs bearbeiten"
+# src/modkit/app/panels/world_panel.cpp:1226
+"spawned once per savegame by the mod" = "von der Mod einmal pro Spielstand gespawnt"
+# src/modkit/app/panels/world_panel.cpp:1231 (+1)
+"Amount" = "Menge"
+# src/modkit/app/panels/world_panel.cpp:1242 (+1)
+"yaw, pitch, roll" = "Gieren, Nicken, Rollen"
+# src/modkit/app/panels/world_panel.cpp:1252
+"Remove from the project" = "Aus dem Projekt entfernen"
+# src/modkit/app/panels/world_panel.cpp:1258
+"an entity of the world, moved by the mod on every world.ready" = "eine Entität der Welt, von der Mod bei jedem world.ready verschoben"
+# src/modkit/app/panels/world_panel.cpp:1259
+"id %s" = "Id %s"
+# src/modkit/app/panels/world_panel.cpp:1275
+"Back to its place (drop the move)" = "Zurück an seinen Platz (Verschiebung verwerfen)"
+# src/modkit/app/panels/world_panel.cpp:1295
+"Items this mod adds" = "Gegenstände, die diese Mod hinzufügt"
+# src/modkit/app/panels/world_panel.cpp:1300
+"Add items to this container" = "Gegenstände zu diesem Behälter hinzufügen"
+# src/modkit/app/panels/world_panel.cpp:1311
+"Put once per savegame into this entity (risen.entity.by_id)." = "Einmal pro Spielstand in diese Entität gelegt (risen.entity.by_id)."
+# src/modkit/app/panels/world_panel.cpp:1316
+"Remove these additions" = "Diese Ergänzungen entfernen"
+# src/modkit/app/panels/world_panel.cpp:1327
+"Change it in the world" = "In der Welt ändern"
+# src/modkit/app/panels/world_panel.cpp:1333
+"Removed by this mod." = "Von dieser Mod entfernt."
+# src/modkit/app/panels/world_panel.cpp:1335
+"Keep it" = "Behalten"
+# src/modkit/app/panels/world_panel.cpp:1342
+"Moved by this mod." = "Von dieser Mod verschoben."
+# src/modkit/app/panels/world_panel.cpp:1344
+"Edit the move" = "Verschiebung bearbeiten"
+# src/modkit/app/panels/world_panel.cpp:1350
+"Move or turn it" = "Verschieben oder drehen"
+# src/modkit/app/panels/world_panel.cpp:1366
+"Drag the gizmo (move / turn) or type the new pose" = "Ziehe das Gizmo (verschieben / drehen) oder tippe die neue Lage ein"
+# src/modkit/app/panels/world_panel.cpp:1369
+"Remove it from the world" = "Aus der Welt entfernen"
+# src/modkit/app/panels/world_panel.cpp:1379
+"An NPC: his routine moves him again, and removing him can break quests." = "Ein NPC: sein Tagesablauf bewegt ihn wieder, und sein Entfernen kann Quests zerstören."
+# src/modkit/app/panels/world_panel.cpp:1449
+"Click an entity in the view, or find one by name." = "Klicke eine Entität in der Ansicht an oder suche eine nach Namen."
+# src/modkit/app/panels/world_panel.cpp:1452
+"Colours: the kind of the entity's template (see Show). Magenta: the project's placed NPCs, yellow: its spawns; members of a mod layer have the layer's colour (see Mod layers). Drag the thin bar left of this panel to change its width." = "Farben: die Art der Vorlage der Entität (siehe Anzeigen). Magenta: die platzierten NPCs des Projekts, Gelb: seine Spawns; Mitglieder einer Mod-Ebene haben die Farbe der Ebene (siehe Mod-Ebenen). Ziehe die dünne Leiste links von diesem Bereich, um seine Breite zu ändern."
+# src/modkit/app/panels/world_panel.cpp:1458
+"(NPC)" = "(NPC)"
+# src/modkit/app/panels/world_panel.cpp:1479
+"Appears" = "Erscheint"
+# src/modkit/app/panels/world_panel.cpp:1482
+"Copy id" = "Id kopieren"
+# src/modkit/app/panels/world_panel.cpp:1484
+"Copy position" = "Position kopieren"
+# src/modkit/app/pickers.cpp:68
+"No template with this name in the game data or the project" = "Keine Vorlage mit diesem Namen in den Spieldaten oder im Projekt"
+# src/modkit/app/pickers.cpp:84
+"filter by name or label" = "nach Name oder Bezeichnung filtern"
+# src/modkit/app/pickers.cpp:155
+"filter: any part of the name, owner, quest, text ..." = "Filter: ein Teil von Name, Besitzer, Quest, Text ..."
+# src/modkit/app/pickers.cpp:162
+"%zu matches" = "%zu Treffer"
+# src/modkit/app/pickers.cpp:238
+"dialogue info (FILLERX2_00029)" = "Dialog-Info (FILLERX2_00029)"
+# src/modkit/app/pickers.cpp:238
+"No dialogue info of the game has this name" = "Keine Dialog-Info des Spiels hat diesen Namen"
+# src/modkit/app/pickers.cpp:265
+"{0} in the world" = "{0} in der Welt"
+# src/modkit/app/pickers.cpp:265
+"1 in the world" = "1 in der Welt"
+# src/modkit/app/pickers.cpp:269
+"NPC name" = "NPC-Name"
+# src/modkit/app/pickers.cpp:269 (+1)
+"loading the world..." = "lade die Welt..."
+# src/modkit/app/pickers.cpp:270
+"No NPC with this name in the world or the project" = "Kein NPC mit diesem Namen in der Welt oder im Projekt"
+# src/modkit/app/pickers.cpp:291
+"entity ID" = "Entitäts-ID"
+# src/modkit/app/pickers.cpp:291
+"No entity of the world has this ID" = "Keine Entität der Welt hat diese ID"
+# src/modkit/app/pickers.cpp:307
+"quest id" = "Quest-Id"
+# src/modkit/app/pickers.cpp:310
+"No quest with this id in the project or the game" = "Keine Quest mit dieser Id im Projekt oder im Spiel"
+# src/modkit/app/pickers.cpp:314
+"a quest of the game%s%s" = "eine Quest des Spiels%s%s"
+# src/modkit/app/pickers.cpp:327
+"filter by id or title" = "nach Id oder Titel filtern"
+# src/modkit/app/pickers.cpp:358
+"(mod) " = "(Mod)"
+# src/modkit/app/pickers.cpp:358
+"  [silent]" = "  [still]"
+# src/modkit/app/pickers.cpp:362
+"%zu quests%s" = "%zu Quests%s"
+# src/modkit/app/pickers.cpp:362
+" (load the game data to see the game's quests)" = " (lade die Spieldaten, um die Quests des Spiels zu sehen)"
+# src/modkit/app/pickers.cpp:407
+"load the game data first (Settings)" = "lade zuerst die Spieldaten (Einstellungen)"
+# src/modkit/app/pickers.cpp:437
+"a sound" = "ein Klang"
+# src/modkit/app/pickers.cpp:449
+"English" = "Englisch"
+# src/modkit/app/pickers.cpp:449
+"German" = "Deutsch"
+# src/modkit/app/pickers.cpp:449
+"French" = "Französisch"
+# src/modkit/app/pickers.cpp:449
+"Russian" = "Russisch"
+# src/modkit/app/pickers.cpp:449
+"effects and other" = "Effekte und anderes"
+# src/modkit/app/pickers.cpp:477
+"load the game data (Settings) to see the game's sounds" = "lade die Spieldaten (Einstellungen), um die Klänge des Spiels zu sehen"
+# src/modkit/app/pickers.cpp:487
+"project" = "Projekt"
+# src/modkit/app/pickers.cpp:498
+"%zu sounds" = "%zu Klänge"
+# src/modkit/app/pickers.cpp:511
+"Spoken audio for the line: an audio file of the project (Assets panel: Ogg Vorbis, WAV, MP3) or a sound of the game. 'every' plays in every voice language; a language row replaces it for that voice language. The export writes the files into sounds/ of the mod." = "Gesprochenes Audio für die Zeile: eine Audiodatei des Projekts (Bereich Ressourcen: Ogg Vorbis, WAV, MP3) oder ein Klang des Spiels. „every“ spielt in jeder Sprachausgabe; eine Sprachzeile ersetzt es für diese Sprachausgabe. Der Export schreibt die Dateien nach sounds/ der Mod."
+# src/modkit/app/prop_editor.cpp:86
+"Only the enum values the editor knows names for are listed" = "Es werden nur die Enum-Werte aufgelistet, für die der Editor Namen kennt"
+# src/modkit/app/prop_editor.cpp:133
+"add property..." = "Eigenschaft hinzufügen..."
+# src/modkit/app/prop_editor.cpp:155
+"no template: type Set.Name below" = "keine Vorlage: unten Set.Name eintippen"
+# src/modkit/app/prop_editor.cpp:161
+"or Set.Name" = "oder Set.Name"
+# src/modkit/app/widgets.cpp:21
+"Set: the mod writes this value" = "Gesetzt: die Mod schreibt diesen Wert"
+# src/modkit/app/widgets.cpp:21
+"Not set: the template keeps its own value" = "Nicht gesetzt: die Vorlage behält ihren eigenen Wert"
+# src/modkit/app/widgets.cpp:147 (+1)
+"name" = "Name"
+# src/modkit/app/widgets.cpp:220
+"(none)" = "(keine)"
+# src/modkit/app/wizards.cpp:23
+"Wizard" = "Assistent"
+# src/modkit/app/wizards.cpp:122
+"Everything the wizard makes can be edited afterwards, and Ctrl+Z takes it back." = "Alles, was der Assistent erzeugt, lässt sich danach bearbeiten, und Strg+Z nimmt es zurück."
+# src/modkit/app/wizards.cpp:131
+"An NPC asks the player for items. Makes the quest (start, bring the items, turn them in, reward, success) and two dialogue options for the NPC: one offers the job, one hands the items in." = "Ein NPC bittet den Spieler um Gegenstände. Erzeugt die Quest (Start, die Gegenstände bringen, abgeben, Belohnung, Erfolg) und zwei Dialogoptionen für den NPC: eine bietet den Auftrag an, eine übergibt die Gegenstände."
+# src/modkit/app/wizards.cpp:132
+"Who and what" = "Wer und was"
+# src/modkit/app/wizards.cpp:143
+"How many" = "Wie viele"
+# src/modkit/app/wizards.cpp:145
+"The NPC takes the items" = "Der NPC nimmt die Gegenstände"
+# src/modkit/app/wizards.cpp:146
+"Quest id" = "Quest-Id"
+# src/modkit/app/wizards.cpp:147 (+1)
+"Reward" = "Belohnung"
+# src/modkit/app/wizards.cpp:159
+"Left empty, a plain English text is used in the first language." = "Leer gelassen, wird ein schlichter englischer Text in der ersten Sprache verwendet."
+# src/modkit/app/wizards.cpp:160
+"Quest title" = "Questtitel"
+# src/modkit/app/wizards.cpp:161
+"Player asks" = "Spieler fragt"
+# src/modkit/app/wizards.cpp:162
+"NPC answers" = "NPC antwortet"
+# src/modkit/app/wizards.cpp:163 (+1)
+"Quest log entry" = "Eintrag im Questlog"
+# src/modkit/app/wizards.cpp:164
+"Player hands in" = "Spieler übergibt"
+# src/modkit/app/wizards.cpp:165
+"NPC thanks" = "NPC bedankt sich"
+# src/modkit/app/wizards.cpp:166
+"Log entry at the end" = "Logeintrag am Ende"
+# src/modkit/app/wizards.cpp:179
+"A new weapon made of a shipped one, and (optionally) the recipe that crafts it." = "Eine neue Waffe aus einer mitgelieferten und (optional) das Rezept, mit dem man sie herstellt."
+# src/modkit/app/wizards.cpp:180
+"The weapon" = "Die Waffe"
+# src/modkit/app/wizards.cpp:184 (+1)
+"Made of" = "Gebaut aus"
+# src/modkit/app/wizards.cpp:194
+"Needs to equip" = "Zum Anlegen nötig"
+# src/modkit/app/wizards.cpp:197
+"Make a recipe for it" = "Ein Rezept dafür erstellen"
+# src/modkit/app/wizards.cpp:202
+"Skills to craft it" = "Fertigkeiten zum Herstellen"
+# src/modkit/app/wizards.cpp:204
+"The player knows the recipe from the start" = "Der Spieler kennt das Rezept von Anfang an"
+# src/modkit/app/wizards.cpp:212
+"A trader: a new NPC with his own template (trading switched on), his stock and a dialogue option that opens the trade. Not tried in the game yet: test him with Play." = "Ein Händler: ein neuer NPC mit eigener Vorlage (Handel eingeschaltet), seinem Sortiment und einer Dialogoption, die den Handel öffnet. Im Spiel noch nicht erprobt: mit „Spielen“ testen."
+# src/modkit/app/wizards.cpp:218
+"In front of the player when first made" = "Vor dem Spieler, wenn er zum ersten Mal erzeugt wird"
+# src/modkit/app/wizards.cpp:223
+"Better: leave it and place him in the World view afterwards." = "Besser: so lassen und ihn danach in der Weltansicht platzieren."
+# src/modkit/app/wizards.cpp:225
+"Stock" = "Sortiment"
+# src/modkit/app/wizards.cpp:229
+"NPC says" = "NPC sagt"
+# src/modkit/core/audio_convert.cpp:47
+"the configured ffmpeg '{0}' does not exist" = "das eingestellte ffmpeg „{0}“ existiert nicht"
+# src/modkit/core/audio_convert.cpp:62
+"ffmpeg was not found" = "ffmpeg wurde nicht gefunden"
+# src/modkit/core/audio_convert.cpp:67
+"ffmpeg could not be started" = "ffmpeg konnte nicht gestartet werden"
+# src/modkit/core/audio_convert.cpp:72
+"{0} is not ffmpeg (no version line): {1}" = "{0} ist kein ffmpeg (keine Versionszeile): {1}"
+# src/modkit/core/audio_convert.cpp:85
+"ffmpeg is not bundled. Get a Windows build (https://www.gyan.dev/ffmpeg/builds/ or https://github.com/BtbN/FFmpeg-Builds/releases, or 'winget install Gyan.FFmpeg'), unpack it and either add its bin folder to PATH or set the path of ffmpeg.exe in Settings > Audio." = "ffmpeg wird nicht mitgeliefert. Besorge dir einen Windows-Build (https://www.gyan.dev/ffmpeg/builds/ oder https://github.com/BtbN/FFmpeg-Builds/releases, oder „winget install Gyan.FFmpeg“), entpacke ihn und füge entweder seinen Ordner bin zum PATH hinzu oder lege den Pfad von ffmpeg.exe in Einstellungen > Audio fest."
+# src/modkit/core/audio_convert.cpp:88
+"ffmpeg is not bundled. Install it with Homebrew ('brew install ffmpeg') or MacPorts, or set the path of an ffmpeg binary in Settings > Audio." = "ffmpeg wird nicht mitgeliefert. Installiere es mit Homebrew („brew install ffmpeg“) oder MacPorts oder lege in Einstellungen > Audio den Pfad einer ffmpeg-Datei fest."
+# src/modkit/core/audio_convert.cpp:90
+"ffmpeg is not bundled. Install it with your package manager ('sudo apt install ffmpeg', 'sudo dnf install ffmpeg', 'sudo pacman -S ffmpeg') or set the path of an ffmpeg binary in Settings > Audio." = "ffmpeg wird nicht mitgeliefert. Installiere es mit deinem Paketmanager („sudo apt install ffmpeg“, „sudo dnf install ffmpeg“, „sudo pacman -S ffmpeg“) oder lege in Einstellungen > Audio den Pfad einer ffmpeg-Datei fest."
+# src/modkit/core/audio_convert.cpp:124
+"ffmpeg is not available" = "ffmpeg ist nicht verfügbar"
+# src/modkit/core/audio_convert.cpp:132 (+1)
+"cancelled" = "abgebrochen"
+# src/modkit/core/audio_convert.cpp:137
+"ffmpeg failed (exit code {0}): {1}" = "ffmpeg ist fehlgeschlagen (Exit-Code {0}): {1}"
+# src/modkit/core/audio_convert.cpp:143
+"ffmpeg wrote no file: {0}" = "ffmpeg hat keine Datei geschrieben: {0}"
+# src/modkit/core/audio_convert.cpp:147
+"the converted file does not play: {0}" = "die umgewandelte Datei lässt sich nicht abspielen: {0}"
+# src/modkit/core/audio_convert.cpp:153
+"cannot write {0}: {1}" = "{0} kann nicht geschrieben werden: {1}"
+# src/modkit/core/audio_convert.cpp:214
+"cannot copy: {0}" = "Kopieren nicht möglich: {0}"
+# src/modkit/core/behavior.cpp:102
+"out of memory" = "Speicher erschöpft"
+# src/modkit/core/behavior.cpp:125
+"error while loading" = "Fehler beim Laden"
+# src/modkit/core/behavior.cpp:130
+"the script must end with `return { ... }` (the behaviour's definition)" = "das Skript muss mit `return { ... }` enden (der Definition des Verhaltens)"
+# src/modkit/core/behavior.cpp:140
+"unknown key '{0}' (params, interval, near, description, events, start, update, stop, on_...)" = "unbekannter Schlüssel „{0}“ (params, interval, near, description, events, start, update, stop, on_...)"
+# src/modkit/core/behavior.cpp:149
+"{0} must be a function" = "{0} muss eine Funktion sein"
+# src/modkit/core/behavior.cpp:159
+"description must be a string" = "description muss ein Text sein"
+# src/modkit/core/behavior.cpp:169
+"interval must be a number of seconds from 0 (every frame) to 3600" = "interval muss eine Anzahl Sekunden von 0 (jedes Bild) bis 3600 sein"
+# src/modkit/core/behavior.cpp:173
+"near must be a distance > 0 (units, 100 = 1 m)" = "near muss eine Entfernung > 0 sein (Einheiten, 100 = 1 m)"
+# src/modkit/core/behavior.cpp:178
+"{0} must be a number" = "{0} muss eine Zahl sein"
+# src/modkit/core/behavior.cpp:187
+"params must be a table of plain values with names (numbers, strings, booleans, tables of those)" = "params muss eine Tabelle einfacher Werte mit Namen sein (Zahlen, Texte, Wahrheitswerte, Tabellen daraus)"
+# src/modkit/core/behavior.cpp:196
+"events must be a table { [\"event.name\"] = function(self, ...) end }" = "events muss eine Tabelle { [\"event.name\"] = function(self, ...) end } sein"
+# src/modkit/core/behavior.cpp:203
+"events: every entry is [\"event.name\"] = function(self, ...) end" = "events: jeder Eintrag lautet [\"event.name\"] = function(self, ...) end"
+# src/modkit/core/behavior.cpp:224
+"the file {0} cannot be read" = "die Datei {0} kann nicht gelesen werden"
+# src/modkit/core/behavior.cpp:246
+"the behaviour needs a name" = "das Verhalten braucht einen Namen"
+# src/modkit/core/behavior.cpp:247
+"at most 64 characters" = "höchstens 64 Zeichen"
+# src/modkit/core/behavior.cpp:248
+"the name may not start with a digit" = "der Name darf nicht mit einer Ziffer beginnen"
+# src/modkit/core/behavior.cpp:250
+"letters, digits, _ . and - only" = "nur Buchstaben, Ziffern, _ . und -"
+# src/modkit/core/dialog.cpp:147
+"the options' parent links make a loop" = "die Elternverknüpfungen der Optionen bilden eine Schleife"
+# src/modkit/core/dialog.cpp:149
+"the dialogue has no owner NPC" = "der Dialog hat keinen Besitzer-NPC"
+# src/modkit/core/dialog.cpp:167
+"the option has no text (what the player says)" = "die Option hat keinen Text (was der Spieler sagt)"
+# src/modkit/core/dialog.cpp:177
+"the sequence of this option runs in a circle" = "die Folge dieser Option läuft im Kreis"
+# src/modkit/core/dialog.cpp:183
+"the line has no text" = "die Zeile hat keinen Text"
+# src/modkit/core/dialog.cpp:192
+"unknown dialogue command '{0}'" = "unbekannter Dialogbefehl „{0}“"
+# src/modkit/core/dialog.cpp:202
+"{0} has no parameter '{1}'" = "{0} hat keinen Parameter „{1}“"
+# src/modkit/core/dialog.cpp:216
+"only Say lines and SaySound play a sound: the sound of this {0} is not exported" = "nur Say-Zeilen und SaySound spielen einen Klang ab: der Klang dieses Befehls {0} wird nicht exportiert"
+# src/modkit/core/dialog.cpp:224
+"the Quest node names no quest" = "der Quest-Knoten nennt keine Quest"
+# src/modkit/core/dialog.cpp:225
+"'{0}' is not a quest of the project" = "„{0}“ ist keine Quest des Projekts"
+# src/modkit/core/dialog.cpp:232
+"a log entry needs a quest and a text" = "ein Logeintrag braucht eine Quest und einen Text"
+# src/modkit/core/dialog.cpp:236
+"the Script node names no script" = "der Skript-Knoten nennt kein Skript"
+# src/modkit/core/dialog.cpp:247
+"the sequence ends the conversation, so the sub-options are never shown" = "die Folge beendet das Gespräch, daher werden die Unteroptionen nie angezeigt"
+# src/modkit/core/events.cpp:60
+"A point of the world (x, y, z in game units, 100 = 1 m) or the position of a named entity." = "Ein Punkt der Welt (x, y, z in Spieleinheiten, 100 = 1 m) oder die Position einer benannten Entität."
+# src/modkit/core/events.cpp:62 (+2)
+"Entity" = "Entität"
+# src/modkit/core/events.cpp:62
+"The unique name of an NPC or object." = "Der eindeutige Name eines NPCs oder Objekts."
+# src/modkit/core/events.cpp:70 (+11)
+"Triggers" = "Auslöser"
+# src/modkit/core/events.cpp:70
+"On game start / load" = "Bei Spielstart / Laden"
+# src/modkit/core/events.cpp:70
+"Fires when a world is ready: a new game, a loaded savegame, or both." = "Wird ausgelöst, wenn eine Welt bereit ist: ein neues Spiel, ein geladener Spielstand oder beides."
+# src/modkit/core/events.cpp:71
+"When" = "Wann"
+# src/modkit/core/events.cpp:72
+"On chapter" = "Bei Kapitel"
+# src/modkit/core/events.cpp:72
+"Fires when the story chapter changes (looked at about every half second). Chapter 0 = any change." = "Wird ausgelöst, wenn das Story-Kapitel wechselt (etwa alle halbe Sekunde geprüft). Kapitel 0 = jeder Wechsel."
+# src/modkit/core/events.cpp:73
+"0 = every change" = "0 = jeder Wechsel"
+# src/modkit/core/events.cpp:74
+"On kill" = "Bei Tötung"
+# src/modkit/core/events.cpp:74
+"Fires when an NPC or monster dies: a template (every wolf) or one NPC by unique name." = "Wird ausgelöst, wenn ein NPC oder Monster stirbt: eine Vorlage (jeder Wolf) oder ein einzelner NPC mit eindeutigem Namen."
+# src/modkit/core/events.cpp:75
+"Only if the player killed it" = "Nur wenn der Spieler es getötet hat"
+# src/modkit/core/events.cpp:76
+"On player moved" = "Bei Bewegung des Spielers"
+# src/modkit/core/events.cpp:77
+"Fires when the player has moved at least this many metres since the last time it fired (or since the world was ready). Turning and tiny steps never fire it." = "Wird ausgelöst, wenn sich der Spieler seit dem letzten Auslösen (oder seit die Welt bereit war) mindestens so viele Meter bewegt hat. Drehen und winzige Schritte lösen nie aus."
+# src/modkit/core/events.cpp:78
+"Metres" = "Meter"
+# src/modkit/core/events.cpp:78
+"At least 1 m: smaller values would only measure noise." = "Mindestens 1 m: kleinere Werte würden nur Rauschen messen."
+# src/modkit/core/events.cpp:80
+"On enter / leave area" = "Beim Betreten / Verlassen eines Bereichs"
+# src/modkit/core/events.cpp:80
+"Fires when the player enters or leaves a sphere around a point or a named entity. Judged on 1 m steps of movement." = "Wird ausgelöst, wenn der Spieler eine Kugel um einen Punkt oder eine benannte Entität betritt oder verlässt. Beurteilt in Bewegungsschritten von 1 m."
+# src/modkit/core/events.cpp:82 (+1)
+"Centre" = "Mittelpunkt"
+# src/modkit/core/events.cpp:83 (+1)
+"Radius (m)" = "Radius (m)"
+# src/modkit/core/events.cpp:84
+"Fires when the player" = "Wird ausgelöst, wenn der Spieler"
+# src/modkit/core/events.cpp:87
+"On quest status" = "Bei Queststatus"
+# src/modkit/core/events.cpp:87
+"Fires when a quest changes its status (any quest when the name is empty)." = "Wird ausgelöst, wenn eine Quest ihren Status ändert (jede Quest, wenn der Name leer ist)."
+# src/modkit/core/events.cpp:89
+"On item" = "Bei Gegenstand"
+# src/modkit/core/events.cpp:89
+"Fires when the player's inventory changes in the chosen way (any item when the name is empty)." = "Wird ausgelöst, wenn sich das Inventar des Spielers auf die gewählte Weise ändert (jeder Gegenstand, wenn der Name leer ist)."
+# src/modkit/core/events.cpp:91
+"What happened" = "Was geschah"
+# src/modkit/core/events.cpp:92
+"added / removed: every change of the amount, whatever the cause (picked_up: from the ground, dropped: thrown away)." = "added / removed: jede Änderung der Menge, gleich aus welchem Grund (picked_up: vom Boden, dropped: weggeworfen)."
+# src/modkit/core/events.cpp:93
+"On dialogue option" = "Bei Dialogoption"
+# src/modkit/core/events.cpp:93
+"Fires when a dialogue option finished playing." = "Wird ausgelöst, wenn eine Dialogoption zu Ende gespielt wurde."
+# src/modkit/core/events.cpp:94
+"On time of day" = "Bei Tageszeit"
+# src/modkit/core/events.cpp:94
+"Fires when the in-game clock reaches the time (once per game minute at most)." = "Wird ausgelöst, wenn die Spieluhr die Zeit erreicht (höchstens einmal pro Spielminute)."
+# src/modkit/core/events.cpp:95 (+1)
+"Hour" = "Stunde"
+# src/modkit/core/events.cpp:95 (+1)
+"Minute" = "Minute"
+# src/modkit/core/events.cpp:96
+"On variable changed" = "Bei geänderter Variable"
+# src/modkit/core/events.cpp:96
+"Fires when a variable was set (a game variable, or a mod variable of Set variable nodes). With a comparison only when the new value passes it." = "Wird ausgelöst, wenn eine Variable gesetzt wurde (eine Spielvariable oder eine Mod-Variable von „Variable setzen“-Knoten). Mit einem Vergleich nur, wenn der neue Wert ihn erfüllt."
+# src/modkit/core/events.cpp:98
+"game: an engine game variable (dialogues and quests see it too); save: a mod variable kept in the savegame." = "game: eine Spielvariable der Engine (Dialoge und Quests sehen sie auch); save: eine im Spielstand gehaltene Mod-Variable."
+# src/modkit/core/events.cpp:99
+"Fires" = "Löst aus"
+# src/modkit/core/events.cpp:100
+"On timer" = "Bei Zeitgeber"
+# src/modkit/core/events.cpp:100
+"Fires after this many seconds of play (the clock stops in menus and is saved with the game); repeating fires again and again." = "Wird nach so vielen Sekunden Spielzeit ausgelöst (die Uhr steht in Menüs still und wird mit dem Spiel gespeichert); bei Wiederholung immer wieder."
+# src/modkit/core/events.cpp:101 (+2)
+"Seconds" = "Sekunden"
+# src/modkit/core/events.cpp:101 (+1)
+"Repeat" = "Wiederholen"
+# src/modkit/core/events.cpp:102
+"On signal" = "Bei Signal"
+# src/modkit/core/events.cpp:102
+"Fires when a Send signal node (of any graph) sends this name: connects graphs." = "Wird ausgelöst, wenn ein Knoten „Signal senden“ (in irgendeinem Graphen) diesen Namen sendet: verbindet Graphen."
+# src/modkit/core/events.cpp:102 (+1)
+"Signal" = "Signal"
+# src/modkit/core/events.cpp:104
+"Conditions" = "Bedingungen"
+# src/modkit/core/events.cpp:104 (+1)
+"Condition" = "Bedingung"
+# src/modkit/core/events.cpp:104
+"Tests one or more checks; goes on at 'then' when they hold, else at 'else'. Chain Condition nodes for nested and / or." = "Prüft eine oder mehrere Bedingungen; geht bei „then“ weiter, wenn sie zutreffen, sonst bei „else“. Verkette Bedingungsknoten für verschachteltes Und / Oder."
+# src/modkit/core/events.cpp:105
+"all: every check must hold; any: one is enough." = "all: jede Prüfung muss zutreffen; any: eine genügt."
+# src/modkit/core/events.cpp:106 (+6)
+"Flow" = "Ablauf"
+# src/modkit/core/events.cpp:106
+"Once" = "Einmal"
+# src/modkit/core/events.cpp:106
+"Lets the first pass through at 'next' (per savegame); every later pass goes to 'again'." = "Lässt den ersten Durchgang bei „next“ durch (pro Spielstand); jeder spätere Durchgang geht zu „again“."
+# src/modkit/core/events.cpp:107
+"After N passes" = "Nach N Durchgängen"
+# src/modkit/core/events.cpp:107
+"Passes at 'next' only on every N-th arrival (N = 3: the third, with Repeat also the sixth...); counted per savegame." = "Geht bei „next“ nur bei jedem N-ten Eintreffen durch (N = 3: der dritte, mit Wiederholen auch der sechste ...); pro Spielstand gezählt."
+# src/modkit/core/events.cpp:108
+"Every N-th time (else only the N-th)" = "Jedes N-te Mal (sonst nur das N-te)"
+# src/modkit/core/events.cpp:109
+"Cooldown" = "Abkühlzeit"
+# src/modkit/core/events.cpp:109
+"Passes at most once per this many seconds of play; arrivals in between are dropped." = "Lässt höchstens einmal pro so vielen Sekunden Spielzeit durch; dazwischen eintreffende werden verworfen."
+# src/modkit/core/events.cpp:110
+"Delay" = "Verzögerung"
+# src/modkit/core/events.cpp:110
+"Goes on after this many seconds of play. A pending delay is part of the savegame." = "Geht nach so vielen Sekunden Spielzeit weiter. Eine ausstehende Verzögerung ist Teil des Spielstands."
+# src/modkit/core/events.cpp:111
+"Runs the 'body' branch N times in a row, then 'done'." = "Führt den Zweig „body“ N-mal hintereinander aus, dann „done“."
+# src/modkit/core/events.cpp:111
+"Times" = "Mal"
+# src/modkit/core/events.cpp:112
+"Sequence" = "Folge"
+# src/modkit/core/events.cpp:112
+"Runs outputs 1, 2, 3, 4 one after the other. (An output linked to several nodes runs them all, top to bottom.)" = "Führt die Ausgänge 1, 2, 3, 4 nacheinander aus. (Ein Ausgang, der mit mehreren Knoten verknüpft ist, führt sie alle von oben nach unten aus.)"
+# src/modkit/core/events.cpp:113 (+1)
+"End" = "Ende"
+# src/modkit/core/events.cpp:113
+"Ends this path." = "Beendet diesen Pfad."
+# src/modkit/core/events.cpp:115 (+18)
+"Actions" = "Aktionen"
+# src/modkit/core/events.cpp:115
+"Sets, adds to or clears a variable. game: an engine game variable (whole numbers; dialogue and quest conditions read it); save: a mod variable kept in the savegame." = "Setzt eine Variable, addiert dazu oder löscht sie. game: eine Spielvariable der Engine (ganze Zahlen; Dialog- und Questbedingungen lesen sie); save: eine im Spielstand gehaltene Mod-Variable."
+# src/modkit/core/events.cpp:117
+"Operation" = "Operation"
+# src/modkit/core/events.cpp:119
+"Spawn NPC" = "NPC erzeugen"
+# src/modkit/core/events.cpp:119
+"Makes an NPC or monster of a template next to the player or at a point (saved with the game)." = "Erzeugt einen NPC oder ein Monster einer Vorlage neben dem Spieler oder an einem Punkt (mit dem Spiel gespeichert)."
+# src/modkit/core/events.cpp:121
+"Optional: a name to find it again (letters, digits, _ and -)." = "Optional: ein Name, um ihn wiederzufinden (Buchstaben, Ziffern, _ und -)."
+# src/modkit/core/events.cpp:122
+"near_player: x / y / z are an offset from the player." = "near_player: x / y / z sind ein Versatz vom Spieler."
+# src/modkit/core/events.cpp:130
+"Remove NPC" = "NPC entfernen"
+# src/modkit/core/events.cpp:130
+"Removes one NPC by unique name, or every NPC of a template within the radius around the player." = "Entfernt einen NPC mit eindeutigem Namen oder jeden NPC einer Vorlage im Radius um den Spieler."
+# src/modkit/core/events.cpp:131
+"Radius (m, templates)" = "Radius (m, Vorlagen)"
+# src/modkit/core/events.cpp:132
+"Give item" = "Gegenstand geben"
+# src/modkit/core/events.cpp:132
+"Puts items into the player's inventory." = "Legt Gegenstände in das Inventar des Spielers."
+# src/modkit/core/events.cpp:133
+"Show in the item log" = "Im Gegenstandslog anzeigen"
+# src/modkit/core/events.cpp:134
+"Take item" = "Gegenstand nehmen"
+# src/modkit/core/events.cpp:134
+"Takes items from the player's inventory (as many as he has, up to the count)." = "Nimmt Gegenstände aus dem Inventar des Spielers (so viele er hat, bis zur Anzahl)."
+# src/modkit/core/events.cpp:136
+"Give experience" = "Erfahrung geben"
+# src/modkit/core/events.cpp:136
+"The player gets experience points (the game's own GiveXP)." = "Der Spieler erhält Erfahrungspunkte (das eigene GiveXP des Spiels)."
+# src/modkit/core/events.cpp:137
+"Starts, succeeds, fails or cancels a quest." = "Startet, erfüllt, scheitert oder bricht eine Quest ab."
+# src/modkit/core/events.cpp:139 (+1)
+"Adds a line to a quest's log." = "Fügt dem Log einer Quest eine Zeile hinzu."
+# src/modkit/core/events.cpp:140
+"HUD message" = "HUD-Meldung"
+# src/modkit/core/events.cpp:140
+"Prints a line into the game's on-screen log. {chapter}, {value}, {item}, {target} and {var:name} are replaced." = "Gibt eine Zeile im Bildschirmlog des Spiels aus. {chapter}, {value}, {item}, {target} und {var:name} werden ersetzt."
+# src/modkit/core/events.cpp:141
+"Style" = "Stil"
+# src/modkit/core/events.cpp:142
+"Play sound" = "Klang abspielen"
+# src/modkit/core/events.cpp:142
+"The player says a sound (a game sound name, or a sound file of the project: sounds/name.ogg)." = "Der Spieler spricht einen Klang (der Name eines Spielklangs oder eine Klangdatei des Projekts: sounds/name.ogg)."
+# src/modkit/core/events.cpp:144
+"Teleport player" = "Spieler teleportieren"
+# src/modkit/core/events.cpp:144
+"Moves the player at once (no collision test)." = "Bewegt den Spieler sofort (ohne Kollisionsprüfung)."
+# src/modkit/core/events.cpp:145
+"To" = "Nach"
+# src/modkit/core/events.cpp:148 (+2)
+"Layer" = "Ebene"
+# src/modkit/core/events.cpp:148
+"Switches a mod layer (the Layers panel) on, off or the other way round: its NPCs, spawns and container fills appear / vanish as a group." = "Schaltet eine Mod-Ebene (Bereich Ebenen) an, aus oder umgekehrt: ihre NPCs, Spawns und Behälterfüllungen erscheinen / verschwinden als Gruppe."
+# src/modkit/core/events.cpp:150
+"Game sector" = "Spielsektor"
+# src/modkit/core/events.cpp:150
+"Switches one of the game's story sectors (World::SetSectorStatus): e.g. Monastery_Story_LizardAttack_Off. The state is part of the savegame; entities already made stay when it is switched off." = "Schaltet einen der Story-Sektoren des Spiels (World::SetSectorStatus): z. B. Monastery_Story_LizardAttack_Off. Der Zustand ist Teil des Spielstands; bereits erzeugte Entitäten bleiben, wenn er ausgeschaltet wird."
+# src/modkit/core/events.cpp:151 (+1)
+"Sector" = "Sektor"
+# src/modkit/core/events.cpp:152
+"Set chapter" = "Kapitel setzen"
+# src/modkit/core/events.cpp:152
+"Changes the story chapter (quests and infos synchronise; the chapter card is not shown)." = "Ändert das Story-Kapitel (Quests und Infos synchronisieren sich; die Kapitelkarte wird nicht angezeigt)."
+# src/modkit/core/events.cpp:153
+"Set time of day" = "Tageszeit setzen"
+# src/modkit/core/events.cpp:153
+"Sets the in-game clock." = "Stellt die Spieluhr."
+# src/modkit/core/events.cpp:154
+"Heal / hurt player" = "Spieler heilen / verletzen"
+# src/modkit/core/events.cpp:154
+"Adds hit points and mana to the player (negative values take them away)." = "Fügt dem Spieler Lebenspunkte und Mana hinzu (negative Werte nehmen sie weg)."
+# src/modkit/core/events.cpp:155
+"Run script" = "Skript ausführen"
+# src/modkit/core/events.cpp:155
+"Calls a script by name: one defined with risen.script.define in custom.lua, or a game script (the player is self and other)." = "Ruft ein Skript nach Namen auf: eines, das mit risen.script.define in custom.lua definiert wurde, oder ein Spielskript (der Spieler ist self und other)."
+# src/modkit/core/events.cpp:156
+"Argument" = "Argument"
+# src/modkit/core/events.cpp:157
+"Send signal" = "Signal senden"
+# src/modkit/core/events.cpp:157
+"Fires every On signal trigger of that name (in any graph) after this frame." = "Löst jeden Auslöser „Bei Signal“ dieses Namens (in jedem Graphen) nach diesem Bild aus."
+# src/modkit/core/events.cpp:158
+"Write to log" = "In Log schreiben"
+# src/modkit/core/events.cpp:158
+"Writes a line to spass.log (for testing)." = "Schreibt eine Zeile in spass.log (zum Testen)."
+# src/modkit/core/events.cpp:159 (+2)
+"Comment" = "Kommentar"
+# src/modkit/core/events.cpp:159 (+2)
+"A note on the canvas; not exported." = "Eine Notiz auf der Zeichenfläche; wird nicht exportiert."
+# src/modkit/core/events.cpp:165 (+5)
+"Is" = "Ist"
+# src/modkit/core/events.cpp:166
+"Quest status" = "Queststatus"
+# src/modkit/core/events.cpp:167
+"Items carried" = "Getragene Gegenstände"
+# src/modkit/core/events.cpp:169
+"Player level" = "Spielerstufe"
+# src/modkit/core/events.cpp:170
+"Strength, Sword, Smith, ... (risen.balance.skills())" = "Strength, Sword, Smith, ... (risen.balance.skills())"
+# src/modkit/core/events.cpp:171
+"NPC is alive" = "NPC lebt"
+# src/modkit/core/events.cpp:172
+"NPC is dead" = "NPC ist tot"
+# src/modkit/core/events.cpp:173
+"Player's guild" = "Gilde des Spielers"
+# src/modkit/core/events.cpp:174
+"Game event happened" = "Spielereignis ist eingetreten"
+# src/modkit/core/events.cpp:174
+"A game variable that exists (SetGameEvent)" = "Eine Spielvariable, die existiert (SetGameEvent)"
+# src/modkit/core/events.cpp:175
+"Time of day" = "Tageszeit"
+# src/modkit/core/events.cpp:176
+"From hour" = "Ab Stunde"
+# src/modkit/core/events.cpp:176
+"Until hour (excluded)" = "Bis Stunde (ausgeschlossen)"
+# src/modkit/core/events.cpp:176
+"from 22 to 6 spans midnight; the same hour twice = always" = "22 bis 6 überspannt Mitternacht; dieselbe Stunde zweimal = immer"
+# src/modkit/core/events.cpp:178
+"Player is in an area" = "Spieler ist in einem Bereich"
+# src/modkit/core/events.cpp:181
+"Layer is on / off" = "Ebene ist an / aus"
+# src/modkit/core/events.cpp:182
+"Game sector is on / off" = "Spielsektor ist an / aus"
+# src/modkit/core/events.cpp:183
+"Random chance" = "Zufallschance"
+# src/modkit/core/events.cpp:183
+"Percent" = "Prozent"
+# src/modkit/core/events.cpp:225
+"{0}: {1} is out of range" = "{0}: {1} liegt außerhalb des Bereichs"
+# src/modkit/core/events.cpp:231 (+1)
+"{0} is empty" = "{0} ist leer"
+# src/modkit/core/events.cpp:235
+"{0}: '{1}' is not one of the choices" = "{0}: „{1}“ ist keine der Auswahlmöglichkeiten"
+# src/modkit/core/events.cpp:327
+"add at least one check" = "mindestens eine Prüfung hinzufügen"
+# src/modkit/core/events.cpp:333
+"unknown check '{0}'" = "unbekannte Prüfung „{0}“"
+# src/modkit/core/events.cpp:376
+"at {0}" = "bei {0}"
+# src/modkit/core/events.cpp:377
+"new game or load" = "neues Spiel oder Laden"
+# src/modkit/core/events.cpp:377
+"a savegame is loaded" = "ein Spielstand wird geladen"
+# src/modkit/core/events.cpp:377
+"a new game starts" = "ein neues Spiel beginnt"
+# src/modkit/core/events.cpp:378
+"the chapter changes" = "das Kapitel wechselt"
+# src/modkit/core/events.cpp:378
+"chapter {0} begins" = "Kapitel {0} beginnt"
+# src/modkit/core/events.cpp:379
+"{0} dies" = "{0} stirbt"
+# src/modkit/core/events.cpp:379
+" (by the player)" = " (durch den Spieler)"
+# src/modkit/core/events.cpp:380
+"player moved {0} m" = "Spieler hat sich {0} m bewegt"
+# src/modkit/core/events.cpp:381
+"player {0} {1} r {2} m" = "Spieler {0} {1} r {2} m"
+# src/modkit/core/events.cpp:382
+"any quest" = "irgendeine Quest"
+# src/modkit/core/events.cpp:383
+"any item" = "irgendein Gegenstand"
+# src/modkit/core/events.cpp:384
+"{0} finished" = "{0} beendet"
+# src/modkit/core/events.cpp:385
+"clock reaches {0}" = "Uhr erreicht {0}"
+# src/modkit/core/events.cpp:386
+" changed" = " geändert"
+# src/modkit/core/events.cpp:387
+"every {0} s" = "alle {0} s"
+# src/modkit/core/events.cpp:387
+"after {0} s" = "nach {0} s"
+# src/modkit/core/events.cpp:388 (+1)
+"signal {0}" = "Signal {0}"
+# src/modkit/core/events.cpp:399
+"quest {0} is {1}" = "Quest {0} ist {1}"
+# src/modkit/core/events.cpp:400
+"has {0} {1}" = "hat {0} {1}"
+# src/modkit/core/events.cpp:401
+"chapter {0} {1}" = "Kapitel {0} {1}"
+# src/modkit/core/events.cpp:402
+"level {0} {1}" = "Stufe {0} {1}"
+# src/modkit/core/events.cpp:404
+"{0} alive" = "{0} lebt"
+# src/modkit/core/events.cpp:405
+"{0} dead" = "{0} ist tot"
+# src/modkit/core/events.cpp:406
+"guild {0}" = "Gilde {0}"
+# src/modkit/core/events.cpp:407
+"event {0}" = "Ereignis {0}"
+# src/modkit/core/events.cpp:408
+"time {0}-{1} h" = "Zeit {0}-{1} Uhr"
+# src/modkit/core/events.cpp:409
+"in area r {0} m" = "im Bereich r {0} m"
+# src/modkit/core/events.cpp:410
+"{0} % chance" = "{0} % Chance"
+# src/modkit/core/events.cpp:411
+"layer {0} is {1}" = "Ebene {0} ist {1}"
+# src/modkit/core/events.cpp:412
+"sector {0} is {1}" = "Sektor {0} ist {1}"
+# src/modkit/core/events.cpp:413
+"\nor " = "\noder"
+# src/modkit/core/events.cpp:413
+"\nand " = "\nund"
+# src/modkit/core/events.cpp:416
+"not:\n" = "nicht:\n"
+# src/modkit/core/events.cpp:418
+"every {0}th pass" = "jeder {0}. Durchgang"
+# src/modkit/core/events.cpp:418
+"the {0}th pass only" = "nur der {0}. Durchgang"
+# src/modkit/core/events.cpp:419
+"at most every {0} s" = "höchstens alle {0} s"
+# src/modkit/core/events.cpp:420
+"wait {0} s" = "{0} s warten"
+# src/modkit/core/events.cpp:421
+"{0} times" = "{0}-mal"
+# src/modkit/core/events.cpp:424
+" cleared" = " gelöscht"
+# src/modkit/core/events.cpp:424
+"  (save)" = "  (Spielstand)"
+# src/modkit/core/events.cpp:426
+" near the player" = " beim Spieler"
+# src/modkit/core/events.cpp:429
+"{0} XP" = "{0} EP"
+# src/modkit/core/events.cpp:435
+"{0} layer {1}" = "{0} Ebene {1}"
+# src/modkit/core/events.cpp:436
+"{0} sector {1}" = "{0} Sektor {1}"
+# src/modkit/core/events.cpp:437
+"chapter {0}" = "Kapitel {0}"
+# src/modkit/core/events.cpp:439
+"{0} HP, {1} mana" = "{0} LP, {1} Mana"
+# src/modkit/core/events.cpp:485
+"unknown node type '{0}'" = "unbekannter Knotentyp „{0}“"
+# src/modkit/core/events.cpp:517
+"the variable name may only contain letters, digits, _, . and -" = "der Variablenname darf nur Buchstaben, Ziffern, _, . und - enthalten"
+# src/modkit/core/events.cpp:523
+"the NPC's unique name may only contain letters, digits, _ and -" = "der eindeutige Name des NPCs darf nur Buchstaben, Ziffern, _ und - enthalten"
+# src/modkit/core/events.cpp:529
+"Condition: add at least one check" = "Bedingung: mindestens eine Prüfung hinzufügen"
+# src/modkit/core/events.cpp:534
+"Condition: unknown check '{0}'" = "Bedingung: unbekannte Prüfung „{0}“"
+# src/modkit/core/events.cpp:541
+"the graph has no trigger node (an 'On ...' node starts it)" = "der Graph hat keinen Auslöserknoten (ein Knoten „Bei ...“ startet ihn)"
+# src/modkit/core/events.cpp:555
+"{0} is not reached from any trigger: it never runs" = "{0} wird von keinem Auslöser erreicht: es läuft nie"
+# src/modkit/core/events.cpp:560
+"{0} has nothing linked to it: it does nothing" = "an {0} ist nichts angeschlossen: es tut nichts"
+# src/modkit/core/events.cpp:582
+"the links make a loop without a Delay node: it would never end" = "die Verknüpfungen bilden eine Schleife ohne Verzögerungsknoten: sie würde nie enden"
+# src/modkit/core/gamedata.cpp:24
+"Monster" = "Monster"
+# src/modkit/core/gamedata.cpp:25
+"Interactive" = "Interaktiv"
+# src/modkit/core/gamedata.cpp:26
+"Object" = "Objekt"
+# src/modkit/core/gamedata.cpp:27
+"Effect" = "Effekt"
+# src/modkit/core/gamedata.cpp:28
+"Navigation" = "Navigation"
+# src/modkit/core/gamedata.cpp:30
+"Other" = "Sonstiges"
+# src/modkit/core/graph.cpp:25
+"A choice in the conversation: the player says the text, then the sequence on 'then' plays. 'choices' are the sub-options shown after it (when the sequence does not end the conversation); 'when' takes conditions (several = all must hold)." = "Eine Auswahl im Gespräch: Der Spieler sagt den Text, dann läuft die Folge bei „then“. „choices“ sind die Unteroptionen, die danach angezeigt werden (wenn die Folge das Gespräch nicht beendet); „when“ nimmt Bedingungen auf (mehrere = alle müssen zutreffen)."
+# src/modkit/core/graph.cpp:32
+"Line" = "Zeile"
+# src/modkit/core/graph.cpp:32
+"A spoken line: the NPC, the player or another NPC (by unique name) says the text." = "Eine gesprochene Zeile: der NPC, der Spieler oder ein anderer NPC (mit eindeutigem Namen) sagt den Text."
+# src/modkit/core/graph.cpp:34
+"An engine dialogue command by name with its parameters (Give, GiveXP, SetGameEvent, DoTrade, ...)." = "Ein Dialogbefehl der Engine nach Namen mit seinen Parametern (Give, GiveXP, SetGameEvent, DoTrade, ...)."
+# src/modkit/core/graph.cpp:36
+"Starts, succeeds, fails or cancels a quest of the project." = "Startet, erfüllt, scheitert oder bricht eine Quest des Projekts ab."
+# src/modkit/core/graph.cpp:39
+"Calls a script (risen.script.define in custom.lua, or a game script)." = "Ruft ein Skript auf (risen.script.define in custom.lua oder ein Spielskript)."
+# src/modkit/core/graph.cpp:41
+"Ends the conversation." = "Beendet das Gespräch."
+# src/modkit/core/graph.cpp:42
+"A condition: quest state, items carried, a game variable or event, a skill, a guild, an NPC dead or alive." = "Eine Bedingung: Queststatus, getragene Gegenstände, eine Spielvariable oder ein Spielereignis, eine Fertigkeit, eine Gilde, ein NPC tot oder lebendig."
+# src/modkit/core/graph.cpp:44
+"All of" = "Alle von"
+# src/modkit/core/graph.cpp:44
+"Holds when every linked condition holds." = "Trifft zu, wenn jede verknüpfte Bedingung zutrifft."
+# src/modkit/core/graph.cpp:45
+"Any of" = "Eine von"
+# src/modkit/core/graph.cpp:45
+"Holds when one of the linked conditions holds." = "Trifft zu, wenn eine der verknüpften Bedingungen zutrifft."
+# src/modkit/core/graph.cpp:46
+"Not" = "Nicht"
+# src/modkit/core/graph.cpp:46
+"Holds when the linked condition does not." = "Trifft zu, wenn die verknüpfte Bedingung nicht zutrifft."
+# src/modkit/core/graph.cpp:53
+"Start" = "Start"
+# src/modkit/core/graph.cpp:53
+"Where the quest begins: started by a dialogue's Quest node, or by a trigger (an item picked up, an NPC killed, a game variable, the start of a game)." = "Wo die Quest beginnt: vom Quest-Knoten eines Dialogs gestartet oder durch einen Auslöser (ein aufgehobener Gegenstand, ein getöteter NPC, eine Spielvariable, der Spielbeginn)."
+# src/modkit/core/graph.cpp:57
+"Objective" = "Ziel"
+# src/modkit/core/graph.cpp:57
+"What the player has to do: bring items, kill, talk to someone (a dialogue option finished), a game variable." = "Was der Spieler tun muss: Gegenstände bringen, töten, mit jemandem sprechen (eine Dialogoption ist zu Ende), eine Spielvariable."
+# src/modkit/core/graph.cpp:60
+"Adds a line to the quest's log when the flow passes." = "Fügt dem Log der Quest eine Zeile hinzu, wenn der Ablauf vorbeikommt."
+# src/modkit/core/graph.cpp:62
+"Gives experience, items or gold, sets a game variable." = "Gibt Erfahrung, Gegenstände oder Gold, setzt eine Spielvariable."
+# src/modkit/core/graph.cpp:64
+"Either / or" = "Entweder / oder"
+# src/modkit/core/graph.cpp:65
+"Several ways to go on. Link each way's first Objective to the output: the quest waits for all of them at once, the first one the player completes decides the path (the others are dropped) and the flow continues behind it. Paths do not join: each ends with its own Outcome." = "Mehrere Wege, weiterzumachen. Verknüpfe das erste Ziel jedes Wegs mit dem Ausgang: Die Quest wartet auf alle gleichzeitig, das erste, das der Spieler erledigt, entscheidet den Pfad (die anderen werden verworfen), und der Ablauf geht dahinter weiter. Pfade vereinigen sich nicht: jeder endet mit einem eigenen Ergebnis."
+# src/modkit/core/graph.cpp:69
+"Outcome" = "Ergebnis"
+# src/modkit/core/graph.cpp:69
+"Ends the quest: success, failure or cancelled; may start a follow-up quest." = "Beendet die Quest: Erfolg, Misserfolg oder abgebrochen; kann eine Folgequest starten."
+# src/modkit/core/import.cpp:755
+"{0} has no mod.toml: not a mod folder" = "{0} hat keine mod.toml: kein Mod-Ordner"
+# src/modkit/core/model_import.cpp:86
+"line {0}: a vertex needs three numbers" = "Zeile {0}: ein Vertex braucht drei Zahlen"
+# src/modkit/core/model_import.cpp:123
+"line {0}: a face names a vertex that does not exist" = "Zeile {0}: eine Fläche nennt einen Vertex, den es nicht gibt"
+# src/modkit/core/model_import.cpp:155
+"the OBJ file has no faces" = "die OBJ-Datei hat keine Flächen"
+# src/modkit/core/model_import.cpp:214
+"sparse accessors are not supported" = "Sparse-Accessoren werden nicht unterstützt"
+# src/modkit/core/model_import.cpp:269
+"not a GLB file" = "keine GLB-Datei"
+# src/modkit/core/model_import.cpp:289
+"only glTF 2.0 is read" = "nur glTF 2.0 wird gelesen"
+# src/modkit/core/model_import.cpp:307
+"the buffer '{0}' cannot be read (a .gltf file's .bin has to lie next to it)" = "der Puffer „{0}“ kann nicht gelesen werden (die .bin einer .gltf-Datei muss daneben liegen)"
+# src/modkit/core/model_import.cpp:358
+"a position accessor cannot be read" = "ein Positions-Accessor kann nicht gelesen werden"
+# src/modkit/core/model_import.cpp:399
+"an index accessor cannot be read" = "ein Index-Accessor kann nicht gelesen werden"
+# src/modkit/core/model_import.cpp:410
+"an index is out of range" = "ein Index liegt außerhalb des Bereichs"
+# src/modkit/core/model_import.cpp:420
+"the glTF file is damaged: {0}" = "die glTF-Datei ist beschädigt: {0}"
+# src/modkit/core/model_import.cpp:425
+"the glTF file has no triangles" = "die glTF-Datei hat keine Dreiecke"
+# src/modkit/core/model_import.cpp:437
+"unknown model format (OBJ, glTF and GLB are read)" = "unbekanntes Modellformat (OBJ, glTF und GLB werden gelesen)"
+# src/modkit/core/model_import.cpp:449
+"choose a game material{0}" = "wähle ein Spielmaterial{0}"
+# src/modkit/core/model_import.cpp:486
+"the model has no triangles" = "das Modell hat keine Dreiecke"
+# src/modkit/core/play.cpp:140
+"The game is running: the layer reloads the mod from the exported files." = "Das Spiel läuft: die Schicht lädt die Mod aus den exportierten Dateien neu."
+# src/modkit/core/play.cpp:141
+"The game is running without the file watcher: restart it to load the new files (Play starts it with hot reload on)." = "Das Spiel läuft ohne Dateiüberwachung: starte es neu, um die neuen Dateien zu laden („Spielen“ startet es mit eingeschaltetem Hot Reload)."
+# src/modkit/core/play.cpp:181
+"Cannot start Risen.exe (error {0})." = "Risen.exe kann nicht gestartet werden (Fehler {0})."
+# src/modkit/core/play.cpp:187
+"Risen is starting (about 30 s)." = "Risen startet (etwa 30 s)."
+# src/modkit/core/play.cpp:188
+"Risen is starting (about 30 s), then a new game starts." = "Risen startet (etwa 30 s), dann beginnt ein neues Spiel."
+# src/modkit/core/play.cpp:188
+"Risen is starting (about 30 s), then the last quick save loads." = "Risen startet (etwa 30 s), dann wird der letzte Schnellspielstand geladen."
+# src/modkit/core/play.cpp:190
+"Starting the game is only supported on Windows." = "Das Starten des Spiels wird nur unter Windows unterstützt."
+# src/modkit/core/play.cpp:194
+"Play failed: {0}" = "Spielen fehlgeschlagen: {0}"
+# src/modkit/core/quest.cpp:55
+"no Start node: this node is not part of the quest's flow" = "kein Startknoten: dieser Knoten ist nicht Teil des Questablaufs"
+# src/modkit/core/quest.cpp:60
+"a quest has one Start node" = "eine Quest hat einen Startknoten"
+# src/modkit/core/quest.cpp:68
+"the trigger needs an item" = "der Auslöser braucht einen Gegenstand"
+# src/modkit/core/quest.cpp:71
+"the trigger needs a template or NPC name" = "der Auslöser braucht eine Vorlage oder einen NPC-Namen"
+# src/modkit/core/quest.cpp:75
+"the trigger needs a game variable" = "der Auslöser braucht eine Spielvariable"
+# src/modkit/core/quest.cpp:79
+"the trigger needs a quest" = "der Auslöser braucht eine Quest"
+# src/modkit/core/quest.cpp:80
+"a quest cannot start itself" = "eine Quest kann sich nicht selbst starten"
+# src/modkit/core/quest.cpp:82
+"unknown trigger '{0}'" = "unbekannter Auslöser „{0}“"
+# src/modkit/core/quest.cpp:101
+"the objective needs an item" = "das Ziel braucht einen Gegenstand"
+# src/modkit/core/quest.cpp:105
+"the objective needs a template or NPC name" = "das Ziel braucht eine Vorlage oder einen NPC-Namen"
+# src/modkit/core/quest.cpp:108
+"the objective needs a dialogue option" = "das Ziel braucht eine Dialogoption"
+# src/modkit/core/quest.cpp:112
+"the objective needs a game variable" = "das Ziel braucht eine Spielvariable"
+# src/modkit/core/quest.cpp:116
+"the objective needs a quest" = "das Ziel braucht eine Quest"
+# src/modkit/core/quest.cpp:118
+"unknown objective '{0}'" = "unbekanntes Ziel „{0}“"
+# src/modkit/core/quest.cpp:124
+"the log entry has no text" = "der Logeintrag hat keinen Text"
+# src/modkit/core/quest.cpp:138
+"the reward gives nothing" = "die Belohnung gibt nichts"
+# src/modkit/core/quest.cpp:146
+"the follow-up quest '{0}' is not in the project" = "die Folgequest „{0}“ ist nicht im Projekt"
+# src/modkit/core/quest.cpp:151
+"a {0} node cannot be part of a quest's flow" = "ein Knoten {0} kann nicht Teil des Questablaufs sein"
+# src/modkit/core/quest.cpp:159
+"the quest's flow runs in a circle, or two paths lead to the same node (the paths of an Either / or do not join)" = "der Ablauf der Quest läuft im Kreis, oder zwei Pfade führen zum selben Knoten (die Pfade eines Entweder / oder vereinigen sich nicht)"
+# src/modkit/core/quest.cpp:167
+"an Either / or needs at least two paths (link each path's first Objective to its output)" = "ein Entweder / oder braucht mindestens zwei Pfade (verknüpfe das erste Ziel jedes Pfads mit seinem Ausgang)"
+# src/modkit/core/quest.cpp:173
+"each path of an Either / or has to begin with an Objective: it is what decides the path" = "jeder Pfad eines Entweder / oder muss mit einem Ziel beginnen: es entscheidet den Pfad"
+# src/modkit/core/quest.cpp:193
+"the Start node leads nowhere" = "der Startknoten führt ins Leere"
+# src/modkit/core/quest.cpp:196
+"the flow has no Outcome: the quest is only ended by a dialogue" = "der Ablauf hat kein Ergebnis: die Quest wird nur durch einen Dialog beendet"
+# src/modkit/core/validate.cpp:32
+"the NPC needs a unique name" = "der NPC braucht einen eindeutigen Namen"
+# src/modkit/core/validate.cpp:33
+"the name is longer than 63 characters" = "der Name ist länger als 63 Zeichen"
+# src/modkit/core/validate.cpp:35
+"the name may only contain letters, digits, _ and -" = "der Name darf nur Buchstaben, Ziffern, _ und - enthalten"
+# src/modkit/core/validate.cpp:70
+"{0}: unknown skill '{1}'" = "{0}: unbekannte Fertigkeit „{1}“"
+# src/modkit/core/validate.cpp:77
+"the template has no property set {0} (a set cannot be added at run time)" = "die Vorlage hat kein Set {0} (ein Set kann zur Laufzeit nicht hinzugefügt werden)"
+# src/modkit/core/validate.cpp:81
+"{0}.{1}: the value must be a number, text, true/false or a vector" = "{0}.{1}: der Wert muss eine Zahl, ein Text, true/false oder ein Vektor sein"
+# src/modkit/core/validate.cpp:83
+"{0}.{1} is not in the template file (it may still exist with a default value)" = "{0}.{1} steht nicht in der Vorlagendatei (es kann trotzdem mit einem Standardwert existieren)"
+# src/modkit/core/validate.cpp:92 (+1)
+"{0}: unknown value '{1}'" = "{0}: unbekannter Wert „{1}“"
+# src/modkit/core/validate.cpp:100
+"the project has this item twice" = "das Projekt hat diesen Gegenstand doppelt"
+# src/modkit/core/validate.cpp:104 (+2)
+"a game template with this name exists: choose a new, prefixed name" = "eine Spielvorlage mit diesem Namen existiert: wähle einen neuen Namen mit Präfix"
+# src/modkit/core/validate.cpp:106
+"a new item needs a base item to clone" = "ein neuer Gegenstand braucht einen Basisgegenstand zum Klonen"
+# src/modkit/core/validate.cpp:109 (+2)
+"the base '{0}' is no template of the game" = "die Basis „{0}“ ist keine Vorlage des Spiels"
+# src/modkit/core/validate.cpp:111
+"the base '{0}' is no item ({1})" = "die Basis „{0}“ ist kein Gegenstand ({1})"
+# src/modkit/core/validate.cpp:112 (+1)
+"the base '{0}' is a multi template (cannot be cloned)" = "die Basis „{0}“ ist eine Multi-Vorlage (kann nicht geklont werden)"
+# src/modkit/core/validate.cpp:114
+"no label: the item shows the base's name" = "keine Bezeichnung: der Gegenstand zeigt den Namen der Basis"
+# src/modkit/core/validate.cpp:116
+"choose the shipped item to change" = "wähle den mitgelieferten Gegenstand, der geändert werden soll"
+# src/modkit/core/validate.cpp:119 (+2)
+"no game template with this name" = "keine Spielvorlage mit diesem Namen"
+# src/modkit/core/validate.cpp:121
+"not an item ({0})" = "kein Gegenstand ({0})"
+# src/modkit/core/validate.cpp:129
+"modifier {0}: unknown mode '{1}' (valid: add, set, max, percent)" = "Modifikator {0}: unbekannter Modus „{1}“ (gültig: add, set, max, percent)"
+# src/modkit/core/validate.cpp:130
+"a mode is kept for the skill {0}, which is not among the modifiers" = "für die Fertigkeit {0} ist ein Modus gesetzt, die nicht unter den Modifikatoren ist"
+# src/modkit/core/validate.cpp:135
+"the mesh '{0}' is neither in the game archives nor among the project's asset files" = "das Mesh „{0}“ ist weder in den Spielarchiven noch unter den Ressourcendateien des Projekts"
+# src/modkit/core/validate.cpp:138
+"the icon picture '{0}' is not one of the project's asset files" = "das Symbolbild „{0}“ gehört nicht zu den Ressourcendateien des Projekts"
+# src/modkit/core/validate.cpp:140
+"the icon '{0}' is not used by any shipped item (the layer refuses icons it cannot resolve)" = "das Symbol „{0}“ wird von keinem mitgelieferten Gegenstand benutzt (die Schicht lehnt Symbole ab, die sie nicht auflösen kann)"
+# src/modkit/core/validate.cpp:143 (+2)
+"the value must not be negative" = "der Wert darf nicht negativ sein"
+# src/modkit/core/validate.cpp:148
+"an item group needs a group path, a pattern or names" = "eine Gegenstandsgruppe braucht einen Gruppenpfad, ein Muster oder Namen"
+# src/modkit/core/validate.cpp:149
+"the item group changes nothing" = "die Gegenstandsgruppe ändert nichts"
+# src/modkit/core/validate.cpp:150 (+1)
+"a factor must not be negative" = "ein Faktor darf nicht negativ sein"
+# src/modkit/core/validate.cpp:168
+"the project has this spell twice" = "das Projekt hat diesen Zauber doppelt"
+# src/modkit/core/validate.cpp:172
+"choose the shipped spell to change" = "wähle den mitgelieferten Zauber, der geändert werden soll"
+# src/modkit/core/validate.cpp:173
+"'{0}' is no shipped spell (see the list in the Spells panel)" = "„{0}“ ist kein mitgelieferter Zauber (siehe die Liste im Bereich Zauber)"
+# src/modkit/core/validate.cpp:177
+"a new spell needs a shipped spell as its base" = "ein neuer Zauber braucht einen mitgelieferten Zauber als Basis"
+# src/modkit/core/validate.cpp:178
+"the base '{0}' is no shipped spell" = "die Basis „{0}“ ist kein mitgelieferter Zauber"
+# src/modkit/core/validate.cpp:183
+"the form '{0}' does not exist for {1} ({2})" = "die Form „{0}“ gibt es für {1} nicht ({2})"
+# src/modkit/core/validate.cpp:184
+"the form '{0}' is listed twice" = "die Form „{0}“ ist doppelt aufgeführt"
+# src/modkit/core/validate.cpp:188
+"a game template named {0} exists: choose another name" = "eine Spielvorlage namens {0} existiert: wähle einen anderen Namen"
+# src/modkit/core/validate.cpp:191
+"no label: the item shows the base spell's name" = "keine Bezeichnung: der Gegenstand zeigt den Namen des Basiszaubers"
+# src/modkit/core/validate.cpp:195
+"a mana cost must not be negative" = "Manakosten dürfen nicht negativ sein"
+# src/modkit/core/validate.cpp:196
+"the mana factor must not be negative" = "der Manafaktor darf nicht negativ sein"
+# src/modkit/core/validate.cpp:197
+"a mana cost and a mana factor exclude each other" = "Manakosten und Manafaktor schließen sich aus"
+# src/modkit/core/validate.cpp:201
+"damage, speed, radius, effect and damage type only apply to Fireball, Frost and Missile" = "Schaden, Geschwindigkeit, Radius, Effekt und Schadensart gelten nur für Fireball, Frost und Missile"
+# src/modkit/core/validate.cpp:202
+"scroll and orb costs only apply to rune spells (a projectile spell has a crystal)" = "Kosten von Schriftrolle und Kugel gelten nur für Runenzauber (ein Geschosszauber hat einen Kristall)"
+# src/modkit/core/validate.cpp:204
+"the damage factor must not be negative" = "der Schadensfaktor darf nicht negativ sein"
+# src/modkit/core/validate.cpp:205
+"the speed factor must not be negative" = "der Geschwindigkeitsfaktor darf nicht negativ sein"
+# src/modkit/core/validate.cpp:206
+"the radius factor must not be negative" = "der Radiusfaktor darf nicht negativ sein"
+# src/modkit/core/validate.cpp:207
+"a damage value and a damage factor are both set: check the layer's report" = "ein Schadenswert und ein Schadensfaktor sind beide gesetzt: prüfe den Bericht der Ebene"
+# src/modkit/core/validate.cpp:210
+"unknown damage type '{0}'" = "unbekannte Schadensart „{0}“"
+# src/modkit/core/validate.cpp:214
+"the damage list has {0} values, {1} has {2} projectile levels" = "die Schadensliste hat {0} Werte, {1} hat {2} Geschossstufen"
+# src/modkit/core/validate.cpp:216
+"the damage list must hold numbers" = "die Schadensliste muss Zahlen enthalten"
+# src/modkit/core/validate.cpp:218
+"the damage must be a number or a list of numbers" = "der Schaden muss eine Zahl oder eine Liste von Zahlen sein"
+# src/modkit/core/validate.cpp:223
+"the spell changes nothing" = "der Zauber ändert nichts"
+# src/modkit/core/validate.cpp:237
+"no selector: the group applies to every NPC and monster of the game" = "kein Selektor: die Gruppe gilt für jeden NPC und jedes Monster des Spiels"
+# src/modkit/core/validate.cpp:240
+"the group changes nothing" = "die Gruppe ändert nichts"
+# src/modkit/core/validate.cpp:245
+"skills_mult: unknown skill '{0}'" = "skills_mult: unbekannte Fertigkeit „{0}“"
+# src/modkit/core/validate.cpp:246
+"skills_mult.{0} must not be negative" = "skills_mult.{0} darf nicht negativ sein"
+# src/modkit/core/validate.cpp:254
+"bad Lua pattern '{0}': {1}" = "ungültiges Lua-Muster „{0}“: {1}"
+# src/modkit/core/validate.cpp:260
+"the selector matches no NPC or monster template (the layer refuses a selector that matches nothing)" = "der Selektor trifft auf keine NPC- oder Monstervorlage zu (die Schicht lehnt einen Selektor ab, der auf nichts zutrifft)"
+# src/modkit/core/validate.cpp:263
+"names: '{0}' is no template of the game" = "names: „{0}“ ist keine Vorlage des Spiels"
+# src/modkit/core/validate.cpp:264
+"names: '{0}' is no NPC or monster" = "names: „{0}“ ist kein NPC oder Monster"
+# src/modkit/core/validate.cpp:273
+"no templates in the group '{0}' (docs/TEMPLATES.md)" = "keine Vorlagen in der Gruppe „{0}“ (docs/TEMPLATES.md)"
+# src/modkit/core/validate.cpp:285
+"the project has this recipe twice" = "das Projekt hat dieses Rezept doppelt"
+# src/modkit/core/validate.cpp:290
+"a new recipe needs a station" = "ein neues Rezept braucht eine Station"
+# src/modkit/core/validate.cpp:291
+"a new recipe needs at least one ingredient" = "ein neues Rezept braucht mindestens eine Zutat"
+# src/modkit/core/validate.cpp:292
+"a new recipe needs a result item" = "ein neues Rezept braucht einen Ergebnisgegenstand"
+# src/modkit/core/validate.cpp:296
+"the base '{0}' is no recipe item (no gCRecipe_PS)" = "die Basis „{0}“ ist kein Rezeptgegenstand (kein gCRecipe_PS)"
+# src/modkit/core/validate.cpp:300
+"choose the shipped recipe to change" = "wähle das mitgelieferte Rezept, das geändert werden soll"
+# src/modkit/core/validate.cpp:304
+"not a recipe ({0})" = "kein Rezept ({0})"
+# src/modkit/core/validate.cpp:308
+"unknown station '{0}'" = "unbekannte Station „{0}“"
+# src/modkit/core/validate.cpp:310
+"at most 16 ingredients" = "höchstens 16 Zutaten"
+# src/modkit/core/validate.cpp:313
+"an ingredient has no item" = "eine Zutat hat keinen Gegenstand"
+# src/modkit/core/validate.cpp:314
+"ingredient '{0}' is no item of the game or the project" = "die Zutat „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:315
+"ingredient '{0}': the count must be 1 or more" = "Zutat „{0}“: die Anzahl muss 1 oder mehr sein"
+# src/modkit/core/validate.cpp:316
+"ingredient '{0}' is listed twice" = "die Zutat „{0}“ ist doppelt aufgeführt"
+# src/modkit/core/validate.cpp:320
+"result '{0}' is no item of the game or the project" = "das Ergebnis „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:346
+"the project has this NPC template twice" = "das Projekt hat diese NPC-Vorlage doppelt"
+# src/modkit/core/validate.cpp:351
+"a new NPC template needs a base NPC or monster to clone" = "eine neue NPC-Vorlage braucht einen Basis-NPC oder ein Basismonster zum Klonen"
+# src/modkit/core/validate.cpp:356
+"the base '{0}' is no NPC or monster ({1})" = "die Basis „{0}“ ist kein NPC oder Monster ({1})"
+# src/modkit/core/validate.cpp:359
+"no label: the NPC shows the base's name" = "keine Bezeichnung: der NPC zeigt den Namen der Basis"
+# src/modkit/core/validate.cpp:361
+"choose the shipped NPC or monster to change" = "wähle den mitgelieferten NPC oder das mitgelieferte Monster, der bzw. das geändert werden soll"
+# src/modkit/core/validate.cpp:366
+"not an NPC or monster ({0})" = "kein NPC oder Monster ({0})"
+# src/modkit/core/validate.cpp:370
+"skills: unknown or not settable skill '{0}'" = "skills: unbekannte oder nicht setzbare Fertigkeit „{0}“"
+# src/modkit/core/validate.cpp:371 (+1)
+"hit points must be 1 or more" = "die Lebenspunkte müssen 1 oder mehr sein"
+# src/modkit/core/validate.cpp:372
+"the hit points are above the maximum" = "die Lebenspunkte liegen über dem Maximum"
+# src/modkit/core/validate.cpp:373 (+1)
+"the level must be 1 or more" = "die Stufe muss 1 oder mehr sein"
+# src/modkit/core/validate.cpp:374
+"level and xp both set: xp sets the level (a kill pays 10 * level)" = "Stufe und EP sind beide gesetzt: die EP bestimmen die Stufe (ein Kill bringt 10 * Stufe)"
+# src/modkit/core/validate.cpp:383
+"loot '{0}' is no item of the game or the project" = "die Beute „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:384
+"loot '{0}': the amount must not be negative" = "Beute „{0}“: die Menge darf nicht negativ sein"
+# src/modkit/core/validate.cpp:387
+"the actor '{0}' is neither in the game archives nor among the project's asset files" = "der Akteur „{0}“ ist weder in den Spielarchiven noch unter den Ressourcendateien des Projekts"
+# src/modkit/core/validate.cpp:394
+"routine {0}: not a point" = "Tagesablauf {0}: kein Punkt"
+# src/modkit/core/validate.cpp:398
+"routine {0}: {1} is missing" = "Tagesablauf {0}: {1} fehlt"
+# src/modkit/core/validate.cpp:417
+"a condition names the quest '{0}' that is not in the project: it must be a quest of the game" = "eine Bedingung nennt die Quest „{0}“, die nicht im Projekt ist: sie muss eine Quest des Spiels sein"
+# src/modkit/core/validate.cpp:419
+"a condition names the quest '{0}', no quest of the project or the game (a quest another mod makes?)" = "eine Bedingung nennt die Quest „{0}“, keine Quest des Projekts oder des Spiels (eine Quest einer anderen Mod?)"
+# src/modkit/core/validate.cpp:421
+"a condition names '{0}', no item of the game or the project" = "eine Bedingung nennt „{0}“, keinen Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:433
+"the layer needs a name" = "die Ebene braucht einen Namen"
+# src/modkit/core/validate.cpp:436
+"the layer name may only contain letters, digits and _" = "der Ebenenname darf nur Buchstaben, Ziffern und _ enthalten"
+# src/modkit/core/validate.cpp:439
+"the project has two layers with this name" = "das Projekt hat zwei Ebenen mit diesem Namen"
+# src/modkit/core/validate.cpp:441
+"the NPC '{0}' is not a placed NPC of the project" = "der NPC „{0}“ ist kein platzierter NPC des Projekts"
+# src/modkit/core/validate.cpp:443
+"the NPC '{0}' is also in the layer '{1}': an object belongs to one layer" = "der NPC „{0}“ ist auch in der Ebene „{1}“: ein Objekt gehört zu einer Ebene"
+# src/modkit/core/validate.cpp:448
+"a world spawn of this layer does not exist any more" = "ein Weltspawn dieser Ebene existiert nicht mehr"
+# src/modkit/core/validate.cpp:450
+"a world spawn is also in the layer '{0}'" = "ein Weltspawn ist auch in der Ebene „{0}“"
+# src/modkit/core/validate.cpp:455
+"a container of this layer does not exist any more" = "ein Behälter dieser Ebene existiert nicht mehr"
+# src/modkit/core/validate.cpp:457
+"a container is also in the layer '{0}'" = "ein Behälter ist auch in der Ebene „{0}“"
+# src/modkit/core/validate.cpp:467 (+2)
+"'{0}' is no item of the game or the project" = "„{0}“ ist kein Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:469
+"the quest '{0}' is not in the project or the game" = "die Quest „{0}“ ist nicht im Projekt oder im Spiel"
+# src/modkit/core/validate.cpp:470 (+2)
+"unknown skill '{0}'" = "unbekannte Fertigkeit „{0}“"
+# src/modkit/core/validate.cpp:471
+"the layer '{0}' is not in the project" = "die Ebene „{0}“ ist nicht im Projekt"
+# src/modkit/core/validate.cpp:473
+"the layer is on from the start: 'switches on when' has no effect" = "die Ebene ist von Anfang an an: „Schaltet ein, wenn“ hat keine Wirkung"
+# src/modkit/core/validate.cpp:478
+"the layer has no members and no event graph switches or asks it" = "die Ebene hat keine Mitglieder, und kein Ereignisgraph schaltet oder fragt sie ab"
+# src/modkit/core/validate.cpp:489
+"the event graph needs a name" = "der Ereignisgraph braucht einen Namen"
+# src/modkit/core/validate.cpp:490
+"the project has two event graphs with this name" = "das Projekt hat zwei Ereignisgraphen mit diesem Namen"
+# src/modkit/core/validate.cpp:500
+"the quest '{0}' is not in the project{1}" = "die Quest „{0}“ ist nicht im Projekt{1}"
+# src/modkit/core/validate.cpp:504 (+1)
+"the template '{0}' is no NPC or monster of the game or the project" = "die Vorlage „{0}“ ist kein NPC oder Monster des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:506
+"the layer '{0}' is not in the project (Layers panel)" = "die Ebene „{0}“ ist nicht im Projekt (Bereich Ebenen)"
+# src/modkit/core/validate.cpp:518
+"'{0}' is no sector of the game's world (a file X.sec below projects/World)" = "„{0}“ ist kein Sektor der Spielwelt (eine Datei X.sec unter projects/World)"
+# src/modkit/core/validate.cpp:522
+"'{0}' is neither an NPC / template of the project or the game nor an NPC of the world" = "„{0}“ ist weder ein NPC / eine Vorlage des Projekts oder des Spiels noch ein NPC der Welt"
+# src/modkit/core/validate.cpp:538
+"no Send signal node sends '{0}' (custom.lua may call require(\"modkit.events\").fire_signal)" = "kein Knoten „Signal senden“ sendet „{0}“ (custom.lua kann require(\"modkit.events\").fire_signal aufrufen)"
+# src/modkit/core/validate.cpp:539
+"nothing waits for the signal '{0}'" = "nichts wartet auf das Signal „{0}“"
+# src/modkit/core/validate.cpp:550
+"two behaviours have this name" = "zwei Verhalten haben diesen Namen"
+# src/modkit/core/validate.cpp:551
+"choose the script file (.lua)" = "wähle die Skriptdatei (.lua)"
+# src/modkit/core/validate.cpp:556
+"the behaviour '{0}' is not in the project (Behaviours panel)" = "das Verhalten „{0}“ ist nicht im Projekt (Bereich Verhalten)"
+# src/modkit/core/validate.cpp:557
+"the behaviour '{0}' is attached twice: the second replaces the first" = "das Verhalten „{0}“ ist doppelt zugewiesen: das zweite ersetzt das erste"
+# src/modkit/core/validate.cpp:569
+"the world '{0}' is not one of the game's ({1} worlds): a world of another mod?" = "die Welt „{0}“ gehört nicht zu den Welten des Spiels ({1} Welten): eine Welt einer anderen Mod?"
+# src/modkit/core/validate.cpp:578
+"two placed NPCs have this name (names are global)" = "zwei platzierte NPCs haben diesen Namen (Namen sind global)"
+# src/modkit/core/validate.cpp:579
+"choose the NPC's template" = "wähle die Vorlage des NPCs"
+# src/modkit/core/validate.cpp:583 (+1)
+"the position is not a usable number" = "die Position ist keine brauchbare Zahl"
+# src/modkit/core/validate.cpp:584
+"the position is 0, 0, 0: place the NPC (or use an offset from the player)" = "die Position ist 0, 0, 0: platziere den NPC (oder verwende einen Versatz vom Spieler)"
+# src/modkit/core/validate.cpp:587
+"the version must be 1 or more" = "die Version muss 1 oder mehr sein"
+# src/modkit/core/validate.cpp:593
+"an inventory entry has no item" = "ein Inventareintrag hat keinen Gegenstand"
+# src/modkit/core/validate.cpp:594
+"inventory item '{0}' is no item of the game or the project" = "der Inventargegenstand „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:598
+"the routine is not a table" = "der Tagesablauf ist keine Tabelle"
+# src/modkit/core/validate.cpp:605
+"a patrol needs at least two waypoints" = "eine Patrouille braucht mindestens zwei Wegpunkte"
+# src/modkit/core/validate.cpp:619
+"the quest needs a name" = "die Quest braucht einen Namen"
+# src/modkit/core/validate.cpp:622
+"the quest name may only contain letters, digits and _" = "der Questname darf nur Buchstaben, Ziffern und _ enthalten"
+# src/modkit/core/validate.cpp:625
+"the project has this quest twice" = "das Projekt hat diese Quest doppelt"
+# src/modkit/core/validate.cpp:626
+"no title: the quest log shows the name" = "kein Titel: das Questlog zeigt den Namen"
+# src/modkit/core/validate.cpp:628
+"unknown quest type '{0}'" = "unbekannter Questtyp „{0}“"
+# src/modkit/core/validate.cpp:629
+"the experience must not be negative" = "die Erfahrung darf nicht negativ sein"
+# src/modkit/core/validate.cpp:637
+"the talk objective names '{0}', no dialogue option of the project" = "das Gesprächsziel nennt „{0}“, keine Dialogoption des Projekts"
+# src/modkit/core/validate.cpp:639
+"the objective names '{0}', no item of the game or the project" = "das Ziel nennt „{0}“, keinen Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:642
+"the reward names '{0}', no item of the game or the project" = "die Belohnung nennt „{0}“, keinen Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:646
+"the trigger names '{0}', no item of the game or the project" = "der Auslöser nennt „{0}“, keinen Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:664
+"the game has no sound {0}" = "das Spiel hat keinen Klang {0}"
+# src/modkit/core/validate.cpp:666
+"a sound for {0}, which is not a language of the mod" = "ein Klang für {0}, das keine Sprache der Mod ist"
+# src/modkit/core/validate.cpp:674
+"the owner '{0}' is not a placed NPC of the project: it must be the unique name of an NPC in the world" = "der Besitzer „{0}“ ist kein platzierter NPC des Projekts: er muss der eindeutige Name eines NPCs in der Welt sein"
+# src/modkit/core/validate.cpp:675
+"no NPC called '{0}' in the project or in the world {1}" = "kein NPC namens „{0}“ im Projekt oder in der Welt {1}"
+# src/modkit/core/validate.cpp:679
+"the dialogue has no option" = "der Dialog hat keine Option"
+# src/modkit/core/validate.cpp:682
+"option name '{0}': {1}" = "Optionsname „{0}“: {1}"
+# src/modkit/core/validate.cpp:684
+"the option name '{0}' is used twice (also in {1})" = "der Optionsname „{0}“ wird doppelt verwendet (auch in {1})"
+# src/modkit/core/validate.cpp:689
+"Give names '{0}', no item of the game or the project" = "Give nennt „{0}“, keinen Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:711
+"the spawn names no template" = "der Spawn nennt keine Vorlage"
+# src/modkit/core/validate.cpp:713
+"no template of the game or the project" = "keine Vorlage des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:714
+"the amount must be 1 or more" = "die Menge muss 1 oder mehr sein"
+# src/modkit/core/validate.cpp:716
+"the rotation is not a usable number" = "die Drehung ist keine brauchbare Zahl"
+# src/modkit/core/validate.cpp:722 (+1)
+"the entity id is not of the form xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" = "die Entitäts-ID hat nicht die Form xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# src/modkit/core/validate.cpp:725 (+1)
+"no entity with this id in the world {0}" = "keine Entität mit dieser ID in der Welt {0}"
+# src/modkit/core/validate.cpp:726
+"the entity has no inventory in the world file" = "die Entität hat in der Weltdatei kein Inventar"
+# src/modkit/core/validate.cpp:728
+"no items to add" = "keine Gegenstände zum Hinzufügen"
+# src/modkit/core/validate.cpp:741
+"the entity is {0} and {1} at once" = "die Entität ist {0} und {1} zugleich"
+# src/modkit/core/validate.cpp:745
+"an NPC of the world: his daily routine moves him again (and a removed NPC's quests break)" = "ein NPC der Welt: sein Tagesablauf bewegt ihn wieder (und die Quests eines entfernten NPCs brechen)"
+# src/modkit/core/validate.cpp:750
+"the pose is not a usable number" = "die Lage ist keine brauchbare Zahl"
+# src/modkit/core/validate.cpp:755
+"a move without a new position or rotation" = "eine Verschiebung ohne neue Position oder Drehung"
+# src/modkit/core/validate.cpp:759
+"items are added to a container the mod removes" = "Gegenstände werden zu einem Behälter hinzugefügt, den die Mod entfernt"
+# src/modkit/core/validate.cpp:769
+"a string row needs an id" = "eine Textzeile braucht eine Id"
+# src/modkit/core/validate.cpp:771
+"an id must not contain ; \" or a line break (strings/*.csv)" = "eine Id darf kein ; \" und keinen Zeilenumbruch enthalten (strings/*.csv)"
+# src/modkit/core/validate.cpp:772
+"the project has this string id twice (ids are not case sensitive)" = "das Projekt hat diese Text-Id doppelt (Ids unterscheiden nicht zwischen Groß- und Kleinschreibung)"
+# src/modkit/core/validate.cpp:773
+"the row has no text" = "die Zeile hat keinen Text"
+# src/modkit/core/validate.cpp:774
+"no text in {0}, the fallback language: the other languages show their own texts only" = "kein Text in {0}, der Ausweichsprache: die anderen Sprachen zeigen nur ihre eigenen Texte"
+# src/modkit/core/validate.cpp:777
+"a text in {0}, which is no language of the mod (it is exported anyway)" = "ein Text in {0}, das keine Sprache der Mod ist (er wird trotzdem exportiert)"
+# src/modkit/core/validate.cpp:781
+"the label of the item {0} has this id and wins" = "die Bezeichnung des Gegenstands {0} hat diese Id und setzt sich durch"
+# src/modkit/core/validate.cpp:782
+"the description of the item {0} has this id and wins" = "die Beschreibung des Gegenstands {0} hat diese Id und setzt sich durch"
+# src/modkit/core/validate.cpp:790
+"choose the template to patch" = "wähle die Vorlage, die geändert werden soll"
+# src/modkit/core/validate.cpp:793
+"this template is patched twice: both patches are applied, the later one wins on a shared property" = "diese Vorlage wird doppelt geändert: beide Änderungen werden angewendet, die spätere gewinnt bei einer gemeinsamen Eigenschaft"
+# src/modkit/core/validate.cpp:795
+"no template of the game or the project has this name" = "keine Vorlage des Spiels oder des Projekts hat diesen Namen"
+# src/modkit/core/validate.cpp:796
+"the patch changes nothing" = "die Änderung ändert nichts"
+# src/modkit/core/validate.cpp:804
+"choose the shipped dialogue info to edit" = "wähle die mitgelieferte Dialog-Info, die bearbeitet werden soll"
+# src/modkit/core/validate.cpp:805
+"this info is edited twice: both edits are applied" = "diese Info wird doppelt bearbeitet: beide Änderungen werden angewendet"
+# src/modkit/core/validate.cpp:806
+"an XP reward is either added or changed, not both" = "eine EP-Belohnung wird entweder hinzugefügt oder geändert, nicht beides"
+# src/modkit/core/validate.cpp:807
+"a changed XP reward needs the old and the new amount" = "eine geänderte EP-Belohnung braucht die alte und die neue Menge"
+# src/modkit/core/validate.cpp:809
+"an XP reward must not be negative" = "eine EP-Belohnung darf nicht negativ sein"
+# src/modkit/core/validate.cpp:810
+"the edit changes nothing" = "die Bearbeitung ändert nichts"
+# src/modkit/core/validate.cpp:813
+"property edit: unknown kind '{0}'" = "Eigenschaftsänderung: unbekannte Art „{0}“"
+# src/modkit/core/validate.cpp:814
+"a property edit needs the property's name" = "eine Eigenschaftsänderung braucht den Namen der Eigenschaft"
+# src/modkit/core/validate.cpp:815
+"a {0} edit needs the place (1 = the first) of the {1}" = "eine Änderung vom Typ {0} braucht die Stelle (1 = die erste) von {1}"
+# src/modkit/core/validate.cpp:816
+"an added condition needs its class (PlayerKnows, ItemAmount, ...)" = "eine hinzugefügte Bedingung braucht ihre Klasse (PlayerKnows, ItemAmount, ...)"
+# src/modkit/core/validate.cpp:817
+"the edit of {0} has no old value: it is applied only where the value is empty" = "die Änderung von {0} hat keinen alten Wert: sie wird nur angewendet, wo der Wert leer ist"
+# src/modkit/core/validate.cpp:820
+"a refill needs the trader's name" = "ein Nachschub braucht den Namen des Händlers"
+# src/modkit/core/validate.cpp:821
+"refill item '{0}' is no item of the game or the project" = "der Nachschubgegenstand „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:822
+"a refill count must not be negative" = "eine Nachschubmenge darf nicht negativ sein"
+# src/modkit/core/validate.cpp:828
+"the NPC's entity ID is not xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" = "die Entitäts-ID des NPCs ist nicht xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# src/modkit/core/validate.cpp:830
+"the limit must not be negative" = "die Grenze darf nicht negativ sein"
+# src/modkit/core/validate.cpp:831
+"no entity with this ID in the loaded world" = "keine Entität mit dieser ID in der geladenen Welt"
+# src/modkit/core/validate.cpp:841
+"two asset files are called {0} (the export puts them into one folder)" = "zwei Ressourcendateien heißen {0} (der Export legt sie in einen Ordner)"
+# src/modkit/core/validate.cpp:844
+"not a resource the engine loads (._xmsh, ._xmat, ._ximg, ._xmac, ._xmot, ._xsnd) and no audio file (.ogg, .wav, .mp3)" = "keine Ressource, die die Engine lädt (._xmsh, ._xmat, ._ximg, ._xmac, ._xmot, ._xsnd), und keine Audiodatei (.ogg, .wav, .mp3)"
+# src/modkit/core/validate.cpp:846
+"replaces the game's file of the same name everywhere it is used" = "ersetzt überall, wo sie verwendet wird, die gleichnamige Datei des Spiels"
+# src/modkit/core/validate.cpp:857
+"becomes {0}, which is also an asset file of the project" = "wird zu {0}, das auch eine Ressourcendatei des Projekts ist"
+# src/modkit/core/validate.cpp:859
+"becomes {0} like {1}" = "wird zu {0} wie {1}"
+# src/modkit/core/validate.cpp:861
+"becomes {0} and replaces the game's texture of that name everywhere it is used" = "wird zu {0} und ersetzt überall, wo sie verwendet wird, die gleichnamige Textur des Spiels"
+# src/modkit/core/validate.cpp:865
+"the export makes this file for the icon pictures: rename the project's file" = "der Export erzeugt diese Datei für die Symbolbilder: benenne die Datei des Projekts um"
+# src/modkit/core/validate.cpp:894
+"the mod has no name" = "die Mod hat keinen Namen"
+# src/modkit/core/validate.cpp:895
+"the mod needs at least one language" = "die Mod braucht mindestens eine Sprache"
+# src/modkit/core/voice.cpp:641
+"the CSV is empty" = "die CSV ist leer"
+# src/modkit/core/voice.cpp:652
+"the CSV needs the columns line_id and file (and language)" = "die CSV braucht die Spalten line_id und file (und language)"
+# src/modkit/core/wizards.cpp:117 (+1)
+"the NPC: {0}" = "der NPC: {0}"
+# src/modkit/core/wizards.cpp:121
+"the quest needs an id" = "die Quest braucht eine Id"
+# src/modkit/core/wizards.cpp:126
+"the quest id may only contain letters, digits and _" = "die Quest-Id darf nur Buchstaben, Ziffern und _ enthalten"
+# src/modkit/core/wizards.cpp:130
+"the project has a quest '{0}' already" = "das Projekt hat schon eine Quest „{0}“"
+# src/modkit/core/wizards.cpp:134
+"choose the item the player has to bring" = "wähle den Gegenstand, den der Spieler bringen soll"
+# src/modkit/core/wizards.cpp:138
+"the number of items must be between 1 and 999" = "die Anzahl der Gegenstände muss zwischen 1 und 999 liegen"
+# src/modkit/core/wizards.cpp:142
+"experience and gold must not be negative" = "Erfahrung und Gold dürfen nicht negativ sein"
+# src/modkit/core/wizards.cpp:275
+"the item name: {0}" = "der Gegenstandsname: {0}"
+# src/modkit/core/wizards.cpp:279
+"choose the shipped item the weapon is made from" = "wähle den mitgelieferten Gegenstand, aus dem die Waffe gebaut wird"
+# src/modkit/core/wizards.cpp:283
+"the project has a template '{0}' already" = "das Projekt hat schon eine Vorlage „{0}“"
+# src/modkit/core/wizards.cpp:287
+"the damage must not be negative" = "der Schaden darf nicht negativ sein"
+# src/modkit/core/wizards.cpp:296
+"choose the station the recipe is crafted at" = "wähle die Station, an der das Rezept hergestellt wird"
+# src/modkit/core/wizards.cpp:300
+"the recipe needs at least one ingredient" = "das Rezept braucht mindestens eine Zutat"
+# src/modkit/core/wizards.cpp:305
+"every ingredient needs an item and a count of at least 1" = "jede Zutat braucht einen Gegenstand und eine Anzahl von mindestens 1"
+# src/modkit/core/wizards.cpp:347
+"the project has an NPC '{0}' already" = "das Projekt hat schon einen NPC „{0}“"
+# src/modkit/core/wizards.cpp:351
+"choose the NPC template he is made of" = "wähle die NPC-Vorlage, aus der er gebaut wird"
+# src/modkit/core/wizards.cpp:355
+"a trader needs something to sell" = "ein Händler braucht etwas zu verkaufen"
+# src/modkit/core/wizards.cpp:360
+"every stock row needs an item and an amount of at least 1" = "jede Sortimentszeile braucht einen Gegenstand und eine Menge von mindestens 1"

@@ -12,6 +12,7 @@
 #include "app/pickers.h"
 #include "app/widgets.h"
 #include "core/catalog.h"
+#include "core/i18n.h"
 
 namespace mk::ui {
 
@@ -38,11 +39,13 @@ std::vector<std::string> project_info_options(const Project& p) {
 
 bool field(App& app, const EvFieldDef& f, json& d) {
     bool ch = false;
+    const char* label = tr(f.label);  // the tables in core/events.cpp hold the English texts
+    const char* help = f.help ? tr(f.help) : nullptr;
     const std::string key = f.key;
     switch (f.kind) {
         case EvField::Int: {
             int v = d.contains(key) && d[key].is_number() ? static_cast<int>(d[key].get<double>()) : (f.def.is_number() ? f.def.get<int>() : 0);
-            if (ImGui::InputInt(f.label, &v)) {
+            if (ImGui::InputInt(label, &v)) {
                 d[key] = static_cast<int>(std::clamp<double>(v, f.min, f.max));
                 ch = true;
             }
@@ -50,7 +53,7 @@ bool field(App& app, const EvFieldDef& f, json& d) {
         }
         case EvField::Number: {
             double v = d.contains(key) && d[key].is_number() ? d[key].get<double>() : (f.def.is_number() ? f.def.get<double>() : 0);
-            if (ImGui::InputDouble(f.label, &v, 0, 0, "%.2f")) {
+            if (ImGui::InputDouble(label, &v, 0, 0, "%.2f")) {
                 d[key] = std::isfinite(v) ? std::clamp(v, f.min, f.max) : 0.0;
                 ch = true;
             }
@@ -58,7 +61,7 @@ bool field(App& app, const EvFieldDef& f, json& d) {
         }
         case EvField::Bool: {
             bool v = d.value(key, f.def.is_boolean() ? f.def.get<bool>() : false);
-            if (ImGui::Checkbox(f.label, &v)) {
+            if (ImGui::Checkbox(label, &v)) {
                 d[key] = v;
                 ch = true;
             }
@@ -66,18 +69,18 @@ bool field(App& app, const EvFieldDef& f, json& d) {
         }
         case EvField::Combo: {
             std::string v = d.value(key, std::string());
-            if (ui::combo(f.label, v, f.options, false)) {
+            if (ui::combo(label, v, f.options, false)) {
                 d[key] = v;
                 ch = true;
             }
             break;
         }
         case EvField::Text:
-            ch |= lang_json(f.label, d[key], app.project.mod.languages);
+            ch |= lang_json(label, d[key], app.project.mod.languages);
             break;
         case EvField::Item: {
             std::string v = d.value(key, std::string());
-            if (ui::template_picker(f.label, v, app.game.get(), {TplKind::Item, TplKind::Recipe}, ui::project_item_names(app.project))) {
+            if (ui::template_picker(label, v, app.game.get(), {TplKind::Item, TplKind::Recipe}, ui::project_item_names(app.project))) {
                 d[key] = v;
                 ch = true;
             }
@@ -85,7 +88,7 @@ bool field(App& app, const EvFieldDef& f, json& d) {
         }
         case EvField::Quest: {
             std::string v = d.value(key, std::string());
-            if (ui::quest_picker(f.label, v, app)) {
+            if (ui::quest_picker(label, v, app)) {
                 d[key] = v;
                 ch = true;
             }
@@ -99,16 +102,16 @@ bool field(App& app, const EvFieldDef& f, json& d) {
                 for (auto& x : app.project.npcs) extra.push_back(x.name);
             for (auto& x : app.project.npc_templates)
                 if (x.mode == Mode::New) extra.push_back(x.name);
-            if (ui::template_picker(f.label, v, app.game.get(), {TplKind::Npc, TplKind::Monster}, extra)) {
+            if (ui::template_picker(label, v, app.game.get(), {TplKind::Npc, TplKind::Monster}, extra)) {
                 d[key] = v;
                 ch = true;
             }
-            if (f.kind == EvField::Target) ui::help("A template (every wolf) or the unique name of one NPC.");
+            if (f.kind == EvField::Target) ui::help(tr("A template (every wolf) or the unique name of one NPC."));
             break;
         }
         case EvField::Info: {
             std::string v = d.value(key, std::string());
-            bool c = ui::combo(f.label, v, project_info_options(app.project), false);
+            bool c = ui::combo(label, v, project_info_options(app.project), false);
             ImGui::SameLine();
             ImGui::SetNextItemWidth(120);
             c |= ImGui::InputText("##free", &v);
@@ -122,19 +125,19 @@ bool field(App& app, const EvFieldDef& f, json& d) {
             std::string v = d.value(key, std::string());
             std::vector<std::string> names;
             for (auto& l : app.project.layers) names.push_back(l.name);
-            if (ui::combo(f.label, v, names, true)) {
+            if (ui::combo(label, v, names, true)) {
                 d[key] = v;
                 ch = true;
             }
-            if (names.empty()) ImGui::TextDisabled("No layers yet: make one in the Layers panel.");
+            if (names.empty()) ImGui::TextDisabled("%s", tr("No layers yet: make one in the Layers panel."));
             break;
         }
         case EvField::Sector: {
             std::string v = d.value(key, std::string());
-            if (ImGui::BeginCombo(f.label, v.empty() ? "(choose)" : v.c_str())) {
+            if (ImGui::BeginCombo(label, v.empty() ? tr("(choose)") : v.c_str())) {
                 for (auto& s : event_stock_sectors(app)) {
-                    const std::string label = s.name + (s.enabled_on_startup ? "" : "   (starts off)");
-                    if (ImGui::Selectable(label.c_str(), s.name == v)) {
+                    const std::string row = s.name + (s.enabled_on_startup ? "" : tr("   (starts off)"));
+                    if (ImGui::Selectable(row.c_str(), s.name == v)) {
                         d[key] = s.name;
                         ch = true;
                     }
@@ -146,20 +149,20 @@ bool field(App& app, const EvFieldDef& f, json& d) {
                 d[key] = free;
                 ch = true;
             }
-            ui::help("A sector of the game's world by file base name; the ones that start off are switched by the story (docs/RE.md section 55).");
+            ui::help(tr("A sector of the game's world by file base name; the ones that start off are switched by the story (docs/RE.md section 55)."));
             break;
         }
         case EvField::String: {
             std::string v = d.value(key, std::string());
-            const bool hint = f.help && std::string(f.help).size() < 40;
-            if (hint ? ImGui::InputTextWithHint(f.label, f.help, &v) : ImGui::InputText(f.label, &v)) {
+            const bool hint = help && std::string(f.help).size() < 40;
+            if (hint ? ImGui::InputTextWithHint(label, help, &v) : ImGui::InputText(label, &v)) {
                 d[key] = v;
                 ch = true;
             }
             break;
         }
     }
-    if (f.help && f.kind != EvField::Target && f.kind != EvField::Sector && !(f.kind == EvField::String && std::string(f.help).size() < 40)) ui::help(f.help);
+    if (help && f.kind != EvField::Target && f.kind != EvField::Sector && !(f.kind == EvField::String && std::string(f.help).size() < 40)) ui::help(help);
     return ch;
 }
 
@@ -191,12 +194,12 @@ bool event_condition_set(App& app, json& d, bool show_mode) {
     if (!d.is_object()) d = event_default_condition_set();
     if (show_mode) {
         std::string mode = d.value("mode", std::string("all"));
-        if (ui::combo("Combine", mode, {"all", "any"}, false)) {
+        if (ui::combo(tr("Combine"), mode, {"all", "any"}, false)) {
             d["mode"] = mode;
             ch = true;
         }
         bool neg = d.value("negate", false);
-        if (ImGui::Checkbox("Negate the result", &neg)) {
+        if (ImGui::Checkbox(tr("Negate the result"), &neg)) {
             d["negate"] = neg;
             ch = true;
         }
@@ -209,7 +212,7 @@ bool event_condition_set(App& app, json& d, bool show_mode) {
         json& t = tests[i];
         const EvTestSpec* spec = event_test(t.value("kind", std::string()));
         ImGui::Separator();
-        ImGui::TextUnformatted(spec ? spec->title : "?");
+        ImGui::TextUnformatted(spec ? tr(spec->title) : "?");
         ImGui::SameLine(ImGui::GetContentRegionAvail().x - 20);
         if (ImGui::SmallButton("x")) remove = static_cast<int>(i);
         if (spec) ch |= event_fields(app, spec->fields, t);
@@ -220,9 +223,9 @@ bool event_condition_set(App& app, json& d, bool show_mode) {
         ch = true;
     }
     ImGui::Separator();
-    if (ImGui::BeginCombo("##add_check", "+ Add a check...")) {
+    if (ImGui::BeginCombo("##add_check", tr("+ Add a check..."))) {
         for (auto& s : event_tests())
-            if (ImGui::Selectable(s.title)) {
+            if (ImGui::Selectable(tr(s.title))) {
                 tests.push_back(event_default_test(s.kind));
                 ch = true;
             }

@@ -63,6 +63,10 @@ jobs:
       - name: API definitions are in sync
         run: python3 tools/check_luadefs.py
 
+      # the editor's language files: placeholders ({0}, %d) must match the English text
+      - name: Editor language files are consistent
+        run: python3 tools/i18n.py check
+
       - name: Type-check the mods with the Lua language server
         run: |
           curl -fsSL "https://github.com/LuaLS/lua-language-server/releases/download/${LUALS_VERSION}/lua-language-server-${LUALS_VERSION}-linux-x64.tar.gz" -o "$RUNNER_TEMP/luals.tar.gz"
@@ -131,13 +135,14 @@ jobs:
       - name: Unit tests of risen-modkit
         run: build-ninja\src\modkit\RelWithDebInfo\modkit_tests.exe
 
-      # risen-spass-tools-windows-x64.zip: risen-pack2mod.exe, risen-modkit.exe
+      # risen-spass-tools-windows-x64.zip: risen-pack2mod.exe, risen-modkit.exe, lang/ (the editor's language files)
       - name: Package
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $tools = New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\tools"
           Copy-Item build-ninja\RelWithDebInfo\risen-pack2mod.exe, build-ninja\src\modkit\RelWithDebInfo\risen-modkit.exe $tools
+          Copy-Item build-ninja\src\modkit\RelWithDebInfo\lang -Destination $tools -Recurse
           New-Item -ItemType Directory -Force dist | Out-Null
           Compress-Archive -Path "$tools\*" -DestinationPath dist\risen-spass-tools-windows-x64.zip -Force
           Get-ChildItem dist | Format-Table Name, Length

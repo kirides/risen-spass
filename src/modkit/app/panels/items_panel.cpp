@@ -14,6 +14,7 @@
 #include "app/render/mesh_preview.h"
 #include "app/widgets.h"
 #include "core/catalog.h"
+#include "core/i18n.h"
 #include "core/image.h"
 #include "pack2mod/util.h"
 #include "core/validate.h"
@@ -49,10 +50,10 @@ bool skill_list(const char* label, ItemDef& it, bool modifiers, const IntMap& sh
         bool edited = false;
         ImGui::Indent();
         if (ImGui::BeginTable("##skills", modifiers ? 5 : 4, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH)) {
-            ImGui::TableSetupColumn("skill", ImGuiTableColumnFlags_WidthStretch, 3);
-            ImGui::TableSetupColumn("amount", ImGuiTableColumnFlags_WidthStretch, 2);
-            if (modifiers) ImGui::TableSetupColumn("mode", ImGuiTableColumnFlags_WidthStretch, 2);
-            ImGui::TableSetupColumn("order", ImGuiTableColumnFlags_WidthFixed, 22);
+            ImGui::TableSetupColumn(tr("skill"), ImGuiTableColumnFlags_WidthStretch, 3);
+            ImGui::TableSetupColumn(tr("amount"), ImGuiTableColumnFlags_WidthStretch, 2);
+            if (modifiers) ImGui::TableSetupColumn(tr("mode"), ImGuiTableColumnFlags_WidthStretch, 2);
+            ImGui::TableSetupColumn(tr("order"), ImGuiTableColumnFlags_WidthFixed, 22);
             ImGui::TableSetupColumn("x", ImGuiTableColumnFlags_WidthFixed, 24);
             for (size_t i = 0; i < list.size(); ++i) {
                 SkillEntry& e = list[i];
@@ -106,7 +107,7 @@ bool skill_list(const char* label, ItemDef& it, bool modifiers, const IntMap& sh
         std::string s;
         for (auto& [k, v] : shipped) s += (s.empty() ? "" : ", ") + k + " " + std::to_string(v);
         ImGui::SameLine();
-        ImGui::TextDisabled("shipped: %s", s.empty() ? "none" : s.c_str());
+        ImGui::TextDisabled(tr("shipped: %s"), s.empty() ? "none" : s.c_str());
     }
     ImGui::PopID();
     return changed;
@@ -121,8 +122,8 @@ public:
     const char* title() const override { return kPanelItems; }
 
     void attach(App& app) override {
-        app.template_actions.push_back({"New item based on this", {TplKind::Item, TplKind::Recipe}, [this](App& a, const TemplateInfo& t) { add_new(a, t.name); }});
-        app.template_actions.push_back({"Change this item", {TplKind::Item, TplKind::Recipe}, [this](App& a, const TemplateInfo& t) { add_edit(a, t.name); }});
+        app.template_actions.push_back({N_("New item based on this"), {TplKind::Item, TplKind::Recipe}, [this](App& a, const TemplateInfo& t) { add_new(a, t.name); }});
+        app.template_actions.push_back({N_("Change this item"), {TplKind::Item, TplKind::Recipe}, [this](App& a, const TemplateInfo& t) { add_edit(a, t.name); }});
     }
     void on_project_changed(App& app) override {
         if (!find(app.project, sel_) && !group(app.project, sel_)) sel_.clear();
@@ -172,7 +173,7 @@ public:
     }
 
     void draw(App& app) override {
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
@@ -184,7 +185,7 @@ public:
         ImGui::PushItemWidth(std::min(520.0f, ImGui::GetContentRegionAvail().x * 0.6f));
         if (ItemDef* it = find(app.project, sel_)) draw_item(app, *it);
         else if (ItemGroup* g = group(app.project, sel_)) draw_group(app, *g);
-        else ImGui::TextDisabled("Create an item, change a shipped one (also from the Browser: select an item there), or add an item group.");
+        else ImGui::TextDisabled("%s", tr("Create an item, change a shipped one (also from the Browser: select an item there), or add an item group."));
         ImGui::PopItemWidth();
         ImGui::EndChild();
         ImGui::End();
@@ -204,11 +205,11 @@ private:
 
     void draw_list(App& app) {
         Project& p = app.project;
-        if (ImGui::Button("+ New item")) add_new(app, "It_1H_Sword");
+        if (ImGui::Button(tr("+ New item"))) add_new(app, "It_1H_Sword");
         ImGui::SameLine();
-        if (ImGui::Button("+ Change shipped")) ImGui::OpenPopup("##pick_edit");
+        if (ImGui::Button(tr("+ Change shipped"))) ImGui::OpenPopup("##pick_edit");
         ImGui::SameLine();
-        if (ImGui::Button("+ Group")) {
+        if (ImGui::Button(tr("+ Group"))) {
             ItemGroup g;
             g.uid = new_uid();
             g.group = "Items/Potions";
@@ -219,9 +220,9 @@ private:
         }
         if (ImGui::BeginPopup("##pick_edit")) {
             static std::string name;
-            ImGui::TextUnformatted("Which shipped item?");
-            ui::template_picker("Item", name, app.game.get(), {TplKind::Item, TplKind::Recipe}, {}, 280);
-            if (ImGui::Button("Add") && !name.empty()) {
+            ImGui::TextUnformatted(tr("Which shipped item?"));
+            ui::template_picker(tr("Item"), name, app.game.get(), {TplKind::Item, TplKind::Recipe}, {}, 280);
+            if (ImGui::Button(tr("Add")) && !name.empty()) {
                 add_edit(app, name);
                 name.clear();
                 ImGui::CloseCurrentPopup();
@@ -229,7 +230,7 @@ private:
             ImGui::EndPopup();
         }
         ImGui::SetNextItemWidth(-FLT_MIN);
-        ImGui::InputTextWithHint("##filter", "filter", &filter_);
+        ImGui::InputTextWithHint("##filter", tr("filter"), &filter_);
         ImGui::Separator();
         std::string remove;
         for (auto& i : p.items) {
@@ -238,10 +239,10 @@ private:
             ImGui::PushID(i.uid.c_str());
             ui::item_icon(i.name, 20.0f);
             ImGui::SameLine();
-            if (ImGui::Selectable(i.name.empty() ? "(unnamed)" : i.name.c_str(), sel_ == i.uid)) sel_ = i.uid;
+            if (ImGui::Selectable(i.name.empty() ? tr("(unnamed)") : i.name.c_str(), sel_ == i.uid)) sel_ = i.uid;
             ui::drag_source(i.name, TplKind::Item, false, i.mode == Mode::New, lbl);
             if (ImGui::BeginPopupContextItem()) {
-                if (ImGui::MenuItem("Duplicate")) {
+                if (ImGui::MenuItem(tr("Duplicate"))) {
                     ItemDef d = i;
                     d.uid = new_uid();
                     if (d.mode == Mode::New) d.name = ui::unique_template_name(p, app.game.get(), d.name);
@@ -250,20 +251,20 @@ private:
                         app.touch();
                     });
                 }
-                if (ImGui::MenuItem("Delete")) remove = i.uid;
+                if (ImGui::MenuItem(tr("Delete"))) remove = i.uid;
                 ImGui::EndPopup();
             }
             ImGui::SameLine(190);
             ImGui::TextDisabled("%s", i.mode == Mode::New ? "new" : "change");
             ImGui::PopID();
         }
-        if (!p.item_groups.empty()) ImGui::SeparatorText("Item groups");
+        if (!p.item_groups.empty()) ImGui::SeparatorText(tr("Item groups"));
         for (auto& g : p.item_groups) {
             ImGui::PushID(g.uid.c_str());
             const std::string t = !g.group.empty() ? g.group : !g.match.empty() ? g.match : "(group)";
             if (ImGui::Selectable(t.c_str(), sel_ == g.uid)) sel_ = g.uid;
             if (ImGui::BeginPopupContextItem()) {
-                if (ImGui::MenuItem("Delete")) remove = g.uid;
+                if (ImGui::MenuItem(tr("Delete"))) remove = g.uid;
                 ImGui::EndPopup();
             }
             ImGui::PopID();
@@ -285,49 +286,49 @@ private:
         auto hint_int = [](const std::optional<int>& v) { return v ? std::to_string(*v) : std::string(); };
 
         if (it.mode == Mode::New) {
-            ImGui::TextDisabled("NEW ITEM: a clone of the base with its own name, texts and numbers (risen.template.create)");
-            ch |= ui::input_text("Name", it.name);
-            ui::help("The template name: letters, digits and _, unique, at most 63 characters. It is the key of the item in savegames: keep it once released.");
+            ImGui::TextDisabled("%s", tr("NEW ITEM: a clone of the base with its own name, texts and numbers (risen.template.create)"));
+            ch |= ui::input_text(tr("Name"), it.name);
+            ui::help(tr("The template name: letters, digits and _, unique, at most 63 characters. It is the key of the item in savegames: keep it once released."));
             if (std::string why = template_name_problem(it.name); !why.empty()) ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "%s", why.c_str());
-            else if (g && g->tpl(it.name)) ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "a game template has this name");
-            ch |= ui::template_picker("Base item", it.base, g, {TplKind::Item, TplKind::Recipe});
+            else if (g && g->tpl(it.name)) ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "%s", tr("a game template has this name"));
+            ch |= ui::template_picker(tr("Base item"), it.base, g, {TplKind::Item, TplKind::Recipe});
             if (g && target) {
                 ImGui::SameLine();
                 ImGui::TextDisabled("\"%s\"", g->label(target->name).c_str());
             }
         } else {
-            ImGui::TextDisabled("CHANGE OF A SHIPPED ITEM: only the values you set are changed");
-            ch |= ui::template_picker("Item", it.name, g, {TplKind::Item, TplKind::Recipe});
+            ImGui::TextDisabled("%s", tr("CHANGE OF A SHIPPED ITEM: only the values you set are changed"));
+            ch |= ui::template_picker(tr("Item"), it.name, g, {TplKind::Item, TplKind::Recipe});
             if (g && target) {
                 ImGui::SameLine();
                 ImGui::TextDisabled("\"%s\"", g->label(target->name).c_str());
             }
         }
 
-        ui::section("Texts");
-        if (it.mode == Mode::Edit) ImGui::TextDisabled("Leave empty to keep the game's texts.");
-        ch |= ui::lang_text("Label", it.label, app.project.mod.languages);
-        ch |= ui::lang_text("Description", it.description, app.project.mod.languages, true);
+        ui::section(tr("Texts"));
+        if (it.mode == Mode::Edit) ImGui::TextDisabled("%s", tr("Leave empty to keep the game's texts."));
+        ch |= ui::lang_text(tr("Label"), it.label, app.project.mod.languages);
+        ch |= ui::lang_text(tr("Description"), it.description, app.project.mod.languages, true);
 
-        ui::section("Numbers");
-        ch |= ui::opt_int("Value (gold)", it.value, hint_int(shipped.value).c_str(), shipped.value.value_or(10));
-        ch |= ui::opt_int("Damage", it.damage, hint_int(shipped.damage).c_str(), shipped.damage.value_or(10));
-        ui::help("gCDamage_PS.DamageAmount. Melee damage = multiplier * (DamageAmount + the wielder's Strength).");
-        ch |= ui::opt_int("Mana cost", it.mana_cost, hint_int(shipped.mana_cost).c_str(), shipped.mana_cost.value_or(10));
-        ui::help("Runes and scrolls only (gCCastInfo_PS.ManaCost).");
+        ui::section(tr("Numbers"));
+        ch |= ui::opt_int(tr("Value (gold)"), it.value, hint_int(shipped.value).c_str(), shipped.value.value_or(10));
+        ch |= ui::opt_int(tr("Damage"), it.damage, hint_int(shipped.damage).c_str(), shipped.damage.value_or(10));
+        ui::help(tr("gCDamage_PS.DamageAmount. Melee damage = multiplier * (DamageAmount + the wielder's Strength)."));
+        ch |= ui::opt_int(tr("Mana cost"), it.mana_cost, hint_int(shipped.mana_cost).c_str(), shipped.mana_cost.value_or(10));
+        ui::help(tr("Runes and scrolls only (gCCastInfo_PS.ManaCost)."));
 
-        ui::section("Requirements and effects");
+        ui::section(tr("Requirements and effects"));
         const auto skills = skill_names(g);
-        ch |= skill_list("Replace requirements", it, false, shipped.requirements, skills,
-                         "What the player needs to equip or use the item (attributes, combat skills, ...). Only the player is held to them. The order of the list is kept (^ moves a row up).");
-        ch |= skill_list("Replace modifiers", it, true, shipped.modifies, skills,
-                         "What the item adds while worn or when used: HitPoints for a potion, ProtEdge for armour, ... Modes: add (default), set (to the value), max (to the maximum), percent (of the maximum).");
+        ch |= skill_list(tr("Replace requirements"), it, false, shipped.requirements, skills,
+                         tr("What the player needs to equip or use the item (attributes, combat skills, ...). Only the player is held to them. The order of the list is kept (^ moves a row up)."));
+        ch |= skill_list(tr("Replace modifiers"), it, true, shipped.modifies, skills,
+                         tr("What the item adds while worn or when used: HitPoints for a potion, ProtEdge for armour, ... Modes: add (default), set (to the value), max (to the maximum), percent (of the maximum)."));
 
-        ui::section("Kind");
-        ch |= ui::opt_enum("Use type", it.use_type, enum_names(g, "gEItemUseType"), shipped.use_type);
-        ch |= ui::opt_enum("Category", it.category, enum_names(g, "gEItemCategory"), shipped.category);
+        ui::section(tr("Kind"));
+        ch |= ui::opt_enum(tr("Use type"), it.use_type, enum_names(g, "gEItemUseType"), shipped.use_type);
+        ch |= ui::opt_enum(tr("Category"), it.category, enum_names(g, "gEItemCategory"), shipped.category);
 
-        ui::section("Appearance");
+        ui::section(tr("Appearance"));
         {
             bool on = it.mesh.has_value();
             if (ImGui::Checkbox("##mesh_on", &on)) {
@@ -338,7 +339,7 @@ private:
             ImGui::SameLine();
             std::string m = it.mesh ? *it.mesh : shipped.mesh;
             ImGui::BeginDisabled(!it.mesh);
-            if (ui::asset_picker("Mesh", m, g, "_xmsh", true) && it.mesh) {
+            if (ui::asset_picker(tr("Mesh"), m, g, "_xmsh", true) && it.mesh) {
                 it.mesh = m;
                 ch = true;
             }
@@ -356,7 +357,7 @@ private:
             std::string ic = it.icon ? *it.icon : shipped.icon;
             ui::icon(ic, 32.0f);
             ImGui::SameLine();
-            if (ImGui::BeginCombo("Icon", ic.c_str(), ImGuiComboFlags_HeightLarge)) {
+            if (ImGui::BeginCombo(tr("Icon"), ic.c_str(), ImGuiComboFlags_HeightLarge)) {
                 // the project's pictures first: they become cells of the mod's icon atlas
                 for (auto& a : app.project.assets) {
                     const std::string n = p2m::bare_name(a.file);
@@ -381,37 +382,37 @@ private:
             }
             ImGui::EndDisabled();
         }
-        ch |= ui::opt_int("Material switch", it.material, hint_int(shipped.material).c_str(), shipped.material.value_or(0));
+        ch |= ui::opt_int(tr("Material switch"), it.material, hint_int(shipped.material).c_str(), shipped.material.value_or(0));
         preview_.draw(app, it.mesh ? *it.mesh : shipped.mesh, ImVec2(260, 180));
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Drag to turn");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Drag to turn"));
 
-        ui::section("Other properties");
-        ImGui::TextDisabled("Any property of the template by name (see docs/ITEM_PROPERTIES.md).");
+        ui::section(tr("Other properties"));
+        ImGui::TextDisabled("%s", tr("Any property of the template by name (see docs/ITEM_PROPERTIES.md)."));
         ch |= ui::prop_edits("props", it.properties, g, target);
 
-        ui::section("Notes");
+        ui::section(tr("Notes"));
         ch |= ui::input_multiline("##notes", it.notes, 3);
         if (ch) app.touch();
     }
 
     void draw_group(App& app, ItemGroup& gr) {
         bool ch = false;
-        ImGui::TextDisabled("ITEM GROUP: relative settings for every item a selector matches (computed from the shipped values)");
-        ch |= ui::input_text("Group path", gr.group);
-        ui::help("A template group: Items/Potions, Items/Weapons_Swords, ... (the Browser shows the groups).");
-        ch |= ui::input_text("Name pattern", gr.match);
-        ui::help("A Lua pattern on the template name, e.g. ^It_Po_");
-        ch |= ui::input_text("Exclude pattern", gr.exclude);
-        ImGui::TextUnformatted("Also these items (one per line)");
-        ui::help("Type the names or drag items here from the Browser.");
+        ImGui::TextDisabled("%s", tr("ITEM GROUP: relative settings for every item a selector matches (computed from the shipped values)"));
+        ch |= ui::input_text(tr("Group path"), gr.group);
+        ui::help(tr("A template group: Items/Potions, Items/Weapons_Swords, ... (the Browser shows the groups)."));
+        ch |= ui::input_text(tr("Name pattern"), gr.match);
+        ui::help(tr("A Lua pattern on the template name, e.g. ^It_Po_"));
+        ch |= ui::input_text(tr("Exclude pattern"), gr.exclude);
+        ImGui::TextUnformatted(tr("Also these items (one per line)"));
+        ui::help(tr("Type the names or drag items here from the Browser."));
         ch |= ui::string_list("##names", gr.names);
         if (const ui::DragTemplate* d = ui::drop_target({TplKind::Item, TplKind::Recipe})) {
             if (std::find(gr.names.begin(), gr.names.end(), d->name) == gr.names.end()) gr.names.push_back(d->name);
             ch = true;
         }
-        ui::section("Settings");
-        ch |= ui::opt_double("Value factor", gr.value_mult, nullptr, 1.0);
-        ch |= ui::opt_double("Damage factor", gr.damage_mult, nullptr, 1.0);
+        ui::section(tr("Settings"));
+        ch |= ui::opt_double(tr("Value factor"), gr.value_mult, nullptr, 1.0);
+        ch |= ui::opt_double(tr("Damage factor"), gr.damage_mult, nullptr, 1.0);
         if (app.game) {
             size_t n = 0;
             for (auto& t : app.game->templates()) {
@@ -419,7 +420,7 @@ private:
                 if (!gr.group.empty() && (t->group.size() < gr.group.size() || p2m::lower(t->group.substr(0, gr.group.size())) != p2m::lower(gr.group))) continue;
                 ++n;
             }
-            ImGui::TextDisabled("The group path selects %zu items (patterns are evaluated by the layer).", n);
+            ImGui::TextDisabled(tr("The group path selects %zu items (patterns are evaluated by the layer)."), n);
         }
         if (ch) app.touch();
     }

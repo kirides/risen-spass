@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "core/catalog.h"
+#include "core/i18n.h"
 
 namespace mk::ui {
 
@@ -49,8 +50,8 @@ bool prop_edits(const char* id, PropEdits& edits, const GameData* g, const Templ
     ImGui::PushID(id);
     std::pair<std::string, std::string> remove;
     if (ImGui::BeginTable("##edits", 3, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH)) {
-        ImGui::TableSetupColumn("property", ImGuiTableColumnFlags_WidthStretch, 3);
-        ImGui::TableSetupColumn("value", ImGuiTableColumnFlags_WidthStretch, 3);
+        ImGui::TableSetupColumn(tr("property"), ImGuiTableColumnFlags_WidthStretch, 3);
+        ImGui::TableSetupColumn(tr("value"), ImGuiTableColumnFlags_WidthStretch, 3);
         ImGui::TableSetupColumn("x", ImGuiTableColumnFlags_WidthFixed, 24);
         for (auto& [set, list] : edits) {
             for (auto& [name, v] : list) {
@@ -64,7 +65,7 @@ bool prop_edits(const char* id, PropEdits& edits, const GameData* g, const Templ
                     if (const p2m::Val* sv = t->get(key)) {
                         if (ImGui::IsItemHovered()) {
                             const json sj = val_to_json(*g, *sv, *t->props.type_of(key));
-                            ImGui::SetTooltip("shipped: %s", sj.dump().c_str());
+                            ImGui::SetTooltip(tr("shipped: %s"), sj.dump().c_str());
                         }
                     }
                 }
@@ -82,7 +83,7 @@ bool prop_edits(const char* id, PropEdits& edits, const GameData* g, const Templ
                             }
                         ImGui::EndCombo();
                     }
-                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Only the enum values the editor knows names for are listed");
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Only the enum values the editor knows names for are listed"));
                 } else if (v.is_boolean()) {
                     bool b = v.get<bool>();
                     if (ImGui::Checkbox("##v", &b)) {
@@ -129,12 +130,12 @@ bool prop_edits(const char* id, PropEdits& edits, const GameData* g, const Templ
     // add: the template's properties (scalars only: arrays have their own settings) or a free "Set.Name"
     static std::string filter, free_key;
     ImGui::SetNextItemWidth(260);
-    if (ImGui::BeginCombo("##add", "add property...", ImGuiComboFlags_HeightLarge)) {
+    if (ImGui::BeginCombo("##add", tr("add property..."), ImGuiComboFlags_HeightLarge)) {
         if (ImGui::IsWindowAppearing()) {
             filter.clear();
             ImGui::SetKeyboardFocusHere();
         }
-        ImGui::InputTextWithHint("##f", "filter", &filter);
+        ImGui::InputTextWithHint("##f", tr("filter"), &filter);
         if (t && g) {
             for (size_t i = 0; i < t->props.size(); ++i) {
                 const std::string& k = t->props.keys[i];
@@ -151,15 +152,15 @@ bool prop_edits(const char* id, PropEdits& edits, const GameData* g, const Templ
                 }
             }
         } else {
-            ImGui::TextDisabled("no template: type Set.Name below");
+            ImGui::TextDisabled("%s", tr("no template: type Set.Name below"));
         }
         ImGui::EndCombo();
     }
     ImGui::SameLine();
     ImGui::SetNextItemWidth(200);
-    ImGui::InputTextWithHint("##free", "or Set.Name", &free_key);
+    ImGui::InputTextWithHint("##free", tr("or Set.Name"), &free_key);
     ImGui::SameLine();
-    if (ImGui::Button("Add") && free_key.find('.') != std::string::npos) {
+    if (ImGui::Button(tr("Add")) && free_key.find('.') != std::string::npos) {
         const auto dot = free_key.find('.');
         edits[free_key.substr(0, dot)][free_key.substr(dot + 1)] = 0;
         free_key.clear();

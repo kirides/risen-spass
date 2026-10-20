@@ -44,6 +44,7 @@ struct AppOptions {
     std::string screenshot;  // render `frames` frames, save the window as PNG, exit
     int frames = 10;
     std::string panel;       // focus this panel (screenshots)
+    std::string language;    // --lang CODE: the UI language for this run, overrides the setting without saving it
     int width = 1600, height = 900;
     std::string select;      // select an object by name in its panel (screenshots)
     std::string camera;      // the World view's camera: "x,y,z,yaw,pitch" in game coordinates and degrees (screenshots)
@@ -149,6 +150,7 @@ public:
     void open_project(const std::string& path);
     bool save_project(bool save_as);
     void request_open();  // file dialog
+    void set_language(const std::string& code);  // Settings > Interface: saves the choice, switches after the frame
     void import_mod_folder(const std::string& dir, bool prefer_data);  // File > Import mod
     void project_replaced();  // after the model was replaced (open, new, undo across structure, import)
 
@@ -163,6 +165,7 @@ private:
     bool any_busy() const;
     void setup_default_layout(unsigned int dockspace_id);
     void apply_ui_scale();
+    void apply_language(const std::string& code);  // activates a language file; call between frames (defer)
     void handle_shortcuts();
     void update_title();
 

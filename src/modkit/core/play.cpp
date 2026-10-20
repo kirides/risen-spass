@@ -1,4 +1,5 @@
 #include "core/play.h"
+#include "core/i18n.h"
 
 #include <iterator>
 #include <regex>
@@ -136,8 +137,8 @@ PlayResult play_game(const PlayOptions& o) {
             }
             r.ok = true;
             r.reloaded = std::regex_search(cfg, std::regex(R"(^[ \t]*watch[ \t]*=[ \t]*true\b)", std::regex::multiline));
-            r.message = r.reloaded ? "The game is running: the layer reloads the mod from the exported files."
-                                   : "The game is running without the file watcher: restart it to load the new files (Play starts it with hot reload on).";
+            r.message = r.reloaded ? tr("The game is running: the layer reloads the mod from the exported files.")
+                                   : tr("The game is running without the file watcher: restart it to load the new files (Play starts it with hot reload on).");
             return r;
         }
         // config.toml: hot reload on for the next start (the rest of the player's settings stays)
@@ -177,19 +178,20 @@ PlayResult play_game(const PlayOptions& o) {
         si.cb = sizeof si;
         PROCESS_INFORMATION pi{};
         if (!CreateProcessW(nullptr, cmd.data(), nullptr, nullptr, FALSE, 0, nullptr, bin.wstring().c_str(), &si, &pi)) {
-            r.message = "Cannot start Risen.exe (error " + std::to_string(GetLastError()) + ").";
+            r.message = trf("Cannot start Risen.exe (error {0}).", {std::to_string(GetLastError())});
             return r;
         }
         CloseHandle(pi.hThread);
         CloseHandle(pi.hProcess);
         r.ok = true;
-        r.message = "Risen is starting (about 30 s)" + std::string(o.start == PlayStart::Menu ? "." : o.start == PlayStart::NewGame ? ", then a new game starts." : ", then the last quick save loads.");
+        r.message = o.start == PlayStart::Menu ? tr("Risen is starting (about 30 s).")
+                                    : o.start == PlayStart::NewGame ? tr("Risen is starting (about 30 s), then a new game starts.") : tr("Risen is starting (about 30 s), then the last quick save loads.");
 #else
-        r.message = "Starting the game is only supported on Windows.";
+        r.message = tr("Starting the game is only supported on Windows.");
 #endif
     } catch (const std::exception& e) {
         r.ok = false;
-        r.message = std::string("Play failed: ") + e.what();
+        r.message = trf("Play failed: {0}", {e.what()});
     }
     return r;
 }

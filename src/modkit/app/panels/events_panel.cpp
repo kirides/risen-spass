@@ -15,6 +15,7 @@
 #include "app/widgets.h"
 #include "core/catalog.h"
 #include "core/events.h"
+#include "core/i18n.h"
 #include "core/lua_writer.h"
 #include "core/validate.h"
 
@@ -40,7 +41,7 @@ public:
     }
 
     void draw(App& app) override {
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
@@ -51,8 +52,8 @@ public:
         if (sel_.empty() && !app.project.events.empty()) sel_ = app.project.events.front().uid;
         EventGraphDef* g = find(app.project, sel_);
         if (!g) {
-            ImGui::TextWrapped("Create an event graph. A trigger node (\"On chapter\", \"On player moved\", \"On kill\", ...) starts it; conditions, flow nodes and actions "
-                               "follow. Example: On chapter 3 -> Condition (intro = 0) -> Set variable (intro = 1) -> HUD message -> End.");
+            ImGui::TextWrapped("%s", tr("Create an event graph. A trigger node (\"On chapter\", \"On player moved\", \"On kill\", ...) starts it; conditions, flow nodes and actions "
+                               "follow. Example: On chapter 3 -> Condition (intro = 0) -> Set variable (intro = 1) -> HUD message -> End."));
             ImGui::End();
             return;
         }
@@ -117,7 +118,7 @@ private:
     }
 
     void draw_list(App& app) {
-        if (ImGui::Button("+ New event graph")) add_graph(app);
+        if (ImGui::Button(tr("+ New event graph"))) add_graph(app);
         ImGui::Separator();
         std::string remove;
         for (auto& e : app.project.events) {
@@ -126,12 +127,12 @@ private:
             if (!e.enabled) label += "  (off)";
             if (ImGui::Selectable(label.c_str(), sel_ == e.uid)) sel_ = e.uid;
             if (ImGui::BeginPopupContextItem()) {
-                if (ImGui::MenuItem("Delete")) remove = e.uid;
+                if (ImGui::MenuItem(tr("Delete"))) remove = e.uid;
                 ImGui::EndPopup();
             }
             std::string triggers;
             for (auto& n : e.graph.nodes)
-                if (const EvNodeSpec* s = event_spec(n.type); s && s->trigger) triggers += (triggers.empty() ? "" : ", ") + std::string(s->title);
+                if (const EvNodeSpec* s = event_spec(n.type); s && s->trigger) triggers += (triggers.empty() ? "" : ", ") + std::string(tr(s->title));
             ImGui::TextDisabled("  %s", triggers.c_str());
             ImGui::PopID();
         }
@@ -145,34 +146,34 @@ private:
     void draw_header(App& app, EventGraphDef& g) {
         bool ch = false;
         ImGui::SetNextItemWidth(220);
-        ch |= ImGui::InputText("Name", &g.name);
+        ch |= ImGui::InputText(tr("Name"), &g.name);
         ImGui::SameLine();
-        ch |= ImGui::Checkbox("Enabled", &g.enabled);
-        ui::help("A disabled graph is exported but never starts (custom.lua can turn it on with require(\"modkit.events\").set_enabled(name, true)).");
+        ch |= ImGui::Checkbox(tr("Enabled"), &g.enabled);
+        ui::help(tr("A disabled graph is exported but never starts (custom.lua can turn it on with require(\"modkit.events\").set_enabled(name, true))."));
         if (ch) app.touch();
     }
 
     void draw_inspector(App& app, EventGraphDef& g, const std::vector<DialogIssue>& issues, const json& data) {
         GraphNode* n = g.graph.find(canvas_.selected());
         if (!n) {
-            ImGui::TextWrapped("Select a node to edit it. Right-click the canvas to add nodes; drag from an output pin into empty space to add a linked node.");
+            ImGui::TextWrapped("%s", tr("Select a node to edit it. Right-click the canvas to add nodes; drag from an output pin into empty space to add a linked node."));
             ImGui::Spacing();
-            ImGui::TextWrapped("A graph starts at a trigger (green) and runs along its links. A Condition goes on at 'then' or 'else'. An output linked to several nodes runs "
+            ImGui::TextWrapped("%s", tr("A graph starts at a trigger (green) and runs along its links. A Condition goes on at 'then' or 'else'. An output linked to several nodes runs "
                                "them all, top to bottom. Once, After N passes and Cooldown keep their state in the savegame; a Delay too. Variables are game variables "
-                               "(dialogues and quests can read them) or mod variables kept in the savegame.");
-            ImGui::SeparatorText("Notes");
+                               "(dialogues and quests can read them) or mod variables kept in the savegame."));
+            ImGui::SeparatorText(tr("Notes"));
             ImGui::InputTextMultiline("##notes", &g.notes, ImVec2(-FLT_MIN, 60));
-            ImGui::SeparatorText("Exported as");
+            ImGui::SeparatorText(tr("Exported as"));
             std::string lua = lua_value(data, 0, 60);
             ImGui::InputTextMultiline("##lua", &lua, ImVec2(-FLT_MIN, 200), ImGuiInputTextFlags_ReadOnly);
             draw_issues(issues, "");
             return;
         }
         const EvNodeSpec* spec = event_spec(n->type);
-        ImGui::SeparatorText(spec ? spec->title : n->type.c_str());
+        ImGui::SeparatorText(spec ? tr(spec->title) : n->type.c_str());
         if (spec && spec->help[0]) {
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-            ImGui::TextWrapped("%s", spec->help);
+            ImGui::TextWrapped("%s", tr(spec->help));
             ImGui::PopStyleColor();
         }
         bool ch = false;
@@ -187,7 +188,7 @@ private:
         for (auto& i : issues) {
             if (i.node != node) continue;
             if (!header) {
-                ImGui::SeparatorText("Problems");
+                ImGui::SeparatorText(tr("Problems"));
                 header = true;
             }
             ImGui::TextColored(i.error ? ImVec4(1, 0.45f, 0.4f, 1) : ImVec4(1, 0.8f, 0.35f, 1), "%s", i.message.c_str());

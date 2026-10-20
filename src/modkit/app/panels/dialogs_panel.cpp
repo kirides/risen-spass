@@ -13,6 +13,7 @@
 #include "app/widgets.h"
 #include "core/catalog.h"
 #include "core/dialog.h"
+#include "core/i18n.h"
 #include "core/lua_writer.h"
 #include "core/validate.h"
 
@@ -89,7 +90,7 @@ public:
     }
 
     void draw(App& app) override {
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
@@ -100,7 +101,7 @@ public:
         if (sel_.empty() && !app.project.dialogs.empty()) sel_ = app.project.dialogs.front().uid;
         DialogDef* d = find(app.project, sel_);
         if (!d) {
-            ImGui::TextDisabled("Create a dialogue: a conversation of one NPC (the owner) with the player.");
+            ImGui::TextDisabled("%s", tr("Create a dialogue: a conversation of one NPC (the owner) with the player."));
             ImGui::End();
             return;
         }
@@ -172,17 +173,17 @@ private:
     }
 
     void draw_list(App& app) {
-        if (ImGui::Button("+ New dialogue")) add_dialog(app);
+        if (ImGui::Button(tr("+ New dialogue"))) add_dialog(app);
         ImGui::Separator();
         std::string remove;
         for (auto& d : app.project.dialogs) {
             ImGui::PushID(d.uid.c_str());
             if (ImGui::Selectable(d.name.c_str(), sel_ == d.uid)) sel_ = d.uid;
             if (ImGui::BeginPopupContextItem()) {
-                if (ImGui::MenuItem("Delete")) remove = d.uid;
+                if (ImGui::MenuItem(tr("Delete"))) remove = d.uid;
                 ImGui::EndPopup();
             }
-            ImGui::TextDisabled("  %s", d.owner.empty() ? "(no owner)" : d.owner.c_str());
+            ImGui::TextDisabled("  %s", d.owner.empty() ? tr("(no owner)") : d.owner.c_str());
             ImGui::PopID();
         }
         if (!remove.empty()) {
@@ -195,7 +196,7 @@ private:
     void draw_header(App& app, DialogDef& d) {
         bool ch = false;
         ImGui::SetNextItemWidth(200);
-        ch |= ImGui::InputText("Name", &d.name);
+        ch |= ImGui::InputText(tr("Name"), &d.name);
         ImGui::SameLine();
         std::vector<std::string> npcs;
         for (auto& n : app.project.npcs) npcs.push_back(n.name);
@@ -208,10 +209,10 @@ private:
                 }
             // the NPCs placed in the game world (their unique names)
             if (app.world) {
-                ImGui::SeparatorText(("NPCs of " + app.world->name).c_str());
+                ImGui::SeparatorText(trf("NPCs of {0}", {app.world->name}).c_str());
                 static std::string filter;
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                ImGui::InputTextWithHint("##of", "filter", &filter);
+                ImGui::InputTextWithHint("##of", tr("filter"), &filter);
                 for (auto& e : app.world->entities) {
                     if (!e.npc || e.kind != TplKind::Npc) continue;
                     if (!filter.empty() && e.name.find(filter) == std::string::npos) continue;
@@ -225,20 +226,20 @@ private:
         }
         ImGui::SameLine();
         ImGui::SetNextItemWidth(160);
-        ch |= ImGui::InputTextWithHint("Owner NPC", "or a unique name", &d.owner);
+        ch |= ImGui::InputTextWithHint(tr("Owner NPC"), tr("or a unique name"), &d.owner);
         if (const ui::DragTemplate* dr = ui::drop_entity()) {
             d.owner = dr->name;
             ch = true;
         }
-        ui::help("The NPC who owns the options: a placed NPC of the project (pick it, or drag it here from the NPCs panel or the Browser), or the unique "
-                 "entity name of an NPC in the world.");
+        ui::help(tr("The NPC who owns the options: a placed NPC of the project (pick it, or drag it here from the NPCs panel or the Browser), or the unique "
+                 "entity name of an NPC in the world."));
         ImGui::SameLine();
-        if (ImGui::Button("Play through")) {
+        if (ImGui::Button(tr("Play through"))) {
             const std::string uid = d.uid;
             app.defer([&app, uid] { app.select_in(kPanelConversation, uid); });
         }
         ImGui::SameLine();
-        ImGui::TextDisabled("  right-click: new node · drag from a pin into space: new linked node · Del: delete");
+        ImGui::TextDisabled("%s", tr("  right-click: new node · drag from a pin into space: new linked node · Del: delete"));
         if (ch) app.touch();
     }
 
@@ -246,8 +247,8 @@ private:
     static std::string sound_note(const json& d) {
         const auto it = d.find("sound");
         if (it == d.end() || !it->is_object() || it->empty()) return {};
-        if (it->size() == 1) return "\n[sound: " + shorten(it->begin()->get<std::string>(), 40) + "]";
-        return "\n[sound: " + std::to_string(it->size()) + " variants]";
+        if (it->size() == 1) return trf("\n[sound: {0}]", {shorten(it->begin()->get<std::string>(), 40)});
+        return trf("\n[sound: {0} variants]", {std::to_string(it->size())});
     }
 
     // the "sound" of a node: edited on a copy, so a node without one gets no empty entry
@@ -291,41 +292,41 @@ private:
     void draw_inspector(App& app, DialogDef& d, const std::vector<DialogIssue>& issues) {
         GraphNode* n = d.graph.find(canvas_.selected());
         if (!n) {
-            ImGui::TextWrapped("Select a node to edit it.");
+            ImGui::TextWrapped("%s", tr("Select a node to edit it."));
             ImGui::Spacing();
-            ImGui::TextWrapped("An Option is what the player says; its 'then' pin leads to the lines and commands that follow, its 'choices' pin to "
+            ImGui::TextWrapped("%s", tr("An Option is what the player says; its 'then' pin leads to the lines and commands that follow, its 'choices' pin to "
                                "sub-options, 'when' takes conditions. A sequence without an End returns to the list of options (an option without "
-                               "sub-options gets an End by itself).");
+                               "sub-options gets an End by itself)."));
             draw_issues(issues, "");
             return;
         }
         const NodeTypeDef* t = node_type(GraphKind::Dialog, n->type);
-        ImGui::SeparatorText(t ? t->title : n->type.c_str());
+        ImGui::SeparatorText(t ? tr(t->title) : n->type.c_str());
         if (t && t->help) {
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-            ImGui::TextWrapped("%s", t->help);
+            ImGui::TextWrapped("%s", tr(t->help));
             ImGui::PopStyleColor();
         }
         bool ch = false;
         json& dd = n->data;
         const auto& langs = app.project.mod.languages;
         if (n->type == "option") {
-            ch |= json_text("Player says", dd["text"], langs, true);
-            ch |= edit_sound(app, dd, "Sound");
-            ch |= json_combo("Type", dd, "type", info_types());
-            ui::help("Info: offered in the list. Important: the NPC starts with it. Comment, News, Refuse, Parent: special kinds of the engine.");
+            ch |= json_text(tr("Player says"), dd["text"], langs, true);
+            ch |= edit_sound(app, dd, tr("Sound"));
+            ch |= json_combo(tr("Type"), dd, "type", info_types());
+            ui::help(tr("Info: offered in the list. Important: the NPC starts with it. Comment, News, Refuse, Parent: special kinds of the engine."));
             bool perm = dd.value("permanent", false);
-            if (ImGui::Checkbox("Permanent (stays after use)", &perm)) {
+            if (ImGui::Checkbox(tr("Permanent (stays after use)"), &perm)) {
                 dd["permanent"] = perm;
                 ch = true;
             }
             std::string info = dd.value("info", std::string());
-            if (ImGui::InputTextWithHint("Info name", info_name(app.project, *n).c_str(), &info)) {
+            if (ImGui::InputTextWithHint(tr("Info name"), info_name(app.project, *n).c_str(), &info)) {
                 dd["info"] = info;
                 ch = true;
             }
-            ui::help("The option's unique name: the engine saves 'option used' under it. Keep it once released.");
-            if (ImGui::SmallButton("Add a sub-option")) {
+            ui::help(tr("The option's unique name: the engine saves 'option used' under it. Keep it once released."));
+            if (ImGui::SmallButton(tr("Add a sub-option"))) {
                 GraphNode c = make_node(GraphKind::Dialog, "option", n->x + 60, n->y + 220);
                 c.data["info"] = suggest_info(app.project, d, 1);
                 const std::string parent = n->uid;
@@ -336,7 +337,7 @@ private:
                 n = d.graph.find(parent);
             }
             ImGui::SameLine();
-            if (ImGui::SmallButton("Add a condition")) {
+            if (ImGui::SmallButton(tr("Add a condition"))) {
                 GraphNode c = make_node(GraphKind::Dialog, "cond", n->x - 300, n->y + 60);
                 const std::string target = n->uid;
                 d.graph.nodes.push_back(c);
@@ -349,7 +350,7 @@ private:
                 std::vector<DialogIssue> tmp;
                 for (auto& info_json : compile_dialog(app.project, d, tmp))
                     if (info_json["name"] == info_name(app.project, *n)) {
-                        ImGui::SeparatorText("Exported as");
+                        ImGui::SeparatorText(tr("Exported as"));
                         std::string lua = lua_value(info_json, 0, 60);
                         ImGui::InputTextMultiline("##lua", &lua, ImVec2(-FLT_MIN, 160), ImGuiInputTextFlags_ReadOnly);
                     }
@@ -357,18 +358,18 @@ private:
         } else if (n->type == "line") {
             std::string sp = dd.value("speaker", std::string("npc"));
             static const std::vector<std::string> kSpeakers = {"npc", "player"};
-            if (ui::combo("Speaker", sp, kSpeakers, false)) {
+            if (ui::combo(tr("Speaker"), sp, kSpeakers, false)) {
                 dd["speaker"] = sp;
                 ch = true;
             }
-            ch |= json_str("Other NPC", dd, "speaker", "or a unique name");
-            ch |= json_text("Text", dd["text"], langs, true);
-            ch |= edit_sound(app, dd, "Sound");
+            ch |= json_str(tr("Other NPC"), dd, "speaker", tr("or a unique name"));
+            ch |= json_text(tr("Text"), dd["text"], langs, true);
+            ch |= edit_sound(app, dd, tr("Sound"));
         } else if (n->type == "command") {
             std::vector<std::string> names;
             for (auto& c : dialog_commands()) names.push_back(c.name);
             std::string cmd = dd.value("command", std::string());
-            if (ui::combo("Command", cmd, names, false)) {
+            if (ui::combo(tr("Command"), cmd, names, false)) {
                 dd["command"] = cmd;
                 dd["params"] = json::object();
                 ch = true;
@@ -395,13 +396,13 @@ private:
                         }
                     } else if (cmd == "SaySound" && par.name == "SoundName") {
                         std::string v = ps.value(par.name, std::string());
-                        if (ui::sound_picker("SoundName", v, app, true)) {
+                        if (ui::sound_picker(tr("SoundName"), v, app, true)) {
                             if (v.empty()) ps.erase(par.name);
                             else ps[par.name] = v;
                             ch = true;
                         }
-                        ui::help("The raw name of a sound the engine knows (a game sound or a compiled ._xsnd of the project): played as it is, without "
-                                 "subtitle, in every voice language. Or leave it empty and give a custom sound below.");
+                        ui::help(tr("The raw name of a sound the engine knows (a game sound or a compiled ._xsnd of the project): played as it is, without "
+                                 "subtitle, in every voice language. Or leave it empty and give a custom sound below."));
                     } else if (par.type == "eCTemplateEntityProxy") {
                         std::string v = ps.value(par.name, std::string());
                         if (ui::template_picker(par.name.c_str(), v, app.game.get(), {TplKind::Item, TplKind::Recipe}, ui::project_item_names(app.project))) {
@@ -410,25 +411,25 @@ private:
                         }
                     } else {
                         const bool entity = par.name.rfind("Entity", 0) == 0;
-                        ch |= json_str(par.name.c_str(), ps, par.name.c_str(), entity ? "player, npc or a unique name" : nullptr);
+                        ch |= json_str(par.name.c_str(), ps, par.name.c_str(), entity ? tr("player, npc or a unique name") : nullptr);
                     }
                     ImGui::PopID();
                 }
-                if (cmd == "SaySound") ch |= edit_sound(app, dd, "Custom sound");
+                if (cmd == "SaySound") ch |= edit_sound(app, dd, tr("Custom sound"));
             }
         } else if (n->type == "quest") {
             std::vector<std::string> qs;
             for (auto& q : app.project.quests) qs.push_back(q.name);
-            ch |= json_combo("Quest", dd, "quest", qs, true);
+            ch |= json_combo(tr("Quest"), dd, "quest", qs, true);
             static const std::vector<std::string> kActions = {"start", "succeed", "fail", "cancel"};
-            ch |= json_combo("Action", dd, "action", kActions);
+            ch |= json_combo(tr("Action"), dd, "action", kActions);
         } else if (n->type == "log") {
             std::vector<std::string> qs;
             for (auto& q : app.project.quests) qs.push_back(q.name);
-            ch |= json_combo("Quest", dd, "quest", qs, true);
-            ch |= json_text("Text", dd["text"], langs, true);
+            ch |= json_combo(tr("Quest"), dd, "quest", qs, true);
+            ch |= json_text(tr("Text"), dd["text"], langs, true);
         } else if (n->type == "script") {
-            ch |= json_str("Script", dd, "script", "a script name");
+            ch |= json_str(tr("Script"), dd, "script", tr("a script name"));
         } else if (n->type == "cond") {
             ch |= condition_editor(app, dd);
         } else if (n->type == "comment") {
@@ -449,7 +450,7 @@ private:
         for (auto& i : issues) {
             if (i.node != node) continue;
             if (!header) {
-                ImGui::SeparatorText("Problems");
+                ImGui::SeparatorText(tr("Problems"));
                 header = true;
             }
             ImGui::TextColored(i.error ? ImVec4(1, 0.45f, 0.4f, 1) : ImVec4(1, 0.8f, 0.35f, 1), "%s", i.message.c_str());

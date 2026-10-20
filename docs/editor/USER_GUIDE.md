@@ -31,6 +31,9 @@ Open **Window > Settings** and choose the game's **data directory**: `<Risen>\da
 The editor reads the archives in under a second (templates, texts in every language, the names of meshes and icons) and remembers the folder.
 Also set the **export folder**, normally `<Risen>\bin\spass\mods`.
 
+The editor speaks English or German (and any language someone translated): **Settings > Interface > Language**. *Automatic* follows the system language.
+This is the language of the editor's own texts; the languages of your mod are set in the Mod panel. How to add a language: [LOCALIZATION.md](LOCALIZATION.md).
+
 ## The window
 
 Panels can be dragged, docked and tabbed; **Window > Reset layout** brings back the default arrangement.
@@ -530,6 +533,7 @@ restores their saved state only into objects that exist).
 
 ```
 risen-modkit [project.rmk.json] [--data DIR]                       open the editor
+--lang CODE                                                        the UI language for this run (en, de, ...), see LOCALIZATION.md
 risen-modkit project.rmk.json --export DIR [--data DIR]            validate and export without a window (exit code 0 = exported)
 risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch] [--click x,y ...]
                     [--drag x1,y1,x2,y2 ...]                       render (after the given clicks and drags, in order), save a PNG, exit (tests)

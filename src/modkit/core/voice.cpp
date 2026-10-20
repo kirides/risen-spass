@@ -1,4 +1,5 @@
 #include "core/voice.h"
+#include "core/i18n.h"
 
 #include <algorithm>
 #include <set>
@@ -637,7 +638,7 @@ std::vector<CsvAssignment> csv_assignments(const std::string& text, std::string&
     std::vector<CsvAssignment> out;
     const auto rows = parse_csv(text);
     if (rows.empty()) {
-        error = "the CSV is empty";
+        error = tr("the CSV is empty");
         return out;
     }
     int ci = -1, cl = -1, cf = -1;
@@ -648,7 +649,7 @@ std::vector<CsvAssignment> csv_assignments(const std::string& text, std::string&
         else if (h == "file") cf = static_cast<int>(c);
     }
     if (ci < 0 || cf < 0) {
-        error = "the CSV needs the columns line_id and file (and language)";
+        error = tr("the CSV needs the columns line_id and file (and language)");
         return out;
     }
     for (size_t r = 1; r < rows.size(); ++r) {

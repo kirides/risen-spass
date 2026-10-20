@@ -16,10 +16,12 @@
 #include "app/audio.h"
 #include "app/icons.h"
 #include "app/palette.h"
+#include "app/widgets.h"
 #include "app/wizards.h"
 #include "app/panels/panels.h"
 #include "app/render/resources.h"
 #include "core/export.h"
+#include "core/i18n.h"
 #include "core/image.h"
 #include "core/import.h"
 #include "core/log.h"
@@ -95,6 +97,8 @@ std::string dialog_pick_folder(const std::string& default_dir) {
 // ---- App ----------------------------------------------------------------------------------------------------------------------------------------------
 App::App(AppOptions opts) : options(std::move(opts)) {
     settings = Settings::load();
+    // screenshots (tests, docs) are English unless --lang says otherwise: the system language must not change what they show
+    apply_language(!options.language.empty() ? options.language : options.screenshot.empty() ? settings.language : "en");
     if (!options.data_dir.empty()) settings.data_dir = options.data_dir;
     if (!options.game_dir.empty()) settings.game_dir = options.game_dir;
     panels_.push_back(make_project_panel());
@@ -171,10 +175,10 @@ void App::poll_loader() {
     if (loaded_) {
         game = loaded_;
         loaded_.reset();
-        status("Game data: " + std::to_string(game->templates().size()) + " templates from " + std::to_string(game->archive_count()) + " archives");
+        status(trf("Game data: {0} templates from {1} archives", {std::to_string(game->templates().size()), std::to_string(game->archive_count())}));
         for (auto& p : panels_) p->on_project_changed(*this);
     } else if (!loader_error_.empty()) {
-        status("Cannot read the game data: " + loader_error_);
+        status(trf("Cannot read the game data: {0}", {loader_error_}));
     }
 }
 
@@ -237,7 +241,7 @@ std::optional<SoundData> App::load_sound(const std::string& ref, std::string& er
         if (const AssetFile* a = find_asset(project, ref)) bytes = read_text(u8(asset_path(*a)));
         else if (game && game->exists(ref)) bytes = game->read(ref);
         else {
-            error = ref + " is neither an asset file of the project nor a sound of the game";
+            error = trf("{0} is neither an asset file of the project nor a sound of the game", {ref});
             return std::nullopt;
         }
         return open_sound(bytes, error);
@@ -262,10 +266,10 @@ void App::toggle_sound(const std::string& ref) {
     auto snd = load_sound(ref, error);
     const std::string format = snd ? snd->format : std::string();
     if (snd && a.play(ref, std::move(snd->audio), error)) {
-        status("playing " + ref + " (" + format + ", " + std::to_string(a.length()).substr(0, 4) + " s)");
+        status(trf("playing {0} ({1}, {2} s)", {ref, format, std::to_string(a.length()).substr(0, 4)}));
         return;
     }
-    status("cannot play " + ref + ": " + error);
+    status(trf("cannot play {0}: {1}", {ref, error}));
     log_warn("cannot play " + ref + ": " + error);
 }
 
@@ -333,7 +337,7 @@ void App::play() {
     problems_time_ = -1;
     refresh_problems();
     if (const size_t errors = error_count(problems_)) {
-        status(std::to_string(errors) + " errors in the project: fix them first (Problems panel)");
+        status(trf("{0} errors in the project: fix them first (Problems panel)", {std::to_string(errors)}));
         focus_panel(kPanelProblems);
         return;
     }
@@ -344,7 +348,7 @@ void App::play() {
     const ExportResult r = export_mod(project, u8str(u8(plan.mods_dir) / u8(project.mod.id)), o);
     for (auto& e : r.errors) log_error("play: export: " + e);
     if (!r.ok) {
-        status("Export failed: " + r.errors.front());
+        status(trf("Export failed: {0}", {r.errors.front()}));
         return;
     }
     PlayOptions po;
@@ -353,7 +357,7 @@ void App::play() {
     po.force_windowed = settings.play_windowed;
     const PlayResult pr = play_game(po);
     log_info("play: " + std::to_string(r.written.size()) + " files written; " + pr.message);
-    status(pr.ok ? pr.message : "Play: " + pr.message);
+    status(pr.ok ? pr.message : trf("Play: {0}", {pr.message}));
     // a new run starts a new log: what the last one said is stale
     if (pr.ok && !pr.reloaded) {
         game_log_lines_.clear();
@@ -377,49 +381,49 @@ std::vector<std::string> App::panel_titles() const {
 
 void App::draw_export_modal() {
     if (export_open_) {
-        ImGui::OpenPopup("Export mod");
+        ImGui::OpenPopup(tr("Export mod"));
         export_open_ = false;
         export_report_.clear();
         if (export_dir_.empty() || u8str(u8(export_dir_).filename()) != project.mod.id)
             export_dir_ = settings.export_dir.empty() ? std::string() : u8str(u8(settings.export_dir) / u8(project.mod.id));
     }
     ImGui::SetNextWindowSize(ImVec2(720, 0), ImGuiCond_Appearing);
-    if (!ImGui::BeginPopupModal("Export mod", nullptr)) return;
-    ImGui::TextWrapped("The mod is written into this folder (normally <Risen>\\bin\\spass\\mods\\<id>). The export only writes into an empty folder or one it wrote before.");
+    if (!ImGui::BeginPopupModal(tr("Export mod"), nullptr)) return;
+    ImGui::TextWrapped("%s", tr("The mod is written into this folder (normally <Risen>\\bin\\spass\\mods\\<id>). The export only writes into an empty folder or one it wrote before."));
     ImGui::SetNextItemWidth(-90);
     ImGui::InputText("##dir", &export_dir_);
     ImGui::SameLine();
-    if (ImGui::Button("Browse")) {
+    if (ImGui::Button(tr("Browse"))) {
         const std::string d = dialog_pick_folder(export_dir_.empty() ? settings.export_dir : export_dir_);
         if (!d.empty()) export_dir_ = d;
     }
     problems_time_ = -1;
     refresh_problems();
     const size_t errors = error_count(problems_);
-    if (errors) ImGui::TextColored(ImVec4(1, 0.45f, 0.4f, 1), "%zu errors: see the Problems panel. The export is refused until they are fixed.", errors);
-    else if (!problems_.empty()) ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), "%zu warnings (see Problems)", problems_.size());
+    if (errors) ImGui::TextColored(ImVec4(1, 0.45f, 0.4f, 1), tr("%zu errors: see the Problems panel. The export is refused until they are fixed."), errors);
+    else if (!problems_.empty()) ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), tr("%zu warnings (see Problems)"), problems_.size());
     ImGui::BeginDisabled(errors > 0 || export_dir_.empty());
-    if (ImGui::Button("Export", ImVec2(120, 0))) {
+    if (ImGui::Button(tr("Export"), ImVec2(120, 0))) {
         ExportOptions o;
         o.project_dir = project_path.empty() ? std::string() : u8str(u8(project_path).parent_path());
         o.game_data_dir = settings.data_dir;
         o.game = game.get();
         const ExportResult r = export_mod(project, export_dir_, o);
         export_report_.clear();
-        for (auto& e : r.errors) export_report_.push_back("error: " + e);
-        for (auto& w : r.written) export_report_.push_back("written: " + w);
-        for (auto& w : r.removed) export_report_.push_back("removed: " + w);
+        for (auto& e : r.errors) export_report_.push_back(trf("error: {0}", {e}));
+        for (auto& w : r.written) export_report_.push_back(trf("written: {0}", {w}));
+        for (auto& w : r.removed) export_report_.push_back(trf("removed: {0}", {w}));
         if (r.ok) {
-            export_report_.insert(export_report_.begin(), std::to_string(r.written.size()) + " files written, " + std::to_string(r.unchanged.size()) + " unchanged");
-            status("Exported to " + export_dir_);
+            export_report_.insert(export_report_.begin(), trf("{0} files written, {1} unchanged", {std::to_string(r.written.size()), std::to_string(r.unchanged.size())}));
+            status(trf("Exported to {0}", {export_dir_}));
         } else {
-            status("Export failed: " + r.errors.front());
+            status(trf("Export failed: {0}", {r.errors.front()}));
         }
         for (auto& l : export_report_) log_info("export: " + l);
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-    if (ImGui::Button("Close", ImVec2(120, 0))) ImGui::CloseCurrentPopup();
+    if (ImGui::Button(tr("Close"), ImVec2(120, 0))) ImGui::CloseCurrentPopup();
     if (!export_report_.empty()) {
         ImGui::BeginChild("##report", ImVec2(0, 200), ImGuiChildFlags_Borders);
         for (auto& l : export_report_) ImGui::TextUnformatted(l.c_str());
@@ -441,7 +445,7 @@ void App::new_project() {
         project_path.clear();
         history.reset(project);
         project_replaced();
-        status("New project");
+        status(tr("New project"));
     };
     if (history.dirty()) {
         after_discard_ = act;
@@ -462,10 +466,10 @@ void App::open_project(const std::string& path) {
             settings.add_recent(path);
             save_settings();
             project_replaced();
-            status("Opened " + path);
+            status(trf("Opened {0}", {path}));
         } catch (const std::exception& e) {
             log_error(e.what());
-            status(std::string("Cannot open the project: ") + e.what());
+            status(trf("Cannot open the project: {0}", {e.what()}));
         }
     };
     if (history.dirty()) {
@@ -481,18 +485,18 @@ void App::import_mod_folder(const std::string& dir, bool prefer_data) {
         ImportResult r = import_mod(dir, prefer_data);
         import_report_.clear();
         if (!r.ok) {
-            status("Import failed: " + r.error);
-            import_report_.push_back("error: " + r.error);
+            status(trf("Import failed: {0}", {r.error}));
+            import_report_.push_back(trf("error: {0}", {r.error}));
         } else {
             project = std::move(r.project);
             project_path.clear();  // a new project: Save asks where
             history.reset(project);
             history.touch();
             project_replaced();
-            import_report_.push_back(r.from_project_file ? "Read the project the mod was exported from (modkit/project.json)."
-                                                         : "Rebuilt the project from the mod's data files (the graphs were laid out anew).");
+            import_report_.push_back(r.from_project_file ? tr("Read the project the mod was exported from (modkit/project.json).")
+                                                         : tr("Rebuilt the project from the mod's data files (the graphs were laid out anew)."));
             for (auto& w : r.warnings) import_report_.push_back(w);
-            status("Imported " + dir + ": save the project to keep it");
+            status(trf("Imported {0}: save the project to keep it", {dir}));
         }
         for (auto& l : import_report_) log_info("import: " + l);
         import_open_ = true;
@@ -531,21 +535,36 @@ bool App::save_project(bool save_as) {
         settings.add_recent(path);
         save_settings();
         update_title();
-        status("Saved " + path);
+        status(trf("Saved {0}", {path}));
         return true;
     } catch (const std::exception& e) {
         log_error(e.what());
-        status(std::string("Cannot save: ") + e.what());
+        status(trf("Cannot save: {0}", {e.what()}));
         return false;
     }
 }
 
 void App::update_title() {
-    std::string t = "risen-modkit - " + (project_path.empty() ? std::string("(unsaved project)") : base_name(project_path)) + (history.dirty() ? " *" : "");
+    std::string t = "risen-modkit - " + (project_path.empty() ? std::string(tr("(unsaved project)")) : base_name(project_path)) + (history.dirty() ? " *" : "");
     if (t != title_shown_ && window_) {
         glfwSetWindowTitle(window_, t.c_str());
         title_shown_ = t;
     }
+}
+
+void App::set_language(const std::string& code) {
+    settings.language = code;
+    save_settings();
+    defer([this, code] {
+        apply_language(code);
+        refresh_problems();  // their texts are in the new language
+        update_title();
+    });  // translated pointers of this frame stay valid until it ends
+}
+
+void App::apply_language(const std::string& code) {
+    std::string err;
+    if (!i18n::set_language(code, i18n::default_search_dirs(), &err)) log_warn("language: " + err + ", using English");
 }
 
 void App::apply_ui_scale() { ImGui::GetStyle().FontScaleMain = settings.ui_scale; }
@@ -557,11 +576,12 @@ void App::setup_default_layout(unsigned int dockspace_id) {
     ImGuiID center = dockspace_id;
     ImGuiID left = ImGui::DockBuilderSplitNode(center, ImGuiDir_Left, 0.28f, nullptr, &center);
     ImGuiID bottom = ImGui::DockBuilderSplitNode(center, ImGuiDir_Down, 0.24f, nullptr, &center);
-    ImGui::DockBuilderDockWindow(kPanelMod, left);
-    ImGui::DockBuilderDockWindow(kPanelBrowser, left);
-    ImGui::DockBuilderDockWindow(kPanelLog, bottom);
-    ImGui::DockBuilderDockWindow("Problems", bottom);
-    for (const char* t : {"Items", "Recipes", "NPCs", kPanelNpcGroups, kPanelSpells, "Dialogues", kPanelConversation, "Quests", kPanelEvents, kPanelLayers, "World", kPanelAssets, kPanelBehaviors, kPanelPatches, kPanelStrings, kPanelShippedDialogs, kPanelSettings}) ImGui::DockBuilderDockWindow(t, center);
+    auto dock = [](const char* title, ImGuiID node) { ImGui::DockBuilderDockWindow(ui::panel_id(title).c_str(), node); };
+    dock(kPanelMod, left);
+    dock(kPanelBrowser, left);
+    dock(kPanelLog, bottom);
+    dock(kPanelProblems, bottom);
+    for (const char* t : {kPanelItems, kPanelRecipes, kPanelNpcs, kPanelNpcGroups, kPanelSpells, kPanelDialogs, kPanelConversation, kPanelQuests, kPanelEvents, kPanelLayers, kPanelWorld, kPanelAssets, kPanelBehaviors, kPanelPatches, kPanelStrings, kPanelShippedDialogs, kPanelSettings}) dock(t, center);
     ImGui::DockBuilderFinish(dockspace_id);
 }
 
@@ -587,66 +607,66 @@ void App::handle_shortcuts() {
 
 void App::draw_menu() {
     if (!ImGui::BeginMainMenuBar()) return;
-    if (ImGui::BeginMenu("File")) {
-        if (ImGui::MenuItem("New project", "Ctrl+N")) new_project();
-        if (ImGui::MenuItem("Open project...", "Ctrl+O")) request_open();
-        if (ImGui::BeginMenu("Open recent", !settings.recent.empty())) {
+    if (ImGui::BeginMenu(tr("File"))) {
+        if (ImGui::MenuItem(tr("New project"), "Ctrl+N")) new_project();
+        if (ImGui::MenuItem(tr("Open project..."), "Ctrl+O")) request_open();
+        if (ImGui::BeginMenu(tr("Open recent"), !settings.recent.empty())) {
             for (auto& r : settings.recent)
                 if (ImGui::MenuItem(r.c_str())) defer([this, r] { open_project(r); });
             ImGui::EndMenu();
         }
         ImGui::Separator();
-        if (ImGui::MenuItem("Save", "Ctrl+S")) save_project(false);
-        if (ImGui::MenuItem("Save as...", "Ctrl+Shift+S")) save_project(true);
+        if (ImGui::MenuItem(tr("Save"), "Ctrl+S")) save_project(false);
+        if (ImGui::MenuItem(tr("Save as..."), "Ctrl+Shift+S")) save_project(true);
         ImGui::Separator();
-        if (ImGui::MenuItem("Export mod...", "Ctrl+E")) request_export();
-        if (ImGui::BeginMenu("Import mod")) {
-            if (ImGui::MenuItem("From its project (modkit/project.json)...")) {
+        if (ImGui::MenuItem(tr("Export mod..."), "Ctrl+E")) request_export();
+        if (ImGui::BeginMenu(tr("Import mod"))) {
+            if (ImGui::MenuItem(tr("From its project (modkit/project.json)..."))) {
                 const std::string d = dialog_pick_folder(settings.export_dir);
                 if (!d.empty()) defer([this, d] { import_mod_folder(d, false); });
             }
-            if (ImGui::MenuItem("From its data files (after hand edits)...")) {
+            if (ImGui::MenuItem(tr("From its data files (after hand edits)..."))) {
                 const std::string d = dialog_pick_folder(settings.export_dir);
                 if (!d.empty()) defer([this, d] { import_mod_folder(d, true); });
             }
             ImGui::EndMenu();
         }
         ImGui::Separator();
-        if (ImGui::MenuItem("Quit")) glfwSetWindowShouldClose(window_, 1);
+        if (ImGui::MenuItem(tr("Quit"))) glfwSetWindowShouldClose(window_, 1);
         ImGui::EndMenu();
     }
-    if (ImGui::BeginMenu("Edit")) {
-        if (ImGui::MenuItem("Undo", "Ctrl+Z", false, history.can_undo()) && history.undo(project)) project_replaced();
-        if (ImGui::MenuItem("Redo", "Ctrl+Y", false, history.can_redo()) && history.redo(project)) project_replaced();
+    if (ImGui::BeginMenu(tr("Edit"))) {
+        if (ImGui::MenuItem(tr("Undo"), "Ctrl+Z", false, history.can_undo()) && history.undo(project)) project_replaced();
+        if (ImGui::MenuItem(tr("Redo"), "Ctrl+Y", false, history.can_redo()) && history.redo(project)) project_replaced();
         ImGui::Separator();
-        if (ImGui::MenuItem("Command palette...", "Ctrl+P")) open_palette();
+        if (ImGui::MenuItem(tr("Command palette..."), "Ctrl+P")) open_palette();
         ImGui::EndMenu();
     }
-    if (ImGui::BeginMenu("Wizards")) {
-        if (ImGui::MenuItem("Fetch quest...")) open_wizard(WizardKind::FetchQuest);
-        if (ImGui::MenuItem("New weapon with a recipe...")) open_wizard(WizardKind::Weapon);
-        if (ImGui::MenuItem("Trader with stock...")) open_wizard(WizardKind::Trader);
+    if (ImGui::BeginMenu(tr("Wizards"))) {
+        if (ImGui::MenuItem(tr("Fetch quest..."))) open_wizard(WizardKind::FetchQuest);
+        if (ImGui::MenuItem(tr("New weapon with a recipe..."))) open_wizard(WizardKind::Weapon);
+        if (ImGui::MenuItem(tr("Trader with stock..."))) open_wizard(WizardKind::Trader);
         ImGui::EndMenu();
     }
-    if (ImGui::BeginMenu("Window")) {
-        for (auto& p : panels_) ImGui::MenuItem(p->title(), nullptr, &p->open);
+    if (ImGui::BeginMenu(tr("Window"))) {
+        for (auto& p : panels_) ImGui::MenuItem(tr(p->title()), nullptr, &p->open);
         ImGui::Separator();
-        if (ImGui::MenuItem("Reset layout")) layout_done_ = false;
+        if (ImGui::MenuItem(tr("Reset layout"))) layout_done_ = false;
         ImGui::EndMenu();
     }
-    if (ImGui::BeginMenu("Game")) {
-        if (ImGui::MenuItem("Play: export and start / reload", "F5")) play();
-        if (ImGui::BeginMenu("Start with")) {
-            if (ImGui::MenuItem("Main menu", nullptr, settings.play_start == 0)) { settings.play_start = 0; save_settings(); }
-            if (ImGui::MenuItem("A new game", nullptr, settings.play_start == 1)) { settings.play_start = 1; save_settings(); }
-            if (ImGui::MenuItem("The last quick save", nullptr, settings.play_start == 2)) { settings.play_start = 2; save_settings(); }
+    if (ImGui::BeginMenu(tr("Game"))) {
+        if (ImGui::MenuItem(tr("Play: export and start / reload"), "F5")) play();
+        if (ImGui::BeginMenu(tr("Start with"))) {
+            if (ImGui::MenuItem(tr("Main menu"), nullptr, settings.play_start == 0)) { settings.play_start = 0; save_settings(); }
+            if (ImGui::MenuItem(tr("A new game"), nullptr, settings.play_start == 1)) { settings.play_start = 1; save_settings(); }
+            if (ImGui::MenuItem(tr("The last quick save"), nullptr, settings.play_start == 2)) { settings.play_start = 2; save_settings(); }
             ImGui::EndMenu();
         }
-        if (ImGui::MenuItem("Open the game's log")) {
+        if (ImGui::MenuItem(tr("Open the game's log"))) {
             const PlayPlan plan = play_plan(settings.game_dir);
             if (!plan.log_file.empty()) open_in_os(plan.log_file);
         }
-        if (ImGui::MenuItem("Forget the game's errors")) {
+        if (ImGui::MenuItem(tr("Forget the game's errors"))) {
             game_log_lines_.clear();
             game_problems_dirty_ = true;
         }
@@ -655,9 +675,9 @@ void App::draw_menu() {
     {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.5f, 0.25f, 1));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.22f, 0.62f, 0.3f, 1));
-        if (ImGui::SmallButton("  Play  ")) defer([this] { play(); });
+        if (ImGui::SmallButton(tr("  Play  "))) defer([this] { play(); });
         ImGui::PopStyleColor(2);
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Export the mod into the game folder and start Risen (F5).\nA running game with hot reload picks the new files up.");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Export the mod into the game folder and start Risen (F5).\nA running game with hot reload picks the new files up."));
     }
     ImGui::EndMainMenuBar();
 }
@@ -673,11 +693,11 @@ void App::draw_status_bar() {
     if (ImGui::Begin("##status", nullptr, f)) {
         if (game_loading()) {
             std::lock_guard<std::mutex> lock(loader_mu_);
-            ImGui::ProgressBar(loader_fraction_, ImVec2(160, 0), ("loading " + loader_what_).c_str());
+            ImGui::ProgressBar(loader_fraction_, ImVec2(160, 0), trf("loading {0}", {loader_what_}).c_str());
         } else if (game) {
-            ImGui::TextDisabled("%s (%zu templates)", game->data_dir().c_str(), game->templates().size());
+            ImGui::TextDisabled(tr("%s (%zu templates)"), game->data_dir().c_str(), game->templates().size());
         } else {
-            ImGui::TextDisabled("%s", settings.data_dir.empty() ? "No game data directory (Settings)" : "Game data not loaded");
+            ImGui::TextDisabled("%s", settings.data_dir.empty() ? tr("No game data directory (Settings)") : tr("Game data not loaded"));
         }
         ImGui::SameLine(ImGui::GetWindowWidth() * 0.45f);
         ImGui::TextUnformatted(status_.c_str());
@@ -688,35 +708,35 @@ void App::draw_status_bar() {
 
 void App::draw_modals() {
     if (ask_discard_) {
-        ImGui::OpenPopup("Unsaved changes");
+        ImGui::OpenPopup(tr("Unsaved changes"));
         ask_discard_ = false;
     }
     if (import_open_) {
-        ImGui::OpenPopup("Import");
+        ImGui::OpenPopup(tr("Import"));
         import_open_ = false;
     }
     ImGui::SetNextWindowSize(ImVec2(640, 0), ImGuiCond_Appearing);
-    if (ImGui::BeginPopupModal("Import", nullptr)) {
+    if (ImGui::BeginPopupModal(tr("Import"), nullptr)) {
         for (auto& l : import_report_) ImGui::TextWrapped("%s", l.c_str());
-        if (ImGui::Button("Close", ImVec2(120, 0))) ImGui::CloseCurrentPopup();
+        if (ImGui::Button(tr("Close"), ImVec2(120, 0))) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
-    if (ImGui::BeginPopupModal("Unsaved changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::TextUnformatted("The project has unsaved changes.");
-        if (ImGui::Button("Save")) {
+    if (ImGui::BeginPopupModal(tr("Unsaved changes"), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted(tr("The project has unsaved changes."));
+        if (ImGui::Button(tr("Save"))) {
             ImGui::CloseCurrentPopup();
             if (save_project(false) && after_discard_) defer(after_discard_);
             after_discard_ = nullptr;
         }
         ImGui::SameLine();
-        if (ImGui::Button("Discard")) {
+        if (ImGui::Button(tr("Discard"))) {
             ImGui::CloseCurrentPopup();
             history.reset(project);  // nothing is dirty any more
             if (after_discard_) defer(after_discard_);
             after_discard_ = nullptr;
         }
         ImGui::SameLine();
-        if (ImGui::Button("Cancel")) {
+        if (ImGui::Button(tr("Cancel"))) {
             ImGui::CloseCurrentPopup();
             after_discard_ = nullptr;
             want_quit_ = false;

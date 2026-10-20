@@ -11,6 +11,7 @@
 #include "app/prop_editor.h"
 #include "app/widgets.h"
 #include "core/catalog.h"
+#include "core/i18n.h"
 #include "pack2mod/util.h"
 
 namespace mk {
@@ -46,7 +47,7 @@ public:
         return false;
     }
     void attach(App& app) override {
-        app.template_actions.push_back({"Patch this template's properties", {}, [this](App& a, const TemplateInfo& t) {
+        app.template_actions.push_back({N_("Patch this template's properties"), {}, [this](App& a, const TemplateInfo& t) {
                                             TemplatePatch x;
                                             x.uid = new_uid();
                                             x.template_name = t.name;
@@ -58,21 +59,21 @@ public:
     }
 
     void draw(App& app) override {
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
         Project& p = app.project;
         ImGui::BeginChild("##list", ImVec2(280, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
-        if (ImGui::Button("+ Patch")) {
+        if (ImGui::Button(tr("+ Patch"))) {
             TemplatePatch x;
             x.uid = new_uid();
             p.patches.push_back(x);
             sel_ = x.uid;
             app.touch();
         }
-        ui::help("A patch writes properties of any template of the game (or of the project): the range of a light, the flight of a projectile, an NPC's voice... "
-                 "It is applied on the first tick and again with the live entities on every session start, like the balance data.");
+        ui::help(tr("A patch writes properties of any template of the game (or of the project): the range of a light, the flight of a projectile, an NPC's voice... "
+                 "It is applied on the first tick and again with the live entities on every session start, like the balance data."));
         ImGui::Separator();
         std::string remove;
         for (auto& x : p.patches) {
@@ -80,7 +81,7 @@ public:
             const std::string label = x.template_name.empty() ? std::string("(choose a template)") : x.template_name;
             if (ImGui::Selectable(label.c_str(), sel_ == x.uid)) sel_ = x.uid;
             if (ImGui::BeginPopupContextItem()) {
-                if (ImGui::MenuItem("Delete")) remove = x.uid;
+                if (ImGui::MenuItem(tr("Delete"))) remove = x.uid;
                 ImGui::EndPopup();
             }
             ImGui::PopID();
@@ -96,17 +97,17 @@ public:
             bool ch = false;
             const GameData* g = app.game.get();
             ImGui::PushItemWidth(std::min(480.0f, ImGui::GetContentRegionAvail().x * 0.6f));
-            ch |= ui::template_picker("Template", x->template_name, g, {}, ui::project_item_names(p));
+            ch |= ui::template_picker(tr("Template"), x->template_name, g, {}, ui::project_item_names(p));
             ImGui::PopItemWidth();
             const TemplateInfo* t = g ? g->tpl(x->template_name) : nullptr;
-            ui::section("Properties");
-            ImGui::TextDisabled("Only the properties you list are written. A property set the template lacks cannot be added at run time.");
+            ui::section(tr("Properties"));
+            ImGui::TextDisabled("%s", tr("Only the properties you list are written. A property set the template lacks cannot be added at run time."));
             ch |= ui::prop_edits("##props", x->properties, g, t);
-            ui::section("Notes");
+            ui::section(tr("Notes"));
             ch |= ui::input_multiline("##notes", x->notes, 3);
             if (ch) app.touch();
         } else {
-            ImGui::TextDisabled("Select a patch, or add one from the Browser (\"Patch this template's properties\").");
+            ImGui::TextDisabled("%s", tr("Select a patch, or add one from the Browser (\"Patch this template's properties\")."));
         }
         ImGui::EndChild();
         ImGui::End();
@@ -144,7 +145,7 @@ bool choice_combo(const char* id, const std::string& current, const char* hint, 
             ImGui::SetKeyboardFocusHere();
         }
         ImGui::SetNextItemWidth(-FLT_MIN);
-        ImGui::InputTextWithHint("##f", "filter", &filter);
+        ImGui::InputTextWithHint("##f", tr("filter"), &filter);
         const std::string f = p2m::lower(filter);
         for (const auto& c : choices) {
             if (!f.empty() && p2m::lower(c.first).find(f) == std::string::npos) continue;
@@ -181,16 +182,16 @@ public:
         return false;
     }
     void draw(App& app) override {
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
         if (ImGui::BeginTabBar("##tabs")) {
-            if (ImGui::BeginTabItem("Dialogue edits")) {
+            if (ImGui::BeginTabItem(tr("Dialogue edits"))) {
                 draw_edits(app);
                 ImGui::EndTabItem();
             }
-            if (ImGui::BeginTabItem("Teacher limits")) {
+            if (ImGui::BeginTabItem(tr("Teacher limits"))) {
                 draw_teachers(app);
                 ImGui::EndTabItem();
             }
@@ -203,22 +204,22 @@ private:
     void draw_edits(App& app) {
         Project& p = app.project;
         ImGui::BeginChild("##list", ImVec2(280, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
-        if (ImGui::Button("+ Edit of a shipped info")) {
+        if (ImGui::Button(tr("+ Edit of a shipped info"))) {
             DialogEdit x;
             x.uid = new_uid();
             p.dialog_edits.push_back(x);
             sel_ = x.uid;
             app.touch();
         }
-        ui::help("Adds commands to a dialogue info of the game when the game starts (risen.dialog.get): an XP reward, or trader refills (the stock a trader "
-                 "gets when the info runs, e.g. at a chapter change). The new dialogues of the Dialogues panel are separate.");
+        ui::help(tr("Adds commands to a dialogue info of the game when the game starts (risen.dialog.get): an XP reward, or trader refills (the stock a trader "
+                 "gets when the info runs, e.g. at a chapter change). The new dialogues of the Dialogues panel are separate."));
         ImGui::Separator();
         std::string remove;
         for (auto& x : p.dialog_edits) {
             ImGui::PushID(x.uid.c_str());
-            if (ImGui::Selectable(x.info.empty() ? "(choose an info)" : x.info.c_str(), sel_ == x.uid)) sel_ = x.uid;
+            if (ImGui::Selectable(x.info.empty() ? tr("(choose an info)") : x.info.c_str(), sel_ == x.uid)) sel_ = x.uid;
             if (ImGui::BeginPopupContextItem()) {
-                if (ImGui::MenuItem("Delete")) remove = x.uid;
+                if (ImGui::MenuItem(tr("Delete"))) remove = x.uid;
                 ImGui::EndPopup();
             }
             ImGui::PopID();
@@ -233,16 +234,16 @@ private:
         if (DialogEdit* x = find_by_uid(p.dialog_edits, sel_)) {
             bool ch = false;
             ImGui::PushItemWidth(std::min(420.0f, ImGui::GetContentRegionAvail().x * 0.6f));
-            ch |= ui::info_picker("Info", x->info, app);
-            ui::help("The name of a shipped dialogue info, as the game's dialogue data and risen.dialog.get know it (\"FILLERX2_00029\"). Type to search the "
-                     "game's dialogue infos by name, speaker, quest or the words of the first line; the arrow opens the list.");
+            ch |= ui::info_picker(tr("Info"), x->info, app);
+            ui::help(tr("The name of a shipped dialogue info, as the game's dialogue data and risen.dialog.get know it (\"FILLERX2_00029\"). Type to search the "
+                     "game's dialogue infos by name, speaker, quest or the words of the first line; the arrow opens the list."));
             ImGui::PopItemWidth();
-            ui::section("XP reward");
-            ch |= ui::opt_int("Add a reward", x->xp_add, nullptr, 50);
-            ui::help("Appends a GiveXP command with this amount at the end of the info.");
+            ui::section(tr("XP reward"));
+            ch |= ui::opt_int(tr("Add a reward"), x->xp_add, nullptr, 50);
+            ui::help(tr("Appends a GiveXP command with this amount at the end of the info."));
             {
                 bool on = x->xp_old.has_value();
-                if (ImGui::Checkbox("Change a reward", &on)) {
+                if (ImGui::Checkbox(tr("Change a reward"), &on)) {
                     if (on) {
                         x->xp_old = 10;
                         x->xp_new = 20;
@@ -252,18 +253,18 @@ private:
                     }
                     ch = true;
                 }
-                ui::help("Finds the info's GiveXP command that gives the old amount and gives the new one instead.");
+                ui::help(tr("Finds the info's GiveXP command that gives the old amount and gives the new one instead."));
                 if (on) {
                     int o = x->xp_old.value_or(0), n = x->xp_new.value_or(0);
                     ImGui::SetNextItemWidth(140);
-                    if (ImGui::InputInt("from##xp", &o)) ch = true, x->xp_old = o;
+                    if (ImGui::InputInt(tr("from##xp"), &o)) ch = true, x->xp_old = o;
                     ImGui::SetNextItemWidth(140);
-                    if (ImGui::InputInt("to##xp", &n)) ch = true, x->xp_new = n;
+                    if (ImGui::InputInt(tr("to##xp"), &n)) ch = true, x->xp_new = n;
                 }
             }
-            ui::section("Property edits");
+            ui::section(tr("Property edits"));
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-            ImGui::TextWrapped("Change a value of the info, one of its commands or conditions where it still has the old one; or append a condition. Pick the command or condition from what the info has, then its property: the current value is filled in as the old value. Applied before the XP edits.");
+            ImGui::TextWrapped("%s", tr("Change a value of the info, one of its commands or conditions where it still has the old one; or append a condition. Pick the command or condition from what the info has, then its property: the current value is filled in as the old value. Applied before the XP edits."));
             ImGui::PopStyleColor();
             {
                 static const std::vector<std::string> kinds = {"info", "command", "condition", "add_condition"};
@@ -285,7 +286,7 @@ private:
                             const bool in_range = op.index >= 1 && static_cast<size_t>(op.index) <= list->size();
                             std::string pick;
                             if (choice_combo("##member", in_range ? member_line(static_cast<size_t>(op.index - 1), (*list)[static_cast<size_t>(op.index - 1)]) : std::string(),
-                                             op.kind == "command" ? "which command" : "which condition", 330, choices, pick)) {
+                                             op.kind == "command" ? tr("which command") : tr("which condition"), 330, choices, pick)) {
                                 op.index = std::atoi(pick.c_str());
                                 ch = true;
                             }
@@ -304,7 +305,7 @@ private:
                         if (app.game)
                             for (const auto& [cls, names] : app.game->condition_classes()) choices.push_back({cls + "   (" + std::to_string(names.size()) + " properties)", cls});
                         std::string pick;
-                        if (choice_combo("##class", op.cls, "condition class", 220, choices, pick)) {
+                        if (choice_combo("##class", op.cls, tr("condition class"), 220, choices, pick)) {
                             op.cls = pick;
                             ch = true;
                         }
@@ -325,7 +326,7 @@ private:
                         }
                         std::string pick;
                         if (!choices.empty()) {
-                            if (choice_combo("##pname", op.name, "property", 250, choices, pick)) {
+                            if (choice_combo("##pname", op.name, tr("property"), 250, choices, pick)) {
                                 op.name = pick;
                                 if (have && op.kind != "add_condition")
                                     for (const auto& pv : *have)
@@ -334,17 +335,17 @@ private:
                             }
                         } else {
                             ImGui::SetNextItemWidth(160);
-                            ch |= ImGui::InputTextWithHint("##pname", "property", &op.name);
+                            ch |= ImGui::InputTextWithHint("##pname", tr("property"), &op.name);
                         }
                     }
                     if (op.kind != "add_condition") {
                         ImGui::SameLine();
                         ImGui::SetNextItemWidth(120);
-                        ch |= ImGui::InputTextWithHint("##old", "old value", &op.old_value);
+                        ch |= ImGui::InputTextWithHint("##old", tr("old value"), &op.old_value);
                     }
                     ImGui::SameLine();
                     ImGui::SetNextItemWidth(140);
-                    ch |= ImGui::InputTextWithHint("##new", "new value", &op.new_value);
+                    ch |= ImGui::InputTextWithHint("##new", tr("new value"), &op.new_value);
                     ImGui::SameLine();
                     if (ImGui::SmallButton("x")) drop_op = static_cast<int>(i);
                     ImGui::PopID();
@@ -353,7 +354,7 @@ private:
                     x->ops.erase(x->ops.begin() + drop_op);
                     ch = true;
                 }
-                if (ImGui::SmallButton("+ property edit")) {
+                if (ImGui::SmallButton(tr("+ property edit"))) {
                     InfoOp op;
                     op.kind = "command";
                     op.index = 1;
@@ -361,9 +362,9 @@ private:
                     ch = true;
                 }
             }
-            ui::section("Trader refills");
-            ch |= ui::opt_int("Chapter", x->chapter, nullptr, 1);
-            ui::help("The chapter the info belongs to. Refills of chapter 1 are also handed out when a new game starts (the traders sell them from the beginning).");
+            ui::section(tr("Trader refills"));
+            ch |= ui::opt_int(tr("Chapter"), x->chapter, nullptr, 1);
+            ui::help(tr("The chapter the info belongs to. Refills of chapter 1 are also handed out when a new game starts (the traders sell them from the beginning)."));
             int drop = -1;
             for (size_t i = 0; i < x->refills.size(); ++i) {
                 Refill& r = x->refills[i];
@@ -385,15 +386,15 @@ private:
                 x->refills.erase(x->refills.begin() + drop);
                 ch = true;
             }
-            if (ImGui::SmallButton("+ refill")) {
+            if (ImGui::SmallButton(tr("+ refill"))) {
                 x->refills.push_back({});
                 ch = true;
             }
-            ui::section("Notes");
+            ui::section(tr("Notes"));
             ch |= ui::input_multiline("##notes", x->notes, 2);
             if (ch) app.touch();
         } else {
-            ImGui::TextDisabled("Select an edit, or add one.");
+            ImGui::TextDisabled("%s", tr("Select an edit, or add one."));
         }
         ImGui::EndChild();
     }
@@ -401,7 +402,7 @@ private:
     void draw_teachers(App& app) {
         Project& p = app.project;
         ImGui::BeginChild("##tlist", ImVec2(280, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
-        if (ImGui::Button("+ Teacher limit")) {
+        if (ImGui::Button(tr("+ Teacher limit"))) {
             TeacherLimit x;
             x.uid = new_uid();
             x.skill = "Strength";
@@ -409,8 +410,8 @@ private:
             tsel_ = x.uid;
             app.touch();
         }
-        ui::help("The highest value a placed NPC brings the player's skill to (risen.npc.set_teach_limit); applied on every world start. The NPC is found by his "
-                 "entity ID (World panel: select the NPC).");
+        ui::help(tr("The highest value a placed NPC brings the player's skill to (risen.npc.set_teach_limit); applied on every world start. The NPC is found by his "
+                 "entity ID (World panel: select the NPC)."));
         ImGui::Separator();
         std::string remove;
         for (auto& x : p.teachers) {
@@ -418,7 +419,7 @@ private:
             const std::string label = (x.entity_name.empty() ? x.guid : x.entity_name) + ": " + x.skill + " " + std::to_string(x.max);
             if (ImGui::Selectable(label.c_str(), tsel_ == x.uid)) tsel_ = x.uid;
             if (ImGui::BeginPopupContextItem()) {
-                if (ImGui::MenuItem("Delete")) remove = x.uid;
+                if (ImGui::MenuItem(tr("Delete"))) remove = x.uid;
                 ImGui::EndPopup();
             }
             ImGui::PopID();
@@ -434,7 +435,7 @@ private:
             bool ch = false;
             ImGui::PushItemWidth(std::min(420.0f, ImGui::GetContentRegionAvail().x * 0.6f));
             const std::string name_before = x->entity_name;
-            if (ui::npc_name_picker("NPC", x->entity_name, app)) {
+            if (ui::npc_name_picker(tr("NPC"), x->entity_name, app)) {
                 ch = true;
                 // a name that only one entity of the world carries brings its ID along; the ID list below is filtered to the name
                 if (app.world && x->entity_name != name_before) {
@@ -452,22 +453,22 @@ private:
                     }
                 }
             }
-            ui::help("The NPC's entity name: type to search the NPCs of the loaded world (and the project's placed NPCs). A name that exists once fills in the ID.");
-            ch |= ui::entity_id_picker("Entity ID", x->guid, app, x->entity_name, &x->entity_name);
-            ui::help("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx: the ID of the placed NPC in the world (risen.entity.by_id). The list holds the entities that carry the NPC name "
-                     "above (several NPCs share a name, e.g. guards), with their layer and position; with no name it lists every NPC of the world.");
-            ch |= ui::combo("Skill", x->skill, skill_names(app.game.get()), false);
+            ui::help(tr("The NPC's entity name: type to search the NPCs of the loaded world (and the project's placed NPCs). A name that exists once fills in the ID."));
+            ch |= ui::entity_id_picker(tr("Entity ID"), x->guid, app, x->entity_name, &x->entity_name);
+            ui::help(tr("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx: the ID of the placed NPC in the world (risen.entity.by_id). The list holds the entities that carry the NPC name "
+                     "above (several NPCs share a name, e.g. guards), with their layer and position; with no name it lists every NPC of the world."));
+            ch |= ui::combo(tr("Skill"), x->skill, skill_names(app.game.get()), false);
             ImGui::SetNextItemWidth(140);
-            if (ImGui::InputInt("Limit", &x->max)) {
+            if (ImGui::InputInt(tr("Limit"), &x->max)) {
                 x->max = std::max(0, x->max);
                 ch = true;
             }
-            ui::help("The highest value he teaches the skill up to.");
-            ch |= ui::world_combo("World", x->world, app);
+            ui::help(tr("The highest value he teaches the skill up to."));
+            ch |= ui::world_combo(tr("World"), x->world, app);
             ImGui::PopItemWidth();
             if (ch) app.touch();
         } else {
-            ImGui::TextDisabled("Select a limit, or add one.");
+            ImGui::TextDisabled("%s", tr("Select a limit, or add one."));
         }
         ImGui::EndChild();
     }

@@ -1,4 +1,5 @@
 #include "core/wizards.h"
+#include "core/i18n.h"
 
 #include <algorithm>
 #include <cctype>
@@ -113,32 +114,32 @@ std::string suggest_info_name(const Project& p, const std::string& base) {
 WizardResult wizard_fetch_quest(Project& p, const FetchQuestParams& w) {
     WizardResult r;
     if (const std::string why = npc_name_problem(w.npc); !why.empty()) {
-        r.error = "the NPC: " + why;
+        r.error = trf("the NPC: {0}", {why});
         return r;
     }
     if (w.quest.empty()) {
-        r.error = "the quest needs an id";
+        r.error = tr("the quest needs an id");
         return r;
     }
     for (unsigned char c : w.quest)
         if (!(std::isalnum(c) && c < 0x80) && c != '_') {
-            r.error = "the quest id may only contain letters, digits and _";
+            r.error = tr("the quest id may only contain letters, digits and _");
             return r;
         }
     if (p.quest(w.quest)) {
-        r.error = "the project has a quest '" + w.quest + "' already";
+        r.error = trf("the project has a quest '{0}' already", {w.quest});
         return r;
     }
     if (w.item.empty()) {
-        r.error = "choose the item the player has to bring";
+        r.error = tr("choose the item the player has to bring");
         return r;
     }
     if (w.count < 1 || w.count > 999) {
-        r.error = "the number of items must be between 1 and 999";
+        r.error = tr("the number of items must be between 1 and 999");
         return r;
     }
     if (w.xp < 0 || w.gold < 0) {
-        r.error = "experience and gold must not be negative";
+        r.error = tr("experience and gold must not be negative");
         return r;
     }
     const std::string lang = p.mod.languages.empty() ? std::string("English") : p.mod.languages.front();
@@ -271,37 +272,37 @@ WizardResult wizard_fetch_quest(Project& p, const FetchQuestParams& w) {
 WizardResult wizard_weapon(Project& p, const WeaponParams& w) {
     WizardResult r;
     if (const std::string why = template_name_problem(w.name); !why.empty()) {
-        r.error = "the item name: " + why;
+        r.error = trf("the item name: {0}", {why});
         return r;
     }
     if (w.base.empty()) {
-        r.error = "choose the shipped item the weapon is made from";
+        r.error = tr("choose the shipped item the weapon is made from");
         return r;
     }
     if (template_taken(p, nullptr, w.name)) {
-        r.error = "the project has a template '" + w.name + "' already";
+        r.error = trf("the project has a template '{0}' already", {w.name});
         return r;
     }
     if (w.damage && *w.damage < 0) {
-        r.error = "the damage must not be negative";
+        r.error = tr("the damage must not be negative");
         return r;
     }
     if (w.value && *w.value < 0) {
-        r.error = "the value must not be negative";
+        r.error = tr("the value must not be negative");
         return r;
     }
     if (w.recipe) {
         if (w.station.empty()) {
-            r.error = "choose the station the recipe is crafted at";
+            r.error = tr("choose the station the recipe is crafted at");
             return r;
         }
         if (w.ingredients.empty()) {
-            r.error = "the recipe needs at least one ingredient";
+            r.error = tr("the recipe needs at least one ingredient");
             return r;
         }
         for (auto& i : w.ingredients)
             if (i.item.empty() || i.count < 1) {
-                r.error = "every ingredient needs an item and a count of at least 1";
+                r.error = tr("every ingredient needs an item and a count of at least 1");
                 return r;
             }
     }
@@ -339,24 +340,24 @@ WizardResult wizard_weapon(Project& p, const WeaponParams& w) {
 WizardResult wizard_trader(Project& p, const TraderParams& w) {
     WizardResult r;
     if (const std::string why = npc_name_problem(w.npc); !why.empty()) {
-        r.error = "the NPC: " + why;
+        r.error = trf("the NPC: {0}", {why});
         return r;
     }
     if (p.npc(w.npc)) {
-        r.error = "the project has an NPC '" + w.npc + "' already";
+        r.error = trf("the project has an NPC '{0}' already", {w.npc});
         return r;
     }
     if (w.template_name.empty()) {
-        r.error = "choose the NPC template he is made of";
+        r.error = tr("choose the NPC template he is made of");
         return r;
     }
     if (w.stock.empty()) {
-        r.error = "a trader needs something to sell";
+        r.error = tr("a trader needs something to sell");
         return r;
     }
     for (auto& s : w.stock)
         if (s.item.empty() || s.amount < 1) {
-            r.error = "every stock row needs an item and an amount of at least 1";
+            r.error = tr("every stock row needs an item and an amount of at least 1");
             return r;
         }
     // a template of his own with trading switched on (gCDialog_PS.TradeEnabled), so the shipped one stays as it is

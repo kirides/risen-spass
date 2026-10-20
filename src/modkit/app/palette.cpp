@@ -7,6 +7,7 @@
 #include <cctype>
 
 #include "app/panels/panels.h"
+#include "core/i18n.h"
 #include "core/search.h"
 #include "core/spells.h"
 
@@ -42,22 +43,28 @@ std::vector<const CommandPalette::Entry*> CommandPalette::search(const std::vect
     return out;
 }
 
+// the kind column: "Command", "Panel", a panel title or "Shipped <kind>" (the English text is what the ranking looks at)
+static std::string kind_text(const std::string& k) {
+    if (k.rfind("Shipped ", 0) == 0) return trf("Shipped {0}", {tr(k.c_str() + 8)});
+    return tr(k.c_str());
+}
+
 std::vector<CommandPalette::Entry> CommandPalette::collect(App& app) {
     std::vector<Entry> v;
     auto add = [&](const std::string& kind, const std::string& label, const std::string& detail, std::function<void(App&)> run) {
         v.push_back({kind, label, detail, std::move(run)});
     };
     // commands
-    add("Command", "Play", "export and start the game (F5)", [](App& a) { a.play(); });
-    add("Command", "Export mod...", "write the mod into a folder (Ctrl+E)", [](App& a) { a.request_export(); });
-    add("Command", "Save project", "(Ctrl+S)", [](App& a) { a.save_project(false); });
-    add("Command", "New project", "(Ctrl+N)", [](App& a) { a.new_project(); });
-    add("Command", "Open project...", "(Ctrl+O)", [](App& a) { a.request_open(); });
-    add("Command", "Wizard: fetch quest", "an NPC asks for items; quest and dialogue", [](App& a) { a.open_wizard(WizardKind::FetchQuest); });
-    add("Command", "Wizard: new weapon with a recipe", "an item and the recipe that crafts it", [](App& a) { a.open_wizard(WizardKind::Weapon); });
-    add("Command", "Wizard: trader with stock", "an NPC who sells things", [](App& a) { a.open_wizard(WizardKind::Trader); });
+    add(N_("Command"), tr("Play"), tr("export and start the game (F5)"), [](App& a) { a.play(); });
+    add(N_("Command"), tr("Export mod..."), tr("write the mod into a folder (Ctrl+E)"), [](App& a) { a.request_export(); });
+    add(N_("Command"), tr("Save project"), "(Ctrl+S)", [](App& a) { a.save_project(false); });
+    add(N_("Command"), tr("New project"), "(Ctrl+N)", [](App& a) { a.new_project(); });
+    add(N_("Command"), tr("Open project..."), "(Ctrl+O)", [](App& a) { a.request_open(); });
+    add(N_("Command"), tr("Wizard: fetch quest"), tr("an NPC asks for items; quest and dialogue"), [](App& a) { a.open_wizard(WizardKind::FetchQuest); });
+    add(N_("Command"), tr("Wizard: new weapon with a recipe"), tr("an item and the recipe that crafts it"), [](App& a) { a.open_wizard(WizardKind::Weapon); });
+    add(N_("Command"), tr("Wizard: trader with stock"), tr("an NPC who sells things"), [](App& a) { a.open_wizard(WizardKind::Trader); });
     // panels
-    for (const std::string& t : app.panel_titles()) add("Panel", t, "open the panel", [t](App& a) { a.select_in(t, ""); });
+    for (const std::string& t : app.panel_titles()) add(N_("Panel"), tr(t.c_str()), tr("open the panel"), [t](App& a) { a.select_in(t, ""); });
     // the project
     const Project& p = app.project;
     auto jump = [](const char* panel, const std::string& uid) { return [panel, uid](App& a) { a.select_in(panel, uid); }; };
@@ -66,16 +73,16 @@ std::vector<CommandPalette::Entry> CommandPalette::collect(App& app) {
             if (auto it = t.find(l); it != t.end() && !it->second.empty()) return it->second;
         return t.empty() ? std::string() : t.begin()->second;
     };
-    for (auto& i : p.items) add("Items", i.name, text_of(i.label) + (i.mode == Mode::Edit ? " (change)" : " (new)"), jump("Items", i.uid));
+    for (auto& i : p.items) add("Items", i.name, text_of(i.label) + (i.mode == Mode::Edit ? tr(" (change)") : tr(" (new)")), jump("Items", i.uid));
     for (auto& r : p.recipes) add("Recipes", r.name, text_of(r.label) + (r.result ? " -> " + *r.result : std::string()), jump("Recipes", r.uid));
-    for (auto& n : p.npc_templates) add("NPCs", n.name, text_of(n.label) + (n.mode == Mode::Edit ? " (change)" : " (template)"), jump("NPCs", n.uid));
-    for (auto& n : p.npcs) add("NPCs", n.name, text_of(n.label) + " (placed, " + n.template_name + ")", jump("NPCs", n.uid));
-    for (auto& d : p.dialogs) add("Dialogues", d.name, "owner " + d.owner, jump("Dialogues", d.uid));
+    for (auto& n : p.npc_templates) add("NPCs", n.name, text_of(n.label) + (n.mode == Mode::Edit ? tr(" (change)") : tr(" (template)")), jump("NPCs", n.uid));
+    for (auto& n : p.npcs) add("NPCs", n.name, text_of(n.label) + trf(" (placed, {0})", {n.template_name}), jump("NPCs", n.uid));
+    for (auto& d : p.dialogs) add("Dialogues", d.name, trf("owner {0}", {d.owner}), jump("Dialogues", d.uid));
     for (auto& q : p.quests) add("Quests", q.name, text_of(q.title), jump("Quests", q.uid));
-    for (auto& s : p.spells) add("Spells", s.name, s.mode == Mode::New ? "new, made of " + s.base : std::string("change"), jump("Spells", s.uid));
+    for (auto& s : p.spells) add("Spells", s.name, s.mode == Mode::New ? trf("new, made of {0}", {s.base}) : std::string(tr("change")), jump("Spells", s.uid));
     for (size_t i = 0; i < p.npc_groups.size(); ++i) {
         auto& g = p.npc_groups[i];
-        add("NPC groups", !g.group.empty() ? g.group : !g.match.empty() ? g.match : "group " + std::to_string(i + 1), "", jump("NPC groups", g.uid));
+        add("NPC groups", !g.group.empty() ? g.group : !g.match.empty() ? g.match : trf("group {0}", {std::to_string(i + 1)}), "", jump("NPC groups", g.uid));
     }
     for (auto& b : p.behaviors) add("Behaviours", b.name, "", jump("Behaviours", b.uid));
     for (auto& a : p.assets) add("Assets", a.file, a.kind, jump("Assets", a.uid));
@@ -118,7 +125,7 @@ void CommandPalette::draw(App& app) {
             refocus_ = false;
         }
         ImGui::SetNextItemWidth(-FLT_MIN);
-        ImGui::InputTextWithHint("##q", "Search objects, shipped templates, panels, commands...", &query_);
+        ImGui::InputTextWithHint("##q", tr("Search objects, shipped templates, panels, commands..."), &query_);
         const int n = static_cast<int>(shown_.size());
         if (ImGui::IsKeyPressed(ImGuiKey_DownArrow) && n) selected_ = (selected_ + 1) % n;
         if (ImGui::IsKeyPressed(ImGuiKey_UpArrow) && n) selected_ = (selected_ + n - 1) % n;
@@ -131,7 +138,7 @@ void CommandPalette::draw(App& app) {
             if (ImGui::Selectable("##row", i == selected_, ImGuiSelectableFlags_AllowOverlap)) clicked = i;
             if (i == selected_ && (ImGui::IsKeyPressed(ImGuiKey_DownArrow) || ImGui::IsKeyPressed(ImGuiKey_UpArrow))) ImGui::SetScrollHereY();
             ImGui::SameLine(0, 0);
-            ImGui::TextDisabled("%-14s", e.kind.c_str());
+            ImGui::TextDisabled("%-14s", kind_text(e.kind).c_str());
             ImGui::SameLine(130);
             ImGui::TextUnformatted(e.label.c_str());
             if (!e.detail.empty()) {
@@ -140,9 +147,9 @@ void CommandPalette::draw(App& app) {
             }
             ImGui::PopID();
         }
-        if (!n) ImGui::TextDisabled(query_.empty() ? "Type to search." : "Nothing matches.");
+        if (!n) ImGui::TextDisabled("%s", query_.empty() ? tr("Type to search.") : tr("Nothing matches."));
         ImGui::EndChild();
-        ImGui::TextDisabled("Up / Down choose, Enter opens, Esc closes");
+        ImGui::TextDisabled("%s", tr("Up / Down choose, Enter opens, Esc closes"));
         if (clicked >= 0) {
             selected_ = clicked;
             run = true;

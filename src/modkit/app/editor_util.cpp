@@ -1,4 +1,5 @@
 #include "app/editor_util.h"
+#include "core/i18n.h"
 #include "core/spells.h"
 
 #include <imgui.h>
@@ -35,7 +36,7 @@ bool json_choice(const char* label, json& obj, const char* key, const std::vecto
 // tells that the list takes dropped items (next to its add button)
 void drop_hint() {
     ImGui::SameLine();
-    ImGui::TextDisabled("or drop items here");
+    ImGui::TextDisabled("%s", tr("or drop items here"));
 }
 
 }  // namespace
@@ -112,7 +113,7 @@ bool opt_skills(const char* label, std::optional<IntMap>& m, const IntMap& shipp
         std::string s;
         for (auto& [k, v] : shipped) s += (s.empty() ? "" : ", ") + k + " " + std::to_string(v);
         ImGui::SameLine();
-        ImGui::TextDisabled("shipped: %s", s.empty() ? "none" : s.c_str());
+        ImGui::TextDisabled(tr("shipped: %s"), s.empty() ? "none" : s.c_str());
     }
     ImGui::PopID();
     return changed;
@@ -146,7 +147,7 @@ bool ingredient_list(const char* id, std::vector<Ingredient>& v, App& app, const
         v.erase(v.begin() + remove);
         changed = true;
     }
-    if (v.size() < max_rows && ImGui::SmallButton("+ ingredient")) {
+    if (v.size() < max_rows && ImGui::SmallButton(tr("+ ingredient"))) {
         v.push_back({"", 1});
         changed = true;
     }
@@ -180,7 +181,7 @@ bool inventory_list(const char* id, std::vector<InvItem>& v, App& app, const std
         }
         if (with_equip) {
             ImGui::SameLine();
-            changed |= ImGui::Checkbox("equip", &v[i].equip);
+            changed |= ImGui::Checkbox(tr("equip"), &v[i].equip);
         }
         ImGui::SameLine();
         if (ImGui::SmallButton("x")) remove = static_cast<int>(i);
@@ -195,7 +196,7 @@ bool inventory_list(const char* id, std::vector<InvItem>& v, App& app, const std
         v.erase(v.begin() + remove);
         changed = true;
     }
-    if (ImGui::SmallButton("+ item")) {
+    if (ImGui::SmallButton(tr("+ item"))) {
         v.push_back({"", 1, false});
         changed = true;
     }
@@ -215,7 +216,7 @@ bool condition_args(App& app, json& dd) {
     bool ch = false;
     static const std::vector<std::string> kKinds = {"quest", "item", "var", "event", "skill", "guild", "dead", "alive"};
     std::string kind = dd.value("kind", std::string("quest"));
-    if (combo("Kind", kind, kKinds, false)) {
+    if (combo(tr("Kind"), kind, kKinds, false)) {
         dd["kind"] = kind;
         dd["args"] = json::object();
         ch = true;
@@ -225,32 +226,32 @@ bool condition_args(App& app, json& dd) {
     static const std::vector<std::string> kOps = {">=", "==", "~=", "<=", ">", "<"};
     std::vector<std::string> npcs;
     for (auto& n : app.project.npcs) npcs.push_back(n.name);
-    auto who = [&](const char* key, const char* label) { ch |= json_str(label, a, key, "player (empty), npc or a unique name"); };
+    auto who = [&](const char* key, const char* label) { ch |= json_str(label, a, key, tr("player (empty), npc or a unique name")); };
     if (kind == "quest") {
         std::string q = a.value("quest", std::string());
-        if (quest_picker("Quest", q, app)) {
+        if (quest_picker(tr("Quest"), q, app)) {
             a["quest"] = q;
             ch = true;
         }
-        help("A quest of this mod or ANY quest of the game (the list shows the game's 370 quests with their titles). The condition holds while the quest has "
-             "the status (Success: it was solved).");
-        ch |= json_choice("Status", a, "status", quest_states());
+        help(tr("A quest of this mod or ANY quest of the game (the list shows the game's 370 quests with their titles). The condition holds while the quest has "
+             "the status (Success: it was solved)."));
+        ch |= json_choice(tr("Status"), a, "status", quest_states());
     } else if (kind == "item") {
         std::string it = a.value("item", std::string());
-        if (template_picker("Item", it, app.game.get(), {TplKind::Item, TplKind::Recipe}, project_item_names(app.project))) {
+        if (template_picker(tr("Item"), it, app.game.get(), {TplKind::Item, TplKind::Recipe}, project_item_names(app.project))) {
             a["item"] = it;
             ch = true;
         }
         int cnt = a.value("count", 1);
-        if (ImGui::InputInt("Count", &cnt)) {
+        if (ImGui::InputInt(tr("Count"), &cnt)) {
             a["count"] = std::max(1, cnt);
             ch = true;
         }
-        who("holder", "Holder");
+        who("holder", tr("Holder"));
     } else if (kind == "var") {
-        ch |= json_str("Variable", a, "name");
+        ch |= json_str(tr("Variable"), a, "name");
         bool has = a.contains("value") && !a["value"].is_null();
-        if (ImGui::Checkbox("Compare a value", &has)) {
+        if (ImGui::Checkbox(tr("Compare a value"), &has)) {
             if (has) a["value"] = 1;
             else {
                 a.erase("value");
@@ -260,36 +261,36 @@ bool condition_args(App& app, json& dd) {
         }
         if (has) {
             int v = a.value("value", 1);
-            if (ImGui::InputInt("Value", &v)) {
+            if (ImGui::InputInt(tr("Value"), &v)) {
                 a["value"] = v;
                 ch = true;
             }
-            ch |= json_choice("Compare", a, "op", kOps);
+            ch |= json_choice(tr("Compare"), a, "op", kOps);
         }
     } else if (kind == "event") {
-        ch |= json_str("Event", a, "name");
-        help("A game event: set by the dialogue command SetGameEvent (a game variable with the value 0).");
+        ch |= json_str(tr("Event"), a, "name");
+        help(tr("A game event: set by the dialogue command SetGameEvent (a game variable with the value 0)."));
     } else if (kind == "skill") {
-        ch |= json_choice("Skill", a, "skill", skill_names(app.game.get()));
+        ch |= json_choice(tr("Skill"), a, "skill", skill_names(app.game.get()));
         int v = a.value("value", 1);
-        if (ImGui::InputInt("Value", &v)) {
+        if (ImGui::InputInt(tr("Value"), &v)) {
             a["value"] = v;
             ch = true;
         }
-        ch |= json_choice("Compare", a, "op", kOps);
-        who("who", "Who");
+        ch |= json_choice(tr("Compare"), a, "op", kOps);
+        who("who", tr("Who"));
     } else if (kind == "guild") {
-        ch |= json_choice("Guild", a, "guild", guild_names());
-        who("who", "Who");
+        ch |= json_choice(tr("Guild"), a, "guild", guild_names());
+        who("who", tr("Who"));
     } else {
         std::string w = a.value("who", std::string());
-        if (combo("NPC", w, npcs, false)) {
+        if (combo(tr("NPC"), w, npcs, false)) {
             a["who"] = w;
             ch = true;
         }
         ImGui::SameLine();
         ImGui::SetNextItemWidth(150);
-        if (ImGui::InputTextWithHint("##who", "or a unique name", &w)) {
+        if (ImGui::InputTextWithHint("##who", tr("or a unique name"), &w)) {
             a["who"] = w;
             ch = true;
         }
@@ -322,13 +323,13 @@ bool condition_list(const char* id, json& cond, App& app, const char* none_label
     }
     if (nested) {
         ImGui::TextWrapped("%s", describe_condition(cond).c_str());
-        const bool replace = ImGui::SmallButton("Replace by a simple list (drops this condition)");
+        const bool replace = ImGui::SmallButton(tr("Replace by a simple list (drops this condition)"));
         if (replace) cond = nullptr;
         ImGui::PopID();
         return replace;
     }
-    static const char* kModes[] = {nullptr, "all of these hold", "any of these holds"};
-    const char* cur = mode == 0 ? none_label : kModes[mode];
+    static const char* kModes[] = {nullptr, N_("all of these hold"), N_("any of these holds")};
+    const char* cur = mode == 0 ? none_label : tr(kModes[mode]);
     bool rebuild = false;
     ImGui::SetNextItemWidth(220);
     if (ImGui::BeginCombo("##mode", cur)) {
@@ -337,7 +338,7 @@ bool condition_list(const char* id, json& cond, App& app, const char* none_label
             rebuild = true;
         }
         for (int m = 1; m <= 2; ++m)
-            if (ImGui::Selectable(kModes[m], mode == m)) {
+            if (ImGui::Selectable(tr(kModes[m]), mode == m)) {
                 if (mode == 0 && items.empty()) items.push_back(json{{"kind", "quest"}, {"args", json{{"status", "Success"}}}});
                 mode = m;
                 rebuild = true;
@@ -352,7 +353,7 @@ bool condition_list(const char* id, json& cond, App& app, const char* none_label
             const json leaf = leaf_condition(items[i].value("kind", std::string()), items[i].value("args", json::object()), errs);
             const std::string text = leaf.is_null() ? std::string("?") : describe_condition(leaf);
             const bool open = ImGui::TreeNodeEx("##c", ImGuiTreeNodeFlags_SpanAvailWidth | (items.size() == 1 ? ImGuiTreeNodeFlags_DefaultOpen : 0), "%s%s", text.c_str(),
-                                                errs.empty() ? "" : "  (incomplete)");
+                                                errs.empty() ? "" : tr("  (incomplete)"));
             ImGui::SameLine(ImGui::GetContentRegionAvail().x - 10);
             if (ImGui::SmallButton("x")) remove = static_cast<int>(i);
             if (open) {
@@ -366,7 +367,7 @@ bool condition_list(const char* id, json& cond, App& app, const char* none_label
             if (items.empty()) mode = 0;
             rebuild = true;
         }
-        if (ImGui::SmallButton("+ condition")) {
+        if (ImGui::SmallButton(tr("+ condition"))) {
             items.push_back(json{{"kind", "quest"}, {"args", json{{"status", "Success"}}}});
             rebuild = true;
         }
@@ -419,16 +420,16 @@ bool param_field(const std::string& key, const json& def, json& params) {
             } catch (const std::exception&) {
             }
         }
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("a table, written as JSON (Enter takes it)");
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("a table, written as JSON (Enter takes it)"));
     }
     if (set) {
         ImGui::SameLine();
-        if (ImGui::SmallButton("default")) {
+        if (ImGui::SmallButton(tr("default"))) {
             params.erase(key);
             ImGui::PopID();
             return true;
         }
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("back to the script's default %s", def.dump().c_str());
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip(tr("back to the script's default %s"), def.dump().c_str());
     }
     ImGui::PopID();
     if (!changed) return false;
@@ -452,7 +453,7 @@ bool behavior_uses(const char* id, std::vector<BehaviorUse>& uses, App& app) {
             if (b.name == u.behavior) s = &b;
         BehaviorInfo info;
         if (s) info = behavior_info(app.project_file(s->file));
-        else info.error = "no behaviour of this name in the project (Behaviours panel)";
+        else info.error = tr("no behaviour of this name in the project (Behaviours panel)");
         if (!u.params.is_object()) u.params = json::object();
         const bool open = ImGui::TreeNodeEx("##b", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth, "%s", u.behavior.c_str());
         if (!info.description.empty()) {
@@ -465,15 +466,15 @@ bool behavior_uses(const char* id, std::vector<BehaviorUse>& uses, App& app) {
             if (!info.ok) {
                 ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "%s", info.error.c_str());
             } else {
-                if (info.params.empty()) ImGui::TextDisabled("no parameters");
+                if (info.params.empty()) ImGui::TextDisabled("%s", tr("no parameters"));
                 for (auto& [k, def] : info.params.items()) ch |= param_field(k, def, u.params);
                 std::string unknown;
                 for (auto& [k, v] : u.params.items())
                     if (!info.params.contains(k)) unknown = k;
                 if (!unknown.empty()) {
-                    ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), "'%s' is no parameter of the script any more", unknown.c_str());
+                    ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), tr("'%s' is no parameter of the script any more"), unknown.c_str());
                     ImGui::SameLine();
-                    if (ImGui::SmallButton("drop it")) {
+                    if (ImGui::SmallButton(tr("drop it"))) {
                         u.params.erase(unknown);
                         ch = true;
                     }
@@ -488,7 +489,7 @@ bool behavior_uses(const char* id, std::vector<BehaviorUse>& uses, App& app) {
         ch = true;
     }
     ImGui::SetNextItemWidth(200);
-    if (ImGui::BeginCombo("##attach", "attach a behaviour...")) {
+    if (ImGui::BeginCombo("##attach", tr("attach a behaviour..."))) {
         for (auto& b : app.project.behaviors) {
             const bool on = std::any_of(uses.begin(), uses.end(), [&](const BehaviorUse& x) { return x.behavior == b.name; });
             if (!on && ImGui::Selectable(b.name.c_str())) {
@@ -496,11 +497,11 @@ bool behavior_uses(const char* id, std::vector<BehaviorUse>& uses, App& app) {
                 ch = true;
             }
         }
-        if (app.project.behaviors.empty()) ImGui::TextDisabled("none yet: create one in the Behaviours panel");
+        if (app.project.behaviors.empty()) ImGui::TextDisabled("%s", tr("none yet: create one in the Behaviours panel"));
         ImGui::EndCombo();
     }
     ImGui::SameLine();
-    ImGui::TextDisabled("or drop a behaviour here");
+    ImGui::TextDisabled("%s", tr("or drop a behaviour here"));
     ImGui::EndGroup();
     if (const std::string name = drop_behavior(); !name.empty()) {
         if (std::none_of(uses.begin(), uses.end(), [&](const BehaviorUse& x) { return x.behavior == name; })) {
@@ -515,10 +516,10 @@ bool behavior_uses(const char* id, std::vector<BehaviorUse>& uses, App& app) {
 bool world_combo(const char* label, std::string& world, App& app) {
     bool ch = false;
     const std::string def = world_of(app.project, "");
-    const std::string shown = world.empty() ? def + " (the project's world)" : world;
+    const std::string shown = world.empty() ? trf("{0} (the project's world)", {def}) : world;
     ImGui::SetNextItemWidth(220);
     if (ImGui::BeginCombo(label, shown.c_str())) {
-        if (ImGui::Selectable((def + " (the project's world)").c_str(), world.empty())) {
+        if (ImGui::Selectable(trf("{0} (the project's world)", {def}).c_str(), world.empty())) {
             world.clear();
             ch = true;
         }
@@ -533,8 +534,8 @@ bool world_combo(const char* label, std::string& world, App& app) {
         }
         ImGui::EndCombo();
     }
-    help("The world this belongs to: the mod makes it (or changes the entity) only while that world is active. The game's island is \"World\"; "
-         "test levels and worlds of other mods have their own names.");
+    help(tr("The world this belongs to: the mod makes it (or changes the entity) only while that world is active. The game's island is \"World\"; "
+         "test levels and worlds of other mods have their own names."));
     return ch;
 }
 

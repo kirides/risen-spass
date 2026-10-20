@@ -1,4 +1,5 @@
 #include "core/behavior.h"
+#include "core/i18n.h"
 
 #include <luajit/lua.hpp>
 
@@ -98,7 +99,7 @@ BehaviorInfo read_behavior_code(const std::string& code, const std::string& chun
     BehaviorInfo info;
     lua_State* L = luaL_newstate();
     if (!L) {
-        info.error = "out of memory";
+        info.error = tr("out of memory");
         return info;
     }
     struct Closer {
@@ -121,12 +122,12 @@ BehaviorInfo read_behavior_code(const std::string& code, const std::string& chun
     }
     lua_sethook(L, count_hook, LUA_MASKCOUNT, 5000000);
     if (lua_pcall(L, 0, 1, 0) != 0) {
-        info.error = lua_tostring(L, -1) ? lua_tostring(L, -1) : "error while loading";
+        info.error = lua_tostring(L, -1) ? lua_tostring(L, -1) : tr("error while loading");
         return info;
     }
     lua_sethook(L, nullptr, 0, 0);
     if (!lua_istable(L, -1)) {
-        info.error = "the script must end with `return { ... }` (the behaviour's definition)";
+        info.error = tr("the script must end with `return { ... }` (the behaviour's definition)");
         return info;
     }
     const int def = lua_gettop(L);
@@ -136,7 +137,7 @@ BehaviorInfo read_behavior_code(const std::string& code, const std::string& chun
     while (lua_next(L, def)) {
         if (lua_type(L, -2) != LUA_TSTRING || !known.count(lua_tostring(L, -2))) {
             const std::string key = lua_type(L, -2) == LUA_TSTRING ? lua_tostring(L, -2) : std::string("(not a name)");
-            info.error = "unknown key '" + key + "' (params, interval, near, description, events, start, update, stop, on_...)";
+            info.error = trf("unknown key '{0}' (params, interval, near, description, events, start, update, stop, on_...)", {key});
             return info;
         }
         lua_pop(L, 1);
@@ -145,7 +146,7 @@ BehaviorInfo read_behavior_code(const std::string& code, const std::string& chun
         lua_getfield(L, def, h);
         if (!lua_isnil(L, -1)) {
             if (!lua_isfunction(L, -1)) {
-                info.error = std::string(h) + " must be a function";
+                info.error = trf("{0} must be a function", {std::string(h)});
                 return info;
             }
             info.handlers.push_back(h);
@@ -155,7 +156,7 @@ BehaviorInfo read_behavior_code(const std::string& code, const std::string& chun
     lua_getfield(L, def, "description");
     if (lua_type(L, -1) == LUA_TSTRING) info.description = lua_tostring(L, -1);
     else if (!lua_isnil(L, -1)) {
-        info.error = "description must be a string";
+        info.error = tr("description must be a string");
         return info;
     }
     lua_pop(L, 1);
@@ -165,16 +166,16 @@ BehaviorInfo read_behavior_code(const std::string& code, const std::string& chun
         if (lua_type(L, -1) == LUA_TNUMBER) {
             const double v = lua_tonumber(L, -1);
             if (is_interval && !(v >= 0 && v <= 3600)) {
-                info.error = "interval must be a number of seconds from 0 (every frame) to 3600";
+                info.error = tr("interval must be a number of seconds from 0 (every frame) to 3600");
                 return info;
             }
             if (!is_interval && !(v > 0 && v <= 100000)) {
-                info.error = "near must be a distance > 0 (units, 100 = 1 m)";
+                info.error = tr("near must be a distance > 0 (units, 100 = 1 m)");
                 return info;
             }
             (is_interval ? info.interval : info.near) = v;
         } else if (!lua_isnil(L, -1)) {
-            info.error = std::string(k) + " must be a number";
+            info.error = trf("{0} must be a number", {std::string(k)});
             return info;
         }
         lua_pop(L, 1);
@@ -183,7 +184,7 @@ BehaviorInfo read_behavior_code(const std::string& code, const std::string& chun
     if (!lua_isnil(L, -1)) {
         json p;
         if (!lua_istable(L, -1) || !plain_json(L, -1, 0, p) || !p.is_object()) {
-            info.error = "params must be a table of plain values with names (numbers, strings, booleans, tables of those)";
+            info.error = tr("params must be a table of plain values with names (numbers, strings, booleans, tables of those)");
             return info;
         }
         info.params = p;
@@ -192,14 +193,14 @@ BehaviorInfo read_behavior_code(const std::string& code, const std::string& chun
     lua_getfield(L, def, "events");
     if (!lua_isnil(L, -1)) {
         if (!lua_istable(L, -1)) {
-            info.error = "events must be a table { [\"event.name\"] = function(self, ...) end }";
+            info.error = tr("events must be a table { [\"event.name\"] = function(self, ...) end }");
             return info;
         }
         const int ev = lua_gettop(L);
         lua_pushnil(L);
         while (lua_next(L, ev)) {
             if (lua_type(L, -2) != LUA_TSTRING || !lua_isfunction(L, -1)) {
-                info.error = "events: every entry is [\"event.name\"] = function(self, ...) end";
+                info.error = tr("events: every entry is [\"event.name\"] = function(self, ...) end");
                 return info;
             }
             info.events.push_back(lua_tostring(L, -2));
@@ -220,7 +221,7 @@ BehaviorInfo behavior_info(const std::string& path) {
     const auto size = fs::file_size(fp, ec);
     if (ec) {
         BehaviorInfo none;
-        none.error = "the file " + path + " cannot be read";
+        none.error = trf("the file {0} cannot be read", {path});
         return none;
     }
     const auto time = fs::last_write_time(fp, ec);
@@ -242,11 +243,11 @@ BehaviorInfo behavior_info(const std::string& path) {
 }
 
 std::string behavior_name_problem(const std::string& name) {
-    if (name.empty()) return "the behaviour needs a name";
-    if (name.size() > 64) return "at most 64 characters";
-    if (std::isdigit(static_cast<unsigned char>(name[0]))) return "the name may not start with a digit";
+    if (name.empty()) return tr("the behaviour needs a name");
+    if (name.size() > 64) return tr("at most 64 characters");
+    if (std::isdigit(static_cast<unsigned char>(name[0]))) return tr("the name may not start with a digit");
     for (unsigned char c : name)
-        if (!(std::isalnum(c) && c < 0x80) && c != '_' && c != '.' && c != '-') return "letters, digits, _ . and - only";
+        if (!(std::isalnum(c) && c < 0x80) && c != '_' && c != '.' && c != '-') return tr("letters, digits, _ . and - only");
     return {};
 }
 

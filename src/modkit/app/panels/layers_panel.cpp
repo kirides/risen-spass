@@ -13,6 +13,7 @@
 #include "app/event_ui.h"
 #include "app/panels/panels.h"
 #include "app/widgets.h"
+#include "core/i18n.h"
 #include "core/layers.h"
 
 namespace mk {
@@ -47,7 +48,7 @@ public:
     }
 
     void draw(App& app) override {
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
@@ -59,8 +60,8 @@ public:
         LayerDef* l = find(app.project, sel_);
         ImGui::BeginGroup();
         if (!l) {
-            ImGui::TextWrapped("Create a layer: a group of placed NPCs, world spawns and container fills that is switched on and off as a whole (like the game's story "
-                               "sectors). It can switch itself when a condition first holds, and the event graphs switch it with a Layer node.");
+            ImGui::TextWrapped("%s", tr("Create a layer: a group of placed NPCs, world spawns and container fills that is switched on and off as a whole (like the game's story "
+                               "sectors). It can switch itself when a condition first holds, and the event graphs switch it with a Layer node."));
         } else {
             ImGui::BeginChild("##edit", ImVec2(ImGui::GetContentRegionAvail().x * 0.55f, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
             ImGui::PushItemWidth(-110);
@@ -99,7 +100,7 @@ private:
     }
 
     void draw_list(App& app) {
-        if (ImGui::Button("+ New layer")) add_layer(app);
+        if (ImGui::Button(tr("+ New layer"))) add_layer(app);
         ImGui::Separator();
         std::string remove;
         size_t index = 0;
@@ -110,10 +111,10 @@ private:
             ImGui::SetCursorScreenPos(ImVec2(p.x + 10, p.y));
             if (ImGui::Selectable((l.name.empty() ? std::string("(unnamed)") : l.name).c_str(), sel_ == l.uid)) sel_ = l.uid;
             if (ImGui::BeginPopupContextItem()) {
-                if (ImGui::MenuItem("Delete")) remove = l.uid;
+                if (ImGui::MenuItem(tr("Delete"))) remove = l.uid;
                 ImGui::EndPopup();
             }
-            ImGui::TextDisabled("   %s, %zu NPCs, %zu spawns, %zu fills", l.enabled ? "on at start" : "off at start", l.npcs.size(), l.spawns.size(), l.containers.size());
+            ImGui::TextDisabled(tr("   %s, %zu NPCs, %zu spawns, %zu fills"), l.enabled ? tr("on at start") : tr("off at start"), l.npcs.size(), l.spawns.size(), l.containers.size());
             ImGui::PopID();
             ++index;
         }
@@ -145,18 +146,18 @@ private:
 
     void draw_layer(App& app, LayerDef& l) {
         bool ch = false;
-        ch |= ImGui::InputText("Name", &l.name);
-        ui::help("Letters, digits, _: the key of the layer's state in savegames. Keep it once released.");
-        ch |= ImGui::Checkbox("On when a game starts", &l.enabled);
-        ui::help("Off: the members are not made until something switches the layer on (a condition below, or an event graph).");
-        ImGui::SeparatorText("Switches by itself");
-        ch |= condition_block(app, "Switches on when", "The first time this holds (looked at about twice a second; once per savegame) the layer goes on.", l.enable_when);
-        ch |= condition_block(app, "Switches off when", "The first time this holds the layer goes off (once per savegame).", l.disable_when);
-        ImGui::SeparatorText("Members");
-        ImGui::TextDisabled("NPCs are made while the layer is on and removed when it goes off. World spawns are made when it is on and taken away when it goes off. "
-                            "Container fills happen once, the first time the layer is on. An object belongs to one layer.");
+        ch |= ImGui::InputText(tr("Name"), &l.name);
+        ui::help(tr("Letters, digits, _: the key of the layer's state in savegames. Keep it once released."));
+        ch |= ImGui::Checkbox(tr("On when a game starts"), &l.enabled);
+        ui::help(tr("Off: the members are not made until something switches the layer on (a condition below, or an event graph)."));
+        ImGui::SeparatorText(tr("Switches by itself"));
+        ch |= condition_block(app, tr("Switches on when"), tr("The first time this holds (looked at about twice a second; once per savegame) the layer goes on."), l.enable_when);
+        ch |= condition_block(app, tr("Switches off when"), tr("The first time this holds the layer goes off (once per savegame)."), l.disable_when);
+        ImGui::SeparatorText(tr("Members"));
+        ImGui::TextDisabled("%s", tr("NPCs are made while the layer is on and removed when it goes off. World spawns are made when it is on and taken away when it goes off. "
+                            "Container fills happen once, the first time the layer is on. An object belongs to one layer."));
         ch |= members(app, l);
-        ImGui::SeparatorText("Notes");
+        ImGui::SeparatorText(tr("Notes"));
         ch |= ImGui::InputTextMultiline("##notes", &l.notes, ImVec2(-FLT_MIN, 50));
         if (ch) app.touch();
     }
@@ -165,7 +166,7 @@ private:
         bool ch = false;
         const Project& p = app.project;
         // NPCs
-        ImGui::TextUnformatted("NPCs");
+        ImGui::TextUnformatted(tr("NPCs"));
         std::string drop;
         for (auto& n : l.npcs) {
             ImGui::PushID(n.c_str());
@@ -178,7 +179,7 @@ private:
             l.npcs.erase(std::remove(l.npcs.begin(), l.npcs.end(), drop), l.npcs.end());
             ch = true;
         }
-        if (ImGui::BeginCombo("##add_npc", "+ Add a placed NPC...")) {
+        if (ImGui::BeginCombo("##add_npc", tr("+ Add a placed NPC..."))) {
             for (auto& n : p.npcs) {
                 if (layer_of_npc(p, n.name)) continue;
                 if (ImGui::Selectable(n.name.c_str())) {
@@ -189,7 +190,7 @@ private:
             ImGui::EndCombo();
         }
         // world spawns
-        ImGui::TextUnformatted("World spawns");
+        ImGui::TextUnformatted(tr("World spawns"));
         std::string drop_uid;
         for (auto& u : l.spawns) {
             ImGui::PushID(u.c_str());
@@ -202,7 +203,7 @@ private:
             l.spawns.erase(std::remove(l.spawns.begin(), l.spawns.end(), drop_uid), l.spawns.end());
             ch = true;
         }
-        if (ImGui::BeginCombo("##add_spawn", "+ Add a world spawn...")) {
+        if (ImGui::BeginCombo("##add_spawn", tr("+ Add a world spawn..."))) {
             for (auto& s : p.world.spawns) {
                 if (layer_of_spawn(p, s.uid)) continue;
                 if (ImGui::Selectable(spawn_label(p, s.uid).c_str())) {
@@ -213,7 +214,7 @@ private:
             ImGui::EndCombo();
         }
         // container fills
-        ImGui::TextUnformatted("Container fills");
+        ImGui::TextUnformatted(tr("Container fills"));
         drop_uid.clear();
         for (auto& u : l.containers) {
             ImGui::PushID(u.c_str());
@@ -226,7 +227,7 @@ private:
             l.containers.erase(std::remove(l.containers.begin(), l.containers.end(), drop_uid), l.containers.end());
             ch = true;
         }
-        if (ImGui::BeginCombo("##add_container", "+ Add a container fill...")) {
+        if (ImGui::BeginCombo("##add_container", tr("+ Add a container fill..."))) {
             for (auto& c : p.world.containers) {
                 if (layer_of_container(p, c.uid)) continue;
                 if (ImGui::Selectable(container_label(p, c.uid).c_str())) {
@@ -246,12 +247,12 @@ private:
                 std::snprintf(buf, sizeof buf, "%s  (%.0f, %.0f)", s.template_name.c_str(), s.position[0], s.position[2]);
                 return buf;
             }
-        return "(missing spawn)";
+        return tr("(missing spawn)");
     }
     static std::string container_label(const Project& p, const std::string& uid) {
         for (auto& c : p.world.containers)
-            if (c.uid == uid) return (c.entity_name.empty() ? c.guid : c.entity_name) + "  (" + std::to_string(c.items.size()) + " items)";
-        return "(missing container)";
+            if (c.uid == uid) return trf("{0}  ({1} items)", {c.entity_name.empty() ? c.guid : c.entity_name, std::to_string(c.items.size())});
+        return tr("(missing container)");
     }
 
     // the plan: x / z of every member that has a position, a colour per layer (grey: in no layer)
@@ -269,13 +270,13 @@ private:
             dots.push_back({n.position[0], n.position[2], layer_index(layer_of_npc(p, n.name)), "NPC " + n.name + " (" + n.template_name + ")"});
         }
         for (auto& s : p.world.spawns) dots.push_back({s.position[0], s.position[2], layer_index(layer_of_spawn(p, s.uid)), "spawn " + s.template_name});
-        ImGui::TextUnformatted("Plan (x / z)");
+        ImGui::TextUnformatted(tr("Plan (x / z)"));
         const ImVec2 size = ImGui::GetContentRegionAvail();
         const ImVec2 origin = ImGui::GetCursorScreenPos();
         ImDrawList* dl = ImGui::GetWindowDrawList();
         dl->AddRectFilled(origin, ImVec2(origin.x + size.x, origin.y + size.y), IM_COL32(20, 22, 26, 255));
         if (dots.empty()) {
-            dl->AddText(ImVec2(origin.x + 8, origin.y + 8), IM_COL32(150, 150, 150, 255), "Placed NPCs and world spawns with a position appear here.");
+            dl->AddText(ImVec2(origin.x + 8, origin.y + 8), IM_COL32(150, 150, 150, 255), tr("Placed NPCs and world spawns with a position appear here."));
             return;
         }
         double minx = dots[0].x, maxx = dots[0].x, minz = dots[0].z, maxz = dots[0].z;
@@ -311,9 +312,9 @@ private:
         if (hover && ImGui::IsWindowHovered()) {
             ImGui::BeginTooltip();
             ImGui::TextUnformatted(hover->text.c_str());
-            if (hover->layer >= 0) ImGui::Text("layer %s (%s at start)", p.layers[static_cast<size_t>(hover->layer)].name.c_str(), p.layers[static_cast<size_t>(hover->layer)].enabled ? "on" : "off");
-            else ImGui::TextDisabled("in no layer");
-            ImGui::Text("x %.0f  z %.0f", hover->x, hover->z);
+            if (hover->layer >= 0) ImGui::Text(tr("layer %s (%s at start)"), p.layers[static_cast<size_t>(hover->layer)].name.c_str(), p.layers[static_cast<size_t>(hover->layer)].enabled ? "on" : "off");
+            else ImGui::TextDisabled("%s", tr("in no layer"));
+            ImGui::Text(tr("x %.0f  z %.0f"), hover->x, hover->z);
             ImGui::EndTooltip();
         }
         // legend: filled = on at the start, ring = off

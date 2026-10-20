@@ -10,6 +10,7 @@ struct Settings {
     std::string data_dir;    // <Risen>\data (holds common\*.pak and compiled\*.pak)
     std::string export_dir;  // usually <Risen>\bin\spass\mods
     float ui_scale = 1.0f;
+    std::string language = "auto";  // UI language (core/i18n.h): "auto" = the system's, "en", or the code of a lang/*.toml file
     std::vector<std::string> recent;  // most recent first
     std::string world = "World";
     std::string game_dir;                // the Risen folder Play starts (bin\Risen.exe); Play exports to its bin\spass\mods

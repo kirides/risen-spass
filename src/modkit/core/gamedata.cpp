@@ -1,4 +1,5 @@
 #include "core/gamedata.h"
+#include "core/i18n.h"
 
 #include <algorithm>
 #include <chrono>
@@ -17,19 +18,21 @@ namespace mk {
 
 const char* kind_name(TplKind k) {
     switch (k) {
-        case TplKind::Item: return "Item";
-        case TplKind::Recipe: return "Recipe";
-        case TplKind::Npc: return "NPC";
-        case TplKind::Monster: return "Monster";
-        case TplKind::Interactive: return "Interactive";
-        case TplKind::Object: return "Object";
-        case TplKind::Effect: return "Effect";
-        case TplKind::Navigation: return "Navigation";
-        case TplKind::Sound: return "Sound";
-        case TplKind::Other: return "Other";
+        case TplKind::Item: return N_("Item");
+        case TplKind::Recipe: return N_("Recipe");
+        case TplKind::Npc: return N_("NPC");
+        case TplKind::Monster: return N_("Monster");
+        case TplKind::Interactive: return N_("Interactive");
+        case TplKind::Object: return N_("Object");
+        case TplKind::Effect: return N_("Effect");
+        case TplKind::Navigation: return N_("Navigation");
+        case TplKind::Sound: return N_("Sound");
+        case TplKind::Other: return N_("Other");
     }
     return "?";
 }
+
+const char* kind_label(TplKind k) { return tr(kind_name(k)); }
 
 bool TemplateInfo::has_set(const std::string& set) const { return std::find(sets.begin(), sets.end(), set) != sets.end(); }
 

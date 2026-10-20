@@ -24,6 +24,7 @@ Settings Settings::load() {
         s.data_dir = j.value("data_dir", std::string());
         s.export_dir = j.value("export_dir", std::string());
         s.ui_scale = std::clamp(j.value("ui_scale", 1.0f), 0.5f, 3.0f);
+        s.language = j.value("language", std::string("auto"));
         s.world = j.value("world", std::string("World"));
         s.game_dir = j.value("game_dir", std::string());
         s.play_start = std::clamp(j.value("play_start", 1), 0, 2);
@@ -46,6 +47,7 @@ void Settings::save() const {
     j["data_dir"] = data_dir;
     j["export_dir"] = export_dir;
     j["ui_scale"] = ui_scale;
+    j["language"] = language;
     j["world"] = world;
     j["game_dir"] = game_dir;
     j["play_start"] = play_start;

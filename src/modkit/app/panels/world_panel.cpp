@@ -26,6 +26,7 @@
 #include "app/render/resources.h"
 #include "core/actor.h"
 #include "core/catalog.h"
+#include "core/i18n.h"
 #include "core/layers.h"
 #include "app/widgets.h"
 #include "core/log.h"
@@ -139,12 +140,12 @@ public:
 
     void draw(App& app) override {
         poll_loader(app);
-        if (!ImGui::Begin(title(), &open)) {
+        if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
         }
         if (!app.game) {
-            ImGui::TextWrapped(app.game_loading() ? "Reading the game data..." : "No game data. Choose the game's data directory in Settings.");
+            ImGui::TextWrapped("%s", app.game_loading() ? tr("Reading the game data...") : tr("No game data. Choose the game's data directory in Settings."));
             ImGui::End();
             return;
         }
@@ -152,7 +153,7 @@ public:
         if (!world_ && !loading_.valid() && !tried_) start_load(app, app.settings.world.empty() ? std::string("World") : app.settings.world);
         draw_toolbar(app);
         if (!world_) {
-            ImGui::TextDisabled(loading_.valid() ? "Loading the world..." : "No world loaded.");
+            ImGui::TextDisabled("%s", loading_.valid() ? tr("Loading the world...") : tr("No world loaded."));
             ImGui::End();
             return;
         }
@@ -247,7 +248,7 @@ private:
             cam_.yaw = glm::radians(c[3]);
             cam_.pitch = glm::radians(c[4]);
         }
-        app.status("World " + world_->name + ": " + std::to_string(world_->entities.size()) + " entities");
+        app.status(trf("World {0}: {1} entities", {world_->name, std::to_string(world_->entities.size())}));
     }
 
     void draw_toolbar(App& app) {
@@ -263,19 +264,19 @@ private:
         }
         ImGui::SameLine();
         if (loading_.valid()) {
-            ImGui::TextDisabled("loading...");
+            ImGui::TextDisabled("%s", tr("loading..."));
         } else if (world_) {
-            ImGui::TextDisabled("%zu entities, %zu layers", world_->entities.size(), world_->layers.size());
+            ImGui::TextDisabled(tr("%zu entities, %zu layers"), world_->entities.size(), world_->layers.size());
         }
         ImGui::SameLine();
         ImGui::SetNextItemWidth(220);
-        if (ImGui::InputTextWithHint("##search", "find an entity by name", &search_)) search_hits_.clear();
+        if (ImGui::InputTextWithHint("##search", tr("find an entity by name"), &search_)) search_hits_.clear();
         if (world_ && !search_.empty()) {
             if (search_hits_.empty() && search_.size() >= 2)
                 for (size_t i = 0; i < world_->entities.size() && search_hits_.size() < 200; ++i)
                     if (icontains(world_->entities[i].name, search_) || icontains(world_->entities[i].template_name, search_)) search_hits_.push_back(i);
             ImGui::SameLine();
-            if (ImGui::BeginCombo("##hits", (std::to_string(search_hits_.size()) + (search_hits_.size() >= 200 ? "+" : "") + " found").c_str(),
+            if (ImGui::BeginCombo("##hits", trf("{0}{1} found", {std::to_string(search_hits_.size()), search_hits_.size() >= 200 ? "+" : ""}).c_str(),
                                   ImGuiComboFlags_HeightLarge)) {
                 for (size_t i : search_hits_) {
                     const WorldEntity& e = world_->entities[i];
@@ -291,19 +292,19 @@ private:
         }
         // placing: what a click in the view does
         ImGui::SameLine(0, 24);
-        ImGui::RadioButton("Select", &mode_, 0);
+        ImGui::RadioButton(tr("Select"), &mode_, 0);
         ImGui::SameLine();
-        ImGui::RadioButton("Place NPC", &mode_, 1);
+        ImGui::RadioButton(tr("Place NPC"), &mode_, 1);
         ImGui::SameLine();
-        ImGui::RadioButton("Place item / object", &mode_, 2);
+        ImGui::RadioButton(tr("Place item / object"), &mode_, 2);
         if (mode_ == 1) {
             ImGui::SameLine();
             ImGui::SetNextItemWidth(200);
             const PlacedNpc* cur = nullptr;
             for (auto& n : app.project.npcs)
                 if (n.uid == place_npc_) cur = &n;
-            if (ImGui::BeginCombo("##which", cur ? cur->name.c_str() : "a new NPC of the template")) {
-                if (ImGui::Selectable("a new NPC of the template", !cur)) place_npc_.clear();
+            if (ImGui::BeginCombo("##which", cur ? cur->name.c_str() : tr("a new NPC of the template"))) {
+                if (ImGui::Selectable(tr("a new NPC of the template"), !cur)) place_npc_.clear();
                 for (auto& n : app.project.npcs)
                     if (ImGui::Selectable(n.name.c_str(), n.uid == place_npc_)) place_npc_ = n.uid;
                 ImGui::EndCombo();
@@ -321,54 +322,54 @@ private:
                                 ui::project_item_names(app.project), 200);
             ImGui::SameLine();
             ImGui::SetNextItemWidth(90);
-            ImGui::InputInt("amount", &place_amount_);
+            ImGui::InputInt(tr("amount"), &place_amount_);
             place_amount_ = std::max(1, place_amount_);
             ImGui::SameLine();
             ImGui::SetNextItemWidth(70);
-            ImGui::DragFloat("yaw", &place_yaw_, 1.0f, 0, 360, "%.0f");
+            ImGui::DragFloat(tr("yaw"), &place_yaw_, 1.0f, 0, 360, "%.0f");
         }
         ImGui::SameLine(0, 24);
-        ImGui::TextDisabled("gizmo:");
+        ImGui::TextDisabled("%s", tr("gizmo:"));
         ImGui::SameLine();
-        ImGui::RadioButton("move", &gizmo_op_, 0);
+        ImGui::RadioButton(tr("move"), &gizmo_op_, 0);
         ImGui::SameLine();
-        ImGui::RadioButton("turn", &gizmo_op_, 1);
-        ImGui::TextDisabled("right mouse: look, WASD/QE: move, wheel: speed, click: %s, F: focus, End: align with mesh, gizmo: move / turn the selected project object",
-                            mode_ == 0 ? "select" : "place on the ground");
+        ImGui::RadioButton(tr("turn"), &gizmo_op_, 1);
+        ImGui::TextDisabled(tr("right mouse: look, WASD/QE: move, wheel: speed, click: %s, F: focus, End: align with mesh, gizmo: move / turn the selected project object"),
+                            mode_ == 0 ? tr("select") : tr("place on the ground"));
     }
 
     void draw_layers(App& app) {
-        ImGui::SeparatorText("Show");
+        ImGui::SeparatorText(tr("Show"));
         bool ch = false;
         for (int k = 0; k < kTplKindCount; ++k) {
             ImGui::PushID(k);
             const ImVec4 c = ImGui::ColorConvertU32ToFloat4(kind_color(static_cast<TplKind>(k)));
             ImGui::PushStyleColor(ImGuiCol_CheckMark, c);
-            ch |= ImGui::Checkbox(kind_name(static_cast<TplKind>(k)), &kinds_[k]);
+            ch |= ImGui::Checkbox(kind_label(static_cast<TplKind>(k)), &kinds_[k]);
             ImGui::PopStyleColor();
             if (k % 2 == 0) ImGui::SameLine(130);
             ImGui::PopID();
         }
-        ch |= ImGui::Checkbox("Level meshes (huge boxes)", &show_level_);
-        ch |= ImGui::Checkbox("Hide story sectors (off at the start)", &hide_gated_);
-        ui::help("Some sectors are switched off when a game starts and a chapter, a quest or a dialogue switches them on: the NPCs and monsters in them are not "
-                 "there at first. They are marked in the layer list and the inspector says what switches them on (docs/RE.md section 55).");
-        ImGui::SeparatorText("Draw");
-        ch |= ImGui::Checkbox("Meshes and textures", &draw_meshes_);
+        ch |= ImGui::Checkbox(tr("Level meshes (huge boxes)"), &show_level_);
+        ch |= ImGui::Checkbox(tr("Hide story sectors (off at the start)"), &hide_gated_);
+        ui::help(tr("Some sectors are switched off when a game starts and a chapter, a quest or a dialogue switches them on: the NPCs and monsters in them are not "
+                 "there at first. They are marked in the layer list and the inspector says what switches them on (docs/RE.md section 55)."));
+        ImGui::SeparatorText(tr("Draw"));
+        ch |= ImGui::Checkbox(tr("Meshes and textures"), &draw_meshes_);
         ImGui::SetNextItemWidth(-FLT_MIN);
-        ImGui::SliderFloat("##dist", &draw_distance_, 2000, 40000, "mesh distance %.0f");
-        ch |= ImGui::Checkbox("Boxes of entities with a mesh", &boxes_for_meshes_);
-        ch |= ImGui::Checkbox("Boxes of objects without a mesh", &boxes_plain_objects_);
-        ui::help("Mostly the vegetation (SpeedTree), lights and helpers: the editor has no meshes for them.");
-        if (res_) ImGui::TextDisabled("%zu meshes loaded, %zu waiting%s", res_->loaded_meshes(), res_->pending(), res_->s3tc() ? "" : ", CPU textures");
+        ImGui::SliderFloat("##dist", &draw_distance_, 2000, 40000, tr("mesh distance %.0f"));
+        ch |= ImGui::Checkbox(tr("Boxes of entities with a mesh"), &boxes_for_meshes_);
+        ch |= ImGui::Checkbox(tr("Boxes of objects without a mesh"), &boxes_plain_objects_);
+        ui::help(tr("Mostly the vegetation (SpeedTree), lights and helpers: the editor has no meshes for them."));
+        if (res_) ImGui::TextDisabled(tr("%zu meshes loaded, %zu waiting%s"), res_->loaded_meshes(), res_->pending(), res_->s3tc() ? "" : tr(", CPU textures"));
         draw_mod_layers(app);
-        ImGui::SeparatorText("Layers");
-        if (ImGui::SmallButton("all")) {
+        ImGui::SeparatorText(tr("Layers"));
+        if (ImGui::SmallButton(tr("all"))) {
             std::fill(layer_on_.begin(), layer_on_.end(), 1);
             ch = true;
         }
         ImGui::SameLine();
-        if (ImGui::SmallButton("none")) {
+        if (ImGui::SmallButton(tr("none"))) {
             std::fill(layer_on_.begin(), layer_on_.end(), 0);
             ch = true;
         }
@@ -387,7 +388,7 @@ private:
                 ch = true;
             }
             ImGui::SameLine();
-            if (ImGui::TreeNode(g.empty() ? "(root)" : g.c_str())) {
+            if (ImGui::TreeNode(g.empty() ? tr("(root)") : g.c_str())) {
                 for (size_t i : list) {
                     bool b = layer_on_[i];
                     if (ImGui::Checkbox((world_->layers[i].name + "##" + std::to_string(i)).c_str(), &b)) {
@@ -399,7 +400,7 @@ private:
                     if (const SectorInfo* s = world_->layers[i].sector >= 0 ? &world_->sectors[static_cast<size_t>(world_->layers[i].sector)] : nullptr;
                         s && !s->enabled_on_startup) {
                         ImGui::SameLine();
-                        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.3f, 1), "story");
+                        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.3f, 1), "%s", tr("story"));
                         if (ImGui::IsItemHovered()) {
                             ImGui::BeginTooltip();
                             draw_sector_triggers(*s);
@@ -416,17 +417,17 @@ private:
 
     // what switches a sector on (or off): the dialogue infos and game scripts of core/sectors.h
     static void draw_sector_triggers(const SectorInfo& s) {
-        ImGui::TextWrapped("Sector %s", s.name.c_str());
+        ImGui::TextWrapped(tr("Sector %s"), s.name.c_str());
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-        ImGui::TextWrapped("%s", s.enabled_on_startup ? "on when a game starts" : "OFF when a game starts: its entities are not in the world yet");
+        ImGui::TextWrapped("%s", s.enabled_on_startup ? tr("on when a game starts") : tr("OFF when a game starts: its entities are not in the world yet"));
         ImGui::PopStyleColor();
         if (s.triggers.empty()) {
-            if (!s.enabled_on_startup) ImGui::TextWrapped("Nothing in the game switches it on (the demo's or an unused story sector).");
+            if (!s.enabled_on_startup) ImGui::TextWrapped("%s", tr("Nothing in the game switches it on (the demo's or an unused story sector)."));
             return;
         }
         for (const SectorTrigger& t : s.triggers) {
             ImGui::Bullet();
-            ImGui::TextWrapped("%s by %s %s", t.enable ? "switched ON" : "switched OFF", t.kind == SectorTrigger::Dialogue ? "dialogue info" : "script", t.what.c_str());
+            ImGui::TextWrapped(tr("%s by %s %s"), t.enable ? tr("switched ON") : tr("switched OFF"), t.kind == SectorTrigger::Dialogue ? tr("dialogue info") : tr("script"), t.what.c_str());
             ImGui::Indent();
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
             ImGui::TextWrapped("%s", t.detail.c_str());
@@ -446,9 +447,9 @@ private:
 
     void draw_mod_layers(App& app) {
         auto& layers = app.project.layers;
-        ImGui::SeparatorText("Mod layers");
+        ImGui::SeparatorText(tr("Mod layers"));
         if (layers.empty()) {
-            ImGui::TextDisabled("none (Layers panel)");
+            ImGui::TextDisabled("%s", tr("none (Layers panel)"));
             return;
         }
         for (size_t i = 0; i < layers.size(); ++i) {
@@ -458,28 +459,28 @@ private:
             const ImVec2 p = ImGui::GetCursorScreenPos();
             ImGui::GetWindowDrawList()->AddRectFilled(p, ImVec2(p.x + 6, p.y + ImGui::GetFrameHeight()), argb_to_im(layer_color(i)));
             ImGui::SetCursorScreenPos(ImVec2(p.x + 10, p.y));
-            if (ImGui::Checkbox((L.name.empty() ? std::string("(no name)") : L.name).c_str(), &shown)) {
+            if (ImGui::Checkbox((L.name.empty() ? std::string(tr("(no name)")) : L.name).c_str(), &shown)) {
                 if (shown) mod_layer_hidden_.erase(L.name);
                 else mod_layer_hidden_.insert(L.name);
                 overlay_dirty_ = true;
             }
             const bool hovered = ImGui::IsItemHovered();
             ImGui::SameLine();
-            if (!L.enabled) ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.3f, 1), "off at start");
-            else ImGui::TextDisabled("on");
+            if (!L.enabled) ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.3f, 1), "%s", tr("off at start"));
+            else ImGui::TextDisabled("%s", tr("on"));
             ImGui::SameLine();
             ImGui::TextDisabled("%zu", member_count(L));
             if (hovered || ImGui::IsItemHovered()) {
                 ImGui::BeginTooltip();
-                ImGui::Text("Mod layer %s: %zu NPCs, %zu spawns, %zu container fills", L.name.c_str(), L.npcs.size(), L.spawns.size(), L.containers.size());
-                ImGui::TextUnformatted(L.enabled ? "On when a game starts." : "Off when a game starts: its members are not in the world until it is switched on.");
-                if (!L.enable_when.is_null()) ImGui::TextUnformatted("Switches itself on when its condition first holds.");
-                if (!L.disable_when.is_null()) ImGui::TextUnformatted("Switches itself off when its condition first holds.");
-                ImGui::TextDisabled("Event graphs switch it with the Layer node. Members are drawn in its colour, a cross on top marks a layer that starts off.");
+                ImGui::Text(tr("Mod layer %s: %zu NPCs, %zu spawns, %zu container fills"), L.name.c_str(), L.npcs.size(), L.spawns.size(), L.containers.size());
+                ImGui::TextUnformatted(L.enabled ? tr("On when a game starts.") : tr("Off when a game starts: its members are not in the world until it is switched on."));
+                if (!L.enable_when.is_null()) ImGui::TextUnformatted(tr("Switches itself on when its condition first holds."));
+                if (!L.disable_when.is_null()) ImGui::TextUnformatted(tr("Switches itself off when its condition first holds."));
+                ImGui::TextDisabled("%s", tr("Event graphs switch it with the Layer node. Members are drawn in its colour, a cross on top marks a layer that starts off."));
                 ImGui::EndTooltip();
             }
             if (ImGui::BeginPopupContextItem("##ctx")) {
-                if (ImGui::MenuItem("Edit in Layers")) {
+                if (ImGui::MenuItem(tr("Edit in Layers"))) {
                     const std::string uid = L.uid;
                     app.defer([&app, uid] { app.select_in(kPanelLayers, uid); });
                 }
@@ -500,7 +501,7 @@ private:
         }
         bool ch = false;
         ImGui::SetNextItemWidth(200);
-        if (ImGui::BeginCombo("Mod layer", cur ? cur->name.c_str() : "(none: always there)")) {
+        if (ImGui::BeginCombo(tr("Mod layer"), cur ? cur->name.c_str() : tr("(none: always there)"))) {
             auto move_to = [&](LayerDef* to) {
                 for (auto& L : layers) {
                     auto& v = list_of(L);
@@ -510,21 +511,21 @@ private:
                 ch = true;
                 overlay_dirty_ = true;
             };
-            if (ImGui::Selectable("(none: always there)", !cur)) move_to(nullptr);
+            if (ImGui::Selectable(tr("(none: always there)"), !cur)) move_to(nullptr);
             for (size_t i = 0; i < layers.size(); ++i) {
                 ImGui::PushID(static_cast<int>(i));
                 const ImVec2 p = ImGui::GetCursorScreenPos();
                 ImGui::GetWindowDrawList()->AddRectFilled(p, ImVec2(p.x + 6, p.y + ImGui::GetTextLineHeight()), argb_to_im(layer_color(i)));
                 ImGui::SetCursorScreenPos(ImVec2(p.x + 10, p.y));
-                if (ImGui::Selectable((layers[i].name + (layers[i].enabled ? "" : "   (off at start)")).c_str(), cur == &layers[i])) move_to(&layers[i]);
+                if (ImGui::Selectable((layers[i].name + (layers[i].enabled ? "" : tr("   (off at start)"))).c_str(), cur == &layers[i])) move_to(&layers[i]);
                 ImGui::PopID();
             }
             ImGui::EndCombo();
         }
-        ui::help("A mod layer switches its members on and off as a whole (Layers panel, the Layer node of the event graphs). Without one the object is always there.");
+        ui::help(tr("A mod layer switches its members on and off as a whole (Layers panel, the Layer node of the event graphs). Without one the object is always there."));
         if (cur) {
             ImGui::SameLine();
-            if (ImGui::SmallButton("Edit layer")) {
+            if (ImGui::SmallButton(tr("Edit layer"))) {
                 const std::string uid = cur->uid;
                 app.defer([&app, uid] { app.select_in(kPanelLayers, uid); });
             }
@@ -740,7 +741,7 @@ private:
         // camera position in game coordinates
         const glm::vec3 gp = gfx::from_gl(cam_.pos);
         char buf[96];
-        std::snprintf(buf, sizeof buf, "camera %.0f %.0f %.0f   speed %.0f   %zu meshes drawn", gp.x, gp.y, gp.z, cam_.speed, drawn_);
+        std::snprintf(buf, sizeof buf, tr("camera %.0f %.0f %.0f   speed %.0f   %zu meshes drawn"), gp.x, gp.y, gp.z, cam_.speed, drawn_);
         ImGui::GetWindowDrawList()->AddText(ImVec2(origin.x + 8, origin.y + h - 22), IM_COL32(200, 200, 200, 255), buf);
     }
 
@@ -842,7 +843,7 @@ private:
     std::optional<Vec3> ground_pos(App& app, float u, float v, int w, int h, const glm::mat4& vp) {
         glm::vec3 g;
         if (!ground_at(u, v, w, h, vp, g)) {
-            app.status("Nothing under the cursor to place on (the sky?)");
+            app.status(tr("Nothing under the cursor to place on (the sky?)"));
             return std::nullopt;
         }
         return Vec3{std::round(g.x * 10) / 10, std::round(g.y * 10) / 10, std::round(g.z * 10) / 10};
@@ -852,10 +853,10 @@ private:
         if (mode_ == 1 && !place_npc_.empty()) {
             if (auto pos = ground_pos(app, u, v, w, h, vp)) move_npc(app, place_npc_, *pos);
         } else if (mode_ == 1) {
-            if (place_template_.empty()) return app.status("Choose the template of the new NPC first");
+            if (place_template_.empty()) return app.status(tr("Choose the template of the new NPC first"));
             if (auto pos = ground_pos(app, u, v, w, h, vp)) place_npc_ = new_npc(app, place_template_, *pos);
         } else {
-            if (place_item_.empty()) return app.status("Choose the item to place first");
+            if (place_item_.empty()) return app.status(tr("Choose the item to place first"));
             if (auto pos = ground_pos(app, u, v, w, h, vp)) new_spawn(app, place_item_, *pos, place_amount_);
         }
     }
@@ -878,10 +879,10 @@ private:
     static void drop_preview(const ui::DragTemplate& d) {
         const auto& k = place_kinds();
         const std::string name = d.name;
-        if (d.entity) ImGui::SetTooltip("Move %s here", name.c_str());
-        else if (d.kind == TplKind::Npc || d.kind == TplKind::Monster) ImGui::SetTooltip("A new NPC of %s here", name.c_str());
-        else if (std::find(k.begin(), k.end(), d.kind) != k.end()) ImGui::SetTooltip("Spawn %s here", name.c_str());
-        else ImGui::SetTooltip("%s cannot be placed in the world", name.c_str());
+        if (d.entity) ImGui::SetTooltip(tr("Move %s here"), name.c_str());
+        else if (d.kind == TplKind::Npc || d.kind == TplKind::Monster) ImGui::SetTooltip(tr("A new NPC of %s here"), name.c_str());
+        else if (std::find(k.begin(), k.end(), d.kind) != k.end()) ImGui::SetTooltip(tr("Spawn %s here"), name.c_str());
+        else ImGui::SetTooltip(tr("%s cannot be placed in the world"), name.c_str());
     }
 
     void after_place(App& app, const std::string& uid, const std::string& what) {
@@ -897,7 +898,7 @@ private:
                 n.position = pos;
                 n.offset = false;
                 n.world = stamp(app);  // he lives where he was put
-                return after_place(app, n.uid, "Placed " + n.name);
+                return after_place(app, n.uid, trf("Placed {0}", {n.name}));
             }
     }
     // a new placed NPC of `tpl` at `pos`; returns its uid
@@ -909,7 +910,7 @@ private:
         nn.position = pos;
         nn.world = stamp(app);
         app.project.npcs.push_back(nn);
-        after_place(app, nn.uid, "Placed " + nn.name + " (a new NPC: name, inventory and routine in the NPCs panel)");
+        after_place(app, nn.uid, trf("Placed {0} (a new NPC: name, inventory and routine in the NPCs panel)", {nn.name}));
         return nn.uid;
     }
     void new_spawn(App& app, const std::string& tpl, const Vec3& pos, int amount) {
@@ -921,7 +922,7 @@ private:
         sp.amount = amount;
         sp.world = stamp(app);
         app.project.world.spawns.push_back(sp);
-        after_place(app, sp.uid, "Placed " + tpl);
+        after_place(app, sp.uid, trf("Placed {0}", {tpl}));
         settle_auto_ = sp.uid;  // onto the surface with its lowest point once its mesh is loaded
         settle_wait_ = 0;
     }
@@ -1104,7 +1105,7 @@ private:
     bool settle(App& app, const std::string& uid, bool quiet) {
         Vec3* pos = project_position(app, uid);
         if (!pos || !res_ || !world_) {
-            if (!quiet) app.status("Select a placed NPC, a spawned object or a moved entity of the project to align it");
+            if (!quiet) app.status(tr("Select a placed NPC, a spawned object or a moved entity of the project to align it"));
             return false;
         }
         const glm::vec3 p(static_cast<float>((*pos)[0]), static_cast<float>((*pos)[1]), static_cast<float>((*pos)[2]));
@@ -1176,26 +1177,26 @@ private:
         settle_rt_.unbind();
         const float nearest = *std::min_element(depth.begin(), depth.end());
         if (nearest >= 1.0f) {
-            if (!quiet) app.status("Nothing below " + what + " to align it with (meshes further than the draw distance are not drawn)");
+            if (!quiet) app.status(trf("Nothing below {0} to align it with (meshes further than the draw distance are not drawn)", {what}));
             return false;
         }
         const float surface = top - nearest * depth_range;
         const double y = std::round((surface + (p.y - (is_npc ? p.y : mn.y))) * 10) / 10;
         if (std::fabs(y - (*pos)[1]) < 0.05) {
-            if (!quiet) app.status(what + " already rests on the mesh below");
+            if (!quiet) app.status(trf("{0} already rests on the mesh below", {what}));
             return true;
         }
         (*pos)[1] = y;
         boxes_dirty_ = overlay_dirty_ = true;
         app.touch();
-        app.status((quiet ? "Placed " : "Aligned ") + what + " with the mesh below (height " + p2m::fmt_g(y) + ")");
+        app.status(quiet ? trf("Placed {0} with the mesh below (height {1})", {what, p2m::fmt_g(y)}) : trf("Aligned {0} with the mesh below (height {1})", {what, p2m::fmt_g(y)}));
         return true;
     }
 
     void align_button(const std::string& uid) {
-        if (ImGui::Button("Align with mesh")) settle_req_ = uid;
-        ui::help("Lets the object down (or up) onto the surface below it: the table under an apple, the ground under a crate. Its lowest point "
-                 "goes onto the highest point of what is below its footprint. Key: End (in the view).");
+        if (ImGui::Button(tr("Align with mesh"))) settle_req_ = uid;
+        ui::help(tr("Lets the object down (or up) onto the surface below it: the table under an apple, the ground under a crate. Its lowest point "
+                 "goes onto the highest point of what is below its footprint. Key: End (in the view)."));
     }
 
     void draw_project_inspector(App& app) {
@@ -1203,17 +1204,17 @@ private:
         for (auto& n : app.project.npcs) {
             if (n.uid != proj_sel_) continue;
             ImGui::TextUnformatted(n.name.c_str());
-            ImGui::TextDisabled("placed NPC of the project (%s)", n.template_name.c_str());
+            ImGui::TextDisabled(tr("placed NPC of the project (%s)"), n.template_name.c_str());
             float p[3] = {static_cast<float>(n.position[0]), static_cast<float>(n.position[1]), static_cast<float>(n.position[2])};
-            if (ImGui::DragFloat3("position", p, 5.0f, 0, 0, "%.1f")) {
+            if (ImGui::DragFloat3(tr("position"), p, 5.0f, 0, 0, "%.1f")) {
                 n.position = {p[0], p[1], p[2]};
                 overlay_dirty_ = true;
                 ch = true;
             }
             if (!n.offset) align_button(n.uid);
-            ch |= ui::world_combo("world##npc", n.world, app);
+            ch |= ui::world_combo(tr("world##npc"), n.world, app);
             ch |= mod_layer_combo(app, 0, n.name);
-            if (ImGui::Button("Edit in NPCs")) {
+            if (ImGui::Button(tr("Edit in NPCs"))) {
                 const std::string uid = n.uid;
                 app.defer([&app, uid] { app.select_in(kPanelNpcs, uid); });
             }
@@ -1222,56 +1223,56 @@ private:
         for (auto& s : app.project.world.spawns) {
             if (s.uid != proj_sel_) continue;
             ImGui::TextUnformatted(s.template_name.c_str());
-            ImGui::TextDisabled("spawned once per savegame by the mod");
+            ImGui::TextDisabled("%s", tr("spawned once per savegame by the mod"));
             ch |= mod_layer_combo(app, 1, s.uid);
-            ch |= ui::template_picker("Template", s.template_name, app.game.get(), {TplKind::Item, TplKind::Recipe, TplKind::Object, TplKind::Interactive, TplKind::Effect},
+            ch |= ui::template_picker(tr("Template"), s.template_name, app.game.get(), {TplKind::Item, TplKind::Recipe, TplKind::Object, TplKind::Interactive, TplKind::Effect},
                                       ui::project_item_names(app.project), 200);
             ImGui::SetNextItemWidth(120);
-            if (ImGui::InputInt("Amount", &s.amount)) {
+            if (ImGui::InputInt(tr("Amount"), &s.amount)) {
                 s.amount = std::max(1, s.amount);
                 ch = true;
             }
             float p[3] = {static_cast<float>(s.position[0]), static_cast<float>(s.position[1]), static_cast<float>(s.position[2])};
-            if (ImGui::DragFloat3("position", p, 5.0f, 0, 0, "%.1f")) {
+            if (ImGui::DragFloat3(tr("position"), p, 5.0f, 0, 0, "%.1f")) {
                 s.position = {p[0], p[1], p[2]};
                 overlay_dirty_ = true;
                 ch = true;
             }
             float r[3] = {static_cast<float>(s.rotation[0]), static_cast<float>(s.rotation[1]), static_cast<float>(s.rotation[2])};
-            if (ImGui::DragFloat3("yaw, pitch, roll", r, 1.0f, -360, 360, "%.1f")) {
+            if (ImGui::DragFloat3(tr("yaw, pitch, roll"), r, 1.0f, -360, 360, "%.1f")) {
                 s.rotation = {r[0], r[1], r[2]};
                 overlay_dirty_ = true;
                 ch = true;
             }
             align_button(s.uid);
-            if (ui::world_combo("world##spawn", s.world, app)) {
+            if (ui::world_combo(tr("world##spawn"), s.world, app)) {
                 overlay_dirty_ = true;
                 ch = true;
             }
-            if (ImGui::Button("Remove from the project")) remove = s.uid;
+            if (ImGui::Button(tr("Remove from the project"))) remove = s.uid;
         }
         std::string drop;
         for (auto& m : app.project.world.moves) {
             if (m.uid != proj_sel_) continue;
             ImGui::TextUnformatted(m.entity_name.empty() ? m.guid.c_str() : m.entity_name.c_str());
-            ImGui::TextDisabled("an entity of the world, moved by the mod on every world.ready");
-            ImGui::TextDisabled("id %s", m.guid.c_str());
+            ImGui::TextDisabled("%s", tr("an entity of the world, moved by the mod on every world.ready"));
+            ImGui::TextDisabled(tr("id %s"), m.guid.c_str());
             if (m.position) {
                 float p[3] = {static_cast<float>((*m.position)[0]), static_cast<float>((*m.position)[1]), static_cast<float>((*m.position)[2])};
-                if (ImGui::DragFloat3("position", p, 5.0f, 0, 0, "%.1f")) {
+                if (ImGui::DragFloat3(tr("position"), p, 5.0f, 0, 0, "%.1f")) {
                     m.position = Vec3{p[0], p[1], p[2]};
                     ch = true;
                 }
             }
             if (m.rotation) {
                 float r[3] = {static_cast<float>((*m.rotation)[0]), static_cast<float>((*m.rotation)[1]), static_cast<float>((*m.rotation)[2])};
-                if (ImGui::DragFloat3("yaw, pitch, roll", r, 1.0f, -360, 360, "%.1f")) {
+                if (ImGui::DragFloat3(tr("yaw, pitch, roll"), r, 1.0f, -360, 360, "%.1f")) {
                     m.rotation = Vec3{r[0], r[1], r[2]};
                     ch = true;
                 }
             }
             if (m.position) align_button(m.uid);
-            if (ImGui::Button("Back to its place (drop the move)")) drop = m.uid;
+            if (ImGui::Button(tr("Back to its place (drop the move)"))) drop = m.uid;
         }
         if (!drop.empty()) {
             auto& v = app.project.world.moves;
@@ -1291,12 +1292,12 @@ private:
 
     // items the mod adds to a container of the world (a chest, a corpse ...)
     void draw_container_editor(App& app, const WorldEntity& e) {
-        ImGui::SeparatorText("Items this mod adds");
+        ImGui::SeparatorText(tr("Items this mod adds"));
         ContainerEdit* ce = nullptr;
         for (auto& c : app.project.world.containers)
             if (c.guid == e.guid) ce = &c;
         if (!ce) {
-            if (ImGui::Button("Add items to this container")) {
+            if (ImGui::Button(tr("Add items to this container"))) {
                 ContainerEdit c;
                 c.uid = new_uid();
                 c.guid = e.guid;
@@ -1307,12 +1308,12 @@ private:
                 app.project.world.containers.push_back(c);
                 app.touch();
             }
-            ImGui::TextDisabled("Put once per savegame into this entity (risen.entity.by_id).");
+            ImGui::TextDisabled("%s", tr("Put once per savegame into this entity (risen.entity.by_id)."));
             return;
         }
         bool ch = ui::inventory_list("ce", ce->items, app, ui::project_item_names(app.project), false);
         ch |= mod_layer_combo(app, 2, ce->uid);
-        if (ImGui::SmallButton("Remove these additions")) {
+        if (ImGui::SmallButton(tr("Remove these additions"))) {
             const std::string uid = ce->uid;
             auto& v = app.project.world.containers;
             v.erase(std::remove_if(v.begin(), v.end(), [&](const ContainerEdit& x) { return x.uid == uid; }), v.end());
@@ -1323,30 +1324,30 @@ private:
 
     // moving or removing an entity of the world (E12): the mod applies it by the entity's id on every world.ready
     void draw_world_edit(App& app, const WorldEntity& e) {
-        ImGui::SeparatorText("Change it in the world");
+        ImGui::SeparatorText(tr("Change it in the world"));
         auto& rem = app.project.world.removals;
         auto& mov = app.project.world.moves;
         auto removed = std::find_if(rem.begin(), rem.end(), [&](const EntityRef& r) { return r.guid == e.guid; });
         auto moved = std::find_if(mov.begin(), mov.end(), [&](const EntityRef& r) { return r.guid == e.guid; });
         if (removed != rem.end()) {
-            ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "Removed by this mod.");
+            ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "%s", tr("Removed by this mod."));
             ImGui::SameLine();
-            if (ImGui::SmallButton("Keep it")) {
+            if (ImGui::SmallButton(tr("Keep it"))) {
                 rem.erase(removed);
                 app.touch();
             }
             return;
         }
         if (moved != mov.end()) {
-            ImGui::TextColored(ImVec4(1, 0.65f, 0.25f, 1), "Moved by this mod.");
+            ImGui::TextColored(ImVec4(1, 0.65f, 0.25f, 1), "%s", tr("Moved by this mod."));
             ImGui::SameLine();
-            if (ImGui::SmallButton("Edit the move")) {
+            if (ImGui::SmallButton(tr("Edit the move"))) {
                 proj_sel_ = moved->uid;
                 overlay_dirty_ = true;
             }
             return;
         }
-        if (ImGui::SmallButton("Move or turn it")) {
+        if (ImGui::SmallButton(tr("Move or turn it"))) {
             EntityRef r;
             r.uid = new_uid();
             r.guid = e.guid;
@@ -1362,10 +1363,10 @@ private:
             proj_sel_ = r.uid;
             overlay_dirty_ = true;
             app.touch();
-            app.status("Drag the gizmo (move / turn) or type the new pose");
+            app.status(tr("Drag the gizmo (move / turn) or type the new pose"));
         }
         ImGui::SameLine();
-        if (ImGui::SmallButton("Remove it from the world")) {
+        if (ImGui::SmallButton(tr("Remove it from the world"))) {
             EntityRef r;
             r.uid = new_uid();
             r.guid = e.guid;
@@ -1375,7 +1376,7 @@ private:
             rem.push_back(r);
             app.touch();
         }
-        if (e.npc) ImGui::TextDisabled("An NPC: his routine moves him again, and removing him can break quests.");
+        if (e.npc) ImGui::TextDisabled("%s", tr("An NPC: his routine moves him again, and removing him can break quests."));
     }
 
     // What is under the cursor: the meshes by an ID pass into the view's render target (exact: the mesh's pixels, holes of foliage included,
@@ -1445,16 +1446,16 @@ private:
             return;
         }
         if (selected_ >= world_->entities.size()) {
-            ImGui::TextWrapped("Click an entity in the view, or find one by name.");
+            ImGui::TextWrapped("%s", tr("Click an entity in the view, or find one by name."));
             ImGui::Spacing();
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-            ImGui::TextWrapped("Colours: the kind of the entity's template (see Show). Magenta: the project's placed NPCs, yellow: its spawns; members of a mod layer have the layer's colour (see Mod layers). Drag the thin bar left of this panel to change its width.");
+            ImGui::TextWrapped("%s", tr("Colours: the kind of the entity's template (see Show). Magenta: the project's placed NPCs, yellow: its spawns; members of a mod layer have the layer's colour (see Mod layers). Drag the thin bar left of this panel to change its width."));
             ImGui::PopStyleColor();
             return;
         }
         const WorldEntity& e = world_->entities[selected_];
         ImGui::TextUnformatted(e.name.c_str());
-        ImGui::TextDisabled("%s  %s", kind_name(e.kind), e.npc ? "(NPC)" : "");
+        ImGui::TextDisabled("%s  %s", kind_label(e.kind), e.npc ? tr("(NPC)") : "");
         if (ImGui::BeginTable("##info", 2, ImGuiTableFlags_SizingStretchProp)) {
             auto row = [](const char* k, const std::string& v) {
                 ImGui::TableNextRow();
@@ -1475,18 +1476,18 @@ private:
             ImGui::EndTable();
         }
         if (const SectorInfo* s = world_->sector_of(e); s && (!s->enabled_on_startup || !s->triggers.empty())) {
-            ImGui::SeparatorText("Appears");
+            ImGui::SeparatorText(tr("Appears"));
             draw_sector_triggers(*s);
         }
-        if (ImGui::SmallButton("Copy id")) ImGui::SetClipboardText(e.guid.c_str());
+        if (ImGui::SmallButton(tr("Copy id"))) ImGui::SetClipboardText(e.guid.c_str());
         ImGui::SameLine();
-        if (ImGui::SmallButton("Copy position")) {
+        if (ImGui::SmallButton(tr("Copy position"))) {
             char buf[96];
             std::snprintf(buf, sizeof buf, "{ %.1f, %.1f, %.1f }", e.x(), e.y(), e.z());
             ImGui::SetClipboardText(buf);
         }
         ImGui::SameLine();
-        if (!e.template_name.empty() && app.game && app.game->tpl(e.template_name) && ImGui::SmallButton("Template in Browser")) {
+        if (!e.template_name.empty() && app.game && app.game->tpl(e.template_name) && ImGui::SmallButton(tr("Template in Browser"))) {
             const std::string t = e.template_name;
             app.defer([&app, t] { app.select_in(kPanelBrowser, t); });
         }
@@ -1498,7 +1499,7 @@ private:
         }
         if (e.inventory && !e.npc) draw_container_editor(app, e);
         if (!inv_.empty()) {
-            ImGui::SeparatorText("Inventory");
+            ImGui::SeparatorText(tr("Inventory"));
             for (auto& [item, n] : inv_) {
                 const std::string lbl = app.game->label(item);
                 ImGui::Text("%dx %s", n, item.c_str());
@@ -1508,9 +1509,9 @@ private:
                 }
             }
         }
-        ImGui::SeparatorText("Properties");
+        ImGui::SeparatorText(tr("Properties"));
         ImGui::SetNextItemWidth(-FLT_MIN);
-        ImGui::InputTextWithHint("##pf", "filter", &prop_filter_);
+        ImGui::InputTextWithHint("##pf", tr("filter"), &prop_filter_);
         if (ImGui::BeginTable("##props", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollY)) {
             for (auto& p : props_) {
                 const std::string k = p.pset + "." + p.name, v = val_text(p.value);
