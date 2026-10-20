@@ -1,5 +1,7 @@
 #include "app/audio.h"
 
+#include <algorithm>
+
 // miniaudio decodes WAV and MP3 itself; Ogg Vorbis through stb_vorbis, which it picks up when the header part is included first
 #if defined(_MSC_VER)
 #pragma warning(push, 0)  // third-party single-file libraries
@@ -27,12 +29,14 @@ struct AudioPlayer::Impl {
     bool loaded = false;
     std::string data;  // the decoder reads from it while the sound plays
     std::string key;
+    float length = 0;  // measured before playback starts (see play())
 
     void unload() {
         if (!loaded) return;
         ma_sound_uninit(&sound);
         ma_decoder_uninit(&decoder);
         loaded = false;
+        length = 0;
         key.clear();
         data.clear();
     }
@@ -62,6 +66,14 @@ bool AudioPlayer::play(const std::string& key, std::string audio, std::string& e
         error = "the audio cannot be decoded";
         return false;
     }
+    // The length is measured here, before the audio thread reads the decoder: for an MP3 (the game's speech) miniaudio counts the frames by walking the
+    // stream with this very decoder, and doing that from the UI thread while the sound plays corrupted the decoder and crashed the editor.
+    {
+        ma_uint64 frames = 0;
+        if (ma_decoder_get_length_in_pcm_frames(&d_->decoder, &frames) == MA_SUCCESS && d_->decoder.outputSampleRate > 0)
+            d_->length = static_cast<float>(static_cast<double>(frames) / d_->decoder.outputSampleRate);
+        ma_decoder_seek_to_pcm_frame(&d_->decoder, 0);
+    }
     if (ma_sound_init_from_data_source(&d_->engine, &d_->decoder, MA_SOUND_FLAG_NO_SPATIALIZATION, nullptr, &d_->sound) != MA_SUCCESS) {
         ma_decoder_uninit(&d_->decoder);
         d_->data.clear();
@@ -83,16 +95,14 @@ const std::string& AudioPlayer::current() const {
     return playing() ? d_->key : none;
 }
 
+// both are safe while the sound plays: the position is the sound's own play time (kept by the engine, it does not touch the decoder), the length was measured
+// before the playback began
 float AudioPlayer::position() const {
-    float s = 0;
-    if (d_->loaded) ma_sound_get_cursor_in_seconds(&d_->sound, &s);
-    return s;
+    if (!d_->loaded) return 0;
+    const float s = static_cast<float>(ma_sound_get_time_in_milliseconds(&d_->sound)) / 1000.0f;
+    return d_->length > 0 ? std::min(s, d_->length) : s;
 }
 
-float AudioPlayer::length() const {
-    float s = 0;
-    if (d_->loaded) ma_sound_get_length_in_seconds(&d_->sound, &s);
-    return s;
-}
+float AudioPlayer::length() const { return d_->loaded ? d_->length : 0.0f; }
 
 }  // namespace mk
