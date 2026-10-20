@@ -26,6 +26,7 @@
 #include "app/render/resources.h"
 #include "core/actor.h"
 #include "core/catalog.h"
+#include "core/layers.h"
 #include "app/widgets.h"
 #include "core/log.h"
 
@@ -156,7 +157,7 @@ public:
             return;
         }
         ImGui::BeginChild("##layers", ImVec2(260, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX);
-        draw_layers();
+        draw_layers(app);
         ImGui::EndChild();
         ImGui::SameLine();
         // the inspector's width can be dragged at the splitter between it and the view
@@ -336,7 +337,7 @@ private:
                             mode_ == 0 ? "select" : "place on the ground");
     }
 
-    void draw_layers() {
+    void draw_layers(App& app) {
         ImGui::SeparatorText("Show");
         bool ch = false;
         for (int k = 0; k < kTplKindCount; ++k) {
@@ -360,6 +361,7 @@ private:
         ch |= ImGui::Checkbox("Boxes of objects without a mesh", &boxes_plain_objects_);
         ui::help("Mostly the vegetation (SpeedTree), lights and helpers: the editor has no meshes for them.");
         if (res_) ImGui::TextDisabled("%zu meshes loaded, %zu waiting%s", res_->loaded_meshes(), res_->pending(), res_->s3tc() ? "" : ", CPU textures");
+        draw_mod_layers(app);
         ImGui::SeparatorText("Layers");
         if (ImGui::SmallButton("all")) {
             std::fill(layer_on_.begin(), layer_on_.end(), 1);
@@ -433,6 +435,103 @@ private:
         }
     }
 
+    // ---- mod layers (core/layers.h): the project's own groups of placed NPCs, spawns and container fills ----------------------------------------------
+    static ImU32 argb_to_im(unsigned argb) { return IM_COL32((argb >> 16) & 0xff, (argb >> 8) & 0xff, argb & 0xff, 255); }
+    ImU32 mod_layer_col(const App& app, const LayerDef& L) const {
+        for (size_t i = 0; i < app.project.layers.size(); ++i)
+            if (&app.project.layers[i] == &L) return argb_to_im(layer_color(i));
+        return IM_COL32(200, 200, 200, 255);
+    }
+    static size_t member_count(const LayerDef& L) { return L.npcs.size() + L.spawns.size() + L.containers.size(); }
+
+    void draw_mod_layers(App& app) {
+        auto& layers = app.project.layers;
+        ImGui::SeparatorText("Mod layers");
+        if (layers.empty()) {
+            ImGui::TextDisabled("none (Layers panel)");
+            return;
+        }
+        for (size_t i = 0; i < layers.size(); ++i) {
+            const LayerDef& L = layers[i];
+            ImGui::PushID(static_cast<int>(i));
+            bool shown = !mod_layer_hidden_.count(L.name);
+            const ImVec2 p = ImGui::GetCursorScreenPos();
+            ImGui::GetWindowDrawList()->AddRectFilled(p, ImVec2(p.x + 6, p.y + ImGui::GetFrameHeight()), argb_to_im(layer_color(i)));
+            ImGui::SetCursorScreenPos(ImVec2(p.x + 10, p.y));
+            if (ImGui::Checkbox((L.name.empty() ? std::string("(no name)") : L.name).c_str(), &shown)) {
+                if (shown) mod_layer_hidden_.erase(L.name);
+                else mod_layer_hidden_.insert(L.name);
+                overlay_dirty_ = true;
+            }
+            const bool hovered = ImGui::IsItemHovered();
+            ImGui::SameLine();
+            if (!L.enabled) ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.3f, 1), "off at start");
+            else ImGui::TextDisabled("on");
+            ImGui::SameLine();
+            ImGui::TextDisabled("%zu", member_count(L));
+            if (hovered || ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Mod layer %s: %zu NPCs, %zu spawns, %zu container fills", L.name.c_str(), L.npcs.size(), L.spawns.size(), L.containers.size());
+                ImGui::TextUnformatted(L.enabled ? "On when a game starts." : "Off when a game starts: its members are not in the world until it is switched on.");
+                if (!L.enable_when.is_null()) ImGui::TextUnformatted("Switches itself on when its condition first holds.");
+                if (!L.disable_when.is_null()) ImGui::TextUnformatted("Switches itself off when its condition first holds.");
+                ImGui::TextDisabled("Event graphs switch it with the Layer node. Members are drawn in its colour, a cross on top marks a layer that starts off.");
+                ImGui::EndTooltip();
+            }
+            if (ImGui::BeginPopupContextItem("##ctx")) {
+                if (ImGui::MenuItem("Edit in Layers")) {
+                    const std::string uid = L.uid;
+                    app.defer([&app, uid] { app.select_in(kPanelLayers, uid); });
+                }
+                ImGui::EndPopup();
+            }
+            ImGui::PopID();
+        }
+    }
+
+    // the mod layer a project object belongs to, changeable here (kind: 0 placed NPC by name, 1 spawn by uid, 2 container fill by uid)
+    bool mod_layer_combo(App& app, int kind, const std::string& key) {
+        auto& layers = app.project.layers;
+        auto list_of = [kind](LayerDef& L) -> std::vector<std::string>& { return kind == 0 ? L.npcs : kind == 1 ? L.spawns : L.containers; };
+        LayerDef* cur = nullptr;
+        for (auto& L : layers) {
+            auto& v = list_of(L);
+            if (std::find(v.begin(), v.end(), key) != v.end()) cur = &L;
+        }
+        bool ch = false;
+        ImGui::SetNextItemWidth(200);
+        if (ImGui::BeginCombo("Mod layer", cur ? cur->name.c_str() : "(none: always there)")) {
+            auto move_to = [&](LayerDef* to) {
+                for (auto& L : layers) {
+                    auto& v = list_of(L);
+                    v.erase(std::remove(v.begin(), v.end(), key), v.end());
+                }
+                if (to) list_of(*to).push_back(key);
+                ch = true;
+                overlay_dirty_ = true;
+            };
+            if (ImGui::Selectable("(none: always there)", !cur)) move_to(nullptr);
+            for (size_t i = 0; i < layers.size(); ++i) {
+                ImGui::PushID(static_cast<int>(i));
+                const ImVec2 p = ImGui::GetCursorScreenPos();
+                ImGui::GetWindowDrawList()->AddRectFilled(p, ImVec2(p.x + 6, p.y + ImGui::GetTextLineHeight()), argb_to_im(layer_color(i)));
+                ImGui::SetCursorScreenPos(ImVec2(p.x + 10, p.y));
+                if (ImGui::Selectable((layers[i].name + (layers[i].enabled ? "" : "   (off at start)")).c_str(), cur == &layers[i])) move_to(&layers[i]);
+                ImGui::PopID();
+            }
+            ImGui::EndCombo();
+        }
+        ui::help("A mod layer switches its members on and off as a whole (Layers panel, the Layer node of the event graphs). Without one the object is always there.");
+        if (cur) {
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Edit layer")) {
+                const std::string uid = cur->uid;
+                app.defer([&app, uid] { app.select_in(kPanelLayers, uid); });
+            }
+        }
+        return ch;
+    }
+
     bool visible(const WorldEntity& e) const {
         if (!layer_on_[e.layer] || !kinds_[static_cast<int>(e.kind)]) return false;
         if (hide_gated_) {
@@ -495,20 +594,40 @@ private:
             const float yaw = glm::radians(e.yaw());
             overlay_.line(p + glm::vec3(0, 20, 0), p + glm::vec3(std::sin(yaw) * 150, 20, -std::cos(yaw) * 150), IM_COL32(255, 255, 255, 255));
         }
-        // the project's placed NPCs with a world position (magenta) and the things it spawns (yellow); the selected one bright
+        // the project's placed NPCs with a world position (magenta) and the things it spawns (yellow); the selected one bright. A member of a mod layer
+        // has the layer's colour instead, a layer that is off when a game starts gets a cross on top (its members are not there at first), a hidden
+        // layer's members are left out.
         for (auto& n : app.project.npcs) {
             if (n.offset || !here(app, n.world)) continue;
+            const LayerDef* L = layer_of_npc(app.project, n.name);
+            if (L && mod_layer_hidden_.count(L->name)) continue;
             const glm::vec3 p = to_gl(static_cast<float>(n.position[0]), static_cast<float>(n.position[1]), static_cast<float>(n.position[2]));
             const bool sel = proj_sel_ == n.uid;
-            overlay_.box(p + glm::vec3(-40, 0, -40), p + glm::vec3(40, 200, 40), sel ? IM_COL32(255, 200, 255, 255) : IM_COL32(255, 80, 255, 255));
+            const ImU32 c = sel ? IM_COL32(255, 255, 255, 255) : L ? mod_layer_col(app, *L) : IM_COL32(255, 80, 255, 255);
+            overlay_.box(p + glm::vec3(-40, 0, -40), p + glm::vec3(40, 200, 40), c);
+            if (L && !L->enabled) overlay_.cross(p + glm::vec3(0, 230, 0), 40, c);
         }
         for (auto& s : app.project.world.spawns) {
             if (!here(app, s.world)) continue;
+            const LayerDef* L = layer_of_spawn(app.project, s.uid);
+            if (L && mod_layer_hidden_.count(L->name)) continue;
             const glm::vec3 p = to_gl(static_cast<float>(s.position[0]), static_cast<float>(s.position[1]), static_cast<float>(s.position[2]));
             const bool sel = proj_sel_ == s.uid;
-            overlay_.box(p + glm::vec3(-25, 0, -25), p + glm::vec3(25, 50, 25), sel ? IM_COL32(255, 255, 200, 255) : IM_COL32(250, 220, 60, 255));
+            const ImU32 c = sel ? IM_COL32(255, 255, 200, 255) : L ? mod_layer_col(app, *L) : IM_COL32(250, 220, 60, 255);
+            overlay_.box(p + glm::vec3(-25, 0, -25), p + glm::vec3(25, 50, 25), c);
             const float yaw = glm::radians(static_cast<float>(s.rotation[0]));
-            overlay_.line(p + glm::vec3(0, 25, 0), p + glm::vec3(std::sin(yaw) * 80, 25, -std::cos(yaw) * 80), IM_COL32(250, 220, 60, 255));
+            overlay_.line(p + glm::vec3(0, 25, 0), p + glm::vec3(std::sin(yaw) * 80, 25, -std::cos(yaw) * 80), c);
+            if (L && !L->enabled) overlay_.cross(p + glm::vec3(0, 80, 0), 30, c);
+        }
+        // containers a mod layer fills: the world entity outlined in the layer's colour
+        for (auto& ce : app.project.world.containers) {
+            const LayerDef* L = layer_of_container(app.project, ce.uid);
+            if (!L || mod_layer_hidden_.count(L->name) || !here(app, ce.world)) continue;
+            const WorldEntity* e = world_->by_guid(ce.guid);
+            if (!e) continue;
+            const ImU32 c = mod_layer_col(app, *L);
+            if (e->has_box()) overlay_.box(to_gl(e->box_min[0], e->box_min[1], e->box_max[2]) - glm::vec3(8), to_gl(e->box_max[0], e->box_max[1], e->box_min[2]) + glm::vec3(8), c);
+            else overlay_.cross(to_gl(e->x(), e->y(), e->z()), 50, c);
         }
         for (auto& [i, m] : moved_matrix_) {
             const WorldEntity& e = world_->entities[i];
@@ -919,11 +1038,43 @@ private:
                                     {static_cast<float>(s.rotation[0]), static_cast<float>(s.rotation[1]), static_cast<float>(s.rotation[2])});
     }
 
-    // the meshes of the things the project spawns, at their pose (`skip`: a spawn left out, the one being settled)
+    // the actors of a placed NPC (core/actor.h): the template's own, or for a project template its base's (or the actor the project gives it); "" = none
+    std::string npc_mesh(App& app, const std::string& tpl) {
+        if (!app.game) return {};
+        const TemplateInfo* t = app.game->tpl(tpl);
+        std::optional<std::string> own;
+        for (auto& nt : app.project.npc_templates)
+            if (nt.name == tpl && nt.mode == Mode::New) {
+                t = app.game->tpl(nt.base);
+                own = nt.mesh;
+            }
+        if (!t) return {};
+        std::vector<std::string> parts = actor_parts(*app.game, *t);
+        if (own && !own->empty()) {
+            const std::string a = compiled_name(p2m::bare_name(*own));
+            if (parts.empty()) parts.push_back(a);
+            else parts[0] = a;
+        }
+        return parts.empty() ? std::string() : compose_name(parts);
+    }
+
+    // the meshes of the things the project spawns and of its placed NPCs, at their pose (`skip`: a spawn left out, the one being settled)
     void draw_project_meshes(App& app, const glm::mat4& vp, const std::string& skip = {}) {
         mesh_r_.begin(vp, glm::vec3(0.35f, -1.0f, 0.25f));
+        for (auto& n : app.project.npcs) {
+            if (n.offset || !here(app, n.world)) continue;
+            if (const LayerDef* L = layer_of_npc(app.project, n.name); L && mod_layer_hidden_.count(L->name)) continue;
+            const std::string mesh = npc_mesh(app, n.template_name);
+            if (mesh.empty()) continue;
+            const gfx::GpuMesh* m = res_->mesh(mesh);
+            if (!m) continue;
+            const spass::pose::Matrix pm = spass::pose::compose(static_cast<float>(n.position[0]), static_cast<float>(n.position[1]), static_cast<float>(n.position[2]),
+                                                                {static_cast<float>(n.yaw.value_or(0.0)), 0.0f, 0.0f});
+            mesh_r_.draw(*m, gfx::entity_model(pm.data()), *res_, proj_sel_ == n.uid ? glm::vec4(1.4f, 1.3f, 0.9f, 1) : glm::vec4(1));
+        }
         for (auto& s : app.project.world.spawns) {
             if (s.uid == skip || !here(app, s.world)) continue;
+            if (const LayerDef* L = layer_of_spawn(app.project, s.uid); L && mod_layer_hidden_.count(L->name)) continue;
             const std::string mesh = spawn_mesh(app, s);
             if (mesh.empty()) continue;
             const gfx::GpuMesh* m = res_->mesh(mesh);
@@ -1061,6 +1212,7 @@ private:
             }
             if (!n.offset) align_button(n.uid);
             ch |= ui::world_combo("world##npc", n.world, app);
+            ch |= mod_layer_combo(app, 0, n.name);
             if (ImGui::Button("Edit in NPCs")) {
                 const std::string uid = n.uid;
                 app.defer([&app, uid] { app.select_in(kPanelNpcs, uid); });
@@ -1071,6 +1223,7 @@ private:
             if (s.uid != proj_sel_) continue;
             ImGui::TextUnformatted(s.template_name.c_str());
             ImGui::TextDisabled("spawned once per savegame by the mod");
+            ch |= mod_layer_combo(app, 1, s.uid);
             ch |= ui::template_picker("Template", s.template_name, app.game.get(), {TplKind::Item, TplKind::Recipe, TplKind::Object, TplKind::Interactive, TplKind::Effect},
                                       ui::project_item_names(app.project), 200);
             ImGui::SetNextItemWidth(120);
@@ -1158,6 +1311,7 @@ private:
             return;
         }
         bool ch = ui::inventory_list("ce", ce->items, app, ui::project_item_names(app.project), false);
+        ch |= mod_layer_combo(app, 2, ce->uid);
         if (ImGui::SmallButton("Remove these additions")) {
             const std::string uid = ce->uid;
             auto& v = app.project.world.containers;
@@ -1294,7 +1448,7 @@ private:
             ImGui::TextWrapped("Click an entity in the view, or find one by name.");
             ImGui::Spacing();
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-            ImGui::TextWrapped("Colours: the kind of the entity's template (see Show). Magenta: the project's placed NPCs. Drag the thin bar left of this panel to change its width.");
+            ImGui::TextWrapped("Colours: the kind of the entity's template (see Show). Magenta: the project's placed NPCs, yellow: its spawns; members of a mod layer have the layer's colour (see Mod layers). Drag the thin bar left of this panel to change its width.");
             ImGui::PopStyleColor();
             return;
         }
@@ -1376,6 +1530,7 @@ private:
     std::string loading_name_ = "World";
     bool tried_ = false;
     std::vector<char> layer_on_;
+    std::set<std::string> mod_layer_hidden_;  // mod layers whose members are not drawn (by name)
     float inspector_w_ = 340;  // width of the inspector column (dragged at the splitter)
     bool hide_gated_ = false;  // entities of sectors that start switched off
     bool kinds_[kTplKindCount] = {true, true, true, true, true, true, false, false, false, false};

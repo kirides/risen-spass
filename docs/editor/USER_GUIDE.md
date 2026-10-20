@@ -449,6 +449,10 @@ members stand (ring = off at the start). NPCs are made while the layer is on and
 node switches one of the game's own sectors (`World::SetSectorStatus`; the picker lists the 289 sectors of the world, 21 of which start off); entities that were already made stay when a sector is
 switched off.
 
+**In the World view** the section *Mod layers* (left) lists the project's layers with their colour, "on" / "off at start" and the number of members; untick one to hide its members, the context
+menu opens it in the Layers panel. Members are drawn in their layer's colour (a cross on top: the layer starts off), the containers a layer fills are outlined in its colour, and the inspector of a
+placed NPC, a spawn or a container fill has a *Mod layer* combo to move it into another layer (or none: always there). The project's placed NPCs are drawn as their actors like the game's NPCs.
+
 ## Play and the game's errors
 
 Set the **game folder** (the Risen folder with `bin\Risen.exe` and the mod layer) in **Window > Settings > Play**, choose what the game does at start
