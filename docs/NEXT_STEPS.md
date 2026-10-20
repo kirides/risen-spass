@@ -217,6 +217,6 @@ a visual verification path (screen capture of the D3D9 window is black: hook `Pr
   fuzzing `Entity:set_state` with wrong arguments; the rerun passed (13/13). Probably a fuzzed AI state the engine runs a frame later: open.
 * Steam may relaunch the real install (RE.md §13): `run-windowed.ps1` sets `SteamAppId`; document the same safeguard for modders who launch a copied install.
 * ~~The game rewrites `%LOCALAPPDATA%\Risen\ConfigUser.xml` for the test copy~~ — solved by `[debug] app_data` (RE.md §15).
-* E21 (events, layers, sectors): the layer's members are not drawn in the World view (`world_panel.cpp` belongs to another stream: it needs `layer_of_npc` / `layer_of_spawn` from `core/layers.h` for a colour and a tooltip);
+* E21 (events, layers, sectors): ~~the layer's members are not drawn in the World view~~ done 2026-10-20 (colour per layer, hide per layer, membership in the inspector);
   no "on interact" trigger (no layer event for the use key: `risen.interact.focus` + `input.action` could build one); a disabled stock sector leaves the entities it already made (`gCSector::Enable` toggles the layer
   contexts for new content only: verified with the lizard scouts); the full `hardening` scenario crashed in `Entity:set_state` fuzzing again on 2026-10-18 (same `SharedBase.dll+0x62f50`), the sector functions alone pass (11319 calls).
