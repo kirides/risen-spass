@@ -44,6 +44,23 @@ engine's lifecycle, and exposes it to Lua with a sandbox per mod.
 Reference: [Lua API](docs/LUA_API.md) · [examples](docs/EXAMPLES.md) · [entity templates](docs/TEMPLATES.md) · [item properties](docs/ITEM_PROPERTIES.md) · [NPC properties](docs/NPC_PROPERTIES.md) · [spells](docs/SPELL_PROPERTIES.md) · [recipes](docs/RECIPE_PROPERTIES.md) · [converting archive mods](docs/PACK2MOD.md) · [engine notes](docs/RE.md) ·
 [developer guide](docs/DEVELOPMENT.md) · [roadmap](docs/NEXT_STEPS.md). Small mods: `mods/fetchquest` (a complete, savegame-safe quest), `mods/example_*` (sixteen verified patterns), `mods/stringsdemo`, `mods/_template`.
 
+## Modkit: make mods without writing Lua
+
+**risen-modkit** is a cross-platform desktop editor (Windows, Linux, macOS) for building mods visually: items, recipes, NPCs and monsters,
+spells, dialogues, quests, world placements, behaviours, strings and voice recording. It exports an ordinary mod folder that the layer loads,
+and can import existing mods and `.pNN` archives (via `risen-pack2mod --project`). It only needs a copy of the game's `data` folder, not a running game.
+
+| Read | For |
+|---|---|
+| [Editor user guide](docs/editor/USER_GUIDE.md) | build and start, first-time setup, every editor panel, export / import, the command line, limits |
+| [Chronicle walkthrough](docs/editor/CHRONICLE.md) | a complete example mod (`examples/modkit/chronicle.rmk.json`) with a table of which features it covers |
+| [Requirements and architecture](docs/editor/REQUIREMENTS.md) | the editor's design, stages E0-E20 and their state |
+| [Localization](docs/editor/LOCALIZATION.md) | the editor's UI languages (English embedded, German ships) and how to add one |
+| [Converting archive mods](docs/PACK2MOD.md) | `risen-pack2mod`: turn `.pNN` / `.pak` mods into a layer mod or a modkit project |
+
+Build it with `cmake --build build --config RelWithDebInfo --target risen-modkit` (see the user guide); more example projects are in [`examples/modkit`](examples/modkit).
+If you outgrow the editor, exported mods are plain Lua: continue with the [modding guide](docs/MODDING_GUIDE.md).
+
 ## Install
 
 Download the release zip (or build it with `scripts\package.ps1`), then:
