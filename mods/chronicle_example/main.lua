@@ -8,11 +8,13 @@ local data = {
     dialogs = require("data.dialogs"),
     world = require("data.world"),
     assets = require("data.assets"),
+    patches = require("data.patches"),
+    dialog_edits = require("data.dialog_edits"),
     layers = require("data.layers"),
     events = require("data.events"),
     behaviors = require("data.behaviors"),
 }
-local lua = runtime.extensions({})
+local lua = runtime.extensions(require("data.lua_files"))  -- the project's Lua files, in order
 lua.call("before_install", data)
 runtime.install(data)
 require("modkit.events").install(data.events, runtime)

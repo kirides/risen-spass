@@ -68,6 +68,15 @@ return {
             world = "World",
             layer = "AshCamp",
         },
+        {
+            key = "253c21c66e5c",
+            id = "f9e70034-b8fa-40b2-b8b7-6dca9d95bfb9",
+            name = "Edgar",
+            items = { { "MKC_Chronicle_Blade", 1 }, { "MKC_Tide_Potion", 2 } },
+            equip = { "MKC_Chronicle_Blade" },
+            world = "World",
+            layer = "AshCamp",
+        },
     },
     removals = {
         {
@@ -84,6 +93,15 @@ return {
             name = "Obj_Nat_Stone_Shape_02_Small_L01",
             position = { -31910, 655, -3777 },
             rotation = { 33, 0, 0 },
+            world = "World",
+        },
+    },
+    teachers = {
+        {
+            id = "f9e70034-b8fa-40b2-b8b7-6dca9d95bfb9",
+            name = "Edgar",
+            skill = "Strength",
+            max = 130,
             world = "World",
         },
     },

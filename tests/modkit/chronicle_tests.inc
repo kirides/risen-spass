@@ -77,6 +77,40 @@ TEST(chronicle_validates_clean_and_uses_every_feature) {
     CHECK(!p.items.empty() && !p.item_groups.empty() && !p.recipes.empty() && !p.spells.empty() && !p.npc_templates.empty() && !p.npc_groups.empty());
     CHECK(!p.npcs.empty() && !p.dialogs.empty() && !p.quests.empty() && !p.events.empty() && !p.layers.empty() && !p.assets.empty() && !p.behaviors.empty());
     CHECK(!p.world.spawns.empty() && !p.world.containers.empty() && !p.world.removals.empty() && !p.world.moves.empty());
+    // the features since the first version of the example: free string rows, template patches, shipped dialogue edits (XP added and changed, a
+    // trader refill, a property edit), a teaching limit, an ordered modifier list with a mode, an equipped item in a container fill, a Lua file
+    CHECK(!p.strings.empty() && !p.patches.empty() && !p.teachers.empty());
+    bool xp_add = false, xp_change = false, refill = false, op = false;
+    for (auto& e : p.dialog_edits) {
+        xp_add |= e.xp_add.has_value();
+        xp_change |= e.xp_old.has_value() && e.xp_new.has_value();
+        refill |= !e.refills.empty();
+        op |= !e.ops.empty();
+    }
+    CHECK(xp_add && xp_change && refill && op);
+    bool ordered_mode = false;
+    for (auto& it : p.items)
+        for (auto& [skill, mode] : it.modifier_modes) ordered_mode |= !it.modifier_order.empty() && mode != "add";
+    CHECK(ordered_mode);
+    bool equip = false;
+    for (auto& c : p.world.containers)
+        for (auto& i : c.items) equip |= i.equip;
+    CHECK(equip);
+    // the Lua file has both hooks, reacts to a mod event, and defines the script a Run script node of an event graph calls
+    CHECK(!p.lua_files.empty());
+    std::set<std::string> run_scripts;
+    for (auto& e : p.events)
+        for (auto& n : e.graph.nodes)
+            if (n.type == "run_script") run_scripts.insert(n.data.value("script", std::string()));
+    bool hooks = false, called = false, reacts = false;
+    for (auto& l : p.lua_files) {
+        const LuaFileInfo info = lua_file_info(u8str(fs::path(chronicle_dir()) / u8(l.file)));
+        CHECK(info.ok);
+        hooks |= info.hooks.size() == 2;
+        for (auto& s : info.scripts) called |= run_scripts.count(s) == 1;
+        reacts |= read_text(fs::path(chronicle_dir()) / u8(l.file)).find("risen.on(\"modkit.") != std::string::npos;
+    }
+    CHECK(hooks && called && reacts);
 }
 
 TEST(chronicle_import_round_trip) {

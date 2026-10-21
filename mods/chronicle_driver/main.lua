@@ -11,6 +11,7 @@ local MAREN_AT = { -30050, 700, -6350 }
 local CHEST = "2c2c2522-cdad-4dba-aba1-12a5e2054790"
 local TORCH = "01c4332e-efae-459f-9098-ae6c71dbd23d"
 local STONE = "3dbe0473-6c27-4a13-a0c2-86fdafabff88"
+local EDGAR = "f9e70034-b8fa-40b2-b8b7-6dca9d95bfb9"   -- the harbour guard of Harbour Town (a placed NPC of the world)
 
 T.plan {
     -- chapter 1
@@ -20,6 +21,14 @@ T.plan {
     "c1: only the layer that starts on is made",
     "c1: new items: numbers, requirements, modifiers, texts",
     "c1: changed items and item groups",
+    "c1: the Tide Draught's modifier list keeps its order and mode",
+    "c1: the Lua file's before_install set the amulet's value",
+    "c1: a template patch: the camp fire glows wider",
+    "c1: the free string rows are served",
+    "c1: Sara's dialogues: an XP reward added, one changed",
+    "c1: Sara gives two potions (property edit of a shipped info)",
+    "c1: Cormac's chapter 1 stock gets the Tide Draught (trader refill)",
+    "c1: Edgar teaches Strength only up to 130",
     "c1: the mod's icons are in the atlas",
     "c1: the new spell: items, mana, numbers",
     "c1: changed shipped spells",
@@ -41,6 +50,7 @@ T.plan {
     "c1: the turn-in takes the pearls, succeeds the quest, pays",
     "c1: the plan from the reward is known",
     "c1: the follow-up quest starts and the quest event gives a gift",
+    "c1: the Run script node writes page 1 with the Lua file's script",
     "c1: the lore option opens its sub-options, the tide one is hidden",
     "c1: the behaviour saw the player and the conversations",
     "c1: the scout is not there yet",
@@ -52,6 +62,7 @@ T.plan {
     "c2: the camp quest and the variables",
     "c2: a stock story sector was switched on by the graph",
     "c2: the camp's objects were made, the chest was filled once",
+    "c2: the harbour guard Edgar is armed with the camp (equipped item of a container fill)",
     "c2: the scout appears while the camp quest runs",
     "c2: the boss behaviour taunts when the player comes near",
     "c2: the tide option appears with the variable",
@@ -62,6 +73,7 @@ T.plan {
     "c2: a load rolls everything back, nothing is made twice",
     "c2: killing the warlord ends the quest on the first path",
     "c2: the kill event ran once",
+    "c2: the warlord's fall writes page 2",
     "c2: the warlord's loot",
     "c2: the beacon quest starts after the camp",
     "c2: the scout leaves when the camp quest is done",
@@ -90,10 +102,12 @@ T.plan {
     "c4: killing the lord pays the finale quest",
     "c4: the kill event set the finale variable",
     "c4: the epilogue quest and the main quest end, the amulet is the reward",
+    "c4: the Lua file writes the last line when the main quest ends (modkit.quest_done)",
     "c4: Maren answers the finale question with the script",
     "c4: the epilogue teleports, sets the clock and takes the key",
     "c4: the circle layer switched itself off",
     "c4: every graph ran and every quest ended",
+    "c4: the after_install script counts the quests that ended well",
 }
 
 -- ---- bookkeeping ------------------------------------------------------------------------------------------------------------------------
@@ -114,6 +128,11 @@ local bhv = {}
 risen.on("chronicle.behavior", function(kind, name, a, b) bhv[#bhv + 1] = { kind = kind, name = name, a = a, b = b } end)
 local bells = {}
 risen.on("chronicle.bell", function(arg) bells[#bells + 1] = arg end)
+local equipped = {}   -- "<owner name>:<template>" -> slot
+risen.on("item.equipped", function(owner, template, slot)
+    local ok, n = pcall(function() return owner and owner:name() end)
+    if ok and n then equipped[n .. ":" .. tostring(template)] = slot end
+end)
 local function bhv_find(kind, name, pred)
     for _, e in ipairs(bhv) do
         if e.kind == kind and e.name == name and (not pred or pred(e)) then return e end
@@ -253,6 +272,45 @@ T.run(function()
              prop("It_1H_Sword_Rusty", "gCItem_PS", "GoldValue") == 9 and prop("It_1H_Sword_Rusty", "gCDamage_PS", "DamageAmount") == 11 and prop("It_Apple", "gCItem_PS", "GoldValue") == 2
                  and all_labels:find("Items/Potions", 1, true) ~= nil and all_labels:find("Items/Weapons_Axes", 1, true) ~= nil and risen.loc.get("FO_It_1H_Sword_Rusty") == "Salt-eaten sword",
              all_labels)
+    -- the features of the editor since the first version of the example (EXT-1..5, LUA-1..3)
+    local tide_mods = {}
+    for _, m in ipairs(risen.item.modifiers("MKC_Tide_Potion") or {}) do tide_mods[#tide_mods + 1] = ("%s:%d:%s"):format(m.skill, m.amount, tostring(m.mode)) end
+    T.eq("c1: the Tide Draught's modifier list keeps its order and mode", table.concat(tide_mods, ","), "HitPoints:160:add,ManaPoints:25:percent")
+    -- the project says 1500; lua/pages.lua's before_install makes it 250 per quest of the Chronicle (8 quests)
+    T.eq("c1: the Lua file's before_install set the amulet's value", prop("MKC_Tide_Amulet", "gCItem_PS", "GoldValue"), 2000)
+    T.eq("c1: a template patch: the camp fire glows wider", prop("Def_CampFire", "eCStaticAmbientLight_PS", "Range"), 900)
+    T.eq("c1: the free string rows are served", { risen.loc.get("MKC_PAGE_WRITTEN"), tostring(risen.loc.get("MKC_LAST_LINE")):find("^Maren writes the last line") ~= nil },
+         { "Maren writes page {page} of the Chronicle.", true })
+    local function last_command_with(inf, name, value)
+        for i = inf:command_count(), 1, -1 do
+            if inf:get_command_property(i, name) == value then return i end
+        end
+    end
+    local sara_first, sara_storm = risen.dialog.get("HOGEX2_00006"), risen.dialog.get("PANKRATZX2_01756")
+    local n_first = sara_first and sara_first:command_count() or 0
+    T.eq("c1: Sara's dialogues: an XP reward added, one changed",
+         { sara_first and sara_first:get_command_property(n_first, "Amount"), sara_storm and last_command_with(sara_storm, "Amount", "120") ~= nil,
+           sara_storm and last_command_with(sara_storm, "Amount", "50") == nil },
+         { "40", true, true })
+    local sara_back = risen.dialog.get("PANKRATZX2_01755")
+    T.eq("c1: Sara gives two potions (property edit of a shipped info)", sara_back and { sara_back:get_command_property(10, "Amount"), sara_back:get_command_property(10, "Entity1") },
+         { "2", "Sara" })
+    local stock = risen.dialog.get("FILLERX2_00976")
+    local ri = stock and last_command_with(stock, "Other", "MKC_Tide_Potion")
+    local cormac = named("Cormac")
+    local traded = 0
+    for i = 0, (cormac and cormac:stack_count() or 0) - 1 do
+        local s = cormac:stack_item(i)
+        if s and s:name() == "MKC_Tide_Potion" then traded = traded + 1 end   -- a trade stack (risen.item.count does not count those)
+    end
+    T.expect("c1: Cormac's chapter 1 stock gets the Tide Draught (trader refill)", ri ~= nil and stock:get_command_property(ri, "Self") == "Cormac" and stock:get_command_property(ri, "Param") == "3" and traded >= 1,
+             ("refill command %s; Cormac %s has %d Tide Draught stack(s)"):format(tostring(ri), tostring(cormac), traded))
+    local edgar = risen.entity.by_id(EDGAR)
+    local limit
+    for _, e in ipairs(edgar and risen.npc.teach_skills(edgar) or {}) do
+        if e.skill == "gESkill_Stat_STR" then limit = e.max end
+    end
+    T.eq("c1: Edgar teaches Strength only up to 130", limit, 130)
     local icon = "IC_chronicle_example_chronicle_blade"
     local bm = risen.assets.bitmap(icon)
     local blade_t = risen.template.get("MKC_Chronicle_Blade")
@@ -368,6 +426,8 @@ T.run(function()
     T.wait_until(function() return risen.quest.is_running("Q_MKC_Scout") and (ran["Ink delivered:give_item"] or 0) >= 1 end, 30, "follow-up quest")
     T.expect("c1: the follow-up quest starts and the quest event gives a gift", risen.quest.is_running("Q_MKC_Scout") and risen.item.count(p1, "It_Plant_Health_01") >= 2,
              ("scout quest %s plants %d"):format(qstatus("Q_MKC_Scout"), risen.item.count(p1, "It_Plant_Health_01")))
+    wait(function() return (ran["Ink delivered:run_script"] or 0) >= 1 end, 20, "page 1")
+    T.eq("c1: the Run script node writes page 1 with the Lua file's script", { ran["Ink delivered:run_script"], risen.gamevar.get("mkc_pages") }, { 1, 1 })
     talk(maren)
     assert(risen.dialog.get("MKC_Maren_Lore")):run()
     T.wait_event("info.finished", 60, function(name) return name == "MKC_Maren_Lore" end)
@@ -408,9 +468,14 @@ T.run(function()
     for _, e in ipairs(spawned) do
         if e:template() and e:template():name() == "Def_CampFire" and near(e, CAMP, 400) then fires = fires + 1 end
     end
-    T.wait_until(function() return #filled >= 2 end, 20, "camp chest filled")
+    wait(function() return #filled >= 3 end, 20, "camp chest and Edgar filled")
     local chest2 = risen.entity.by_id("7bd3ae88-20f1-490c-8c86-f7e02d4f5787")
-    T.eq("c2: the camp's objects were made, the chest was filled once", { fires, chest2 and risen.item.count(chest2, "MKC_Tide_Potion"), #filled }, { 1, 2, 2 })
+    -- three container fills by now: the beach chest (chapter 1), the camp chest and Edgar (both members of the AshCamp layer)
+    T.eq("c2: the camp's objects were made, the chest was filled once", { fires, chest2 and risen.item.count(chest2, "MKC_Tide_Potion"), #filled }, { 1, 2, 3 })
+    local edgar2 = risen.entity.by_id(EDGAR)
+    T.eq("c2: the harbour guard Edgar is armed with the camp (equipped item of a container fill)",
+         { edgar2 ~= nil, equipped["Edgar:MKC_Chronicle_Blade"] ~= nil, edgar2 and risen.item.count(edgar2, "MKC_Tide_Potion") },
+         { true, true, 2 })
     T.wait_until(function() return named("MKC_Scout") ~= nil end, 30, "scout appears")
     T.expect("c2: the scout appears while the camp quest runs", named("MKC_Scout") ~= nil and (risen.npc.stats(named("MKC_Scout")) or {}).guild == "Cit", tostring(named("MKC_Scout")))
 
@@ -463,6 +528,8 @@ T.run(function()
     T.eq("c2: killing the warlord ends the quest on the first path", { qdone_ok("Q_MKC_Camp"), x3 - x2 >= 400, risen.item.count(p1, "MKC_Tide_Potion") >= 2 }, { true, true, true })
     T.wait_until(function() return risen.gamevar.get("mkc_camp_broken") == 1 end, 20, "camp broken")
     T.eq("c2: the kill event ran once", { risen.gamevar.get("mkc_camp_broken"), ran["Camp falls"], ran["Camp falls:send_signal"], (ran["Camp down:quest_log"] or 0) >= 1 }, { 1, 1, 1, true })
+    wait(function() return (ran["Camp falls:run_script"] or 0) >= 1 end, 20, "page 2")
+    T.eq("c2: the warlord's fall writes page 2", { ran["Camp falls:run_script"], risen.gamevar.get("mkc_pages") }, { 1, 2 })
     local loot = risen.item.count(warlord, "MKC_Warlord_Axe") + risen.item.count(warlord, "MKC_Tide_Potion") + risen.item.count(warlord, "It_Gold")
     T.expect("c2: the warlord's loot", risen.item.count(warlord, "MKC_Warlord_Axe") >= 1 and loot >= 3, ("axe %d potions %d gold %d"):format(risen.item.count(warlord, "MKC_Warlord_Axe"), risen.item.count(warlord, "MKC_Tide_Potion"), risen.item.count(warlord, "It_Gold")))
     T.expect("c2: the beacon quest starts after the camp", risen.quest.is_running("Q_MKC_Beacon"), qstatus("Q_MKC_Beacon"))
@@ -607,6 +674,8 @@ T.run(function()
     T.wait_until(function() return qdone_ok("Q_MKC_Chronicle") and qdone_ok("Q_MKC_Epilogue") end, 30, "main quest")
     T.eq("c4: the epilogue quest and the main quest end, the amulet is the reward", { qdone_ok("Q_MKC_Epilogue"), qdone_ok("Q_MKC_Chronicle"), risen.item.count(p1, "MKC_Tide_Amulet"), risen.gamevar.get("mkc_chronicle_done") },
          { true, true, 1, 1 })
+    wait(function() return risen.gamevar.get("mkc_last_line") == 1 end, 20, "the last line")
+    T.eq("c4: the Lua file writes the last line when the main quest ends (modkit.quest_done)", { qdone.Q_MKC_Chronicle, risen.gamevar.get("mkc_last_line") }, { "success", 1 })
     -- the epilogue: 6 s after the signal
     T.wait_until(function() return risen.item.count(p1, "MKC_Tide_Key") == 0 and (ran["Epilogue:teleport"] or 0) >= 1 end, 90, "epilogue")
     T.sleep(60)
@@ -635,5 +704,12 @@ T.run(function()
         if q ~= "Q_MKC_Scout" and not qdone_ok(q) then open[#open + 1] = q .. "=" .. qstatus(q) end
     end
     T.expect("c4: every graph ran and every quest ended", #unused == 0 and #open == 0, "not run: " .. table.concat(unused, ", ") .. "; open: " .. table.concat(open, ", "))
+    -- MKC_PagesWritten (defined by after_install of lua/pages.lua) counts the mod's quests that ended with success
+    local won = 0
+    for _, q in ipairs({ "Q_MKC_Chronicle", "Q_MKC_Ink", "Q_MKC_Scout", "Q_MKC_Wolves", "Q_MKC_Camp", "Q_MKC_Beacon", "Q_MKC_Finale", "Q_MKC_Epilogue" }) do
+        if qdone_ok(q) then won = won + 1 end
+    end
+    local pages = risen.script.call("MKC_PagesWritten", player(), player(), 0)
+    T.expect("c4: the after_install script counts the quests that ended well", pages == won and won >= 7, ("script %s, quests won %d"):format(tostring(pages), won))
     T.finish("chronicle done")
 end, "chronicle")

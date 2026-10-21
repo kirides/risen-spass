@@ -75,7 +75,10 @@ return {
                 default = "Tastes of salt and ash.",
             },
             value = 90,
-            modifies = { HitPoints = 160 },
+            modifies = {
+                { skill = "HitPoints", amount = 160 },
+                { skill = "ManaPoints", amount = 25, mode = "percent" },
+            },
         },
         MKC_Warlord_Axe = {
             base = "It_Axe_Waraxe",

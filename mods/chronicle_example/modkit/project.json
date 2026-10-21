@@ -48,7 +48,15 @@
       },
       "value": 90,
       "modifies": {
-        "HitPoints": 160
+        "HitPoints": 160,
+        "ManaPoints": 25
+      },
+      "modifies_order": [
+        "HitPoints",
+        "ManaPoints"
+      ],
+      "modifies_modes": {
+        "ManaPoints": "percent"
       }
     },
     {
@@ -3696,6 +3704,18 @@
             "data": {
               "name": "ink_done"
             }
+          },
+          {
+            "uid": "37c70fe179b745bba463763bdb6d5a1c",
+            "type": "run_script",
+            "pos": [
+              1020.0,
+              0.0
+            ],
+            "data": {
+              "script": "MKC_WritePage",
+              "arg": 1
+            }
           }
         ],
         "links": [
@@ -3720,10 +3740,21 @@
               "4f0ce4081d6073873e3a040c11c2665d",
               "in"
             ]
+          },
+          {
+            "uid": "930ece58d4cf465caf6e64089797667e",
+            "from": [
+              "4f0ce4081d6073873e3a040c11c2665d",
+              "next"
+            ],
+            "to": [
+              "37c70fe179b745bba463763bdb6d5a1c",
+              "in"
+            ]
           }
         ]
       },
-      "notes": "On quest status: a gift, then a signal to another graph."
+      "notes": "On quest status: a gift, a signal to another graph, then page 1 of the Chronicle (Run script: MKC_WritePage of the Lua file pages)."
     },
     {
       "uid": "901a8a04694dac38a4363079b434a3ae",
@@ -4443,6 +4474,18 @@
             "data": {
               "text": "the warlord fell but Maren or the chapter variable is missing"
             }
+          },
+          {
+            "uid": "1c8cfdaf3ff34aba9a20db38f2731caa",
+            "type": "run_script",
+            "pos": [
+              2040.0,
+              0.0
+            ],
+            "data": {
+              "script": "MKC_WritePage",
+              "arg": 2
+            }
           }
         ],
         "links": [
@@ -4511,10 +4554,21 @@
               "a54f38156be8e6aa7e215f2cf9d98790",
               "in"
             ]
+          },
+          {
+            "uid": "54568f67668744cebb6f14daea835d6a",
+            "from": [
+              "d127cd50072a0f51f3ae009b2f7f6830",
+              "next"
+            ],
+            "to": [
+              "1c8cfdaf3ff34aba9a20db38f2731caa",
+              "in"
+            ]
           }
         ]
       },
-      "notes": "On kill (a named NPC, by the player) + alive / variable checks."
+      "notes": "On kill (a named NPC, by the player) + alive / variable checks; page 2 of the Chronicle (Run script: MKC_WritePage of the Lua file pages)."
     },
     {
       "uid": "d6ea694c51b1a1022200e8a5dfdea623",
@@ -6349,7 +6403,8 @@
         "4c5f135e19f6ab16241e51a12886912a"
       ],
       "containers": [
-        "752335929e3e0157cbdbaa2814852fa3"
+        "752335929e3e0157cbdbaa2814852fa3",
+        "253c21c66e5c46ff96b28b8b4854c923"
       ],
       "notes": "Chapter 2: switched on by the graph 'Chapter 2: the hidden camp', off when the beacon quest is done."
     },
@@ -6516,6 +6571,23 @@
             3
           ]
         ]
+      },
+      {
+        "uid": "253c21c66e5c46ff96b28b8b4854c923",
+        "guid": "f9e70034-b8fa-40b2-b8b7-6dca9d95bfb9",
+        "entity_name": "Edgar",
+        "layer": "Harbour_Town_NPC_01",
+        "items": [
+          [
+            "MKC_Chronicle_Blade",
+            1,
+            true
+          ],
+          [
+            "MKC_Tide_Potion",
+            2
+          ]
+        ]
       }
     ],
     "removals": [
@@ -6572,6 +6644,89 @@
       "kind": "mesh"
     }
   ],
+  "strings": [
+    {
+      "uid": "49ac5ca8dfc240719e4c120620a5b33b",
+      "id": "MKC_PAGE_WRITTEN",
+      "text": {
+        "English": "Maren writes page {page} of the Chronicle.",
+        "German": "Maren schreibt Seite {page} der Chronik."
+      },
+      "notes": "Shown by MKC_WritePage (lua/pages.lua) when a Run script node writes a page."
+    },
+    {
+      "uid": "5247f8424ac8441582bbf82499f210b0",
+      "id": "MKC_LAST_LINE",
+      "text": {
+        "English": "Maren writes the last line: \"And the tide took the ash away.\"",
+        "German": "Maren schreibt die letzte Zeile: \"Und die Flut nahm die Asche mit.\""
+      },
+      "notes": "Shown by lua/pages.lua when the main quest Q_MKC_Chronicle ends."
+    }
+  ],
+  "patches": [
+    {
+      "uid": "6d00cd82f97542619d37252b92ef92e6",
+      "template": "Def_CampFire",
+      "properties": {
+        "eCStaticAmbientLight_PS": {
+          "Range": 900.0
+        }
+      },
+      "notes": "The Ash Camp's fire glows far into the ashen night (550 in the game)."
+    }
+  ],
+  "dialog_edits": [
+    {
+      "uid": "a92965c865aa42b18147777b4a9d023b",
+      "info": "HOGEX2_00006",
+      "xp_add": 40,
+      "notes": "Sara on the beach, 'Are you okay?': the first page of the shipwreck is worth experience."
+    },
+    {
+      "uid": "84e1821b01ea41ec9191536d432308ba",
+      "info": "PANKRATZX2_01756",
+      "xp_old": 50,
+      "xp_new": 120,
+      "notes": "Sara: the island is free of storms. Maren wants to hear that: more experience."
+    },
+    {
+      "uid": "4eece739e29e4acea7dc8168f5f335cd",
+      "info": "PANKRATZX2_01755",
+      "ops": [
+        {
+          "kind": "command",
+          "index": 10,
+          "name": "Amount",
+          "old": "1",
+          "new": "2"
+        }
+      ],
+      "notes": "Sara found two potions on the shore instead of one (command 10, Give)."
+    },
+    {
+      "uid": "e31e7fe566404874966519c191cd1e9e",
+      "info": "FILLERX2_00976",
+      "chapter": 1,
+      "refills": [
+        [
+          "Cormac",
+          "MKC_Tide_Potion",
+          3
+        ]
+      ],
+      "notes": "Cormac's chapter 1 stock: the harbour's potion seller brews Maren's Tide Draught too."
+    }
+  ],
+  "teachers": [
+    {
+      "uid": "0f70b160c7df4150a26fbccf2167e01f",
+      "guid": "f9e70034-b8fa-40b2-b8b7-6dca9d95bfb9",
+      "entity_name": "Edgar",
+      "skill": "Strength",
+      "max": 130
+    }
+  ],
   "behaviors": [
     {
       "uid": "2d14c8982f871d1f8411b8c4abefe585",
@@ -6582,6 +6737,13 @@
       "uid": "5b5696f6d99d1c44539939527220073e",
       "name": "camp_watch",
       "file": "chronicle/behaviors/camp_watch.lua"
+    }
+  ],
+  "lua_files": [
+    {
+      "uid": "4536dc22324840d98347845fbcbadf0e",
+      "name": "pages",
+      "file": "chronicle/lua/pages.lua"
     }
   ],
   "editor": {}
