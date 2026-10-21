@@ -544,6 +544,9 @@ void import_dialogs(Ctx& c, const json& d) {
     // the vector is complete now: resolve the pointers again
     by_owner.clear();
     for (auto& dd : c.p.dialogs) by_owner[dd.owner] = &dd;
+    std::set<std::string> parents;  // infos with sub-options
+    for (auto& info : infos)
+        if (info.contains("parent")) parents.insert(info.value("parent", std::string()));
     for (auto& info : infos) {
         DialogDef* dd = by_owner[info.value("owner", std::string())];
         Graph& g = dd->graph;
@@ -555,7 +558,14 @@ void import_dialogs(Ctx& c, const json& d) {
         opt_node.data["info"] = name;
         opt_node.data["type"] = info.value("type", std::string("Info"));
         opt_node.data["permanent"] = info.value("permanent", false);
-        const json lines = info.value("lines", json::array());
+        json lines = info.value("lines", json::array());
+        // an option without sub-options either ends the conversation or returns to the start (a Return to start node: a sub-option's trailing Back)
+        bool restart = false;
+        if (!parents.count(name) && std::none_of(lines.begin(), lines.end(), [](const json& l) { return l.value("command", std::string()) == "End"; })) {
+            restart = true;
+            if (!lines.empty() && lines.back().value("command", std::string()) == "Back") lines.erase(lines.size() - 1);
+            else if (!parent.empty()) c.warn.push_back("option " + name + ": a sub-option without End or Back now returns to the start");
+        }
         size_t first_line = 0;
         if (!lines.empty() && lines[0].value("speaker", std::string()) == "player" && lines[0].contains("text")) {
             opt_node.data["text"] = text_json(text_of(c, lines[0]["text"]));
@@ -624,6 +634,11 @@ void import_dialogs(Ctx& c, const json& d) {
             prev = n.uid;
             prev_pin = "next";
             lx += 330;
+        }
+        if (restart) {
+            GraphNode n = make_node(GraphKind::Dialog, "restart", lx, y);
+            g.nodes.push_back(n);
+            add_link(GraphKind::Dialog, g, prev, prev_pin, n.uid, "in");
         }
         y = std::max(y + 220, cy + 40);
     }

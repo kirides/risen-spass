@@ -27,6 +27,12 @@ local function define_content()
         lines = { { speaker = "player", listener = "npc", text = "Never mind." },
                   { command = "Back" } },   -- back to the top level
     })
+    -- a top-level option without End: the list comes back (the editor's Return to start node)
+    risen.dialog.create({
+        name = "SPASS_Br_Lore", owner = NPC, permanent = true,
+        lines = { { speaker = "player", listener = "npc", text = "Any news?" },
+                  { speaker = "npc", listener = "player", text = "None worth telling." } },
+    })
 end
 risen.on("load.before", define_content)
 risen.on("session.start", function(mode) define_content(); if mode == "new" then go("spawn") end end)
@@ -76,6 +82,14 @@ risen.on("tick", function()
     elseif step == "wait_top" then
         if options():find("SPASS_Br_Town", 1, true) or wait > 3000 then
             log.info("branch: back at the top level: " .. options())
+            local lore = risen.dialog.get("SPASS_Br_Lore")
+            log.info("branch: choosing the top-level option without End -> " .. tostring(lore and lore:run()))
+            go("wait_lore")
+        end
+    elseif step == "wait_lore" then
+        -- the list is rebuilt after the lines played (it is empty while they play)
+        if (wait > 120 and options():find("SPASS_Br_Town", 1, true)) or wait > 3000 then
+            log.info("branch: after the top-level option: " .. options() .. " running=" .. tostring(risen.dialog.is_running()))
             go("end")
         end
     elseif step == "end" and wait == 60 and risen.test.is_active() then

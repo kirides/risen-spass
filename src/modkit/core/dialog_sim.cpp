@@ -154,7 +154,7 @@ void DialogSim::leave() {
 void DialogSim::run(const json& info) {
     used_.insert(info.value("name", std::string()));
     auto effect = [&](const std::string& t) { transcript_.push_back({SimLine::Kind::Effect, "", t}); };
-    bool first = true;
+    bool first = true, back = false;
     for (auto& l : info.value("lines", json::array())) {
         if (l.contains("speaker")) {
             const std::string sp = l.value("speaker", std::string("npc"));
@@ -190,7 +190,10 @@ void DialogSim::run(const json& info) {
                 transcript_.push_back({SimLine::Kind::End, "", "(the conversation ends)"});
                 return;
             }
-            if (cmd == "SetGameEvent") {
+            if (cmd == "Back") {
+                back = true;
+                effect("back to the start");
+            } else if (cmd == "SetGameEvent") {
                 world.events.insert(l.value("GameEvent", std::string()));
                 effect("event " + l.value("GameEvent", std::string()) + " set");
             } else if (cmd == "ClearGameEvent") {
@@ -215,10 +218,12 @@ void DialogSim::run(const json& info) {
             }
         }
     }
-    // what follows: the sub-options, or back to the list
+    // what follows: the sub-options; else the parent's list stays (the engine's sub-menu) unless Back returns to the start
+    const std::string parent = info.value("parent", std::string());
     current_ = info.value("name", std::string());
-    const auto opts = options();
-    if (opts.empty() && !ended_) current_.clear();
+    if (!options().empty()) return;
+    current_ = back ? std::string() : parent;
+    if (options().empty()) current_.clear();
 }
 
 std::vector<SimOption> DialogSim::options() const {

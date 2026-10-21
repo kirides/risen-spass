@@ -124,10 +124,11 @@ $cmds = @(
     @('no Lua errors',                         '^(?!(?s).*\[error\])')
 )
 $branch = @(
-    @('only the parent is offered at the top',  '(?m)branch: top-level options: PANKRATZX2_00004,SPASS_Br_Town\r?$'),
+    @('only the top-level options are offered', '(?m)branch: top-level options: PANKRATZX2_00004,SPASS_Br_Lore,SPASS_Br_Town\r?$'),
     @('the children replace the menu',          'branch: the children are offered: SPASS_Br_Back,SPASS_Br_Harbor,SPASS_Br_Monastery'),
     @('a child answers and the menu stays',     'branch: after the child: SPASS_Br_Back,SPASS_Br_Harbor,SPASS_Br_Monastery running=true'),
-    @('Back returns to the top level',          'branch: back at the top level: PANKRATZX2_00004,SPASS_Br_Town'),
+    @('Back returns to the top level',          'branch: back at the top level: PANKRATZX2_00004,SPASS_Br_Lore,SPASS_Br_Town'),
+    @('a top-level option without End returns to the list', 'branch: after the top-level option: PANKRATZX2_00004,SPASS_Br_Lore,SPASS_Br_Town running=true'),
     @('no Lua errors',                          '^(?!(?s).*\[error\])')
 )
 

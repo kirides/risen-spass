@@ -169,7 +169,7 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
         add_sound(*o, lines.back());
         // the sequence on "then"
         std::set<std::string> seen;
-        bool ended = false;
+        bool ended = false, restarts = false;
         auto out = links_from(g, o->uid, "then");
         const GraphNode* cur = out.empty() ? nullptr : g.find(out.front()->to_node);
         while (cur) {
@@ -239,14 +239,21 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
                 lines.push_back(json::object({{"command", "End"}}));
                 ended = true;
                 break;
+            } else if (cur->type == "restart") {
+                // the top-level list comes back by itself after a top-level option; a sub-option needs a Back (its parent's list stays otherwise, RE.md section 21)
+                if (parent_of(*o)) lines.push_back(json::object({{"command", "Back"}}));
+                restarts = true;
+                break;
             }
             auto nx = links_from(g, cur->uid, "next");
             cur = nx.empty() ? nullptr : g.find(nx.front()->to_node);
         }
         const bool has_children = !links_from(g, o->uid, "choices").empty();
         if (ended && has_children) warn(o->uid, tr("the sequence ends the conversation, so the sub-options are never shown"));
-        // an open conversation blocks saving: an option without sub-options ends it
-        if (!ended && !has_children) lines.push_back(json::object({{"command", "End"}}));
+        if (restarts && has_children) warn(o->uid, tr("the sequence returns to the start, so the sub-options are never shown"));
+        // an open conversation blocks saving: an option without sub-options ends it unless it returns to the start (a Return to start node, or a Back command)
+        const bool back = !lines.empty() && lines.back().value("command", std::string()) == "Back";
+        if (!ended && !restarts && !back && !has_children) lines.push_back(json::object({{"command", "End"}}));
         info["lines"] = lines;
         infos.push_back(info);
     }

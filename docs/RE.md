@@ -563,7 +563,8 @@ listed and read through the engine's own exports instead of parsing the `FFC`/`G
   (`risen.dialog.rebuild` calls it). `gCInfoSystem::OnInfoFinished` (`0x8afcb0`): after an info ran, if it has available children (`AreChildInfosAvailable`) the menu is
   rebuilt from `GetChildInfoList` (children with Type 3 whose conditions hold), otherwise the owner's top-level list is rebuilt. Children stay offered after a permanent
   child; the `Back` command (child of a parent -> its parent's list becomes the top level again) returns to the top-level list. The children appear only *after the parent's
-  lines finished playing* (about 11 seconds for two lines).
+  lines finished playing* (about 11 seconds for two lines). A top-level option without `End` leaves the conversation running and its top-level list is offered again
+  (scenario `branch`, the editor's Return to start node).
 
 ## 22. Entity templates at runtime [confirmed in-game unless marked]
 

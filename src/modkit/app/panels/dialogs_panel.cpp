@@ -295,8 +295,8 @@ private:
             ImGui::TextWrapped("%s", tr("Select a node to edit it."));
             ImGui::Spacing();
             ImGui::TextWrapped("%s", tr("An Option is what the player says; its 'then' pin leads to the lines and commands that follow, its 'choices' pin to "
-                               "sub-options, 'when' takes conditions. A sequence without an End returns to the list of options (an option without "
-                               "sub-options gets an End by itself)."));
+                               "sub-options, 'when' takes conditions. An option without sub-options ends the conversation unless its sequence "
+                               "leads to a Return to start node (the NPC's list of options again)."));
             draw_issues(issues, "");
             return;
         }

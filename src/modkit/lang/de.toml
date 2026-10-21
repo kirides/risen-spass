@@ -619,7 +619,7 @@ author = "risen-spass"
 # src/modkit/app/panels/dialogs_panel.cpp:295 (+1)
 "Select a node to edit it." = "Wähle einen Knoten, um ihn zu bearbeiten."
 # src/modkit/app/panels/dialogs_panel.cpp:297
-"An Option is what the player says; its 'then' pin leads to the lines and commands that follow, its 'choices' pin to sub-options, 'when' takes conditions. A sequence without an End returns to the list of options (an option without sub-options gets an End by itself)." = "Eine Option ist, was der Spieler sagt; ihr Pin „then“ führt zu den folgenden Zeilen und Befehlen, ihr Pin „choices“ zu Unteroptionen, „when“ nimmt Bedingungen auf. Eine Folge ohne End kehrt zur Liste der Optionen zurück (eine Option ohne Unteroptionen bekommt von selbst ein End)."
+"An Option is what the player says; its 'then' pin leads to the lines and commands that follow, its 'choices' pin to sub-options, 'when' takes conditions. An option without sub-options ends the conversation unless its sequence leads to a Return to start node (the NPC's list of options again)." = "Eine Option ist, was der Spieler sagt; ihr Pin „then“ führt zu den folgenden Zeilen und Befehlen, ihr Pin „choices“ zu Unteroptionen, „when“ nimmt Bedingungen auf. Eine Option ohne Unteroptionen beendet das Gespräch, außer ihre Folge führt zu einem Knoten „Zurück zum Anfang“ (wieder die Liste der Optionen des NPCs)."
 # src/modkit/app/panels/dialogs_panel.cpp:314 (+1)
 "Player says" = "Spieler sagt"
 # src/modkit/app/panels/dialogs_panel.cpp:315 (+3)
@@ -2084,8 +2084,10 @@ author = "risen-spass"
 "a log entry needs a quest and a text" = "ein Logeintrag braucht eine Quest und einen Text"
 # src/modkit/core/dialog.cpp:236
 "the Script node names no script" = "der Skript-Knoten nennt kein Skript"
-# src/modkit/core/dialog.cpp:247
+# src/modkit/core/dialog.cpp:252
 "the sequence ends the conversation, so the sub-options are never shown" = "die Folge beendet das Gespräch, daher werden die Unteroptionen nie angezeigt"
+# src/modkit/core/dialog.cpp:253
+"the sequence returns to the start, so the sub-options are never shown" = "die Folge kehrt zum Anfang zurück, daher werden die Unteroptionen nie angezeigt"
 # src/modkit/core/events.cpp:60
 "A point of the world (x, y, z in game units, 100 = 1 m) or the position of a named entity." = "Ein Punkt der Welt (x, y, z in Spieleinheiten, 100 = 1 m) oder die Position einer benannten Entität."
 # src/modkit/core/events.cpp:62 (+2)
@@ -2497,40 +2499,44 @@ author = "risen-spass"
 # src/modkit/core/graph.cpp:41
 "Ends the conversation." = "Beendet das Gespräch."
 # src/modkit/core/graph.cpp:42
+"Return to start" = "Zurück zum Anfang"
+# src/modkit/core/graph.cpp:42
+"Shows the NPC's list of options again instead of ending the conversation (informational talk; the player leaves through the NPC's own goodbye option)." = "Zeigt wieder die Liste der Optionen des NPCs, statt das Gespräch zu beenden (Gespräche zur Information; der Spieler geht über die eigene Abschiedsoption des NPCs)."
+# src/modkit/core/graph.cpp:45
 "A condition: quest state, items carried, a game variable or event, a skill, a guild, an NPC dead or alive." = "Eine Bedingung: Queststatus, getragene Gegenstände, eine Spielvariable oder ein Spielereignis, eine Fertigkeit, eine Gilde, ein NPC tot oder lebendig."
-# src/modkit/core/graph.cpp:44
+# src/modkit/core/graph.cpp:47
 "All of" = "Alle von"
-# src/modkit/core/graph.cpp:44
+# src/modkit/core/graph.cpp:47
 "Holds when every linked condition holds." = "Trifft zu, wenn jede verknüpfte Bedingung zutrifft."
-# src/modkit/core/graph.cpp:45
+# src/modkit/core/graph.cpp:48
 "Any of" = "Eine von"
-# src/modkit/core/graph.cpp:45
+# src/modkit/core/graph.cpp:48
 "Holds when one of the linked conditions holds." = "Trifft zu, wenn eine der verknüpften Bedingungen zutrifft."
-# src/modkit/core/graph.cpp:46
+# src/modkit/core/graph.cpp:49
 "Not" = "Nicht"
-# src/modkit/core/graph.cpp:46
+# src/modkit/core/graph.cpp:49
 "Holds when the linked condition does not." = "Trifft zu, wenn die verknüpfte Bedingung nicht zutrifft."
-# src/modkit/core/graph.cpp:53
+# src/modkit/core/graph.cpp:56
 "Start" = "Start"
-# src/modkit/core/graph.cpp:53
+# src/modkit/core/graph.cpp:56
 "Where the quest begins: started by a dialogue's Quest node, or by a trigger (an item picked up, an NPC killed, a game variable, the start of a game)." = "Wo die Quest beginnt: vom Quest-Knoten eines Dialogs gestartet oder durch einen Auslöser (ein aufgehobener Gegenstand, ein getöteter NPC, eine Spielvariable, der Spielbeginn)."
-# src/modkit/core/graph.cpp:57
-"Objective" = "Ziel"
-# src/modkit/core/graph.cpp:57
-"What the player has to do: bring items, kill, talk to someone (a dialogue option finished), a game variable." = "Was der Spieler tun muss: Gegenstände bringen, töten, mit jemandem sprechen (eine Dialogoption ist zu Ende), eine Spielvariable."
 # src/modkit/core/graph.cpp:60
+"Objective" = "Ziel"
+# src/modkit/core/graph.cpp:60
+"What the player has to do: bring items, kill, talk to someone (a dialogue option finished), a game variable." = "Was der Spieler tun muss: Gegenstände bringen, töten, mit jemandem sprechen (eine Dialogoption ist zu Ende), eine Spielvariable."
+# src/modkit/core/graph.cpp:63
 "Adds a line to the quest's log when the flow passes." = "Fügt dem Log der Quest eine Zeile hinzu, wenn der Ablauf vorbeikommt."
-# src/modkit/core/graph.cpp:62
-"Gives experience, items or gold, sets a game variable." = "Gibt Erfahrung, Gegenstände oder Gold, setzt eine Spielvariable."
-# src/modkit/core/graph.cpp:64
-"Either / or" = "Entweder / oder"
 # src/modkit/core/graph.cpp:65
+"Gives experience, items or gold, sets a game variable." = "Gibt Erfahrung, Gegenstände oder Gold, setzt eine Spielvariable."
+# src/modkit/core/graph.cpp:67
+"Either / or" = "Entweder / oder"
+# src/modkit/core/graph.cpp:68
 "Several ways to go on. Link each way's first Objective to the output: the quest waits for all of them at once, the first one the player completes decides the path (the others are dropped) and the flow continues behind it. Paths do not join: each ends with its own Outcome." = "Mehrere Wege, weiterzumachen. Verknüpfe das erste Ziel jedes Wegs mit dem Ausgang: Die Quest wartet auf alle gleichzeitig, das erste, das der Spieler erledigt, entscheidet den Pfad (die anderen werden verworfen), und der Ablauf geht dahinter weiter. Pfade vereinigen sich nicht: jeder endet mit einem eigenen Ergebnis."
-# src/modkit/core/graph.cpp:69
+# src/modkit/core/graph.cpp:72
 "Outcome" = "Ergebnis"
-# src/modkit/core/graph.cpp:69
+# src/modkit/core/graph.cpp:72
 "Ends the quest: success, failure or cancelled; may start a follow-up quest." = "Beendet die Quest: Erfolg, Misserfolg oder abgebrochen; kann eine Folgequest starten."
-# src/modkit/core/import.cpp:756
+# src/modkit/core/import.cpp:771
 "{0} has no mod.toml: not a mod folder" = "{0} hat keine mod.toml: kein Mod-Ordner"
 # src/modkit/core/lua_files.cpp:23
 "syntax error" = "Syntaxfehler"
@@ -3074,3 +3080,7 @@ author = "risen-spass"
 "a trader needs something to sell" = "ein Händler braucht etwas zu verkaufen"
 # src/modkit/core/wizards.cpp:360
 "every stock row needs an item and an amount of at least 1" = "jede Sortimentszeile braucht einen Gegenstand und eine Menge von mindestens 1"
+
+# Texts the editor no longer uses (delete them once nothing needs them).
+[obsolete]
+"An Option is what the player says; its 'then' pin leads to the lines and commands that follow, its 'choices' pin to sub-options, 'when' takes conditions. A sequence without an End returns to the list of options (an option without sub-options gets an End by itself)." = "Eine Option ist, was der Spieler sagt; ihr Pin „then“ führt zu den folgenden Zeilen und Befehlen, ihr Pin „choices“ zu Unteroptionen, „when“ nimmt Bedingungen auf. Eine Folge ohne End kehrt zur Liste der Optionen zurück (eine Option ohne Unteroptionen bekommt von selbst ein End)."

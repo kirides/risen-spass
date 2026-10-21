@@ -166,13 +166,15 @@ empty space** for a new node that is already linked, select and press **Delete**
 | **Log entry** | in, `next` | a line in a quest's log |
 | **Script** | in, `next` | calls a script (yours in `custom.lua`, or a game script) |
 | **End** | in | ends the conversation |
+| **Return to start** | in | shows the NPC's list of options again instead of ending the conversation (informational talk; the player leaves through the NPC's own goodbye option) |
 | **Condition** | out | quest state, items carried, a game variable or event, a skill, a guild, an NPC dead / alive |
 | **All of / Any of / Not** | in, out | combine conditions |
 | **Comment** | | a note on the canvas |
 
 Links only join pins that fit (the pin shapes and colours tell: triangles for the sequence, blue circles for options, teal for conditions), and the
-option tree and the conditions cannot loop. A sequence that does not end with **End** returns to the list of options; an option without
-sub-options gets an End by itself (an open conversation blocks saving). The inspector of an option shows the Lua the export writes for it; nodes with a
+option tree and the conditions cannot loop. Every option without sub-options ends either with **End** or with **Return to start**: one
+whose sequence has neither gets an End by itself (an open conversation blocks saving). Return to start shows the top-level list again, from a
+sub-option too (it exports as the engine's `Back` command there). The inspector of an option shows the Lua the export writes for it; nodes with a
 problem have a red border and the problems are listed under the properties and in the Problems panel.
 
 The quest conditions and item amounts become conditions the engine checks itself; any, not, values of variables and guilds are one Lua condition

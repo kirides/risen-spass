@@ -39,6 +39,9 @@ std::vector<NodeTypeDef> dialog_types() {
         {"script", N_("Script"), N_("Calls a script (risen.script.define in custom.lua, or a game script)."), 0xff5a5a5a,
          {{"in", "", true, PinKind::Flow, true}, {"next", "", false, PinKind::Flow, false}}},
         {"end", N_("End"), N_("Ends the conversation."), 0xffa53a3a, {{"in", "", true, PinKind::Flow, true}}},
+        {"restart", N_("Return to start"), N_("Shows the NPC's list of options again instead of ending the conversation (informational talk; the player leaves "
+                                         "through the NPC's own goodbye option)."),
+         0xff3a8a5a, {{"in", "", true, PinKind::Flow, true}}},
         {"cond", N_("Condition"), N_("A condition: quest state, items carried, a game variable or event, a skill, a guild, an NPC dead or alive."), 0xff2a7a7a,
          {kCondOut}},
         {"all", N_("All of"), N_("Holds when every linked condition holds."), 0xff2a6a6a, {{"in", "", true, PinKind::Cond, true}, kCondOut}},

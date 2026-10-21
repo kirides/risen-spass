@@ -90,6 +90,42 @@ TEST(dialog_compile_showcase) {
     CHECK_EQ(actions[0]["script"].get<std::string>(), std::string("MK_Q_MK_Ore_start"));
 }
 
+TEST(dialog_compile_return_to_start) {
+    Project p = load_showcase();
+    DialogDef& d = p.dialogs[0];
+    GraphNode top = make_node(GraphKind::Dialog, "option", 0, 3000);
+    top.data["text"] = json::object({{"English", "Tell me about the island."}});
+    GraphNode line = make_node(GraphKind::Dialog, "line", 300, 3000);
+    line.data["text"] = json::object({{"English", "It is an island."}});
+    GraphNode top_r = make_node(GraphKind::Dialog, "restart", 600, 3000);
+    GraphNode par = make_node(GraphKind::Dialog, "option", 0, 3200);
+    par.data["text"] = json::object({{"English", "Questions."}});
+    GraphNode sub = make_node(GraphKind::Dialog, "option", 400, 3400);
+    sub.data["text"] = json::object({{"English", "Who are you?"}});
+    GraphNode sub_r = make_node(GraphKind::Dialog, "restart", 700, 3400);
+    GraphNode sub_end = make_node(GraphKind::Dialog, "option", 400, 3600);
+    sub_end.data["text"] = json::object({{"English", "Bye."}});
+    d.graph.nodes.insert(d.graph.nodes.end(), {top, line, top_r, par, sub, sub_r, sub_end});
+    add_link(GraphKind::Dialog, d.graph, top.uid, "then", line.uid, "in");
+    add_link(GraphKind::Dialog, d.graph, line.uid, "next", top_r.uid, "in");
+    add_link(GraphKind::Dialog, d.graph, sub.uid, "then", sub_r.uid, "in");
+    add_link(GraphKind::Dialog, d.graph, par.uid, "choices", sub.uid, "parent");
+    add_link(GraphKind::Dialog, d.graph, par.uid, "choices", sub_end.uid, "parent");
+    std::vector<DialogIssue> issues;
+    const json infos = compile_dialog(p, d, issues);
+    auto lines_of = [&](const GraphNode& n) {
+        for (auto& i : infos)
+            if (i["name"] == info_name(p, n)) return i["lines"];
+        return json::array();
+    };
+    for (auto& i : issues) std::printf("  issue: %s\n", i.message.c_str());
+    CHECK(issues.empty());
+    CHECK_EQ(lines_of(top).size(), size_t(2));                                         // a top-level option: the list comes back by itself
+    CHECK_EQ(lines_of(sub).back()["command"].get<std::string>(), std::string("Back"));  // a sub-option returns to the top level with Back
+    CHECK_EQ(lines_of(sub_end).back()["command"].get<std::string>(), std::string("End"));  // the default still ends the conversation
+    CHECK(lines_of(par).back().contains("text"));                                       // a parent opens its sub-menu
+}
+
 TEST(dialog_problems) {
     Project p = load_showcase();
     DialogDef& d = p.dialogs[0];

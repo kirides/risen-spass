@@ -65,9 +65,7 @@ TEST(dialog_sim_playthrough) {
     CHECK(s.choose("d_start"));
     CHECK_EQ(s.world.quests["Q_Ore"], std::string("Running"));
     CHECK_EQ(s.world.items["It_Apple"], 2);
-    // d_start has no sub-options and no End: back to the list; ask for work again, now the ore option is there
-    CHECK(names() == hello_work);
-    CHECK(s.choose("d_work"));
+    // d_start has no sub-options and no End or Back: the sub-menu stays (as in the engine), now with the ore option
     CHECK(names() == std::vector<std::string>{"d_ore"});
     CHECK(s.choose("d_ore") && s.ended());
     CHECK_EQ(s.world.quests["Q_Ore"], std::string("Success"));
@@ -95,6 +93,21 @@ TEST(dialog_sim_important_opens_the_conversation) {
     DialogSim s(p, infos);
     CHECK(s.transcript().size() == 2 && s.transcript()[1].text == "Welcome back");  // played by itself
     CHECK(s.options().size() == 1 && s.options()[0].info == "i_bye");                 // and not listed
+}
+
+TEST(dialog_sim_back_returns_to_the_start) {
+    Project p;
+    p.mod.languages = {"English"};
+    json infos = json::parse(R"([
+      {"name":"t","permanent":true,"lines":[{"speaker":"player","text":"Town?"}]},
+      {"name":"t_a","parent":"t","permanent":true,"lines":[{"speaker":"player","text":"Harbor?"}]},
+      {"name":"t_b","parent":"t","permanent":true,"lines":[{"speaker":"player","text":"Never mind"},{"command":"Back"}]},
+      {"name":"lore","permanent":true,"lines":[{"speaker":"player","text":"Lore?"}]}])");
+    DialogSim s(p, infos);
+    CHECK(s.choose("t") && s.options().size() == 2);
+    CHECK(s.choose("t_a") && s.options().size() == 2 && s.options()[0].info == "t_a");  // the sub-menu stays
+    CHECK(s.choose("t_b") && !s.ended() && s.options().size() == 2 && s.options()[0].info == "t");  // Back: the top level
+    CHECK(s.choose("lore") && !s.ended() && s.options().size() == 2);  // a top-level option without End: the list again
 }
 
 TEST(dialog_sim_follows_a_compiled_project_dialogue) {

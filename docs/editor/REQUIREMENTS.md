@@ -111,7 +111,7 @@ IDs are referenced by the stages (section 9). **M** = must for the stage that im
 | ID | Requirement |
 |---|---|
 | DLG-1 M | Node-based editor on a scrolling, zoomable canvas (imgui-node-editor, the Unreal-Blueprints look): a dialogue graph per NPC. Node types: **Option** (an info: label = first line, type, permanent, sort order), **Line** (speaker, listener, text per language, optional voice file), **Command** (any engine dialogue command by name with its parameters: `Give`, `GiveXP`, `SetGameEvent`, `RunQuest`, `End`, ...), **Script** (call a named Lua script of the project), **Log** (quest log entry), **Condition** (see DLG-3), **Quest action** (start / succeed / fail a project quest). |
-| DLG-2 M | Multi-stage conversations: an Option node's "then" pin leads to child options (`parent`, the engine's sub-menu, RE.md section 21); "End" closes the conversation; an option without "End" returns to the option list. |
+| DLG-2 M | Multi-stage conversations: an Option node's "then" pin leads to child options (`parent`, the engine's sub-menu, RE.md section 21); "End" closes the conversation, "Return to start" shows the top-level option list again; an option without sub-options and without either ends the conversation. |
 | DLG-3 M | Conditions as nodes or inline: quest state, item count (player or NPC), game variable / game event, skill value, guild, NPC dead/alive, all/any/not. Mapped to `risen.cond.*` (engine conditions where possible, M9). |
 | DLG-4 M | Validation: every option has an owner NPC that exists (shipped placed NPC by unique name or a project NPC), every quest condition names a defined quest, command parameters exist (the layer's parameter lists, PROPERTIES.md "Dialogue commands"), every path ends. |
 | DLG-5 S | Preview: walk through the conversation in the editor (choose options, see lines, conditions evaluated against toggles). |
@@ -340,7 +340,10 @@ data that the importer can read back (IMP-2) and that a human can read.
   whose "then" pin leads here), `permanent`, `type`, `when` (the condition chain on its "condition" pin).
 * The **sequence** from the option's "lines" pin (Line, Command, Script, Log, Quest action nodes linked one after another) becomes `lines` in order; a Quest action becomes a
   `script` line that calls the runtime's generated script for that action.
-* A path that ends without an `End` command gets one automatically when the option has no children (an open conversation blocks saving, MODDING_GUIDE section 3 rule 6).
+* A path that ends without an `End` command gets one automatically when the option has no children (an open conversation blocks saving, MODDING_GUIDE section 3 rule 6),
+  unless it ends with a **Return to start** node: nothing is added for a top-level option (the engine rebuilds the top-level list), a `Back` command for a sub-option
+  (its parent's list would stay otherwise, RE.md section 21; both verified by the scenario `branch`). The import turns an info without sub-options and without `End`
+  (a trailing `Back` dropped) into one that ends with Return to start.
 
 ### 7.4 Quest graph -> quest data
 
