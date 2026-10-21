@@ -19,6 +19,10 @@
 .PARAMETER ResultFile  Path of spass\test-result.json: the run ends as soon as it exists.
 .PARAMETER StallSeconds  Kill the game when spass.log did not grow for this long (0 = no watchdog).
 .PARAMETER Width/Height  Size of the window the game is shrunk to.
+.PARAMETER AllowFocus  Let the game take the foreground as usual. By default the window is moved without activating it
+                     (SW_SHOWNOACTIVATE, SWP_NOACTIVATE); the game itself stays in the background through config.toml
+                     [debug] background (test-run.ps1 writes it). Either way the run reports when a window of the game became
+                     the foreground window or the mouse cursor was confined ($global:SpassRun.TookFocus / ClippedCursor).
 #>
 param(
     [Parameter(Mandatory = $true)][string]$GameDir,
@@ -39,7 +43,8 @@ param(
     # Save a PNG of the game window N seconds after this regex first appears in spass.log
     [string]$ScreenshotOn = '',
     [double]$ScreenshotDelay = 3,
-    [string]$ScreenshotPath = (Join-Path $env:TEMP 'risen_shot.png')
+    [string]$ScreenshotPath = (Join-Path $env:TEMP 'risen_shot.png'),
+    [switch]$AllowFocus
 )
 $ErrorActionPreference = 'Stop'
 
@@ -61,6 +66,27 @@ public static class RisenWin {
     public struct RECT { public int L, T, R, B; }
 }
 '@
+# own type (not added to RisenWin): a PowerShell session that already loaded an older RisenWin could not redefine it
+if (-not ('RisenFocus' -as [type])) {
+    Add-Type @'
+using System; using System.Runtime.InteropServices;
+public static class RisenFocus {
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+    [DllImport("user32.dll")] static extern bool GetClipCursor(out RECT r);
+    [DllImport("user32.dll")] static extern int GetSystemMetrics(int i);
+    struct RECT { public int L, T, R, B; }
+    // process id of the foreground window (0: none)
+    public static uint ForegroundPid() { uint pid = 0; IntPtr h = GetForegroundWindow(); if (h != IntPtr.Zero) GetWindowThreadProcessId(h, out pid); return pid; }
+    // the cursor is confined to less than the virtual screen (some program called ClipCursor)
+    public static bool CursorClipped() {
+        RECT r; if (!GetClipCursor(out r)) return false;
+        int x = GetSystemMetrics(76), y = GetSystemMetrics(77), w = GetSystemMetrics(78), h = GetSystemMetrics(79);
+        return r.L > x || r.T > y || r.R < x + w || r.B < y + h;
+    }
+}
+'@
+}
 
 $bin = Join-Path $GameDir 'bin'
 $log = Join-Path $bin 'spass\spass.log'
@@ -72,7 +98,9 @@ $env:SteamAppId = '40300'
 $env:SteamGameId = '40300'
 $started = Get-Date
 $p = Start-Process -FilePath (Join-Path $bin 'Risen.exe') -ArgumentList (@('-nosplash') + $ExtraArgs) -WorkingDirectory $bin -PassThru
-$global:SpassRun = [pscustomobject]@{ Reason = 'seconds'; Seconds = 0.0; Pid = $p.Id; ExitCode = $null }
+$global:SpassRun = [pscustomobject]@{ Reason = 'seconds'; Seconds = 0.0; Pid = $p.Id; ExitCode = $null; TookFocus = $null; ClippedCursor = $null }
+# a program that confined the cursor before the start is not the game's doing
+$clippedBefore = [RisenFocus]::CursorClipped()
 
 Add-Type -AssemblyName System.Drawing
 $shotDue = $null
@@ -88,6 +116,9 @@ try {
         $p.Refresh()
         $now = Get-Date
         if ($p.HasExited) { $reason = 'exited'; break }
+        # focus watch: seconds after the start at which a game window first was the foreground window / the cursor was confined
+        if ($null -eq $global:SpassRun.TookFocus -and [RisenFocus]::ForegroundPid() -eq [uint32]$p.Id) { $global:SpassRun.TookFocus = [math]::Round(($now - $started).TotalSeconds, 1) }
+        if ($null -eq $global:SpassRun.ClippedCursor -and -not $clippedBefore -and [RisenFocus]::CursorClipped()) { $global:SpassRun.ClippedCursor = [math]::Round(($now - $started).TotalSeconds, 1) }
         if ($now -ge $deadline) { $reason = 'seconds'; break }
         if ($ResultFile -ne '' -and (Test-Path $ResultFile)) { $reason = 'result'; break }
         if ($StallSeconds -gt 0) {
@@ -116,10 +147,13 @@ try {
         }
         if (-not $resized -and -not $NoResize -and $p.MainWindowHandle -ne [IntPtr]::Zero -and [RisenWin]::TitleOf($p.MainWindowHandle) -like 'RISEN*') {
             # async variants: a game thread that hangs must never block this script (the watchdog has to be able to kill it)
-            [RisenWin]::ShowWindowAsync($p.MainWindowHandle, 9) | Out-Null       # SW_RESTORE
-            # SWP_NOZORDER | SWP_SHOWWINDOW | SWP_ASYNCWINDOWPOS; the size is only changed with -Resize (the game starts at the size
+            # SW_RESTORE activates the window (the posted request runs in the game's thread, with its right to take the foreground):
+            # SW_SHOWNOACTIVATE unless -AllowFocus
+            [RisenWin]::ShowWindowAsync($p.MainWindowHandle, $(if ($AllowFocus) { 9 } else { 4 })) | Out-Null
+            # SWP_NOZORDER | SWP_SHOWWINDOW | SWP_ASYNCWINDOWPOS (+ SWP_NOACTIVATE); the size is only changed with -Resize (the game starts at the size
             # from ConfigUser.xml, a runtime resize misaligns its UI and mouse), otherwise the window is just moved (SWP_NOSIZE)
             $flags = 0x0004 -bor 0x0040 -bor 0x4000
+            if (-not $AllowFocus) { $flags = $flags -bor 0x0010 }
             if (-not $Resize) { $flags = $flags -bor 0x0001 }
             [RisenWin]::SetWindowPos($p.MainWindowHandle, [IntPtr]::Zero, $WindowX, $WindowY, $Width, $Height, $flags) | Out-Null
             $resized = $true
@@ -130,6 +164,10 @@ try {
     # the exit code of a game that ended by itself (0xC0000005 = access violation, 0xC0000409 = fast fail, ... : a crash); test-run.ps1 reports it
     if ($reason -eq 'exited') { try { $global:SpassRun.ExitCode = [BitConverter]::ToUInt32([BitConverter]::GetBytes([int]$p.ExitCode), 0) } catch { } }
     Write-Host ("game alive: {0}, window resized: {1}, ended by: {2} after {3:N0} s" -f (-not $p.HasExited), $resized, $reason, $global:SpassRun.Seconds)
+    $focusNote = @()
+    if ($null -ne $global:SpassRun.TookFocus) { $focusNote += "a game window was the foreground window $($global:SpassRun.TookFocus) s after the start" }
+    if ($null -ne $global:SpassRun.ClippedCursor) { $focusNote += "the mouse cursor was confined $($global:SpassRun.ClippedCursor) s after the start" }
+    Write-Host ('focus: ' + $(if ($focusNote.Count -gt 0) { ($focusNote -join '; ') + $(if ($AllowFocus) { ' (-AllowFocus)' } else { ' (or the user clicked into it)' }) } else { 'the game stayed in the background, the cursor was never confined' }))
     if (Test-Path $log) { Get-Content $log }
 }
 finally {

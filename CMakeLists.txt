@@ -105,6 +105,7 @@ add_library(spass_core STATIC
     src/game/folder_redirect.cpp
     src/game/hooks.cpp
     src/game/instance_mutex.cpp
+    src/game/background_window.cpp
     src/game/inventory_events.cpp
     src/game/lua_ai.cpp
     src/game/lua_assets.cpp

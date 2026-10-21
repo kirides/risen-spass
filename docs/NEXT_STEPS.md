@@ -191,7 +191,8 @@ Done (M10): behaviour through routines (`risen.npc.set_routine`: posts, day/nigh
 
 ## 6. Tooling and documentation — mostly done
 Done: [`SYMBOLS.md`](SYMBOLS.md) generator, developer guide, example mods (`hello`, `fetchquest`, `stringsdemo`, `_template`), packaging (`scripts/package.ps1`, release zip with installer),
-LuaLS definitions (`types/risen.d.lua` + `tools/check_luadefs.py`), `ghidra-decompiler` subagent, test copy isolation (`[debug] app_data`), `CLAUDE.md`.
+LuaLS definitions (`types/risen.d.lua` + `tools/check_luadefs.py`), `ghidra-decompiler` subagent, test copy isolation (`[debug] app_data`), `CLAUDE.md`,
+background test runs (user request: a test game never takes the foreground or warps/confines the cursor; `[debug] background`, `test-run.ps1 -AllowFocus` opts out; RE.md section 57).
 Open: a shop-NPC example (needs the trade setup from section 2), persisting the Ghidra analysis (a project export or a script that applies the names/types from RE.md),
 a visual verification path (screen capture of the D3D9 window is black: hook `Present` or use the engine's screenshot function).
 

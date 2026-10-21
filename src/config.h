@@ -26,6 +26,8 @@ namespace spass {
 //   race_probe = false      # test tool: a thread asks gCSession::GetHud2Location in a tight loop, like the rich-presence thread does once (docs/DEVELOPMENT.md "Crashes")
 //   crash_handler = true    # a crash (or a fault outside guarded(), or a guarded() call that faulted) is reported in spass.log and spass\crash.log with the stack
 //   crash_dump = "off"      # "mini" | "full": also write a minidump <bin>\spass\crash\crash-<time>-pid<pid>.dmp of a crash (scripts/test-run.ps1 -CrashDump); docs/DEVELOPMENT.md "Crashes"
+//   background = false      # test runs (scripts/test-run.ps1 sets it unless -AllowFocus): the game window never takes the foreground and does not move or
+//                           # clip the mouse cursor while another program is in front (game/background_window.h, RE.md section 57)
 //   [mods]
 //   watch     = false       # development: a changed .lua / .toml / .csv file of a loaded mod reloads that mod (risen.mods.reload; docs/LUA_API.md "Hot reload")
 //   watch_interval = 1.0    # seconds between two looks at the files
@@ -49,6 +51,7 @@ struct Config {
     std::string engineGuards = "all";
     bool raceProbe = false;
     std::string crashDump = "off";
+    bool background = false;
     bool modsWatch = false;
     double modsWatchInterval = 1.0;
     bool testEnabled = false;

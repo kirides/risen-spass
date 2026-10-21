@@ -10,6 +10,7 @@
 #include "common/paths.h"
 #include "common/trace.h"
 #include "config.h"
+#include "game/background_window.h"
 #include "game/bindings.h"
 #include "game/events.h"
 #include "game/folder_redirect.h"
@@ -90,6 +91,10 @@ void onProcessAttach(HMODULE self) {
 
     if (!g_config.instance.empty()) {
         game::installInstanceMutex(g_config.instance);
+    }
+
+    if (g_config.background) {
+        game::installBackgroundWindow();
     }
 
     if (!g_config.appData.empty()) {

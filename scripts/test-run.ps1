@@ -30,6 +30,9 @@
 .PARAMETER Param    "key=value" strings for risen.test.param(key).
 .PARAMETER Trace    [debug] trace: channels such as "template,balance,save,events,calls,hud" or "all" (see docs/DEVELOPMENT.md).
 .PARAMETER TraceScripts  [debug] trace_scripts: script name substrings for the `calls` channel, e.g. "Interact,Loot,Assess".
+.PARAMETER AllowFocus  Let the game take the foreground and the mouse cursor as in normal play. By default a test run stays in the background:
+                    [debug] background = true (the layer keeps the game window from activating itself, from moving or confining the cursor
+                    while another program is in front; docs/DEVELOPMENT.md "Background runs") and the window is moved without activation.
 #>
 param(
     [string]$GameDir = '',
@@ -87,7 +90,9 @@ param(
     # [debug] race_probe: a thread asks gCSession::GetHud2Location in a tight loop (the rich-presence thread's call, amplified): with -EngineGuards none it reproduces the load crash
     [switch]$RaceProbe,
     # print every check of the result, not only the failed ones
-    [switch]$ShowChecks
+    [switch]$ShowChecks,
+    # let the game take the foreground and the mouse cursor (normal play); by default a test run stays in the background ([debug] background)
+    [switch]$AllowFocus
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -264,6 +269,7 @@ try {
     $cfg += "trace_files = `"$TraceFiles`"", "trace = `"$Trace`"", "trace_scripts = `"$TraceScripts`"", "crash_dump = `"$CrashDump`"", "engine_guards = `"$EngineGuards`""
     if ($RaceProbe) { $cfg += 'race_probe = true' }
     if ($TraceFile) { $cfg += 'trace_file = true' }
+    if (-not $AllowFocus) { $cfg += 'background = true' }
     if ($WaitForResult) {
         $deadline = if ($DeadlineSeconds -ge 0) { $DeadlineSeconds } else { [math]::Max($Seconds - 10, 10) }
         $cfg += '[test]', 'enabled = true', "deadline_s = $deadline", "scenario = `"$Scenario`""
@@ -292,11 +298,13 @@ try {
     if ($ExtraArgs.Count -gt 0) { $windowed.ExtraArgs = $ExtraArgs }
     if ($Instance -ge 1) { $windowed.WindowX = 40 * $Instance; $windowed.WindowY = 40 * $Instance }
     if ($WaitForResult) { $windowed.ResultFile = $resultFile }
+    if ($AllowFocus) { $windowed.AllowFocus = $true }
     & (Join-Path $PSScriptRoot 'run-windowed.ps1') @windowed 6>&1 |
         Select-String -Pattern $Filter | ForEach-Object { $_.Line }
     $launched = $global:SpassRun
     $run = [pscustomobject]@{ Reason = $launched.Reason; Seconds = $launched.Seconds; Total = ((Get-Date) - $runStart).TotalSeconds; Result = $null; Timing = $null; Verdict = 'none'
-                              ExitCode = $launched.ExitCode; ExitName = ''; Crashed = $false; Banner = ''; Dumps = @(); Summary = '' }
+                              ExitCode = $launched.ExitCode; ExitName = ''; Crashed = $false; Banner = ''; Dumps = @(); Summary = ''
+                              TookFocus = $launched.TookFocus; ClippedCursor = $launched.ClippedCursor }
     $global:SpassRun = $run
     # ---- did the game crash? the exit code of a game that ended by itself, the banner of the crash handler (spass\crash.log), the minidump ----
     $crashLogFile = Join-Path $bin 'spass\crash.log'
@@ -336,6 +344,13 @@ try {
     if ($null -ne $t.result) { $parts += "result $($t.result) s after launch" }
     $parts += "run ended by '$($run.Reason)', wall time $($t.total) s"
     Write-Host ('timing (s after the mod layer loaded): ' + ($parts -join ' | '))
+    # focus watch of run-windowed.ps1 (s after the launch); without -AllowFocus only a click of the user into the game window explains it
+    if ($null -ne $run.TookFocus -or $null -ne $run.ClippedCursor) {
+        $why = if ($AllowFocus) { '-AllowFocus' } else { 'unexpected unless you clicked into it' }
+        Write-Host ("focus: foreground at {0} s, cursor confined at {1} s ({2})" -f $(if ($null -ne $run.TookFocus) { $run.TookFocus } else { '-' }), $(if ($null -ne $run.ClippedCursor) { $run.ClippedCursor } else { '-' }), $why) -ForegroundColor $(if ($AllowFocus) { 'Gray' } else { 'Yellow' })
+    } else {
+        Write-Host 'focus: the game stayed in the background (never the foreground window, cursor never confined)'
+    }
 
     if ($WaitForResult) {
         $result = $null

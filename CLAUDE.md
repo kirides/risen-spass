@@ -57,6 +57,7 @@ A `sol::object` returned from `Runtime::emit*` must not outlive `Runtime::stop()
 # -Start load   quick-loads the last quick save instead of starting a new game   -Keep  keep log+saves
 # -NoAutostart  stay at the main menu (the `tick` event then fires only once)
 # -Audio        sound on: test runs are MUTED by default (ConfigUser.xml <Audio><Volume> all 0, the sound system keeps running; verified with the audio session meter: 0 of 102 samples vs 97 of 155 with -Audio)
+# -AllowFocus   let the game take the foreground / mouse cursor: test runs stay in the BACKGROUND by default ([debug] background, DEVELOPMENT.md "Background runs"; prints "focus: ...")
 ```
 The log is `B:\DevDrive\risen-test\bin\spass\spass.log`. **Verify with a `risen.test` scenario, not with a fixed `-Seconds` and log regexes**
 (`mods/testdemo`, docs/DEVELOPMENT.md "Testing and tracing"): the mod plans its checks and runs as `risen.test.run(function() ... end)`, and

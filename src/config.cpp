@@ -26,6 +26,7 @@ Config loadConfig(const std::filesystem::path& file) {
         cfg.engineGuards = t["debug"]["engine_guards"].value_or(cfg.engineGuards);
         cfg.raceProbe = t["debug"]["race_probe"].value_or(cfg.raceProbe);
         cfg.crashDump = t["debug"]["crash_dump"].value_or(cfg.crashDump);
+        cfg.background = t["debug"]["background"].value_or(cfg.background);
         cfg.modsWatch = t["mods"]["watch"].value_or(cfg.modsWatch);
         cfg.modsWatchInterval = t["mods"]["watch_interval"].value_or(cfg.modsWatchInterval);
         cfg.testEnabled = t["test"]["enabled"].value_or(cfg.testEnabled);

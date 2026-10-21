@@ -111,6 +111,16 @@ are quiet for up to ~20-30 s here, the layer logs a `[test] alive` heartbeat eve
 "where it stopped" (phase, last section/check/heartbeat/trace/error). `Risen.exe` is killed at the start and in a `finally` at the end (also on Ctrl-C). The window code never
 blocks on a hung game (`SetWindowPos` is asynchronous). Failure drills: `-Mods testdemo -Param mode=fail|never|hang`.
 
+**Background runs.** A test run never takes the keyboard focus or the mouse cursor from the person at the machine: `test-run.ps1` writes `[debug] background = true` and
+`run-windowed.ps1` moves the window with `SW_SHOWNOACTIVATE` / `SWP_NOACTIVATE`. The layer (`game/background_window.cpp`, installed in `DllMain` before the window exists) hooks
+user32 in the game process: `ShowWindow`/`ShowWindowAsync`/`SetWindowPos`/`CreateWindowEx(WS_VISIBLE)` of the process's own top-level windows become non-activating,
+`SetForegroundWindow`/`BringWindowToTop`/`SetActiveWindow` on them do nothing, and `SetCursorPos` / `ClipCursor(rect)` are dropped - all of it only while the foreground window
+belongs to another process, so a click into the game window gives normal play (RE.md section 57; the layer logs the first interceptions as `background: ...`). The game keeps rendering and
+ticking in the background (it only stops while minimized), scenarios pass, `risen.input.simulate` / `risen.gui.click` work (they go through the engine, not the OS); raw keys of
+`risen.input` are read only while the game is in front, as before. `run-windowed.ps1` watches the foreground window and the cursor clip every 0.1 s and `test-run.ps1` prints
+`focus: ...` (`$global:SpassRun.TookFocus` / `ClippedCursor`, seconds after the launch). `-AllowFocus` restores the old behaviour (the game activates itself at start).
+Other projects that call `test-run.ps1 -GameDir` get this with the `sentry.dll` the script deploys from this repo's build.
+
 **Trace channels** (opt-in, zero cost when off): `.\scripts\test-run.ps1 -Trace template,balance,save,events [-TraceFile]` or `config.toml [debug] trace = "..."`
 (`"all"`; `trace_file = true` also writes `trace.log`). Lines: `[12:31:09.513] [trace:events] session.start(new)`. Channels: `events` (every gameplay event the moment the hook queued it, with arguments, also when no mod listens), `template`, `balance`, `save`
 (save/load phases with durations), `spawn`, `script`, `lua` (errors with traceback), `test`, `voice` (every sample title the engine asks for, with the answer; M5c), `ai` (Lua AI states: definitions, starts, begin / finish, every perception handler call; M11), `combat` (every hit a damage handler saw, with the damage before and after, cancelled hits, handler failures; M14), `calls` (the scripts, AI functions and AI states the ENGINE runs whose name contains one of the substrings of `-TraceScripts "^PreInteract,^Interact_,Unlock"` = `[debug] trace_scripts`; `^` = starts with; nothing without the list; M5d) `hud` (every HUD game-log / item-log line, also the engine's own) and `sound` (every GUI sound, effect start and named sound the engine plays: what a path sounds like, RE.md §31); mods add their own with `risen.trace("mymod", ...)`. Turn channels on
