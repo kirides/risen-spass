@@ -216,7 +216,7 @@ std::vector<StringLine> project_lines(const Project& p, const GameData* game) {
                     }
                     if (cur->type == "log") l.quest = dd.value("quest", std::string());
                 }
-                if (cur->type == "end" || cur->type == "restart" || (cur->type == "command" && dd.value("command", std::string()) == "End")) break;
+                if (cur->type == "end" || cur->type == "restart" || cur->type == "menu" ||(cur->type == "command" && dd.value("command", std::string()) == "End")) break;
                 auto nx = links_from(g, cur->uid, "next");
                 cur = nx.empty() ? nullptr : g.find(nx.front()->to_node);
             }

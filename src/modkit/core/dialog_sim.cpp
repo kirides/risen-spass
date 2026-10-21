@@ -192,7 +192,6 @@ void DialogSim::run(const json& info) {
             }
             if (cmd == "Back") {
                 back = true;
-                effect("back to the start");
             } else if (cmd == "SetGameEvent") {
                 world.events.insert(l.value("GameEvent", std::string()));
                 effect("event " + l.value("GameEvent", std::string()) + " set");
@@ -224,6 +223,8 @@ void DialogSim::run(const json& info) {
     if (!options().empty()) return;
     current_ = back ? std::string() : parent;
     if (options().empty()) current_.clear();
+    // where the conversation goes on (the playback shows it)
+    transcript_.push_back({SimLine::Kind::End, "", current_.empty() ? "(back to the start)" : "(back to the choices)"});
 }
 
 std::vector<SimOption> DialogSim::options() const {

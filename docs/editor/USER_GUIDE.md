@@ -167,14 +167,17 @@ empty space** for a new node that is already linked, select and press **Delete**
 | **Script** | in, `next` | calls a script (yours in `custom.lua`, or a game script) |
 | **End** | in | ends the conversation |
 | **Return to start** | in | shows the NPC's list of options again instead of ending the conversation (informational talk; the player leaves through the NPC's own goodbye option) |
+| **Back to the choices** | in | shows the sub-options of the option's parent again: a sub-menu that loops ("Any news?" -> wolves, boars, leave); on a top-level option the same as Return to start |
 | **Condition** | out | quest state, items carried, a game variable or event, a skill, a guild, an NPC dead / alive |
 | **All of / Any of / Not** | in, out | combine conditions |
 | **Comment** | | a note on the canvas |
 
 Links only join pins that fit (the pin shapes and colours tell: triangles for the sequence, blue circles for options, teal for conditions), and the
-option tree and the conditions cannot loop. Every option without sub-options ends either with **End** or with **Return to start**: one
-whose sequence has neither gets an End by itself (an open conversation blocks saving). Return to start shows the top-level list again, from a
-sub-option too (it exports as the engine's `Back` command there). The inspector of an option shows the Lua the export writes for it; nodes with a
+option tree and the conditions cannot loop. Every option without sub-options ends with **End**, **Return to start** or **Back to the
+choices**: one whose sequence has none of them gets an End by itself (an open conversation blocks saving). Return to start shows the top-level
+list again, from a sub-option too (it exports as the engine's `Back` command there). For a looping sub-menu end the topics with Back to the
+choices and give it one sub-option with Return to start (or End) to get out: Maren's "Tell me about the Chronicle." in the Chronicle example.
+The playback shows where the conversation goes on: *(back to the start)*, *(back to the choices)*. The inspector of an option shows the Lua the export writes for it; nodes with a
 problem have a red border and the problems are listed under the properties and in the Problems panel.
 
 The quest conditions and item amounts become conditions the engine checks itself; any, not, values of variables and guilds are one Lua condition

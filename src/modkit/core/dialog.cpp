@@ -244,13 +244,17 @@ json compile_dialog(const Project& p, const DialogDef& d, std::vector<DialogIssu
                 if (parent_of(*o)) lines.push_back(json::object({{"command", "Back"}}));
                 restarts = true;
                 break;
+            } else if (cur->type == "menu") {
+                // nothing to add: after a sub-option the engine keeps its parent's list (RE.md section 21), after a top-level option the top-level list
+                restarts = true;
+                break;
             }
             auto nx = links_from(g, cur->uid, "next");
             cur = nx.empty() ? nullptr : g.find(nx.front()->to_node);
         }
         const bool has_children = !links_from(g, o->uid, "choices").empty();
         if (ended && has_children) warn(o->uid, tr("the sequence ends the conversation, so the sub-options are never shown"));
-        if (restarts && has_children) warn(o->uid, tr("the sequence returns to the start, so the sub-options are never shown"));
+        if (restarts && has_children) warn(o->uid, tr("the sequence returns to a list of options, so the sub-options are never shown"));
         // an open conversation blocks saving: an option without sub-options ends it unless it returns to the start (a Return to start node, or a Back command)
         const bool back = !lines.empty() && lines.back().value("command", std::string()) == "Back";
         if (!ended && !restarts && !back && !has_children) lines.push_back(json::object({{"command", "End"}}));

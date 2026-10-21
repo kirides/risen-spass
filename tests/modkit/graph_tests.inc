@@ -105,7 +105,12 @@ TEST(dialog_compile_return_to_start) {
     GraphNode sub_r = make_node(GraphKind::Dialog, "restart", 700, 3400);
     GraphNode sub_end = make_node(GraphKind::Dialog, "option", 400, 3600);
     sub_end.data["text"] = json::object({{"English", "Bye."}});
-    d.graph.nodes.insert(d.graph.nodes.end(), {top, line, top_r, par, sub, sub_r, sub_end});
+    GraphNode sub_loop = make_node(GraphKind::Dialog, "option", 400, 3800);
+    sub_loop.data["text"] = json::object({{"English", "About wolves?"}});
+    GraphNode sub_m = make_node(GraphKind::Dialog, "menu", 700, 3800);
+    d.graph.nodes.insert(d.graph.nodes.end(), {top, line, top_r, par, sub, sub_r, sub_end, sub_loop, sub_m});
+    add_link(GraphKind::Dialog, d.graph, par.uid, "choices", sub_loop.uid, "parent");
+    add_link(GraphKind::Dialog, d.graph, sub_loop.uid, "then", sub_m.uid, "in");
     add_link(GraphKind::Dialog, d.graph, top.uid, "then", line.uid, "in");
     add_link(GraphKind::Dialog, d.graph, line.uid, "next", top_r.uid, "in");
     add_link(GraphKind::Dialog, d.graph, sub.uid, "then", sub_r.uid, "in");
@@ -124,6 +129,7 @@ TEST(dialog_compile_return_to_start) {
     CHECK_EQ(lines_of(sub).back()["command"].get<std::string>(), std::string("Back"));  // a sub-option returns to the top level with Back
     CHECK_EQ(lines_of(sub_end).back()["command"].get<std::string>(), std::string("End"));  // the default still ends the conversation
     CHECK(lines_of(par).back().contains("text"));                                       // a parent opens its sub-menu
+    CHECK_EQ(lines_of(sub_loop).size(), size_t(1));  // Back to the choices: nothing added, the engine keeps the sub-menu
 }
 
 TEST(dialog_problems) {

@@ -42,6 +42,9 @@ std::vector<NodeTypeDef> dialog_types() {
         {"restart", N_("Return to start"), N_("Shows the NPC's list of options again instead of ending the conversation (informational talk; the player leaves "
                                          "through the NPC's own goodbye option)."),
          0xff3a8a5a, {{"in", "", true, PinKind::Flow, true}}},
+        {"menu", N_("Back to the choices"), N_("Shows the sub-options of this option's parent again, so a sub-menu loops (\"Any news?\" -> wolves, boars, "
+                                             "leave); on a top-level option the same as Return to start."),
+         0xff3a7a6a, {{"in", "", true, PinKind::Flow, true}}},
         {"cond", N_("Condition"), N_("A condition: quest state, items carried, a game variable or event, a skill, a guild, an NPC dead or alive."), 0xff2a7a7a,
          {kCondOut}},
         {"all", N_("All of"), N_("Holds when every linked condition holds."), 0xff2a6a6a, {{"in", "", true, PinKind::Cond, true}, kCondOut}},

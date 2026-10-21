@@ -715,6 +715,14 @@
             }
           },
           {
+            "uid": "57e77a8e93e8aa1b55375aaa2b0cb776",
+            "type": "restart",
+            "pos": [
+              660.0,
+              0.0
+            ]
+          },
+          {
             "uid": "f32b87410ca3841d1f7ce92c024ac3ac",
             "type": "option",
             "pos": [
@@ -969,6 +977,14 @@
             }
           },
           {
+            "uid": "a0cf70f147c7ef2b5bbad2e60a532c5d",
+            "type": "menu",
+            "pos": [
+              990.0,
+              830.0
+            ]
+          },
+          {
             "uid": "02448456ec5a8025c84b342464158157",
             "type": "option",
             "pos": [
@@ -1016,11 +1032,44 @@
             }
           },
           {
+            "uid": "9ef4af37fd6a25be5fe43ba3ebef4c23",
+            "type": "menu",
+            "pos": [
+              990.0,
+              970.0
+            ]
+          },
+          {
+            "uid": "0a2601d7c2e799df491e06b54867673b",
+            "type": "option",
+            "pos": [
+              330.0,
+              1110.0
+            ],
+            "data": {
+              "text": {
+                "English": "Enough about the Chronicle.",
+                "German": "Genug von der Chronik."
+              },
+              "type": "Info",
+              "permanent": true,
+              "info": "MKC_Maren_Lore_Back"
+            }
+          },
+          {
+            "uid": "614a8e0d4f07469a068d46e5234476a1",
+            "type": "restart",
+            "pos": [
+              660.0,
+              1110.0
+            ]
+          },
+          {
             "uid": "272c76ca46ead19e377985f744f3b7a1",
             "type": "option",
             "pos": [
               0.0,
-              1150.0
+              1290.0
             ],
             "data": {
               "text": {
@@ -1037,7 +1086,7 @@
             "type": "cond",
             "pos": [
               -420.0,
-              1100.0
+              1240.0
             ],
             "data": {
               "kind": "quest",
@@ -1052,7 +1101,7 @@
             "type": "cond",
             "pos": [
               -420.0,
-              1200.0
+              1340.0
             ],
             "data": {
               "kind": "item",
@@ -1067,7 +1116,7 @@
             "type": "all",
             "pos": [
               -210.0,
-              1150.0
+              1290.0
             ]
           },
           {
@@ -1075,7 +1124,7 @@
             "type": "command",
             "pos": [
               330.0,
-              1150.0
+              1290.0
             ],
             "data": {
               "command": "Give",
@@ -1092,7 +1141,7 @@
             "type": "line",
             "pos": [
               660.0,
-              1150.0
+              1290.0
             ],
             "data": {
               "speaker": "npc",
@@ -1107,7 +1156,7 @@
             "type": "option",
             "pos": [
               0.0,
-              1380.0
+              1520.0
             ],
             "data": {
               "text": {
@@ -1124,7 +1173,7 @@
             "type": "cond",
             "pos": [
               -420.0,
-              1330.0
+              1470.0
             ],
             "data": {
               "kind": "var",
@@ -1139,7 +1188,7 @@
             "type": "cond",
             "pos": [
               -420.0,
-              1430.0
+              1570.0
             ],
             "data": {
               "kind": "event",
@@ -1153,7 +1202,7 @@
             "type": "not",
             "pos": [
               -210.0,
-              1430.0
+              1570.0
             ]
           },
           {
@@ -1161,7 +1210,7 @@
             "type": "all",
             "pos": [
               -210.0,
-              1320.0
+              1460.0
             ]
           },
           {
@@ -1169,7 +1218,7 @@
             "type": "command",
             "pos": [
               330.0,
-              1380.0
+              1520.0
             ],
             "data": {
               "command": "SetSectorStatus",
@@ -1184,7 +1233,7 @@
             "type": "command",
             "pos": [
               660.0,
-              1380.0
+              1520.0
             ],
             "data": {
               "command": "SetGameEvent",
@@ -1198,7 +1247,7 @@
             "type": "line",
             "pos": [
               990.0,
-              1380.0
+              1520.0
             ],
             "data": {
               "speaker": "npc",
@@ -1213,7 +1262,7 @@
             "type": "option",
             "pos": [
               0.0,
-              1610.0
+              1750.0
             ],
             "data": {
               "text": {
@@ -1230,7 +1279,7 @@
             "type": "cond",
             "pos": [
               -420.0,
-              1560.0
+              1700.0
             ],
             "data": {
               "kind": "quest",
@@ -1245,7 +1294,7 @@
             "type": "cond",
             "pos": [
               -420.0,
-              1660.0
+              1800.0
             ],
             "data": {
               "kind": "var",
@@ -1260,7 +1309,7 @@
             "type": "any",
             "pos": [
               -210.0,
-              1610.0
+              1750.0
             ]
           },
           {
@@ -1268,7 +1317,7 @@
             "type": "line",
             "pos": [
               330.0,
-              1610.0
+              1750.0
             ],
             "data": {
               "speaker": "npc",
@@ -1283,7 +1332,7 @@
             "type": "script",
             "pos": [
               660.0,
-              1610.0
+              1750.0
             ],
             "data": {
               "script": "MKC_TideBell"
@@ -1294,7 +1343,7 @@
             "type": "option",
             "pos": [
               0.0,
-              1840.0
+              1980.0
             ],
             "data": {
               "text": {
@@ -1311,7 +1360,7 @@
             "type": "end",
             "pos": [
               330.0,
-              1840.0
+              1980.0
             ]
           },
           {
@@ -1720,6 +1769,61 @@
             ],
             "to": [
               "5adf18fc15d8214e32873f5a90f5ec3f",
+              "in"
+            ]
+          },
+          {
+            "uid": "70ca68b55ff8ca9ba585acc7dd9d1f67",
+            "from": [
+              "6fac19b3b004e4617bf951bcd88675f3",
+              "next"
+            ],
+            "to": [
+              "57e77a8e93e8aa1b55375aaa2b0cb776",
+              "in"
+            ]
+          },
+          {
+            "uid": "3c850081e3d0badfa4192f119a6ba59c",
+            "from": [
+              "4e5103bb39663e4ea62d3f9e8d642c10",
+              "next"
+            ],
+            "to": [
+              "a0cf70f147c7ef2b5bbad2e60a532c5d",
+              "in"
+            ]
+          },
+          {
+            "uid": "98534c7ab92eeb54444091c469272ff4",
+            "from": [
+              "6f87b138bd6dc263c3ae75717b76a77d",
+              "next"
+            ],
+            "to": [
+              "9ef4af37fd6a25be5fe43ba3ebef4c23",
+              "in"
+            ]
+          },
+          {
+            "uid": "4f72877dd03bea6f1e398a1525c74685",
+            "from": [
+              "023b4f7b59a0b90571280e28d054f9bd",
+              "choices"
+            ],
+            "to": [
+              "0a2601d7c2e799df491e06b54867673b",
+              "parent"
+            ]
+          },
+          {
+            "uid": "b73b56cd271eebf764c820851c7a878f",
+            "from": [
+              "0a2601d7c2e799df491e06b54867673b",
+              "then"
+            ],
+            "to": [
+              "614a8e0d4f07469a068d46e5234476a1",
               "in"
             ]
           }

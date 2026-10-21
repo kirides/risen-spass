@@ -91,7 +91,8 @@ TEST(dialog_sim_important_opens_the_conversation) {
       {"name":"i_greet","type":"Important","lines":[{"speaker":"player","text":"Hey"},{"speaker":"npc","text":"Welcome back"}]},
       {"name":"i_bye","lines":[{"speaker":"player","text":"Bye"},{"command":"End"}]}])");
     DialogSim s(p, infos);
-    CHECK(s.transcript().size() == 2 && s.transcript()[1].text == "Welcome back");  // played by itself
+    CHECK(s.transcript().size() == 3 && s.transcript()[1].text == "Welcome back");  // played by itself
+    CHECK_EQ(s.transcript()[2].text, std::string("(back to the start)"));          // then the list
     CHECK(s.options().size() == 1 && s.options()[0].info == "i_bye");                 // and not listed
 }
 
@@ -106,7 +107,9 @@ TEST(dialog_sim_back_returns_to_the_start) {
     DialogSim s(p, infos);
     CHECK(s.choose("t") && s.options().size() == 2);
     CHECK(s.choose("t_a") && s.options().size() == 2 && s.options()[0].info == "t_a");  // the sub-menu stays
+    CHECK_EQ(s.transcript().back().text, std::string("(back to the choices)"));
     CHECK(s.choose("t_b") && !s.ended() && s.options().size() == 2 && s.options()[0].info == "t");  // Back: the top level
+    CHECK_EQ(s.transcript().back().text, std::string("(back to the start)"));
     CHECK(s.choose("lore") && !s.ended() && s.options().size() == 2);  // a top-level option without End: the list again
 }
 

@@ -21,7 +21,6 @@ return {
                     },
                     sound = { default = "sounds/maren_who.wav", de = "sounds/maren_who_de.wav" },
                 },
-                { command = "End" },
             },
         },
         {
@@ -122,7 +121,6 @@ return {
                         de = "Die Asche faellt von einem Himmel, der keine Sonne mehr hat.",
                     },
                 },
-                { command = "End" },
             },
         },
         {
@@ -145,7 +143,20 @@ return {
                         de = "Die Flut bringt die Pluenderer und holt die Toten. Sie wird viermal steigen.",
                     },
                 },
-                { command = "End" },
+            },
+        },
+        {
+            name = "MKC_Maren_Lore_Back",
+            owner = "MKC_Maren",
+            parent = "MKC_Maren_Lore",
+            permanent = true,
+            lines = {
+                {
+                    speaker = "player",
+                    listener = "npc",
+                    text = { default = "Enough about the Chronicle.", de = "Genug von der Chronik." },
+                },
+                { command = "Back" },
             },
         },
         {

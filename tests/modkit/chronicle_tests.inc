@@ -72,7 +72,7 @@ TEST(chronicle_validates_clean_and_uses_every_feature) {
         }
     }
     for (const char* t : {"start", "objective", "log", "reward", "branch", "outcome"}) CHECK(q_nodes.count(t) == 1);
-    for (const char* t : {"option", "line", "command", "quest", "log", "script", "end", "cond", "all", "any", "not", "comment"}) CHECK(d_nodes.count(t) == 1);
+    for (const char* t : {"option", "line", "command", "quest", "log", "script", "end", "restart", "menu", "cond", "all", "any", "not", "comment"}) CHECK(d_nodes.count(t) == 1);
     // the sections of the project
     CHECK(!p.items.empty() && !p.item_groups.empty() && !p.recipes.empty() && !p.spells.empty() && !p.npc_templates.empty() && !p.npc_groups.empty());
     CHECK(!p.npcs.empty() && !p.dialogs.empty() && !p.quests.empty() && !p.events.empty() && !p.layers.empty() && !p.assets.empty() && !p.behaviors.empty());

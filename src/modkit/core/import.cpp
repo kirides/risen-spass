@@ -559,12 +559,14 @@ void import_dialogs(Ctx& c, const json& d) {
         opt_node.data["type"] = info.value("type", std::string("Info"));
         opt_node.data["permanent"] = info.value("permanent", false);
         json lines = info.value("lines", json::array());
-        // an option without sub-options either ends the conversation or returns to the start (a Return to start node: a sub-option's trailing Back)
-        bool restart = false;
+        // an option without sub-options ends the conversation, returns to the start (a top-level one, or a sub-option's trailing Back) or keeps the sub-menu
+        std::string after;  // "", "restart" or "menu": the node that ends the sequence
         if (!parents.count(name) && std::none_of(lines.begin(), lines.end(), [](const json& l) { return l.value("command", std::string()) == "End"; })) {
-            restart = true;
-            if (!lines.empty() && lines.back().value("command", std::string()) == "Back") lines.erase(lines.size() - 1);
-            else if (!parent.empty()) c.warn.push_back("option " + name + ": a sub-option without End or Back now returns to the start");
+            after = parent.empty() ? "restart" : "menu";
+            if (!lines.empty() && lines.back().value("command", std::string()) == "Back") {
+                lines.erase(lines.size() - 1);
+                after = "restart";
+            }
         }
         size_t first_line = 0;
         if (!lines.empty() && lines[0].value("speaker", std::string()) == "player" && lines[0].contains("text")) {
@@ -635,8 +637,8 @@ void import_dialogs(Ctx& c, const json& d) {
             prev_pin = "next";
             lx += 330;
         }
-        if (restart) {
-            GraphNode n = make_node(GraphKind::Dialog, "restart", lx, y);
+        if (!after.empty()) {
+            GraphNode n = make_node(GraphKind::Dialog, after, lx, y);
             g.nodes.push_back(n);
             add_link(GraphKind::Dialog, g, prev, prev_pin, n.uid, "in");
         }
