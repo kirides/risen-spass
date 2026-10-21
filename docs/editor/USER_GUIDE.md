@@ -9,7 +9,10 @@ Contents: [Build and start](#build-and-start) · [First start](#first-start) · 
 
 ## Build and start
 
-The editor is part of the repository's CMake build (vcpkg manifest feature `modkit`, enabled by every preset):
+Windows builds are published: `risen-spass-tools-windows-x64.zip` of the [nightly release](https://github.com/kirides/risen-spass/releases/tag/nightly)
+holds `risen-modkit.exe`, `risen-pack2mod.exe` and the language files (`lang\`); unpack it anywhere and start `risen-modkit.exe`.
+
+To build it yourself: the editor is part of the repository's CMake build (vcpkg manifest feature `modkit`, enabled by every preset):
 
 ```powershell
 $env:VCPKG_ROOT = 'E:\git\github\vcpkg'

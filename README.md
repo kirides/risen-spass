@@ -29,7 +29,8 @@ layer loads, **Play** starts the game with it (or hot-reloads a running one), an
 | [Converting archive mods](docs/PACK2MOD.md) | `risen-pack2mod`: turn `.pNN` / `.pak` mods into a layer mod or a modkit project |
 | [Requirements and architecture](docs/editor/REQUIREMENTS.md) | the editor's design, stages E0-E20 and their state |
 
-More example projects are in [`examples/modkit`](examples/modkit).
+Download: `risen-spass-tools-windows-x64.zip` of the [nightly release](https://github.com/kirides/risen-spass/releases/tag/nightly) holds `risen-modkit.exe`
+(and `risen-pack2mod.exe`). More example projects are in [`examples/modkit`](examples/modkit).
 
 ### Advanced: writing mods in Lua
 

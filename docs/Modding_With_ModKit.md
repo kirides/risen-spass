@@ -6,14 +6,18 @@ This is the place to start modding; writing mods by hand in Lua is the [advanced
 
 ## Your first mod
 
-1. **Install the layer** into your Risen folder (`install.ps1 -GameDir 'C:\...\Risen'`, see the [README](../README.md#install)).
-2. **Build the editor** (it is not in the release zip yet):
+1. **Install the layer** into your Risen folder: from `risen-spass.zip` of the [nightly release](https://github.com/kirides/risen-spass/releases/tag/nightly),
+   rename the game's `<Risen>\bin\sentry.dll` to `sentry_orig.dll`, copy `sentry.dll` to `<Risen>\bin` and the zip's `mods` to `<Risen>\bin\spass\mods`.
+   From a source checkout, `install.ps1 -GameDir 'C:\...\Risen'` does the same (see the [README](../README.md#install)).
+2. **Get the editor**: download `risen-spass-tools-windows-x64.zip` from the [nightly release](https://github.com/kirides/risen-spass/releases/tag/nightly),
+   unpack it anywhere and start `risen-modkit.exe` (the zip also holds `risen-pack2mod.exe` and the editor's language files in `lang\`).
+   Or build it yourself:
    ```powershell
    $env:VCPKG_ROOT = 'C:\path\to\vcpkg'
    cmake --preset default
    cmake --build build --config RelWithDebInfo --target risen-modkit     # -> build\src\modkit\RelWithDebInfo\risen-modkit.exe
    ```
-   Linux and macOS: `cmake --preset unix && cmake --build --preset unix-release --target risen-modkit`.
+   Linux and macOS (no prebuilt binaries yet): `cmake --preset unix && cmake --build --preset unix-release --target risen-modkit`.
 3. **Set it up once**: **Window > Settings**, choose the game's **data directory** (`<Risen>\data`) and, under *Play*, the **game folder** (the
    Risen folder). The editor reads the game's archives in a few seconds and remembers both folders.
 4. **Describe the mod** in the **Mod** panel: an id (the folder name, `a-z 0-9 _`), a name and the languages you write texts in.
