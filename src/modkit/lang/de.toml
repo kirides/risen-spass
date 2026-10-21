@@ -164,85 +164,85 @@ author = "risen-spass"
 "drop it on an NPC's Behaviours section" = "auf den Abschnitt „Verhalten“ eines NPCs ziehen"
 # src/modkit/app/editor_util.cpp:39
 "or drop items here" = "oder Gegenstände hierher ziehen"
-# src/modkit/app/editor_util.cpp:116 (+2)
+# src/modkit/app/editor_util.cpp:122 (+2)
 "shipped: %s" = "mitgeliefert: %s"
-# src/modkit/app/editor_util.cpp:150
+# src/modkit/app/editor_util.cpp:156
 "+ ingredient" = "+ Zutat"
-# src/modkit/app/editor_util.cpp:184
+# src/modkit/app/editor_util.cpp:190
 "equip" = "anlegen"
-# src/modkit/app/editor_util.cpp:199
+# src/modkit/app/editor_util.cpp:205
 "+ item" = "+ Gegenstand"
-# src/modkit/app/editor_util.cpp:219 (+6)
+# src/modkit/app/editor_util.cpp:225 (+6)
 "Kind" = "Art"
-# src/modkit/app/editor_util.cpp:229
+# src/modkit/app/editor_util.cpp:235
 "player (empty), npc or a unique name" = "Spieler (leer), npc oder ein eindeutiger Name"
-# src/modkit/app/editor_util.cpp:232 (+10)
+# src/modkit/app/editor_util.cpp:238 (+10)
 "Quest" = "Quest"
-# src/modkit/app/editor_util.cpp:236
+# src/modkit/app/editor_util.cpp:242
 "A quest of this mod or ANY quest of the game (the list shows the game's 370 quests with their titles). The condition holds while the quest has the status (Success: it was solved)." = "Eine Quest dieser Mod oder JEDE Quest des Spiels (die Liste zeigt die 370 Quests des Spiels mit ihren Titeln). Die Bedingung gilt, solange die Quest den Status hat (Erfolg: sie wurde gelöst)."
-# src/modkit/app/editor_util.cpp:238 (+4)
+# src/modkit/app/editor_util.cpp:244 (+4)
 "Status" = "Status"
-# src/modkit/app/editor_util.cpp:241 (+11)
+# src/modkit/app/editor_util.cpp:247 (+11)
 "Item" = "Gegenstand"
-# src/modkit/app/editor_util.cpp:246 (+4)
+# src/modkit/app/editor_util.cpp:252 (+4)
 "Count" = "Anzahl"
-# src/modkit/app/editor_util.cpp:250
+# src/modkit/app/editor_util.cpp:256
 "Holder" = "Besitzer"
-# src/modkit/app/editor_util.cpp:252 (+6)
+# src/modkit/app/editor_util.cpp:258 (+6)
 "Variable" = "Variable"
-# src/modkit/app/editor_util.cpp:254
+# src/modkit/app/editor_util.cpp:260
 "Compare a value" = "Wert vergleichen"
-# src/modkit/app/editor_util.cpp:264 (+8)
+# src/modkit/app/editor_util.cpp:270 (+8)
 "Value" = "Wert"
-# src/modkit/app/editor_util.cpp:268 (+1)
+# src/modkit/app/editor_util.cpp:274 (+1)
 "Compare" = "Vergleich"
-# src/modkit/app/editor_util.cpp:271 (+1)
+# src/modkit/app/editor_util.cpp:277 (+1)
 "Event" = "Ereignis"
-# src/modkit/app/editor_util.cpp:272
+# src/modkit/app/editor_util.cpp:278
 "A game event: set by the dialogue command SetGameEvent (a game variable with the value 0)." = "Ein Spielereignis: wird vom Dialogbefehl SetGameEvent gesetzt (eine Spielvariable mit dem Wert 0)."
-# src/modkit/app/editor_util.cpp:274 (+3)
+# src/modkit/app/editor_util.cpp:280 (+3)
 "Skill" = "Fertigkeit"
-# src/modkit/app/editor_util.cpp:281 (+2)
+# src/modkit/app/editor_util.cpp:287 (+2)
 "Who" = "Wer"
-# src/modkit/app/editor_util.cpp:283 (+4)
+# src/modkit/app/editor_util.cpp:289 (+4)
 "Guild" = "Gilde"
-# src/modkit/app/editor_util.cpp:287 (+8)
+# src/modkit/app/editor_util.cpp:293 (+8)
 "NPC" = "NPC"
-# src/modkit/app/editor_util.cpp:293 (+3)
+# src/modkit/app/editor_util.cpp:299 (+3)
 "or a unique name" = "oder ein eindeutiger Name"
-# src/modkit/app/editor_util.cpp:326
+# src/modkit/app/editor_util.cpp:332
 "Replace by a simple list (drops this condition)" = "Durch eine einfache Liste ersetzen (verwirft diese Bedingung)"
-# src/modkit/app/editor_util.cpp:331
+# src/modkit/app/editor_util.cpp:337
 "all of these hold" = "alle diese treffen zu"
-# src/modkit/app/editor_util.cpp:331
+# src/modkit/app/editor_util.cpp:337
 "any of these holds" = "eine dieser trifft zu"
-# src/modkit/app/editor_util.cpp:356
+# src/modkit/app/editor_util.cpp:363
 "  (incomplete)" = "  (unvollständig)"
-# src/modkit/app/editor_util.cpp:370
+# src/modkit/app/editor_util.cpp:377
 "+ condition" = "+ Bedingung"
-# src/modkit/app/editor_util.cpp:423
+# src/modkit/app/editor_util.cpp:430
 "a table, written as JSON (Enter takes it)" = "eine Tabelle, als JSON geschrieben (Enter übernimmt sie)"
-# src/modkit/app/editor_util.cpp:427
+# src/modkit/app/editor_util.cpp:434
 "default" = "Standard"
-# src/modkit/app/editor_util.cpp:432
+# src/modkit/app/editor_util.cpp:439
 "back to the script's default %s" = "zurück zum Standard des Skripts %s"
-# src/modkit/app/editor_util.cpp:456
+# src/modkit/app/editor_util.cpp:463
 "no behaviour of this name in the project (Behaviours panel)" = "kein Verhalten mit diesem Namen im Projekt (Bereich Verhalten)"
-# src/modkit/app/editor_util.cpp:469 (+1)
+# src/modkit/app/editor_util.cpp:477 (+1)
 "no parameters" = "keine Parameter"
-# src/modkit/app/editor_util.cpp:475
+# src/modkit/app/editor_util.cpp:483
 "'%s' is no parameter of the script any more" = "„%s“ ist kein Parameter des Skripts mehr"
-# src/modkit/app/editor_util.cpp:477
+# src/modkit/app/editor_util.cpp:485
 "drop it" = "entfernen"
-# src/modkit/app/editor_util.cpp:492
-"attach a behaviour..." = "Verhalten zuweisen..."
 # src/modkit/app/editor_util.cpp:500
+"attach a behaviour..." = "Verhalten zuweisen..."
+# src/modkit/app/editor_util.cpp:508
 "none yet: create one in the Behaviours panel" = "noch keines: eines im Bereich Verhalten anlegen"
-# src/modkit/app/editor_util.cpp:504
+# src/modkit/app/editor_util.cpp:512
 "or drop a behaviour here" = "oder ein Verhalten hierher ziehen"
-# src/modkit/app/editor_util.cpp:519 (+1)
+# src/modkit/app/editor_util.cpp:527 (+1)
 "{0} (the project's world)" = "{0} (die Welt des Projekts)"
-# src/modkit/app/editor_util.cpp:537
+# src/modkit/app/editor_util.cpp:545
 "The world this belongs to: the mod makes it (or changes the entity) only while that world is active. The game's island is \"World\"; test levels and worlds of other mods have their own names." = "Die Welt, zu der dies gehört: Die Mod erzeugt es (oder ändert die Figur) nur, solange diese Welt aktiv ist. Die Insel des Spiels heißt „World“; Testlevel und Welten anderer Mods haben eigene Namen."
 # src/modkit/app/event_ui.cpp:109
 "A template (every wolf) or the unique name of one NPC." = "Eine Vorlage (jeder Wolf) oder der eindeutige Name eines einzelnen NPCs."
@@ -602,7 +602,7 @@ author = "risen-spass"
 "(no owner)" = "(kein Besitzer)"
 # src/modkit/app/panels/dialogs_panel.cpp:212
 "NPCs of {0}" = "NPCs von {0}"
-# src/modkit/app/panels/dialogs_panel.cpp:215 (+6)
+# src/modkit/app/panels/dialogs_panel.cpp:215 (+7)
 "filter" = "Filter"
 # src/modkit/app/panels/dialogs_panel.cpp:229
 "Owner NPC" = "Besitzer-NPC"
@@ -836,39 +836,39 @@ author = "risen-spass"
 "Appearance" = "Aussehen"
 # src/modkit/app/panels/items_panel.cpp:342
 "Mesh" = "Mesh"
-# src/modkit/app/panels/items_panel.cpp:360 (+1)
+# src/modkit/app/panels/items_panel.cpp:358 (+1)
 "Icon" = "Symbol"
-# src/modkit/app/panels/items_panel.cpp:385
+# src/modkit/app/panels/items_panel.cpp:364
 "Material switch" = "Materialwechsel"
-# src/modkit/app/panels/items_panel.cpp:387
+# src/modkit/app/panels/items_panel.cpp:366
 "Drag to turn" = "Zum Drehen ziehen"
-# src/modkit/app/panels/items_panel.cpp:389 (+1)
+# src/modkit/app/panels/items_panel.cpp:368 (+1)
 "Other properties" = "Weitere Eigenschaften"
-# src/modkit/app/panels/items_panel.cpp:390
+# src/modkit/app/panels/items_panel.cpp:369
 "Any property of the template by name (see docs/ITEM_PROPERTIES.md)." = "Jede Eigenschaft der Vorlage nach Namen (siehe docs/ITEM_PROPERTIES.md)."
-# src/modkit/app/panels/items_panel.cpp:400
+# src/modkit/app/panels/items_panel.cpp:379
 "ITEM GROUP: relative settings for every item a selector matches (computed from the shipped values)" = "GEGENSTANDSGRUPPE: relative Einstellungen für jeden Gegenstand, auf den ein Selektor passt (aus den mitgelieferten Werten berechnet)"
-# src/modkit/app/panels/items_panel.cpp:401
+# src/modkit/app/panels/items_panel.cpp:380
 "Group path" = "Gruppenpfad"
-# src/modkit/app/panels/items_panel.cpp:402
+# src/modkit/app/panels/items_panel.cpp:381
 "A template group: Items/Potions, Items/Weapons_Swords, ... (the Browser shows the groups)." = "Eine Vorlagengruppe: Items/Potions, Items/Weapons_Swords, ... (der Browser zeigt die Gruppen)."
-# src/modkit/app/panels/items_panel.cpp:403
+# src/modkit/app/panels/items_panel.cpp:382
 "Name pattern" = "Namensmuster"
-# src/modkit/app/panels/items_panel.cpp:404
+# src/modkit/app/panels/items_panel.cpp:383
 "A Lua pattern on the template name, e.g. ^It_Po_" = "Ein Lua-Muster auf den Vorlagennamen, z. B. ^It_Po_"
-# src/modkit/app/panels/items_panel.cpp:405
+# src/modkit/app/panels/items_panel.cpp:384
 "Exclude pattern" = "Ausschlussmuster"
-# src/modkit/app/panels/items_panel.cpp:406
+# src/modkit/app/panels/items_panel.cpp:385
 "Also these items (one per line)" = "Auch diese Gegenstände (einer pro Zeile)"
-# src/modkit/app/panels/items_panel.cpp:407
+# src/modkit/app/panels/items_panel.cpp:386
 "Type the names or drag items here from the Browser." = "Tippe die Namen oder ziehe Gegenstände aus dem Browser hierher."
-# src/modkit/app/panels/items_panel.cpp:413 (+1)
+# src/modkit/app/panels/items_panel.cpp:392 (+1)
 "Settings" = "Einstellungen"
-# src/modkit/app/panels/items_panel.cpp:414
+# src/modkit/app/panels/items_panel.cpp:393
 "Value factor" = "Wertfaktor"
-# src/modkit/app/panels/items_panel.cpp:415 (+3)
+# src/modkit/app/panels/items_panel.cpp:394 (+3)
 "Damage factor" = "Schadensfaktor"
-# src/modkit/app/panels/items_panel.cpp:423
+# src/modkit/app/panels/items_panel.cpp:402
 "The group path selects %zu items (patterns are evaluated by the layer)." = "Der Gruppenpfad wählt %zu Gegenstände (die Muster wertet die Ebene aus)."
 # src/modkit/app/panels/layers_panel.cpp:63
 "Create a layer: a group of placed NPCs, world spawns and container fills that is switched on and off as a whole (like the game's story sectors). It can switch itself when a condition first holds, and the event graphs switch it with a Layer node." = "Erstelle eine Ebene: eine Gruppe platzierter NPCs, Weltspawns und Behälterfüllungen, die als Ganzes ein- und ausgeschaltet wird (wie die Story-Sektoren des Spiels). Sie kann sich selbst schalten, wenn eine Bedingung zum ersten Mal zutrifft, und die Ereignisgraphen schalten sie mit einem Ebenen-Knoten."
@@ -1432,89 +1432,89 @@ author = "risen-spass"
 "Reload language files" = "Sprachdateien neu laden"
 # src/modkit/app/panels/settings_panel.cpp:156
 "Language files are TOML files in a lang folder next to the editor or in the editor's configuration folder (docs/editor/LOCALIZATION.md). Texts a file does not translate stay English." = "Sprachdateien sind TOML-Dateien in einem Ordner lang neben dem Editor oder im Konfigurationsordner des Editors (docs/editor/LOCALIZATION.md). Texte, die eine Datei nicht übersetzt, bleiben englisch."
-# src/modkit/app/panels/spells_panel.cpp:92
+# src/modkit/app/panels/spells_panel.cpp:115
 "Change a shipped spell (mana cost, requirements, projectile damage) or make a new one from the pieces of a shipped one." = "Ändere einen mitgelieferten Zauber (Manakosten, Voraussetzungen, Geschossschaden) oder baue einen neuen aus den Teilen eines mitgelieferten."
-# src/modkit/app/panels/spells_panel.cpp:132
+# src/modkit/app/panels/spells_panel.cpp:155
 "+ New spell" = "+ Neuer Zauber"
-# src/modkit/app/panels/spells_panel.cpp:135
+# src/modkit/app/panels/spells_panel.cpp:158
 "Which shipped spell?" = "Welcher mitgelieferte Zauber?"
-# src/modkit/app/panels/spells_panel.cpp:135
+# src/modkit/app/panels/spells_panel.cpp:158
 "Made from which shipped spell?" = "Aus welchem mitgelieferten Zauber gebaut?"
-# src/modkit/app/panels/spells_panel.cpp:137
+# src/modkit/app/panels/spells_panel.cpp:160
 "   (crystal, projectile)" = "   (Kristall, Geschoss)"
-# src/modkit/app/panels/spells_panel.cpp:137
+# src/modkit/app/panels/spells_panel.cpp:160
 "   (rune, scroll, orb)" = "   (Rune, Schriftrolle, Kugel)"
-# src/modkit/app/panels/spells_panel.cpp:171
+# src/modkit/app/panels/spells_panel.cpp:194
 "NEW SPELL: made of the pieces of a shipped spell (new item templates, risen.balance new_spells)" = "NEUER ZAUBER: aus den Teilen eines mitgelieferten Zaubers gebaut (neue Gegenstandsvorlagen, risen.balance new_spells)"
-# src/modkit/app/panels/spells_panel.cpp:173
+# src/modkit/app/panels/spells_panel.cpp:196
 "The template name of the crystal / rune; scroll and orb get _Scroll and _Orb. Letters, digits and _, unique, at most 63 characters." = "Der Vorlagenname des Kristalls / der Rune; Schriftrolle und Kugel bekommen _Scroll und _Orb. Buchstaben, Ziffern und _, eindeutig, höchstens 63 Zeichen."
-# src/modkit/app/panels/spells_panel.cpp:178
+# src/modkit/app/panels/spells_panel.cpp:201
 "Base spell" = "Basiszauber"
-# src/modkit/app/panels/spells_panel.cpp:199
-"Forms to make" = "Zu erzeugende Formen"
-# src/modkit/app/panels/spells_panel.cpp:213
-"makes: %s" = "erzeugt: %s"
-# src/modkit/app/panels/spells_panel.cpp:218
-"CHANGE OF A SHIPPED SPELL: the shipped items and projectiles are edited (every game, savegames keep the numbers they were saved with)" = "ÄNDERUNG EINES MITGELIEFERTEN ZAUBERS: die mitgelieferten Gegenstände und Geschosse werden bearbeitet (gilt für jedes Spiel, Spielstände behalten die Zahlen, mit denen sie gespeichert wurden)"
 # src/modkit/app/panels/spells_panel.cpp:222
+"Forms to make" = "Zu erzeugende Formen"
+# src/modkit/app/panels/spells_panel.cpp:236
+"makes: %s" = "erzeugt: %s"
+# src/modkit/app/panels/spells_panel.cpp:241
+"CHANGE OF A SHIPPED SPELL: the shipped items and projectiles are edited (every game, savegames keep the numbers they were saved with)" = "ÄNDERUNG EINES MITGELIEFERTEN ZAUBERS: die mitgelieferten Gegenstände und Geschosse werden bearbeitet (gilt für jedes Spiel, Spielstände behalten die Zahlen, mit denen sie gespeichert wurden)"
+# src/modkit/app/panels/spells_panel.cpp:245
 "Spell" = "Zauber"
-# src/modkit/app/panels/spells_panel.cpp:239
+# src/modkit/app/panels/spells_panel.cpp:262
 "   projectiles {0}" = "   Geschosse {0}"
-# src/modkit/app/panels/spells_panel.cpp:240
-"projectile spell" = "Geschosszauber"
-# src/modkit/app/panels/spells_panel.cpp:240
-"rune spell" = "Runenzauber"
-# src/modkit/app/panels/spells_panel.cpp:259
-"Costs and requirements" = "Kosten und Voraussetzungen"
-# src/modkit/app/panels/spells_panel.cpp:261
-"gCCastInfo_PS.ManaCost of the crystal / rune; the cast takes exactly this from the base mana." = "gCCastInfo_PS.ManaCost des Kristalls / der Rune; der Zauber zieht genau diesen Wert vom Basismana ab."
 # src/modkit/app/panels/spells_panel.cpp:263
+"projectile spell" = "Geschosszauber"
+# src/modkit/app/panels/spells_panel.cpp:263
+"rune spell" = "Runenzauber"
+# src/modkit/app/panels/spells_panel.cpp:279
+"Costs and requirements" = "Kosten und Voraussetzungen"
+# src/modkit/app/panels/spells_panel.cpp:281
+"gCCastInfo_PS.ManaCost of the crystal / rune; the cast takes exactly this from the base mana." = "gCCastInfo_PS.ManaCost des Kristalls / der Rune; der Zauber zieht genau diesen Wert vom Basismana ab."
+# src/modkit/app/panels/spells_panel.cpp:283
 "Crystal, rune and scroll cost = shipped * factor (an orb stays free). Excludes an absolute mana cost." = "Kosten von Kristall, Rune und Schriftrolle = mitgeliefert * Faktor (eine Kugel bleibt kostenlos). Schließt absolute Manakosten aus."
-# src/modkit/app/panels/spells_panel.cpp:264
+# src/modkit/app/panels/spells_panel.cpp:284
 "a mana cost and a factor exclude each other" = "Manakosten und Faktor schließen sich aus"
-# src/modkit/app/panels/spells_panel.cpp:266
+# src/modkit/app/panels/spells_panel.cpp:286
 "Scroll mana cost" = "Manakosten der Schriftrolle"
-# src/modkit/app/panels/spells_panel.cpp:267
+# src/modkit/app/panels/spells_panel.cpp:287
 "Orb mana cost" = "Manakosten der Kugel"
-# src/modkit/app/panels/spells_panel.cpp:270
+# src/modkit/app/panels/spells_panel.cpp:290
 "The skill level to equip the crystal ({ Fireball = 2 })." = "Die Fertigkeitsstufe, um den Kristall anzulegen ({ Fireball = 2 })."
-# src/modkit/app/panels/spells_panel.cpp:270
+# src/modkit/app/panels/spells_panel.cpp:290
 "The Circle level to equip the rune ({ Circle = 3 }); scrolls and orbs need nothing." = "Die Kreisstufe, um die Rune anzulegen ({ Circle = 3 }); Schriftrollen und Kugeln brauchen nichts."
-# src/modkit/app/panels/spells_panel.cpp:271
+# src/modkit/app/panels/spells_panel.cpp:291
 "Used up by a cast" = "Beim Wirken verbraucht"
-# src/modkit/app/panels/spells_panel.cpp:274
+# src/modkit/app/panels/spells_panel.cpp:294
 "Projectile" = "Geschoss"
-# src/modkit/app/panels/spells_panel.cpp:275
+# src/modkit/app/panels/spells_panel.cpp:295
 "The projectile templates (%zu level%s) carry the damage, speed and size." = "Die Geschossvorlagen (%zu Stufe%s) tragen Schaden, Geschwindigkeit und Größe."
-# src/modkit/app/panels/spells_panel.cpp:279
+# src/modkit/app/panels/spells_panel.cpp:299
 "unchanged" = "unverändert"
-# src/modkit/app/panels/spells_panel.cpp:279
+# src/modkit/app/panels/spells_panel.cpp:299
 "same for every level" = "gleich für jede Stufe"
-# src/modkit/app/panels/spells_panel.cpp:279
+# src/modkit/app/panels/spells_panel.cpp:299
 "one value per level" = "ein Wert pro Stufe"
-# src/modkit/app/panels/spells_panel.cpp:300
-"(shipped %s)" = "(mitgeliefert %s)"
-# src/modkit/app/panels/spells_panel.cpp:304
-"  damage" = "  Schaden"
-# src/modkit/app/panels/spells_panel.cpp:312
-"  level {0}" = "  Stufe {0}"
 # src/modkit/app/panels/spells_panel.cpp:320
-"Damage type" = "Schadensart"
-# src/modkit/app/panels/spells_panel.cpp:321
-"Picks the protection skill that is subtracted: Magic (ProtMagic), Ice, Fire, ..." = "Wählt die Schutzfertigkeit, die abgezogen wird: Magic (ProtMagic), Ice, Fire, ..."
-# src/modkit/app/panels/spells_panel.cpp:322
-"Speed" = "Geschwindigkeit"
-# src/modkit/app/panels/spells_panel.cpp:323
-"Speed factor" = "Geschwindigkeitsfaktor"
+"(shipped %s)" = "(mitgeliefert %s)"
 # src/modkit/app/panels/spells_panel.cpp:324
+"  damage" = "  Schaden"
+# src/modkit/app/panels/spells_panel.cpp:332
+"  level {0}" = "  Stufe {0}"
+# src/modkit/app/panels/spells_panel.cpp:340
+"Damage type" = "Schadensart"
+# src/modkit/app/panels/spells_panel.cpp:341
+"Picks the protection skill that is subtracted: Magic (ProtMagic), Ice, Fire, ..." = "Wählt die Schutzfertigkeit, die abgezogen wird: Magic (ProtMagic), Ice, Fire, ..."
+# src/modkit/app/panels/spells_panel.cpp:342
+"Speed" = "Geschwindigkeit"
+# src/modkit/app/panels/spells_panel.cpp:343
+"Speed factor" = "Geschwindigkeitsfaktor"
+# src/modkit/app/panels/spells_panel.cpp:344
 "Radius" = "Radius"
-# src/modkit/app/panels/spells_panel.cpp:325
+# src/modkit/app/panels/spells_panel.cpp:345
 "Radius factor" = "Radiusfaktor"
-# src/modkit/app/panels/spells_panel.cpp:326
+# src/modkit/app/panels/spells_panel.cpp:347
 "Flying effect" = "Flugeffekt"
-# src/modkit/app/panels/spells_panel.cpp:328
+# src/modkit/app/panels/spells_panel.cpp:349
 "Other properties of the {0}" = "Weitere Eigenschaften von {0}"
-# src/modkit/app/panels/spells_panel.cpp:329
+# src/modkit/app/panels/spells_panel.cpp:350
 "Any property of the item by name (gCCastInfo_PS.StartTask re-uses another spell's effect), see docs/SPELL_PROPERTIES.md." = "Jede Eigenschaft des Gegenstands nach Namen (gCCastInfo_PS.StartTask verwendet den Effekt eines anderen Zaubers wieder), siehe docs/SPELL_PROPERTIES.md."
 # src/modkit/app/panels/strings_panel.cpp:170
 "filter: text, id, speaker ..." = "Filter: Text, Id, Sprecher ..."
@@ -1862,70 +1862,88 @@ author = "risen-spass"
 "Copy id" = "Id kopieren"
 # src/modkit/app/panels/world_panel.cpp:1484
 "Copy position" = "Position kopieren"
-# src/modkit/app/pickers.cpp:68
+# src/modkit/app/pickers.cpp:70
 "No template with this name in the game data or the project" = "Keine Vorlage mit diesem Namen in den Spieldaten oder im Projekt"
-# src/modkit/app/pickers.cpp:84
+# src/modkit/app/pickers.cpp:86
 "filter by name or label" = "nach Name oder Bezeichnung filtern"
-# src/modkit/app/pickers.cpp:155
+# src/modkit/app/pickers.cpp:157
 "filter: any part of the name, owner, quest, text ..." = "Filter: ein Teil von Name, Besitzer, Quest, Text ..."
-# src/modkit/app/pickers.cpp:162
+# src/modkit/app/pickers.cpp:164
 "%zu matches" = "%zu Treffer"
-# src/modkit/app/pickers.cpp:238
+# src/modkit/app/pickers.cpp:240
 "dialogue info (FILLERX2_00029)" = "Dialog-Info (FILLERX2_00029)"
-# src/modkit/app/pickers.cpp:238
+# src/modkit/app/pickers.cpp:240
 "No dialogue info of the game has this name" = "Keine Dialog-Info des Spiels hat diesen Namen"
-# src/modkit/app/pickers.cpp:265
+# src/modkit/app/pickers.cpp:267
 "{0} in the world" = "{0} in der Welt"
-# src/modkit/app/pickers.cpp:265
+# src/modkit/app/pickers.cpp:267
 "1 in the world" = "1 in der Welt"
-# src/modkit/app/pickers.cpp:269
+# src/modkit/app/pickers.cpp:271
 "NPC name" = "NPC-Name"
-# src/modkit/app/pickers.cpp:269 (+1)
+# src/modkit/app/pickers.cpp:271 (+1)
 "loading the world..." = "lade die Welt..."
-# src/modkit/app/pickers.cpp:270
+# src/modkit/app/pickers.cpp:272
 "No NPC with this name in the world or the project" = "Kein NPC mit diesem Namen in der Welt oder im Projekt"
-# src/modkit/app/pickers.cpp:291
+# src/modkit/app/pickers.cpp:293
 "entity ID" = "Entitäts-ID"
-# src/modkit/app/pickers.cpp:291
+# src/modkit/app/pickers.cpp:293
 "No entity of the world has this ID" = "Keine Entität der Welt hat diese ID"
-# src/modkit/app/pickers.cpp:307
+# src/modkit/app/pickers.cpp:309
 "quest id" = "Quest-Id"
-# src/modkit/app/pickers.cpp:310
+# src/modkit/app/pickers.cpp:312
 "No quest with this id in the project or the game" = "Keine Quest mit dieser Id im Projekt oder im Spiel"
-# src/modkit/app/pickers.cpp:314
+# src/modkit/app/pickers.cpp:316
 "a quest of the game%s%s" = "eine Quest des Spiels%s%s"
-# src/modkit/app/pickers.cpp:327
+# src/modkit/app/pickers.cpp:329
 "filter by id or title" = "nach Id oder Titel filtern"
-# src/modkit/app/pickers.cpp:358
+# src/modkit/app/pickers.cpp:360
 "(mod) " = "(Mod)"
-# src/modkit/app/pickers.cpp:358
+# src/modkit/app/pickers.cpp:360
 "  [silent]" = "  [still]"
-# src/modkit/app/pickers.cpp:362
+# src/modkit/app/pickers.cpp:364
 "%zu quests%s" = "%zu Quests%s"
-# src/modkit/app/pickers.cpp:362
+# src/modkit/app/pickers.cpp:364
 " (load the game data to see the game's quests)" = " (lade die Spieldaten, um die Quests des Spiels zu sehen)"
-# src/modkit/app/pickers.cpp:407
+# src/modkit/app/pickers.cpp:409
 "load the game data first (Settings)" = "lade zuerst die Spieldaten (Einstellungen)"
-# src/modkit/app/pickers.cpp:437
+# src/modkit/app/pickers.cpp:439
 "a sound" = "ein Klang"
-# src/modkit/app/pickers.cpp:449
+# src/modkit/app/pickers.cpp:451
 "English" = "Englisch"
-# src/modkit/app/pickers.cpp:449
+# src/modkit/app/pickers.cpp:451
 "German" = "Deutsch"
-# src/modkit/app/pickers.cpp:449
+# src/modkit/app/pickers.cpp:451
 "French" = "Französisch"
-# src/modkit/app/pickers.cpp:449
+# src/modkit/app/pickers.cpp:451
 "Russian" = "Russisch"
-# src/modkit/app/pickers.cpp:449
+# src/modkit/app/pickers.cpp:451
 "effects and other" = "Effekte und anderes"
-# src/modkit/app/pickers.cpp:477
+# src/modkit/app/pickers.cpp:479
 "load the game data (Settings) to see the game's sounds" = "lade die Spieldaten (Einstellungen), um die Klänge des Spiels zu sehen"
-# src/modkit/app/pickers.cpp:487
+# src/modkit/app/pickers.cpp:489
 "project" = "Projekt"
-# src/modkit/app/pickers.cpp:498
+# src/modkit/app/pickers.cpp:500
 "%zu sounds" = "%zu Klänge"
-# src/modkit/app/pickers.cpp:511
+# src/modkit/app/pickers.cpp:513
 "Spoken audio for the line: an audio file of the project (Assets panel: Ogg Vorbis, WAV, MP3) or a sound of the game. 'every' plays in every voice language; a language row replaces it for that voice language. The export writes the files into sounds/ of the mod." = "Gesprochenes Audio für die Zeile: eine Audiodatei des Projekts (Bereich Ressourcen: Ogg Vorbis, WAV, MP3) oder ein Klang des Spiels. „every“ spielt in jeder Sprachausgabe; eine Sprachzeile ersetzt es für diese Sprachausgabe. Der Export schreibt die Dateien nach sounds/ der Mod."
+# src/modkit/app/pickers.cpp:576
+"(picture of the project)" = "(Bild des Projekts)"
+# src/modkit/app/pickers.cpp:611
+"icon" = "Symbol"
+# src/modkit/app/pickers.cpp:611
+"No picture of the project and no icon of the game has this name" = "Kein Bild des Projekts und kein Symbol des Spiels hat diesen Namen"
+# src/modkit/app/pickers.cpp:618
+"%zu icons" = "%zu Symbole"
+# src/modkit/app/pickers.cpp:618
+"%zu icons (load the game data to see the game's icons)" = "%zu Symbole (Spieldaten laden, um die Symbole des Spiels zu sehen)"
+# src/modkit/app/pickers.cpp:624
+"effect name" = "Effektname"
+# src/modkit/app/pickers.cpp:624
+"The game has no effect of this name" = "Das Spiel hat keinen Effekt dieses Namens"
+# src/modkit/app/pickers.cpp:630
+"%zu effects" = "%zu Effekte"
+# src/modkit/app/pickers.cpp:630
+"%zu effects (load the game data to see the game's effects)" = "%zu Effekte (Spieldaten laden, um die Effekte des Spiels zu sehen)"
 # src/modkit/app/prop_editor.cpp:86
 "Only the enum values the editor knows names for are listed" = "Es werden nur die Enum-Werte aufgelistet, für die der Editor Namen kennt"
 # src/modkit/app/prop_editor.cpp:133

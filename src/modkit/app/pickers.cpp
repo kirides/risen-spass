@@ -5,7 +5,9 @@
 #include "app/icons.h"
 #include "app/widgets.h"
 #include "core/assets.h"
+#include "core/catalog.h"
 #include "core/i18n.h"
+#include "core/image.h"
 #include "pack2mod/util.h"
 
 #include <imgui.h>
@@ -529,6 +531,103 @@ bool sound_rows(const char* label, json& sound, App& app) {
     }
     ImGui::PopID();
     return changed;
+}
+
+namespace {
+
+// a name field with an arrow that opens a filtered list: `rows` are (name, note, from the mod), `draw_pre` draws in front of a row (an icon)
+bool list_picker(const char* label, std::string& name, bool known, const char* hint, const char* unknown_tip, const char* start_filter,
+                 const std::function<void(const std::string& filter, std::vector<std::pair<std::string, bool>>& rows)>& collect,
+                 const std::function<void(const std::string&)>& draw_pre, float row_height, const char* count_fmt, float width) {
+    bool changed = false;
+    ImGui::PushID(label);
+    if (!known) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.65f, 0.3f, 1));
+    ImGui::SetNextItemWidth(width > 0 ? width : ImGui::CalcItemWidth() - ImGui::GetFrameHeight() - ImGui::GetStyle().ItemInnerSpacing.x);
+    changed |= ImGui::InputTextWithHint("##name", hint, &name);
+    if (!known) {
+        ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", unknown_tip);
+    }
+    ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+    static std::string filter;
+    if (ImGui::ArrowButton("##open", ImGuiDir_Down)) {
+        filter = start_filter ? start_filter : "";
+        ImGui::OpenPopup("##pick");
+    }
+    visible_label(label);
+    if (ImGui::BeginPopup("##pick")) {
+        if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+        ImGui::SetNextItemWidth(360);
+        ImGui::InputTextWithHint("##filter", tr("filter"), &filter);
+        ImGui::BeginChild("##list", ImVec2(520, 380));
+        std::vector<std::pair<std::string, bool>> rows;
+        collect(filter, rows);
+        ImGuiListClipper clip;
+        clip.Begin(static_cast<int>(rows.size()), row_height > 0 ? row_height : -1.0f);
+        while (clip.Step())
+            for (int i = clip.DisplayStart; i < clip.DisplayEnd; ++i) {
+                const auto& [n, mod] = rows[i];
+                ImGui::PushID(i);
+                if (draw_pre) {
+                    draw_pre(n);
+                    ImGui::SameLine();
+                }
+                if (mod) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.55f, 0.8f, 1.0f, 1.0f));
+                if (ImGui::Selectable(mod ? (n + "  " + tr("(picture of the project)")).c_str() : n.c_str(), n == name)) {
+                    name = n;
+                    changed = true;
+                    ImGui::CloseCurrentPopup();
+                }
+                if (mod) ImGui::PopStyleColor();
+                ImGui::PopID();
+            }
+        ImGui::EndChild();
+        ImGui::TextDisabled(count_fmt, rows.size());
+        ImGui::EndPopup();
+    }
+    ImGui::PopID();
+    return changed;
+}
+
+}  // namespace
+
+bool icon_picker(const char* label, std::string& icon, App& app, float width) {
+    const GameData* g = app.game.get();
+    static const GameData* cached_for = nullptr;
+    static std::vector<std::string> game_icons;
+    if (g != cached_for) {
+        game_icons = g ? known_icons(*g) : std::vector<std::string>{};
+        cached_for = g;
+    }
+    std::vector<std::string> pictures;
+    for (auto& a : app.project.assets) {
+        const std::string n = p2m::bare_name(a.file);
+        if (is_picture(n)) pictures.push_back(n);
+    }
+    auto same = [&](const std::string& n) { return p2m::lower(n) == p2m::lower(icon); };
+    const bool known = icon.empty() || !g || std::any_of(pictures.begin(), pictures.end(), same) || std::any_of(game_icons.begin(), game_icons.end(), same);
+    ui::icon(icon, 32.0f);
+    ImGui::SameLine();
+    return list_picker(label, icon, known, tr("icon"), tr("No picture of the project and no icon of the game has this name"), "",
+                       [&](const std::string& f, std::vector<std::pair<std::string, bool>>& rows) {
+                           for (auto& n : pictures)
+                               if (icontains(n, f)) rows.emplace_back(n, true);
+                           for (auto& n : game_icons)
+                               if (icontains(n, f)) rows.emplace_back(n, false);
+                       },
+                       [](const std::string& n) { ui::icon(n, 20.0f); }, 0, g ? tr("%zu icons") : tr("%zu icons (load the game data to see the game's icons)"), width);
+}
+
+bool effect_picker(const char* label, std::string& name, App& app, const char* start_filter, float width) {
+    const GameData* g = app.game.get();
+    const bool known = name.empty() || !g || std::any_of(g->effects().begin(), g->effects().end(), [&](const std::string& e) { return p2m::lower(e) == p2m::lower(name); });
+    return list_picker(label, name, known, tr("effect name"), tr("The game has no effect of this name"), start_filter,
+                       [&](const std::string& f, std::vector<std::pair<std::string, bool>>& rows) {
+                           if (g)
+                               for (auto& e : g->effects())
+                                   if (icontains(e, f)) rows.emplace_back(e, false);
+                       },
+                       nullptr, ImGui::GetTextLineHeightWithSpacing(), g ? tr("%zu effects") : tr("%zu effects (load the game data to see the game's effects)"), width);
 }
 
 }  // namespace mk::ui

@@ -119,6 +119,8 @@ public:
     bool exists(const std::string& bare_name) const;
     // the game's own quests, sorted by name (empty when compiled_quests.bin is missing or unreadable)
     const std::vector<GameQuest>& quests() const { return quests_; }
+    // the names of the game's effects (compiled_effects.bin: "eff_projectile_Fireball_01", what gCEffect_PS.Effect names), sorted case-insensitively
+    const std::vector<std::string>& effects() const { return effects_; }
     const GameQuest* quest(const std::string& name) const;  // case-insensitive
     // the game's dialogue infos (compiled_infos.bin), sorted by name; empty when the file is missing or unreadable. The first line an info says is
     // `info_text(name)` (infos.tab).
@@ -157,6 +159,7 @@ private:
     std::map<std::string, std::vector<AssetEntry>> assets_;
     std::vector<std::string> worlds_;
     std::vector<GameQuest> quests_;
+    std::vector<std::string> effects_;
     std::vector<GameInfo> infos_;
     std::map<std::string, std::vector<std::string>> command_classes_, condition_classes_;
     std::unordered_map<std::string, std::string> info_first_line_;  // info name -> id of its first row in infos.tab

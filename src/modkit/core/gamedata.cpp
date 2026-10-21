@@ -334,6 +334,22 @@ std::shared_ptr<GameData> GameData::load(const std::string& data_dir, const Prog
     std::sort(gd->quests_.begin(), gd->quests_.end(), [](const GameQuest& a, const GameQuest& b) { return p2m::lower(a.name) < p2m::lower(b.name); });
     log_info("game data: " + std::to_string(gd->quests_.size()) + " quests");
 
+    // ---- the game's effects (compiled_effects.bin, the same container: one "<name>.xeff" string per effect)
+    for (const std::string& k : gd->compiled_.order) {
+        if (!p2m::ends_with(p2m::lower(k), "compiled_effects.bin")) continue;
+        try {
+            const p2m::Template t = p2m::parse_template(gd->compiled_.files.at(k).read());
+            for (const std::string& s : t.strings)
+                if (p2m::ends_with(p2m::lower(s), ".xeff")) gd->effects_.push_back(s.substr(0, s.size() - 5));
+        } catch (const std::exception& e) {
+            log_warn(std::string("compiled_effects.bin skipped: ") + e.what());
+        }
+    }
+    std::sort(gd->effects_.begin(), gd->effects_.end(), [](const std::string& a, const std::string& b) { return p2m::lower(a) < p2m::lower(b); });
+    gd->effects_.erase(std::unique(gd->effects_.begin(), gd->effects_.end(), [](const std::string& a, const std::string& b) { return p2m::lower(a) == p2m::lower(b); }),
+                       gd->effects_.end());
+    log_info("game data: " + std::to_string(gd->effects_.size()) + " effects");
+
     // ---- the game's dialogue infos (compiled_infos.bin): the gCInfo records with their commands and conditions
     for (const std::string& k : gd->compiled_.order) {
         if (!p2m::ends_with(p2m::lower(k), "compiled_infos.bin")) continue;

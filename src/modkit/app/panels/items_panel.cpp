@@ -355,30 +355,9 @@ private:
             ImGui::SameLine();
             ImGui::BeginDisabled(!it.icon);
             std::string ic = it.icon ? *it.icon : shipped.icon;
-            ui::icon(ic, 32.0f);
-            ImGui::SameLine();
-            if (ImGui::BeginCombo(tr("Icon"), ic.c_str(), ImGuiComboFlags_HeightLarge)) {
-                // the project's pictures first: they become cells of the mod's icon atlas
-                for (auto& a : app.project.assets) {
-                    const std::string n = p2m::bare_name(a.file);
-                    if (!is_picture(n)) continue;
-                    if (ImGui::Selectable((n + "  (picture of the project)").c_str(), n == ic)) {
-                        it.icon = n;
-                        ch = true;
-                    }
-                }
-                if (g) {
-                    if (icons_.empty()) icons_ = known_icons(*g);
-                    for (auto& n : icons_) {
-                        ui::icon(n, 20.0f);
-                        ImGui::SameLine();
-                        if (ImGui::Selectable(n.c_str(), n == ic)) {
-                            it.icon = n;
-                            ch = true;
-                        }
-                    }
-                }
-                ImGui::EndCombo();
+            if (ui::icon_picker(tr("Icon"), ic, app) && it.icon) {
+                it.icon = ic;
+                ch = true;
             }
             ImGui::EndDisabled();
         }
@@ -426,7 +405,6 @@ private:
     }
 
     std::string sel_, filter_;
-    std::vector<std::string> icons_;
     MeshPreview preview_;
 };
 

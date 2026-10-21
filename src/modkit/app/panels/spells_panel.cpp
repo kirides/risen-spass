@@ -60,6 +60,29 @@ bool opt_bool(const char* label, std::optional<bool>& v, const std::string& ship
     return changed;
 }
 
+// "set" checkbox + a picker: an optional name, the picker shows the shipped one while it is not set
+template <class Pick>
+bool opt_picked(const char* id, std::optional<std::string>& v, const std::string& shipped, Pick pick) {
+    bool changed = false;
+    bool on = v.has_value();
+    ImGui::PushID(id);
+    if (ImGui::Checkbox("##set", &on)) {
+        if (on) v = shipped;
+        else v.reset();
+        changed = true;
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!v);
+    std::string cur = v ? *v : shipped;
+    if (pick(cur) && v) {
+        v = cur;
+        changed = true;
+    }
+    ImGui::EndDisabled();
+    ImGui::PopID();
+    return changed;
+}
+
 class SpellsPanel : public Panel {
 public:
     const char* title() const override { return kPanelSpells; }
@@ -250,10 +273,7 @@ private:
 
         if (s.mode == Mode::New) {
             ui::section(tr("Item"));
-            std::string ic = s.icon ? *s.icon : shipped.icon;
-            ui::icon(ic, 32.0f);
-            ImGui::SameLine();
-            ch |= ui::opt_text(tr("Icon"), s.icon, shipped.icon.c_str());
+            ch |= opt_picked("icon", s.icon, shipped.icon, [&](std::string& v) { return ui::icon_picker(tr("Icon"), v, app); });
             ch |= ui::opt_int(tr("Value (gold)"), s.value, hint_int(shipped.value).c_str(), shipped.value.value_or(500));
         }
         ui::section(tr("Costs and requirements"));
@@ -323,7 +343,8 @@ private:
             ch |= ui::opt_double(tr("Speed factor"), s.speed_mult, nullptr, 1.0);
             ch |= ui::opt_double(tr("Radius"), s.radius, shipped_num(proj0, "gCProjectile2_PS.SweepTestRadius").c_str(), 10.0);
             ch |= ui::opt_double(tr("Radius factor"), s.radius_mult, nullptr, 1.0);
-            ch |= ui::opt_text(tr("Flying effect"), s.effect, shipped_num(proj0, "gCEffect_PS.Effect").c_str());
+            ch |= opt_picked("effect", s.effect, shipped_num(proj0, "gCEffect_PS.Effect"),
+                             [&](std::string& v) { return ui::effect_picker(tr("Flying effect"), v, app, "eff_projectile"); });
         }
         ui::section(trf("Other properties of the {0}", {main_form}).c_str());
         ImGui::TextDisabled("%s", tr("Any property of the item by name (gCCastInfo_PS.StartTask re-uses another spell's effect), see docs/SPELL_PROPERTIES.md."));

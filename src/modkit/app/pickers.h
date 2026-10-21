@@ -27,6 +27,12 @@ bool npc_name_picker(const char* label, std::string& name, App& app, float width
 // The ID of a world entity (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx): the list is filtered to the entities that carry `name_filter` (empty = all NPCs of the
 // world; the typed filter then matches name, template, layer and ID). When an entity is picked `name` is set to its name if `name` is not null.
 bool entity_id_picker(const char* label, std::string& guid, App& app, const std::string& name_filter, std::string* name = nullptr, float width = 0);
+// an item icon (gCItem_PS.IconImage): the project's pictures first (they become cells of the mod's icon atlas), then every icon of the shipped
+// templates, each with its picture; type to filter. Free text is accepted (a name nobody knows is shown in orange).
+bool icon_picker(const char* label, std::string& icon, App& app, float width = 0);
+// an effect of the game (compiled_effects.bin, gCEffect_PS.Effect: "eff_projectile_Fireball_01"); the list opens filtered by `start_filter`
+// (e.g. "eff_projectile"). Free text is accepted (a name the game does not know is shown in orange).
+bool effect_picker(const char* label, std::string& name, App& app, const char* start_filter = "", float width = 0);
 // a label for a template name: the project's label, else the game's English label, else ""
 std::string label_of(const App& app, const std::string& name);
 

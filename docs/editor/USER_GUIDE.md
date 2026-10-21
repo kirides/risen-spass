@@ -135,7 +135,8 @@ A spell is a group of items and projectile templates (docs/SPELL_PROPERTIES.md),
 
 * **+ Change shipped**: one of the 21 shipped spells. **Mana cost** (or a **factor**, the two exclude each other), for rune spells the **scroll** and **orb** costs, **requirements**
   (`{ Fireball = 2 }`, `{ Circle = 3 }`), *used up by a cast*; for the projectile spells (Fireball, Frost, Missile) the projectile: **damage** (one value, or one per level), a factor,
-  **damage type**, **speed**, **radius**, the flying effect. The shipped numbers are shown next to every field. Other properties of the crystal / rune by name (`gCCastInfo_PS.StartTask`
+  **damage type**, **speed**, **radius**, the **flying effect** (a list of the game's effects, `compiled_effects.bin`, opened on `eff_projectile`; the
+  filter can be cleared for all of them). A new spell's **icon** is picked like an item's: the project's pictures, then the game's icons. The shipped numbers are shown next to every field. Other properties of the crystal / rune by name (`gCCastInfo_PS.StartTask`
   re-uses another spell's effect).
 * **+ New spell**: made of the pieces of a shipped one: the template name (`<name>`, `<name>_Scroll`, `<name>_Orb`), the forms to make (crystal and scroll for projectile spells, rune,
   scroll and orb for the others), label, description, icon, value and the same numbers. The new items are known to the item pickers (recipes, loot, quest rewards).
