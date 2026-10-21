@@ -205,7 +205,11 @@ void App::status(const std::string& text) {
 
 void App::focus_panel(const char* title) {
     focus_request_ = title;
-    if (side_collapsed_ && std::find(side_panels_.begin(), side_panels_.end(), title) != side_panels_.end()) set_side_collapsed(false);
+    if (side_collapsed_ && std::find(side_panels_.begin(), side_panels_.end(), title) != side_panels_.end()) {
+        set_side_collapsed(false);
+        // the unfolded panels appear in the next frame and each takes the focus as it appears (the last one drawn wins): focus after that
+        focus_frame_ = frame_ + 2;
+    }
 }
 
 void App::select_in(const std::string& panel_title, const std::string& uid_or_name) {
@@ -885,7 +889,7 @@ void App::draw_frame() {
         if (!p->open) continue;
         // a folded panel is not submitted: its dock node hides and the rest of the layout takes the room
         if (side_collapsed_ && std::find(side_panels_.begin(), side_panels_.end(), p->title()) != side_panels_.end()) continue;
-        if (!focus_request_.empty() && focus_request_ == p->title() && frame_ >= 2) {
+        if (!focus_request_.empty() && focus_request_ == p->title() && frame_ >= focus_frame_) {
             ImGui::SetNextWindowFocus();
             focus_request_.clear();
         }

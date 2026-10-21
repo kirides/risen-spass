@@ -185,6 +185,7 @@ private:
     int frame_ = 0, shot_frames_ = 0;
     std::string focus_request_, pending_select_;
     unsigned int dock_id_ = 0;
+    int focus_frame_ = 2;  // focus_request_ applies from this frame on
     bool side_collapsed_ = false, side_pending_ = false;  // pending: collapse once the panels are docked (start-up)
     std::vector<std::string> side_panels_;                // the titles folded into the side bar
     std::vector<Problem> problems_;
