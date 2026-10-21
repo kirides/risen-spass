@@ -856,6 +856,8 @@ void App::draw_frame() {
     refresh_problems();
     poll_game_log();
     ui::set_icon_source(resources(), game.get(), &project);
+    // textures the worker finished go to the GPU here, every frame: icons are drawn by every panel, not only by those with a 3D view
+    if (gfx::ResourceCache* res = resources()) res->update(2.0);
     refresh_assets();  // cheap when nothing changed; follows undo, open, import
     handle_shortcuts();
     draw_menu();

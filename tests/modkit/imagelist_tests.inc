@@ -54,4 +54,7 @@ TEST(imagelist_matches_game) {
     CHECK(with_icon > 100);
     CHECK(found * 100 >= with_icon * 95);  // the few that do not resolve are the engine's own gaps
     CHECK_EQ(found, texture_ok);
+    // a spell crystal's icon (the Spells panel shows it): the template writes it in lower case, the list as IC_It_Crystal_Fire
+    const ImageEntry* crystal = c.find("ic_it_crystal_fire");
+    CHECK(crystal != nullptr && crystal->width() == 40 && apple && crystal->texture_file() == apple->texture_file());
 }
