@@ -76,7 +76,8 @@ Reference: [Lua API](docs/LUA_API.md) · [examples](docs/EXAMPLES.md) · [entity
 
 ## Install
 
-Download the release zip (or build it with `scripts\package.ps1`), then:
+Build the release zip with `scripts\package.ps1` (it builds the layer, `risen-pack2mod.exe` and the mod editor `risen-modkit.exe` and puts them all into
+`dist\risen-spass-<version>.zip`), unpack it, then:
 
 ```powershell
 .\install.ps1   -GameDir 'C:\...\Risen' -WithExamples

@@ -302,7 +302,10 @@ hung without `session.start(load)`; 0.5 s happened to be long enough). The engin
 
 ## Releases
 
-`scripts\package.ps1` builds `dist\risen-spass-<version>.zip` (proxy DLL, installer, example mods, definitions, docs). The version is the one in `CMakeLists.txt`.
+`scripts\package.ps1` builds every executable (`spass_proxy` -> `sentry.dll`, `risen-pack2mod`, `risen-modkit`; the `build` folder must be configured) and
+zips them into one `dist\risen-spass-<version>.zip`: proxy DLL, installer, `risen-pack2mod.exe` with its profiles, the mod editor in `modkit\` (`risen-modkit.exe`,
+its `lang\` files, the example projects of `examples\modkit`), example mods, definitions, docs (including the editor's tutorial, user guide and pictures).
+The version is the one in `CMakeLists.txt`. `-NoBuild` packages what is already built (CI), `-NoModkit` leaves the editor out.
 
 ## Known limits
 

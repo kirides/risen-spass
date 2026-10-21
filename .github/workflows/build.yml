@@ -106,7 +106,7 @@ jobs:
           # the full package (install scripts, docs, example mods, Lua definitions): package.ps1 expects the Visual Studio layout
           New-Item -ItemType Directory -Force build\RelWithDebInfo | Out-Null
           Copy-Item "$bin\sentry.dll", "$bin\risen-pack2mod.exe" build\RelWithDebInfo\
-          .\scripts\package.ps1 -Out dist\full
+          .\scripts\package.ps1 -Out dist\full -NoBuild -NoModkit   # built above; the editor is built by the modkit job
           Get-ChildItem dist -Recurse -Filter *.zip | Format-Table Name, Length
           "FULL_ZIP=$((Get-ChildItem dist\full -Filter *.zip | Select-Object -First 1).FullName)" >> $env:GITHUB_ENV
       - name: Upload risen-spass.zip
