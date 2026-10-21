@@ -14,6 +14,7 @@
 #include "core/events.h"
 #include "core/layers.h"
 #include "core/behavior.h"
+#include "core/lua_files.h"
 #include "core/quest.h"
 #include "core/spells.h"
 
@@ -561,6 +562,18 @@ void check_behaviors(Ctx& c) {
     for (auto& t : c.p.npc_templates) check_uses("NPCs", t.uid, t.name, t.behaviors);
 }
 
+// the project's Lua files (their contents are compiled by the Lua panel and the export, which read the files)
+void check_lua_files(Ctx& c) {
+    const char* A = "Lua";
+    std::set<std::string> seen;
+    for (auto& l : c.p.lua_files) {
+        const std::string subj = l.name.empty() ? "(unnamed Lua file)" : l.name;
+        if (const std::string why = lua_file_name_problem(l.name); !why.empty()) c.add(Severity::Error, A, l.uid, subj, why);
+        if (!seen.insert(l.name).second) c.add(Severity::Error, A, l.uid, subj, tr("two Lua files have this name"));
+        if (l.file.empty()) c.add(Severity::Error, A, l.uid, subj, tr("choose the Lua file (.lua)"));
+    }
+}
+
 // a world name: one of the game's (with the game data), else a warning (another mod's world can be meant)
 void check_world_name(Ctx& c, const char* A, const std::string& uid, const std::string& subj, const std::string& own) {
     if (own.empty() || !c.g || c.g->worlds().empty()) return;
@@ -903,6 +916,7 @@ std::vector<Problem> validate(const Project& p, const GameData* game, const Worl
     check_events(c);
     check_layers(c);
     check_behaviors(c);
+    check_lua_files(c);
     check_dialogs(c);
     check_world(c);
     check_extras(c);

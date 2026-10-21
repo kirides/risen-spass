@@ -748,6 +748,11 @@ json to_json(const Project& p) {
         for (auto& b : p.behaviors) bs.push_back(json{{"uid", b.uid}, {"name", b.name}, {"file", b.file}});
         j["behaviors"] = bs;
     }
+    if (!p.lua_files.empty()) {
+        json ls = json::array();
+        for (auto& l : p.lua_files) ls.push_back(json{{"uid", l.uid}, {"name", l.name}, {"file", l.file}});
+        j["lua_files"] = ls;
+    }
     if (!p.extra_balance.empty()) j["extra_balance"] = p.extra_balance;
     j["editor"] = p.editor;
     return j;
@@ -1046,6 +1051,13 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
         r.get(e, "name", b.name);
         r.get(e, "file", b.file);
         return b;
+    });
+    read_list(j, "lua_files", p.lua_files, warnings, [](const Reader& r, const json& e) {
+        LuaFile l;
+        r.get_uid(e, l.uid);
+        r.get(e, "name", l.name);
+        r.get(e, "file", l.file);
+        return l;
     });
     read_list(j, "strings", p.strings, warnings, [](const Reader& r, const json& e) {
         StringRow s;

@@ -16,6 +16,7 @@
 #include "core/assets.h"
 #include "core/export.h"
 #include "core/graph.h"
+#include "core/lua_files.h"
 #include "core/paths.h"
 #include "pack2mod/util.h"
 
@@ -968,7 +969,17 @@ ImportResult import_mod(const std::string& dir, bool prefer_data) {
             std::sort(files.begin(), files.end());
             for (auto& f : files) p.assets.push_back({new_uid(), u8str(fs::absolute(f)), asset_kind(u8str(f.filename()))});
         }
-        if (fs::exists(root / "custom.lua", ec)) r.warnings.push_back("custom.lua is not imported: keep it in the mod folder when you export there again");
+        // the project's Lua files: read where they are, in the order main.lua loads them (data/lua_files.lua names the modules "lua.<name>")
+        const json lua_files = data("lua_files.lua");
+        if (lua_files.is_array())
+            for (auto& m : lua_files) {
+                const std::string mod_name = m.is_string() ? m.get<std::string>() : std::string();
+                if (mod_name.rfind("lua.", 0) != 0) continue;
+                const std::string name = mod_name.substr(4);
+                p.lua_files.push_back({new_uid(), name, u8str(fs::absolute(root / u8(lua_module_file(name))))});
+            }
+        if (fs::exists(root / "custom.lua", ec))
+            r.warnings.push_back("custom.lua is not imported: keep it in the mod folder when you export there again, or add a copy of it in the Lua panel to carry it in the project");
         r.ok = true;
     } catch (const std::exception& e) {
         r.error = e.what();

@@ -11,6 +11,7 @@ $exe = Join-Path $root 'build\src\modkit\RelWithDebInfo\risen-modkit.exe'
 $out = Join-Path $root 'docs\modkit'
 $chronicle = Join-Path $root 'examples\modkit\chronicle.rmk.json'
 $showcase = Join-Path $root 'examples\modkit\showcase.rmk.json'
+$extensions = Join-Path $root 'examples\modkit\extensions.rmk.json'
 New-Item -ItemType Directory -Force $out | Out-Null
 
 # name = project, extra arguments
@@ -29,6 +30,7 @@ $shots = [ordered]@{
     'strings'      = @($chronicle, '--panel', 'Strings')
     'palette'      = @($chronicle, '--palette', 'tide')
     'wizard'       = @($showcase, '--wizard', 'weapon')
+    'lua'          = @($extensions, '--panel', 'Lua', '--select', 'tweaks')
     'german'       = @($chronicle, '--panel', 'Items', '--select', 'MKC_Tide_Potion', '--lang', 'de')
 }
 foreach ($name in $shots.Keys) {

@@ -61,6 +61,7 @@ add_library(modkit_core STATIC
     core/project.cpp
     core/quest.cpp
     core/search.cpp
+    core/lua_files.cpp
     core/lua_writer.cpp
     core/mesh.cpp
     core/meshwrite.cpp
@@ -119,6 +120,7 @@ add_executable(risen-modkit
     app/panels/conversation_panel.cpp
     app/panels/dialogs_panel.cpp
     app/panels/items_panel.cpp
+    app/panels/lua_panel.cpp
     app/panels/problems_panel.cpp
     app/panels/events_panel.cpp
     app/panels/extras_panels.cpp

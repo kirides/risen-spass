@@ -8,151 +8,151 @@ english_name = "German"
 author = "risen-spass"
 
 [strings]
-# src/modkit/app/app.cpp:179
+# src/modkit/app/app.cpp:180
 "Game data: {0} templates from {1} archives" = "Spieldaten: {0} Vorlagen aus {1} Archiven"
-# src/modkit/app/app.cpp:182
+# src/modkit/app/app.cpp:183
 "Cannot read the game data: {0}" = "Die Spieldaten können nicht gelesen werden: {0}"
-# src/modkit/app/app.cpp:248
+# src/modkit/app/app.cpp:253
 "{0} is neither an asset file of the project nor a sound of the game" = "{0} ist weder eine Ressourcendatei des Projekts noch ein Klang des Spiels"
-# src/modkit/app/app.cpp:273
+# src/modkit/app/app.cpp:278
 "playing {0} ({1}, {2} s)" = "spiele {0} ab ({1}, {2} s)"
-# src/modkit/app/app.cpp:276
+# src/modkit/app/app.cpp:281
 "cannot play {0}: {1}" = "{0} kann nicht abgespielt werden: {1}"
-# src/modkit/app/app.cpp:344
+# src/modkit/app/app.cpp:349
 "{0} errors in the project: fix them first (Problems panel)" = "{0} Fehler im Projekt: bitte zuerst beheben (Bereich Probleme)"
-# src/modkit/app/app.cpp:355 (+1)
+# src/modkit/app/app.cpp:360 (+1)
 "Export failed: {0}" = "Export fehlgeschlagen: {0}"
-# src/modkit/app/app.cpp:364
+# src/modkit/app/app.cpp:369
 "Play: {0}" = "Spielen: {0}"
-# src/modkit/app/app.cpp:388 (+1)
+# src/modkit/app/app.cpp:393 (+1)
 "Export mod" = "Mod exportieren"
-# src/modkit/app/app.cpp:396
+# src/modkit/app/app.cpp:401
 "The mod is written into this folder (normally <Risen>\\bin\\spass\\mods\\<id>). The export only writes into an empty folder or one it wrote before." = "Die Mod wird in diesen Ordner geschrieben (normalerweise <Risen>\\bin\\spass\\mods\\<id>). Der Export schreibt nur in einen leeren Ordner oder in einen, in den er schon einmal geschrieben hat."
-# src/modkit/app/app.cpp:400 (+7)
+# src/modkit/app/app.cpp:405 (+7)
 "Browse" = "Durchsuchen"
-# src/modkit/app/app.cpp:407
+# src/modkit/app/app.cpp:412
 "%zu errors: see the Problems panel. The export is refused until they are fixed." = "%zu Fehler: siehe Bereich Probleme. Der Export wird abgelehnt, bis sie behoben sind."
-# src/modkit/app/app.cpp:408
+# src/modkit/app/app.cpp:413
 "%zu warnings (see Problems)" = "%zu Warnungen (siehe Probleme)"
-# src/modkit/app/app.cpp:410 (+2)
+# src/modkit/app/app.cpp:415 (+2)
 "Export" = "Exportieren"
-# src/modkit/app/app.cpp:417 (+2)
+# src/modkit/app/app.cpp:422 (+2)
 "error: {0}" = "Fehler: {0}"
-# src/modkit/app/app.cpp:418
+# src/modkit/app/app.cpp:423
 "written: {0}" = "geschrieben: {0}"
-# src/modkit/app/app.cpp:419
+# src/modkit/app/app.cpp:424
 "removed: {0}" = "entfernt: {0}"
-# src/modkit/app/app.cpp:421
+# src/modkit/app/app.cpp:426
 "{0} files written, {1} unchanged" = "{0} Dateien geschrieben, {1} unverändert"
-# src/modkit/app/app.cpp:422
+# src/modkit/app/app.cpp:427
 "Exported to {0}" = "Exportiert nach {0}"
-# src/modkit/app/app.cpp:430 (+4)
+# src/modkit/app/app.cpp:435 (+4)
 "Close" = "Schließen"
-# src/modkit/app/app.cpp:452 (+2)
+# src/modkit/app/app.cpp:457 (+2)
 "New project" = "Neues Projekt"
-# src/modkit/app/app.cpp:473
+# src/modkit/app/app.cpp:478
 "Opened {0}" = "{0} geöffnet"
-# src/modkit/app/app.cpp:476
+# src/modkit/app/app.cpp:481
 "Cannot open the project: {0}" = "Das Projekt kann nicht geöffnet werden: {0}"
-# src/modkit/app/app.cpp:492
+# src/modkit/app/app.cpp:497
 "Import failed: {0}" = "Import fehlgeschlagen: {0}"
-# src/modkit/app/app.cpp:500
+# src/modkit/app/app.cpp:505
 "Read the project the mod was exported from (modkit/project.json)." = "Das Projekt wurde gelesen, aus dem die Mod exportiert wurde (modkit/project.json)."
-# src/modkit/app/app.cpp:501
+# src/modkit/app/app.cpp:506
 "Rebuilt the project from the mod's data files (the graphs were laid out anew)." = "Das Projekt wurde aus den Datendateien der Mod neu aufgebaut (die Graphen wurden neu angeordnet)."
-# src/modkit/app/app.cpp:503
+# src/modkit/app/app.cpp:508
 "Imported {0}: save the project to keep it" = "{0} importiert: Projekt speichern, um es zu behalten"
-# src/modkit/app/app.cpp:542
+# src/modkit/app/app.cpp:547
 "Saved {0}" = "{0} gespeichert"
-# src/modkit/app/app.cpp:546
+# src/modkit/app/app.cpp:551
 "Cannot save: {0}" = "Speichern nicht möglich: {0}"
-# src/modkit/app/app.cpp:552
+# src/modkit/app/app.cpp:557
 "(unsaved project)" = "(ungespeichertes Projekt)"
-# src/modkit/app/app.cpp:615 (+2)
+# src/modkit/app/app.cpp:620 (+2)
 "File" = "Datei"
-# src/modkit/app/app.cpp:617 (+1)
+# src/modkit/app/app.cpp:622 (+1)
 "Open project..." = "Projekt öffnen..."
-# src/modkit/app/app.cpp:618
+# src/modkit/app/app.cpp:623
 "Open recent" = "Zuletzt geöffnet"
-# src/modkit/app/app.cpp:624 (+1)
+# src/modkit/app/app.cpp:629 (+1)
 "Save" = "Speichern"
-# src/modkit/app/app.cpp:625
+# src/modkit/app/app.cpp:630
 "Save as..." = "Speichern unter..."
-# src/modkit/app/app.cpp:627 (+1)
+# src/modkit/app/app.cpp:632 (+1)
 "Export mod..." = "Mod exportieren..."
-# src/modkit/app/app.cpp:628
-"Import mod" = "Mod importieren"
-# src/modkit/app/app.cpp:629
-"From its project (modkit/project.json)..." = "Aus ihrem Projekt (modkit/project.json)..."
 # src/modkit/app/app.cpp:633
+"Import mod" = "Mod importieren"
+# src/modkit/app/app.cpp:634
+"From its project (modkit/project.json)..." = "Aus ihrem Projekt (modkit/project.json)..."
+# src/modkit/app/app.cpp:638
 "From its data files (after hand edits)..." = "Aus ihren Datendateien (nach Handarbeit)..."
-# src/modkit/app/app.cpp:640
-"Quit" = "Beenden"
-# src/modkit/app/app.cpp:643 (+1)
-"Edit" = "Bearbeiten"
-# src/modkit/app/app.cpp:644
-"Undo" = "Rückgängig"
 # src/modkit/app/app.cpp:645
-"Redo" = "Wiederholen"
-# src/modkit/app/app.cpp:647
-"Command palette..." = "Befehlspalette..."
+"Quit" = "Beenden"
+# src/modkit/app/app.cpp:648 (+1)
+"Edit" = "Bearbeiten"
+# src/modkit/app/app.cpp:649
+"Undo" = "Rückgängig"
 # src/modkit/app/app.cpp:650
-"Wizards" = "Assistenten"
-# src/modkit/app/app.cpp:651
-"Fetch quest..." = "Hol-Quest..."
+"Redo" = "Wiederholen"
 # src/modkit/app/app.cpp:652
-"New weapon with a recipe..." = "Neue Waffe mit Rezept..."
-# src/modkit/app/app.cpp:653
-"Trader with stock..." = "Händler mit Sortiment..."
+"Command palette..." = "Befehlspalette..."
+# src/modkit/app/app.cpp:655
+"Wizards" = "Assistenten"
 # src/modkit/app/app.cpp:656
+"Fetch quest..." = "Hol-Quest..."
+# src/modkit/app/app.cpp:657
+"New weapon with a recipe..." = "Neue Waffe mit Rezept..."
+# src/modkit/app/app.cpp:658
+"Trader with stock..." = "Händler mit Sortiment..."
+# src/modkit/app/app.cpp:661
 "Window" = "Fenster"
-# src/modkit/app/app.cpp:659
+# src/modkit/app/app.cpp:664
 "Collapse the side panels" = "Seitenleiste einklappen"
-# src/modkit/app/app.cpp:660
+# src/modkit/app/app.cpp:665
 "Reset layout" = "Layout zurücksetzen"
-# src/modkit/app/app.cpp:666 (+1)
-"Game" = "Spiel"
-# src/modkit/app/app.cpp:667
-"Play: export and start / reload" = "Spielen: exportieren und starten / neu laden"
-# src/modkit/app/app.cpp:668 (+1)
-"Start with" = "Starten mit"
-# src/modkit/app/app.cpp:669
-"Main menu" = "Hauptmenü"
-# src/modkit/app/app.cpp:670 (+1)
-"A new game" = "Neues Spiel"
 # src/modkit/app/app.cpp:671 (+1)
-"The last quick save" = "Letzter Schnellspielstand"
+"Game" = "Spiel"
+# src/modkit/app/app.cpp:672
+"Play: export and start / reload" = "Spielen: exportieren und starten / neu laden"
+# src/modkit/app/app.cpp:673 (+1)
+"Start with" = "Starten mit"
 # src/modkit/app/app.cpp:674
+"Main menu" = "Hauptmenü"
+# src/modkit/app/app.cpp:675 (+1)
+"A new game" = "Neues Spiel"
+# src/modkit/app/app.cpp:676 (+1)
+"The last quick save" = "Letzter Schnellspielstand"
+# src/modkit/app/app.cpp:679
 "Open the game's log" = "Protokoll des Spiels öffnen"
-# src/modkit/app/app.cpp:678
+# src/modkit/app/app.cpp:683
 "Forget the game's errors" = "Fehler des Spiels vergessen"
-# src/modkit/app/app.cpp:687
+# src/modkit/app/app.cpp:692
 "  Play  " = "  Spielen"
-# src/modkit/app/app.cpp:689
+# src/modkit/app/app.cpp:694
 "Export the mod into the game folder and start Risen (F5).\nA running game with hot reload picks the new files up." = "Exportiert die Mod in den Spielordner und startet Risen (F5).\nEin laufendes Spiel mit Hot Reload übernimmt die neuen Dateien."
-# src/modkit/app/app.cpp:693 (+1)
+# src/modkit/app/app.cpp:698 (+1)
 "Expand the side panels (Ctrl+B)" = "Seitenleiste ausklappen (Strg+B)"
-# src/modkit/app/app.cpp:693
+# src/modkit/app/app.cpp:698
 "Collapse the side panels into vertical tabs (Ctrl+B)" = "Seitenleiste zu senkrechten Reitern einklappen (Strg+B)"
-# src/modkit/app/app.cpp:708
+# src/modkit/app/app.cpp:713
 "loading {0}" = "lade {0}"
-# src/modkit/app/app.cpp:710
+# src/modkit/app/app.cpp:715
 "%s (%zu templates)" = "%s (%zu Vorlagen)"
-# src/modkit/app/app.cpp:712
+# src/modkit/app/app.cpp:717
 "No game data directory (Settings)" = "Kein Spieldatenverzeichnis (Einstellungen)"
-# src/modkit/app/app.cpp:712
+# src/modkit/app/app.cpp:717
 "Game data not loaded" = "Spieldaten nicht geladen"
-# src/modkit/app/app.cpp:770
+# src/modkit/app/app.cpp:775
 "No panel is docked at the left edge" = "Am linken Rand ist kein Fenster angedockt"
-# src/modkit/app/app.cpp:811 (+1)
+# src/modkit/app/app.cpp:816 (+1)
 "Unsaved changes" = "Ungespeicherte Änderungen"
-# src/modkit/app/app.cpp:815 (+2)
+# src/modkit/app/app.cpp:820 (+2)
 "Import" = "Importieren"
-# src/modkit/app/app.cpp:825
+# src/modkit/app/app.cpp:830
 "The project has unsaved changes." = "Das Projekt hat ungespeicherte Änderungen."
-# src/modkit/app/app.cpp:832
+# src/modkit/app/app.cpp:837
 "Discard" = "Verwerfen"
-# src/modkit/app/app.cpp:839 (+3)
+# src/modkit/app/app.cpp:844 (+3)
 "Cancel" = "Abbrechen"
 # src/modkit/app/dragdrop.cpp:45 (+2)
 "placed NPC" = "platzierter NPC"
@@ -420,11 +420,11 @@ author = "risen-spass"
 "Add a script..." = "Skript hinzufügen..."
 # src/modkit/app/panels/behaviors_panel.cpp:55
 "Save the project first: new scripts are written next to the project file." = "Speichere zuerst das Projekt: neue Skripte werden neben die Projektdatei geschrieben."
-# src/modkit/app/panels/behaviors_panel.cpp:64 (+5)
+# src/modkit/app/panels/behaviors_panel.cpp:64 (+6)
 "(unnamed)" = "(unbenannt)"
 # src/modkit/app/panels/behaviors_panel.cpp:68
 "drag it onto an NPC" = "auf einen NPC ziehen"
-# src/modkit/app/panels/behaviors_panel.cpp:70
+# src/modkit/app/panels/behaviors_panel.cpp:70 (+1)
 "Remove from the project (the file stays)" = "Aus dem Projekt entfernen (die Datei bleibt)"
 # src/modkit/app/panels/behaviors_panel.cpp:75
 "No behaviours yet." = "Noch keine Verhalten."
@@ -434,19 +434,19 @@ author = "risen-spass"
 "Save the project first: the script is written next to the project file" = "Speichere zuerst das Projekt: das Skript wird neben die Projektdatei geschrieben"
 # src/modkit/app/panels/behaviors_panel.cpp:109
 "Cannot write the script: {0}" = "Das Skript kann nicht geschrieben werden: {0}"
-# src/modkit/app/panels/behaviors_panel.cpp:117
+# src/modkit/app/panels/behaviors_panel.cpp:117 (+1)
 "Created {0} and opened it in your editor" = "{0} erstellt und in deinem Editor geöffnet"
-# src/modkit/app/panels/behaviors_panel.cpp:145 (+10)
+# src/modkit/app/panels/behaviors_panel.cpp:145 (+11)
 "Name" = "Name"
-# src/modkit/app/panels/behaviors_panel.cpp:161
+# src/modkit/app/panels/behaviors_panel.cpp:161 (+1)
 "Open in your editor" = "In deinem Editor öffnen"
-# src/modkit/app/panels/behaviors_panel.cpp:162
+# src/modkit/app/panels/behaviors_panel.cpp:162 (+1)
 "Cannot open {0}" = "{0} kann nicht geöffnet werden"
-# src/modkit/app/panels/behaviors_panel.cpp:165
+# src/modkit/app/panels/behaviors_panel.cpp:165 (+1)
 "Change file..." = "Datei ändern..."
-# src/modkit/app/panels/behaviors_panel.cpp:178
+# src/modkit/app/panels/behaviors_panel.cpp:178 (+1)
 "(changes on disk are read again at once)" = "(Änderungen auf dem Datenträger werden sofort neu gelesen)"
-# src/modkit/app/panels/behaviors_panel.cpp:181
+# src/modkit/app/panels/behaviors_panel.cpp:181 (+1)
 "What the editor read from it" = "Was der Editor daraus gelesen hat"
 # src/modkit/app/panels/behaviors_panel.cpp:191
 "handlers: %s" = "Handler: %s"
@@ -932,6 +932,52 @@ author = "risen-spass"
 "Clear" = "Leeren"
 # src/modkit/app/panels/log_panel.cpp:27
 "Debug" = "Debug"
+# src/modkit/app/panels/lua_panel.cpp:44
+"+ New Lua file" = "Neue Lua-Datei"
+# src/modkit/app/panels/lua_panel.cpp:45
+"Creates a Lua file next to the project (lua/<name>.lua) from a commented template and opens it in your editor. The export copies it into the mod; the mod loads it before the editor's content and calls its hooks. An error in it is logged and the rest of the mod keeps working." = "Legt neben dem Projekt eine Lua-Datei (lua/<name>.lua) aus einer kommentierten Vorlage an und öffnet sie in deinem Editor. Der Export kopiert sie in die Mod; die Mod lädt sie vor den Inhalten des Editors und ruft ihre Hooks auf. Ein Fehler darin wird protokolliert, der Rest der Mod funktioniert weiter."
+# src/modkit/app/panels/lua_panel.cpp:48
+"Add a file..." = "Datei hinzufügen..."
+# src/modkit/app/panels/lua_panel.cpp:53
+"Save the project first: new files are written next to the project file." = "Speichere zuerst das Projekt: neue Dateien werden neben die Projektdatei geschrieben."
+# src/modkit/app/panels/lua_panel.cpp:72
+"No Lua files yet." = "Noch keine Lua-Dateien."
+# src/modkit/app/panels/lua_panel.cpp:81
+"load order" = "Ladereihenfolge"
+# src/modkit/app/panels/lua_panel.cpp:114
+"Save the project first: the file is written next to the project file" = "Speichere zuerst das Projekt: die Datei wird neben die Projektdatei geschrieben"
+# src/modkit/app/panels/lua_panel.cpp:127
+"Cannot write the file: {0}" = "Die Datei kann nicht geschrieben werden: {0}"
+# src/modkit/app/panels/lua_panel.cpp:159
+"Hand-written Lua for what the editor does not make. The exported main.lua runs, in this order:" = "Handgeschriebenes Lua für das, was der Editor nicht erzeugt. Die exportierte main.lua führt in dieser Reihenfolge aus:"
+# src/modkit/app/panels/lua_panel.cpp:160
+"the Lua files of this list, top to bottom (their top-level code runs before the content exists)" = "die Lua-Dateien dieser Liste, von oben nach unten (ihr Code auf oberster Ebene läuft, bevor die Inhalte existieren)"
+# src/modkit/app/panels/lua_panel.cpp:161
+"before_install(data) of every file that returns one: the generated tables (data.balance, data.npcs, data.quests, ...) can still be changed" = "before_install(data) jeder Datei, die eine zurückgibt: die erzeugten Tabellen (data.balance, data.npcs, data.quests, ...) lassen sich noch ändern"
+# src/modkit/app/panels/lua_panel.cpp:162
+"the editor's content is installed" = "die Inhalte des Editors werden installiert"
+# src/modkit/app/panels/lua_panel.cpp:163
+"after_install(runtime) of every file that returns one" = "after_install(runtime) jeder Datei, die eine zurückgibt"
+# src/modkit/app/panels/lua_panel.cpp:164
+"custom.lua of the mod folder (created once by the export, never overwritten, not part of the project)" = "custom.lua im Mod-Ordner (vom Export einmal angelegt, nie überschrieben, nicht Teil des Projekts)"
+# src/modkit/app/panels/lua_panel.cpp:166
+"Every file is loaded protected: an error is logged as [{0}] (Problems panel, From the game) and the rest of the mod keeps working." = "Jede Datei wird geschützt geladen: ein Fehler wird als [{0}] protokolliert (Probleme, Aus dem Spiel) und der Rest der Mod funktioniert weiter."
+# src/modkit/app/panels/lua_panel.cpp:168
+"Run script nodes (Events) and dialogue Script commands call scripts that a Lua file defines with risen.script.define." = "Knoten „Skript ausführen“ (Ereignisse) und Skript-Befehle in Dialogen rufen Skripte auf, die eine Lua-Datei mit risen.script.define definiert."
+# src/modkit/app/panels/lua_panel.cpp:184
+"The module name: exported as lua/<name>.lua and loaded with require(\"lua.<name>\")." = "Der Modulname: exportiert als lua/<name>.lua und geladen mit require(\"lua.<name>\")."
+# src/modkit/app/panels/lua_panel.cpp:213
+"The export refuses a file that does not compile." = "Der Export lehnt eine Datei ab, die sich nicht kompilieren lässt."
+# src/modkit/app/panels/lua_panel.cpp:215
+"compiles" = "kompiliert"
+# src/modkit/app/panels/lua_panel.cpp:218
+"hooks: %s" = "Hooks: %s"
+# src/modkit/app/panels/lua_panel.cpp:218 (+3)
+"none" = "keine"
+# src/modkit/app/panels/lua_panel.cpp:221
+"scripts it defines: %s" = "definierte Skripte: %s"
+# src/modkit/app/panels/lua_panel.cpp:222
+"(read from the text; the file is not run by the editor)" = "(aus dem Text gelesen; der Editor führt die Datei nicht aus)"
 # src/modkit/app/panels/npc_groups_panel.cpp:51
 "A group changes many NPC and monster templates at once, relative to their shipped values: a pattern on the name (\"^Wolf\"), a template group path (\"Monster/Kapitel 2\") or a list of names." = "Eine Gruppe ändert viele NPC- und Monstervorlagen auf einmal, relativ zu ihren mitgelieferten Werten: ein Muster auf den Namen („^Wolf“), ein Vorlagengruppenpfad („Monster/Kapitel 2“) oder eine Namensliste."
 # src/modkit/app/panels/npc_groups_panel.cpp:65
@@ -1002,8 +1048,6 @@ author = "risen-spass"
 "yaw" = "Drehung"
 # src/modkit/app/panels/npcs_panel.cpp:61
 "%.0f deg" = "%.0f °"
-# src/modkit/app/panels/npcs_panel.cpp:72 (+1)
-"none" = "keine"
 # src/modkit/app/panels/npcs_panel.cpp:72
 "one post" = "ein Posten"
 # src/modkit/app/panels/npcs_panel.cpp:72
@@ -1128,33 +1172,35 @@ author = "risen-spass"
 "Version" = "Version"
 # src/modkit/app/panels/npcs_panel.cpp:476
 "Raise it to replace the NPC saved in existing savegames by one made from this declaration." = "Erhöhen, um den in vorhandenen Spielständen gespeicherten NPC durch einen nach dieser Deklaration erzeugten zu ersetzen."
-# src/modkit/app/panels/panels.h:34 (+2)
+# src/modkit/app/panels/panels.h:35 (+2)
 "Mod" = "Mod"
-# src/modkit/app/panels/panels.h:35
+# src/modkit/app/panels/panels.h:36
 "Log" = "Protokoll"
-# src/modkit/app/panels/panels.h:37
+# src/modkit/app/panels/panels.h:38
 "Browser" = "Browser"
-# src/modkit/app/panels/panels.h:41
-"Dialogues" = "Dialoge"
 # src/modkit/app/panels/panels.h:42
-"Quests" = "Quests"
+"Dialogues" = "Dialoge"
 # src/modkit/app/panels/panels.h:43
+"Quests" = "Quests"
+# src/modkit/app/panels/panels.h:44
 "Events" = "Ereignisse"
-# src/modkit/app/panels/panels.h:44 (+1)
+# src/modkit/app/panels/panels.h:45 (+1)
 "Layers" = "Ebenen"
-# src/modkit/app/panels/panels.h:47
+# src/modkit/app/panels/panels.h:48
 "Assets" = "Ressourcen"
-# src/modkit/app/panels/panels.h:49
-"Conversation" = "Gespräch"
 # src/modkit/app/panels/panels.h:50
-"Spells" = "Zauber"
+"Lua" = "Lua"
 # src/modkit/app/panels/panels.h:51
-"NPC groups" = "NPC-Gruppen"
+"Conversation" = "Gespräch"
 # src/modkit/app/panels/panels.h:52
-"Patches" = "Änderungen"
+"Spells" = "Zauber"
 # src/modkit/app/panels/panels.h:53
-"Strings" = "Texte"
+"NPC groups" = "NPC-Gruppen"
 # src/modkit/app/panels/panels.h:54
+"Patches" = "Änderungen"
+# src/modkit/app/panels/panels.h:55
+"Strings" = "Texte"
+# src/modkit/app/panels/panels.h:56
 "Shipped dialogues" = "Mitgelieferte Dialoge"
 # src/modkit/app/panels/problems_panel.cpp:28
 "No problems." = "Keine Probleme."
@@ -2004,13 +2050,13 @@ author = "risen-spass"
 "events must be a table { [\"event.name\"] = function(self, ...) end }" = "events muss eine Tabelle { [\"event.name\"] = function(self, ...) end } sein"
 # src/modkit/core/behavior.cpp:203
 "events: every entry is [\"event.name\"] = function(self, ...) end" = "events: jeder Eintrag lautet [\"event.name\"] = function(self, ...) end"
-# src/modkit/core/behavior.cpp:224
+# src/modkit/core/behavior.cpp:224 (+1)
 "the file {0} cannot be read" = "die Datei {0} kann nicht gelesen werden"
 # src/modkit/core/behavior.cpp:246
 "the behaviour needs a name" = "das Verhalten braucht einen Namen"
-# src/modkit/core/behavior.cpp:247
+# src/modkit/core/behavior.cpp:247 (+1)
 "at most 64 characters" = "höchstens 64 Zeichen"
-# src/modkit/core/behavior.cpp:248
+# src/modkit/core/behavior.cpp:248 (+1)
 "the name may not start with a digit" = "der Name darf nicht mit einer Ziffer beginnen"
 # src/modkit/core/behavior.cpp:250
 "letters, digits, _ . and - only" = "nur Buchstaben, Ziffern, _ . und -"
@@ -2484,8 +2530,16 @@ author = "risen-spass"
 "Outcome" = "Ergebnis"
 # src/modkit/core/graph.cpp:69
 "Ends the quest: success, failure or cancelled; may start a follow-up quest." = "Beendet die Quest: Erfolg, Misserfolg oder abgebrochen; kann eine Folgequest starten."
-# src/modkit/core/import.cpp:755
+# src/modkit/core/import.cpp:756
 "{0} has no mod.toml: not a mod folder" = "{0} hat keine mod.toml: kein Mod-Ordner"
+# src/modkit/core/lua_files.cpp:23
+"syntax error" = "Syntaxfehler"
+# src/modkit/core/lua_files.cpp:76
+"the Lua file needs a name" = "die Lua-Datei braucht einen Namen"
+# src/modkit/core/lua_files.cpp:80
+"letters, digits and _ only (it becomes the module name lua.<name>)" = "nur Buchstaben, Ziffern und _ (daraus wird der Modulname lua.<name>)"
+# src/modkit/core/lua_files.cpp:81
+"'custom' is the mod folder's own custom.lua: choose another name" = "„custom“ ist die eigene custom.lua des Mod-Ordners: wähle einen anderen Namen"
 # src/modkit/core/model_import.cpp:86
 "line {0}: a vertex needs three numbers" = "Zeile {0}: ein Vertex braucht drei Zahlen"
 # src/modkit/core/model_import.cpp:123
@@ -2578,403 +2632,407 @@ author = "risen-spass"
 "the Start node leads nowhere" = "der Startknoten führt ins Leere"
 # src/modkit/core/quest.cpp:196
 "the flow has no Outcome: the quest is only ended by a dialogue" = "der Ablauf hat kein Ergebnis: die Quest wird nur durch einen Dialog beendet"
-# src/modkit/core/validate.cpp:32
-"the NPC needs a unique name" = "der NPC braucht einen eindeutigen Namen"
 # src/modkit/core/validate.cpp:33
+"the NPC needs a unique name" = "der NPC braucht einen eindeutigen Namen"
+# src/modkit/core/validate.cpp:34
 "the name is longer than 63 characters" = "der Name ist länger als 63 Zeichen"
-# src/modkit/core/validate.cpp:35
+# src/modkit/core/validate.cpp:36
 "the name may only contain letters, digits, _ and -" = "der Name darf nur Buchstaben, Ziffern, _ und - enthalten"
-# src/modkit/core/validate.cpp:70
+# src/modkit/core/validate.cpp:71
 "{0}: unknown skill '{1}'" = "{0}: unbekannte Fertigkeit „{1}“"
-# src/modkit/core/validate.cpp:77
+# src/modkit/core/validate.cpp:78
 "the template has no property set {0} (a set cannot be added at run time)" = "die Vorlage hat kein Set {0} (ein Set kann zur Laufzeit nicht hinzugefügt werden)"
-# src/modkit/core/validate.cpp:81
+# src/modkit/core/validate.cpp:82
 "{0}.{1}: the value must be a number, text, true/false or a vector" = "{0}.{1}: der Wert muss eine Zahl, ein Text, true/false oder ein Vektor sein"
-# src/modkit/core/validate.cpp:83
+# src/modkit/core/validate.cpp:84
 "{0}.{1} is not in the template file (it may still exist with a default value)" = "{0}.{1} steht nicht in der Vorlagendatei (es kann trotzdem mit einem Standardwert existieren)"
-# src/modkit/core/validate.cpp:92 (+1)
+# src/modkit/core/validate.cpp:93 (+1)
 "{0}: unknown value '{1}'" = "{0}: unbekannter Wert „{1}“"
-# src/modkit/core/validate.cpp:100
+# src/modkit/core/validate.cpp:101
 "the project has this item twice" = "das Projekt hat diesen Gegenstand doppelt"
-# src/modkit/core/validate.cpp:104 (+2)
+# src/modkit/core/validate.cpp:105 (+2)
 "a game template with this name exists: choose a new, prefixed name" = "eine Spielvorlage mit diesem Namen existiert: wähle einen neuen Namen mit Präfix"
-# src/modkit/core/validate.cpp:106
+# src/modkit/core/validate.cpp:107
 "a new item needs a base item to clone" = "ein neuer Gegenstand braucht einen Basisgegenstand zum Klonen"
-# src/modkit/core/validate.cpp:109 (+2)
+# src/modkit/core/validate.cpp:110 (+2)
 "the base '{0}' is no template of the game" = "die Basis „{0}“ ist keine Vorlage des Spiels"
-# src/modkit/core/validate.cpp:111
+# src/modkit/core/validate.cpp:112
 "the base '{0}' is no item ({1})" = "die Basis „{0}“ ist kein Gegenstand ({1})"
-# src/modkit/core/validate.cpp:112 (+1)
+# src/modkit/core/validate.cpp:113 (+1)
 "the base '{0}' is a multi template (cannot be cloned)" = "die Basis „{0}“ ist eine Multi-Vorlage (kann nicht geklont werden)"
-# src/modkit/core/validate.cpp:114
+# src/modkit/core/validate.cpp:115
 "no label: the item shows the base's name" = "keine Bezeichnung: der Gegenstand zeigt den Namen der Basis"
-# src/modkit/core/validate.cpp:116
+# src/modkit/core/validate.cpp:117
 "choose the shipped item to change" = "wähle den mitgelieferten Gegenstand, der geändert werden soll"
-# src/modkit/core/validate.cpp:119 (+2)
+# src/modkit/core/validate.cpp:120 (+2)
 "no game template with this name" = "keine Spielvorlage mit diesem Namen"
-# src/modkit/core/validate.cpp:121
+# src/modkit/core/validate.cpp:122
 "not an item ({0})" = "kein Gegenstand ({0})"
-# src/modkit/core/validate.cpp:129
-"modifier {0}: unknown mode '{1}' (valid: add, set, max, percent)" = "Modifikator {0}: unbekannter Modus „{1}“ (gültig: add, set, max, percent)"
 # src/modkit/core/validate.cpp:130
+"modifier {0}: unknown mode '{1}' (valid: add, set, max, percent)" = "Modifikator {0}: unbekannter Modus „{1}“ (gültig: add, set, max, percent)"
+# src/modkit/core/validate.cpp:131
 "a mode is kept for the skill {0}, which is not among the modifiers" = "für die Fertigkeit {0} ist ein Modus gesetzt, die nicht unter den Modifikatoren ist"
-# src/modkit/core/validate.cpp:135
+# src/modkit/core/validate.cpp:136
 "the mesh '{0}' is neither in the game archives nor among the project's asset files" = "das Mesh „{0}“ ist weder in den Spielarchiven noch unter den Ressourcendateien des Projekts"
-# src/modkit/core/validate.cpp:138
+# src/modkit/core/validate.cpp:139
 "the icon picture '{0}' is not one of the project's asset files" = "das Symbolbild „{0}“ gehört nicht zu den Ressourcendateien des Projekts"
-# src/modkit/core/validate.cpp:140
+# src/modkit/core/validate.cpp:141
 "the icon '{0}' is not used by any shipped item (the layer refuses icons it cannot resolve)" = "das Symbol „{0}“ wird von keinem mitgelieferten Gegenstand benutzt (die Schicht lehnt Symbole ab, die sie nicht auflösen kann)"
-# src/modkit/core/validate.cpp:143 (+2)
+# src/modkit/core/validate.cpp:144 (+2)
 "the value must not be negative" = "der Wert darf nicht negativ sein"
-# src/modkit/core/validate.cpp:148
-"an item group needs a group path, a pattern or names" = "eine Gegenstandsgruppe braucht einen Gruppenpfad, ein Muster oder Namen"
 # src/modkit/core/validate.cpp:149
+"an item group needs a group path, a pattern or names" = "eine Gegenstandsgruppe braucht einen Gruppenpfad, ein Muster oder Namen"
+# src/modkit/core/validate.cpp:150
 "the item group changes nothing" = "die Gegenstandsgruppe ändert nichts"
-# src/modkit/core/validate.cpp:150 (+1)
+# src/modkit/core/validate.cpp:151 (+1)
 "a factor must not be negative" = "ein Faktor darf nicht negativ sein"
-# src/modkit/core/validate.cpp:168
+# src/modkit/core/validate.cpp:169
 "the project has this spell twice" = "das Projekt hat diesen Zauber doppelt"
-# src/modkit/core/validate.cpp:172
-"choose the shipped spell to change" = "wähle den mitgelieferten Zauber, der geändert werden soll"
 # src/modkit/core/validate.cpp:173
+"choose the shipped spell to change" = "wähle den mitgelieferten Zauber, der geändert werden soll"
+# src/modkit/core/validate.cpp:174
 "'{0}' is no shipped spell (see the list in the Spells panel)" = "„{0}“ ist kein mitgelieferter Zauber (siehe die Liste im Bereich Zauber)"
-# src/modkit/core/validate.cpp:177
-"a new spell needs a shipped spell as its base" = "ein neuer Zauber braucht einen mitgelieferten Zauber als Basis"
 # src/modkit/core/validate.cpp:178
+"a new spell needs a shipped spell as its base" = "ein neuer Zauber braucht einen mitgelieferten Zauber als Basis"
+# src/modkit/core/validate.cpp:179
 "the base '{0}' is no shipped spell" = "die Basis „{0}“ ist kein mitgelieferter Zauber"
-# src/modkit/core/validate.cpp:183
-"the form '{0}' does not exist for {1} ({2})" = "die Form „{0}“ gibt es für {1} nicht ({2})"
 # src/modkit/core/validate.cpp:184
+"the form '{0}' does not exist for {1} ({2})" = "die Form „{0}“ gibt es für {1} nicht ({2})"
+# src/modkit/core/validate.cpp:185
 "the form '{0}' is listed twice" = "die Form „{0}“ ist doppelt aufgeführt"
-# src/modkit/core/validate.cpp:188
+# src/modkit/core/validate.cpp:189
 "a game template named {0} exists: choose another name" = "eine Spielvorlage namens {0} existiert: wähle einen anderen Namen"
-# src/modkit/core/validate.cpp:191
+# src/modkit/core/validate.cpp:192
 "no label: the item shows the base spell's name" = "keine Bezeichnung: der Gegenstand zeigt den Namen des Basiszaubers"
-# src/modkit/core/validate.cpp:195
-"a mana cost must not be negative" = "Manakosten dürfen nicht negativ sein"
 # src/modkit/core/validate.cpp:196
-"the mana factor must not be negative" = "der Manafaktor darf nicht negativ sein"
+"a mana cost must not be negative" = "Manakosten dürfen nicht negativ sein"
 # src/modkit/core/validate.cpp:197
+"the mana factor must not be negative" = "der Manafaktor darf nicht negativ sein"
+# src/modkit/core/validate.cpp:198
 "a mana cost and a mana factor exclude each other" = "Manakosten und Manafaktor schließen sich aus"
-# src/modkit/core/validate.cpp:201
-"damage, speed, radius, effect and damage type only apply to Fireball, Frost and Missile" = "Schaden, Geschwindigkeit, Radius, Effekt und Schadensart gelten nur für Fireball, Frost und Missile"
 # src/modkit/core/validate.cpp:202
+"damage, speed, radius, effect and damage type only apply to Fireball, Frost and Missile" = "Schaden, Geschwindigkeit, Radius, Effekt und Schadensart gelten nur für Fireball, Frost und Missile"
+# src/modkit/core/validate.cpp:203
 "scroll and orb costs only apply to rune spells (a projectile spell has a crystal)" = "Kosten von Schriftrolle und Kugel gelten nur für Runenzauber (ein Geschosszauber hat einen Kristall)"
-# src/modkit/core/validate.cpp:204
-"the damage factor must not be negative" = "der Schadensfaktor darf nicht negativ sein"
 # src/modkit/core/validate.cpp:205
-"the speed factor must not be negative" = "der Geschwindigkeitsfaktor darf nicht negativ sein"
+"the damage factor must not be negative" = "der Schadensfaktor darf nicht negativ sein"
 # src/modkit/core/validate.cpp:206
-"the radius factor must not be negative" = "der Radiusfaktor darf nicht negativ sein"
+"the speed factor must not be negative" = "der Geschwindigkeitsfaktor darf nicht negativ sein"
 # src/modkit/core/validate.cpp:207
+"the radius factor must not be negative" = "der Radiusfaktor darf nicht negativ sein"
+# src/modkit/core/validate.cpp:208
 "a damage value and a damage factor are both set: check the layer's report" = "ein Schadenswert und ein Schadensfaktor sind beide gesetzt: prüfe den Bericht der Ebene"
-# src/modkit/core/validate.cpp:210
+# src/modkit/core/validate.cpp:211
 "unknown damage type '{0}'" = "unbekannte Schadensart „{0}“"
-# src/modkit/core/validate.cpp:214
+# src/modkit/core/validate.cpp:215
 "the damage list has {0} values, {1} has {2} projectile levels" = "die Schadensliste hat {0} Werte, {1} hat {2} Geschossstufen"
-# src/modkit/core/validate.cpp:216
+# src/modkit/core/validate.cpp:217
 "the damage list must hold numbers" = "die Schadensliste muss Zahlen enthalten"
-# src/modkit/core/validate.cpp:218
+# src/modkit/core/validate.cpp:219
 "the damage must be a number or a list of numbers" = "der Schaden muss eine Zahl oder eine Liste von Zahlen sein"
-# src/modkit/core/validate.cpp:223
+# src/modkit/core/validate.cpp:224
 "the spell changes nothing" = "der Zauber ändert nichts"
-# src/modkit/core/validate.cpp:237
+# src/modkit/core/validate.cpp:238
 "no selector: the group applies to every NPC and monster of the game" = "kein Selektor: die Gruppe gilt für jeden NPC und jedes Monster des Spiels"
-# src/modkit/core/validate.cpp:240
+# src/modkit/core/validate.cpp:241
 "the group changes nothing" = "die Gruppe ändert nichts"
-# src/modkit/core/validate.cpp:245
-"skills_mult: unknown skill '{0}'" = "skills_mult: unbekannte Fertigkeit „{0}“"
 # src/modkit/core/validate.cpp:246
+"skills_mult: unknown skill '{0}'" = "skills_mult: unbekannte Fertigkeit „{0}“"
+# src/modkit/core/validate.cpp:247
 "skills_mult.{0} must not be negative" = "skills_mult.{0} darf nicht negativ sein"
-# src/modkit/core/validate.cpp:254
+# src/modkit/core/validate.cpp:255
 "bad Lua pattern '{0}': {1}" = "ungültiges Lua-Muster „{0}“: {1}"
-# src/modkit/core/validate.cpp:260
+# src/modkit/core/validate.cpp:261
 "the selector matches no NPC or monster template (the layer refuses a selector that matches nothing)" = "der Selektor trifft auf keine NPC- oder Monstervorlage zu (die Schicht lehnt einen Selektor ab, der auf nichts zutrifft)"
-# src/modkit/core/validate.cpp:263
-"names: '{0}' is no template of the game" = "names: „{0}“ ist keine Vorlage des Spiels"
 # src/modkit/core/validate.cpp:264
+"names: '{0}' is no template of the game" = "names: „{0}“ ist keine Vorlage des Spiels"
+# src/modkit/core/validate.cpp:265
 "names: '{0}' is no NPC or monster" = "names: „{0}“ ist kein NPC oder Monster"
-# src/modkit/core/validate.cpp:273
+# src/modkit/core/validate.cpp:274
 "no templates in the group '{0}' (docs/TEMPLATES.md)" = "keine Vorlagen in der Gruppe „{0}“ (docs/TEMPLATES.md)"
-# src/modkit/core/validate.cpp:285
+# src/modkit/core/validate.cpp:286
 "the project has this recipe twice" = "das Projekt hat dieses Rezept doppelt"
-# src/modkit/core/validate.cpp:290
-"a new recipe needs a station" = "ein neues Rezept braucht eine Station"
 # src/modkit/core/validate.cpp:291
-"a new recipe needs at least one ingredient" = "ein neues Rezept braucht mindestens eine Zutat"
+"a new recipe needs a station" = "ein neues Rezept braucht eine Station"
 # src/modkit/core/validate.cpp:292
+"a new recipe needs at least one ingredient" = "ein neues Rezept braucht mindestens eine Zutat"
+# src/modkit/core/validate.cpp:293
 "a new recipe needs a result item" = "ein neues Rezept braucht einen Ergebnisgegenstand"
-# src/modkit/core/validate.cpp:296
+# src/modkit/core/validate.cpp:297
 "the base '{0}' is no recipe item (no gCRecipe_PS)" = "die Basis „{0}“ ist kein Rezeptgegenstand (kein gCRecipe_PS)"
-# src/modkit/core/validate.cpp:300
+# src/modkit/core/validate.cpp:301
 "choose the shipped recipe to change" = "wähle das mitgelieferte Rezept, das geändert werden soll"
-# src/modkit/core/validate.cpp:304
+# src/modkit/core/validate.cpp:305
 "not a recipe ({0})" = "kein Rezept ({0})"
-# src/modkit/core/validate.cpp:308
+# src/modkit/core/validate.cpp:309
 "unknown station '{0}'" = "unbekannte Station „{0}“"
-# src/modkit/core/validate.cpp:310
+# src/modkit/core/validate.cpp:311
 "at most 16 ingredients" = "höchstens 16 Zutaten"
-# src/modkit/core/validate.cpp:313
-"an ingredient has no item" = "eine Zutat hat keinen Gegenstand"
 # src/modkit/core/validate.cpp:314
-"ingredient '{0}' is no item of the game or the project" = "die Zutat „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
+"an ingredient has no item" = "eine Zutat hat keinen Gegenstand"
 # src/modkit/core/validate.cpp:315
-"ingredient '{0}': the count must be 1 or more" = "Zutat „{0}“: die Anzahl muss 1 oder mehr sein"
+"ingredient '{0}' is no item of the game or the project" = "die Zutat „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
 # src/modkit/core/validate.cpp:316
+"ingredient '{0}': the count must be 1 or more" = "Zutat „{0}“: die Anzahl muss 1 oder mehr sein"
+# src/modkit/core/validate.cpp:317
 "ingredient '{0}' is listed twice" = "die Zutat „{0}“ ist doppelt aufgeführt"
-# src/modkit/core/validate.cpp:320
+# src/modkit/core/validate.cpp:321
 "result '{0}' is no item of the game or the project" = "das Ergebnis „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
-# src/modkit/core/validate.cpp:346
+# src/modkit/core/validate.cpp:347
 "the project has this NPC template twice" = "das Projekt hat diese NPC-Vorlage doppelt"
-# src/modkit/core/validate.cpp:351
+# src/modkit/core/validate.cpp:352
 "a new NPC template needs a base NPC or monster to clone" = "eine neue NPC-Vorlage braucht einen Basis-NPC oder ein Basismonster zum Klonen"
-# src/modkit/core/validate.cpp:356
+# src/modkit/core/validate.cpp:357
 "the base '{0}' is no NPC or monster ({1})" = "die Basis „{0}“ ist kein NPC oder Monster ({1})"
-# src/modkit/core/validate.cpp:359
+# src/modkit/core/validate.cpp:360
 "no label: the NPC shows the base's name" = "keine Bezeichnung: der NPC zeigt den Namen der Basis"
-# src/modkit/core/validate.cpp:361
+# src/modkit/core/validate.cpp:362
 "choose the shipped NPC or monster to change" = "wähle den mitgelieferten NPC oder das mitgelieferte Monster, der bzw. das geändert werden soll"
-# src/modkit/core/validate.cpp:366
+# src/modkit/core/validate.cpp:367
 "not an NPC or monster ({0})" = "kein NPC oder Monster ({0})"
-# src/modkit/core/validate.cpp:370
+# src/modkit/core/validate.cpp:371
 "skills: unknown or not settable skill '{0}'" = "skills: unbekannte oder nicht setzbare Fertigkeit „{0}“"
-# src/modkit/core/validate.cpp:371 (+1)
+# src/modkit/core/validate.cpp:372 (+1)
 "hit points must be 1 or more" = "die Lebenspunkte müssen 1 oder mehr sein"
-# src/modkit/core/validate.cpp:372
+# src/modkit/core/validate.cpp:373
 "the hit points are above the maximum" = "die Lebenspunkte liegen über dem Maximum"
-# src/modkit/core/validate.cpp:373 (+1)
+# src/modkit/core/validate.cpp:374 (+1)
 "the level must be 1 or more" = "die Stufe muss 1 oder mehr sein"
-# src/modkit/core/validate.cpp:374
+# src/modkit/core/validate.cpp:375
 "level and xp both set: xp sets the level (a kill pays 10 * level)" = "Stufe und EP sind beide gesetzt: die EP bestimmen die Stufe (ein Kill bringt 10 * Stufe)"
-# src/modkit/core/validate.cpp:383
-"loot '{0}' is no item of the game or the project" = "die Beute „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
 # src/modkit/core/validate.cpp:384
+"loot '{0}' is no item of the game or the project" = "die Beute „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:385
 "loot '{0}': the amount must not be negative" = "Beute „{0}“: die Menge darf nicht negativ sein"
-# src/modkit/core/validate.cpp:387
+# src/modkit/core/validate.cpp:388
 "the actor '{0}' is neither in the game archives nor among the project's asset files" = "der Akteur „{0}“ ist weder in den Spielarchiven noch unter den Ressourcendateien des Projekts"
-# src/modkit/core/validate.cpp:394
+# src/modkit/core/validate.cpp:395
 "routine {0}: not a point" = "Tagesablauf {0}: kein Punkt"
-# src/modkit/core/validate.cpp:398
+# src/modkit/core/validate.cpp:399
 "routine {0}: {1} is missing" = "Tagesablauf {0}: {1} fehlt"
-# src/modkit/core/validate.cpp:417
+# src/modkit/core/validate.cpp:418
 "a condition names the quest '{0}' that is not in the project: it must be a quest of the game" = "eine Bedingung nennt die Quest „{0}“, die nicht im Projekt ist: sie muss eine Quest des Spiels sein"
-# src/modkit/core/validate.cpp:419
+# src/modkit/core/validate.cpp:420
 "a condition names the quest '{0}', no quest of the project or the game (a quest another mod makes?)" = "eine Bedingung nennt die Quest „{0}“, keine Quest des Projekts oder des Spiels (eine Quest einer anderen Mod?)"
-# src/modkit/core/validate.cpp:421
+# src/modkit/core/validate.cpp:422
 "a condition names '{0}', no item of the game or the project" = "eine Bedingung nennt „{0}“, keinen Gegenstand des Spiels oder des Projekts"
-# src/modkit/core/validate.cpp:433
+# src/modkit/core/validate.cpp:434
 "the layer needs a name" = "die Ebene braucht einen Namen"
-# src/modkit/core/validate.cpp:436
+# src/modkit/core/validate.cpp:437
 "the layer name may only contain letters, digits and _" = "der Ebenenname darf nur Buchstaben, Ziffern und _ enthalten"
-# src/modkit/core/validate.cpp:439
+# src/modkit/core/validate.cpp:440
 "the project has two layers with this name" = "das Projekt hat zwei Ebenen mit diesem Namen"
-# src/modkit/core/validate.cpp:441
+# src/modkit/core/validate.cpp:442
 "the NPC '{0}' is not a placed NPC of the project" = "der NPC „{0}“ ist kein platzierter NPC des Projekts"
-# src/modkit/core/validate.cpp:443
+# src/modkit/core/validate.cpp:444
 "the NPC '{0}' is also in the layer '{1}': an object belongs to one layer" = "der NPC „{0}“ ist auch in der Ebene „{1}“: ein Objekt gehört zu einer Ebene"
-# src/modkit/core/validate.cpp:448
+# src/modkit/core/validate.cpp:449
 "a world spawn of this layer does not exist any more" = "ein Weltspawn dieser Ebene existiert nicht mehr"
-# src/modkit/core/validate.cpp:450
+# src/modkit/core/validate.cpp:451
 "a world spawn is also in the layer '{0}'" = "ein Weltspawn ist auch in der Ebene „{0}“"
-# src/modkit/core/validate.cpp:455
+# src/modkit/core/validate.cpp:456
 "a container of this layer does not exist any more" = "ein Behälter dieser Ebene existiert nicht mehr"
-# src/modkit/core/validate.cpp:457
+# src/modkit/core/validate.cpp:458
 "a container is also in the layer '{0}'" = "ein Behälter ist auch in der Ebene „{0}“"
-# src/modkit/core/validate.cpp:467 (+2)
+# src/modkit/core/validate.cpp:468 (+2)
 "'{0}' is no item of the game or the project" = "„{0}“ ist kein Gegenstand des Spiels oder des Projekts"
-# src/modkit/core/validate.cpp:469
+# src/modkit/core/validate.cpp:470
 "the quest '{0}' is not in the project or the game" = "die Quest „{0}“ ist nicht im Projekt oder im Spiel"
-# src/modkit/core/validate.cpp:470 (+2)
+# src/modkit/core/validate.cpp:471 (+2)
 "unknown skill '{0}'" = "unbekannte Fertigkeit „{0}“"
-# src/modkit/core/validate.cpp:471
+# src/modkit/core/validate.cpp:472
 "the layer '{0}' is not in the project" = "die Ebene „{0}“ ist nicht im Projekt"
-# src/modkit/core/validate.cpp:473
+# src/modkit/core/validate.cpp:474
 "the layer is on from the start: 'switches on when' has no effect" = "die Ebene ist von Anfang an an: „Schaltet ein, wenn“ hat keine Wirkung"
-# src/modkit/core/validate.cpp:478
+# src/modkit/core/validate.cpp:479
 "the layer has no members and no event graph switches or asks it" = "die Ebene hat keine Mitglieder, und kein Ereignisgraph schaltet oder fragt sie ab"
-# src/modkit/core/validate.cpp:489
-"the event graph needs a name" = "der Ereignisgraph braucht einen Namen"
 # src/modkit/core/validate.cpp:490
+"the event graph needs a name" = "der Ereignisgraph braucht einen Namen"
+# src/modkit/core/validate.cpp:491
 "the project has two event graphs with this name" = "das Projekt hat zwei Ereignisgraphen mit diesem Namen"
-# src/modkit/core/validate.cpp:500
+# src/modkit/core/validate.cpp:501
 "the quest '{0}' is not in the project{1}" = "die Quest „{0}“ ist nicht im Projekt{1}"
-# src/modkit/core/validate.cpp:504 (+1)
+# src/modkit/core/validate.cpp:505 (+1)
 "the template '{0}' is no NPC or monster of the game or the project" = "die Vorlage „{0}“ ist kein NPC oder Monster des Spiels oder des Projekts"
-# src/modkit/core/validate.cpp:506
+# src/modkit/core/validate.cpp:507
 "the layer '{0}' is not in the project (Layers panel)" = "die Ebene „{0}“ ist nicht im Projekt (Bereich Ebenen)"
-# src/modkit/core/validate.cpp:518
+# src/modkit/core/validate.cpp:519
 "'{0}' is no sector of the game's world (a file X.sec below projects/World)" = "„{0}“ ist kein Sektor der Spielwelt (eine Datei X.sec unter projects/World)"
-# src/modkit/core/validate.cpp:522
+# src/modkit/core/validate.cpp:523
 "'{0}' is neither an NPC / template of the project or the game nor an NPC of the world" = "„{0}“ ist weder ein NPC / eine Vorlage des Projekts oder des Spiels noch ein NPC der Welt"
-# src/modkit/core/validate.cpp:538
-"no Send signal node sends '{0}' (custom.lua may call require(\"modkit.events\").fire_signal)" = "kein Knoten „Signal senden“ sendet „{0}“ (custom.lua kann require(\"modkit.events\").fire_signal aufrufen)"
 # src/modkit/core/validate.cpp:539
+"no Send signal node sends '{0}' (custom.lua may call require(\"modkit.events\").fire_signal)" = "kein Knoten „Signal senden“ sendet „{0}“ (custom.lua kann require(\"modkit.events\").fire_signal aufrufen)"
+# src/modkit/core/validate.cpp:540
 "nothing waits for the signal '{0}'" = "nichts wartet auf das Signal „{0}“"
-# src/modkit/core/validate.cpp:550
-"two behaviours have this name" = "zwei Verhalten haben diesen Namen"
 # src/modkit/core/validate.cpp:551
+"two behaviours have this name" = "zwei Verhalten haben diesen Namen"
+# src/modkit/core/validate.cpp:552
 "choose the script file (.lua)" = "wähle die Skriptdatei (.lua)"
-# src/modkit/core/validate.cpp:556
-"the behaviour '{0}' is not in the project (Behaviours panel)" = "das Verhalten „{0}“ ist nicht im Projekt (Bereich Verhalten)"
 # src/modkit/core/validate.cpp:557
+"the behaviour '{0}' is not in the project (Behaviours panel)" = "das Verhalten „{0}“ ist nicht im Projekt (Bereich Verhalten)"
+# src/modkit/core/validate.cpp:558
 "the behaviour '{0}' is attached twice: the second replaces the first" = "das Verhalten „{0}“ ist doppelt zugewiesen: das zweite ersetzt das erste"
-# src/modkit/core/validate.cpp:569
+# src/modkit/core/validate.cpp:572
+"two Lua files have this name" = "zwei Lua-Dateien haben diesen Namen"
+# src/modkit/core/validate.cpp:573
+"choose the Lua file (.lua)" = "wähle die Lua-Datei (.lua)"
+# src/modkit/core/validate.cpp:582
 "the world '{0}' is not one of the game's ({1} worlds): a world of another mod?" = "die Welt „{0}“ gehört nicht zu den Welten des Spiels ({1} Welten): eine Welt einer anderen Mod?"
-# src/modkit/core/validate.cpp:578
+# src/modkit/core/validate.cpp:591
 "two placed NPCs have this name (names are global)" = "zwei platzierte NPCs haben diesen Namen (Namen sind global)"
-# src/modkit/core/validate.cpp:579
+# src/modkit/core/validate.cpp:592
 "choose the NPC's template" = "wähle die Vorlage des NPCs"
-# src/modkit/core/validate.cpp:583 (+1)
+# src/modkit/core/validate.cpp:596 (+1)
 "the position is not a usable number" = "die Position ist keine brauchbare Zahl"
-# src/modkit/core/validate.cpp:584
+# src/modkit/core/validate.cpp:597
 "the position is 0, 0, 0: place the NPC (or use an offset from the player)" = "die Position ist 0, 0, 0: platziere den NPC (oder verwende einen Versatz vom Spieler)"
-# src/modkit/core/validate.cpp:587
+# src/modkit/core/validate.cpp:600
 "the version must be 1 or more" = "die Version muss 1 oder mehr sein"
-# src/modkit/core/validate.cpp:593
+# src/modkit/core/validate.cpp:606
 "an inventory entry has no item" = "ein Inventareintrag hat keinen Gegenstand"
-# src/modkit/core/validate.cpp:594
+# src/modkit/core/validate.cpp:607
 "inventory item '{0}' is no item of the game or the project" = "der Inventargegenstand „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
-# src/modkit/core/validate.cpp:598
+# src/modkit/core/validate.cpp:611
 "the routine is not a table" = "der Tagesablauf ist keine Tabelle"
-# src/modkit/core/validate.cpp:605
+# src/modkit/core/validate.cpp:618
 "a patrol needs at least two waypoints" = "eine Patrouille braucht mindestens zwei Wegpunkte"
-# src/modkit/core/validate.cpp:619
+# src/modkit/core/validate.cpp:632
 "the quest needs a name" = "die Quest braucht einen Namen"
-# src/modkit/core/validate.cpp:622
+# src/modkit/core/validate.cpp:635
 "the quest name may only contain letters, digits and _" = "der Questname darf nur Buchstaben, Ziffern und _ enthalten"
-# src/modkit/core/validate.cpp:625
+# src/modkit/core/validate.cpp:638
 "the project has this quest twice" = "das Projekt hat diese Quest doppelt"
-# src/modkit/core/validate.cpp:626
-"no title: the quest log shows the name" = "kein Titel: das Questlog zeigt den Namen"
-# src/modkit/core/validate.cpp:628
-"unknown quest type '{0}'" = "unbekannter Questtyp „{0}“"
-# src/modkit/core/validate.cpp:629
-"the experience must not be negative" = "die Erfahrung darf nicht negativ sein"
-# src/modkit/core/validate.cpp:637
-"the talk objective names '{0}', no dialogue option of the project" = "das Gesprächsziel nennt „{0}“, keine Dialogoption des Projekts"
 # src/modkit/core/validate.cpp:639
-"the objective names '{0}', no item of the game or the project" = "das Ziel nennt „{0}“, keinen Gegenstand des Spiels oder des Projekts"
+"no title: the quest log shows the name" = "kein Titel: das Questlog zeigt den Namen"
+# src/modkit/core/validate.cpp:641
+"unknown quest type '{0}'" = "unbekannter Questtyp „{0}“"
 # src/modkit/core/validate.cpp:642
+"the experience must not be negative" = "die Erfahrung darf nicht negativ sein"
+# src/modkit/core/validate.cpp:650
+"the talk objective names '{0}', no dialogue option of the project" = "das Gesprächsziel nennt „{0}“, keine Dialogoption des Projekts"
+# src/modkit/core/validate.cpp:652
+"the objective names '{0}', no item of the game or the project" = "das Ziel nennt „{0}“, keinen Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:655
 "the reward names '{0}', no item of the game or the project" = "die Belohnung nennt „{0}“, keinen Gegenstand des Spiels oder des Projekts"
-# src/modkit/core/validate.cpp:646
+# src/modkit/core/validate.cpp:659
 "the trigger names '{0}', no item of the game or the project" = "der Auslöser nennt „{0}“, keinen Gegenstand des Spiels oder des Projekts"
-# src/modkit/core/validate.cpp:664
+# src/modkit/core/validate.cpp:677
 "the game has no sound {0}" = "das Spiel hat keinen Klang {0}"
-# src/modkit/core/validate.cpp:666
-"a sound for {0}, which is not a language of the mod" = "ein Klang für {0}, das keine Sprache der Mod ist"
-# src/modkit/core/validate.cpp:674
-"the owner '{0}' is not a placed NPC of the project: it must be the unique name of an NPC in the world" = "der Besitzer „{0}“ ist kein platzierter NPC des Projekts: er muss der eindeutige Name eines NPCs in der Welt sein"
-# src/modkit/core/validate.cpp:675
-"no NPC called '{0}' in the project or in the world {1}" = "kein NPC namens „{0}“ im Projekt oder in der Welt {1}"
 # src/modkit/core/validate.cpp:679
+"a sound for {0}, which is not a language of the mod" = "ein Klang für {0}, das keine Sprache der Mod ist"
+# src/modkit/core/validate.cpp:687
+"the owner '{0}' is not a placed NPC of the project: it must be the unique name of an NPC in the world" = "der Besitzer „{0}“ ist kein platzierter NPC des Projekts: er muss der eindeutige Name eines NPCs in der Welt sein"
+# src/modkit/core/validate.cpp:688
+"no NPC called '{0}' in the project or in the world {1}" = "kein NPC namens „{0}“ im Projekt oder in der Welt {1}"
+# src/modkit/core/validate.cpp:692
 "the dialogue has no option" = "der Dialog hat keine Option"
-# src/modkit/core/validate.cpp:682
+# src/modkit/core/validate.cpp:695
 "option name '{0}': {1}" = "Optionsname „{0}“: {1}"
-# src/modkit/core/validate.cpp:684
+# src/modkit/core/validate.cpp:697
 "the option name '{0}' is used twice (also in {1})" = "der Optionsname „{0}“ wird doppelt verwendet (auch in {1})"
-# src/modkit/core/validate.cpp:689
+# src/modkit/core/validate.cpp:702
 "Give names '{0}', no item of the game or the project" = "Give nennt „{0}“, keinen Gegenstand des Spiels oder des Projekts"
-# src/modkit/core/validate.cpp:711
+# src/modkit/core/validate.cpp:724
 "the spawn names no template" = "der Spawn nennt keine Vorlage"
-# src/modkit/core/validate.cpp:713
-"no template of the game or the project" = "keine Vorlage des Spiels oder des Projekts"
-# src/modkit/core/validate.cpp:714
-"the amount must be 1 or more" = "die Menge muss 1 oder mehr sein"
-# src/modkit/core/validate.cpp:716
-"the rotation is not a usable number" = "die Drehung ist keine brauchbare Zahl"
-# src/modkit/core/validate.cpp:722 (+1)
-"the entity id is not of the form xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" = "die Entitäts-ID hat nicht die Form xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-# src/modkit/core/validate.cpp:725 (+1)
-"no entity with this id in the world {0}" = "keine Entität mit dieser ID in der Welt {0}"
 # src/modkit/core/validate.cpp:726
+"no template of the game or the project" = "keine Vorlage des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:727
+"the amount must be 1 or more" = "die Menge muss 1 oder mehr sein"
+# src/modkit/core/validate.cpp:729
+"the rotation is not a usable number" = "die Drehung ist keine brauchbare Zahl"
+# src/modkit/core/validate.cpp:735 (+1)
+"the entity id is not of the form xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" = "die Entitäts-ID hat nicht die Form xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# src/modkit/core/validate.cpp:738 (+1)
+"no entity with this id in the world {0}" = "keine Entität mit dieser ID in der Welt {0}"
+# src/modkit/core/validate.cpp:739
 "the entity has no inventory in the world file" = "die Entität hat in der Weltdatei kein Inventar"
-# src/modkit/core/validate.cpp:728
-"no items to add" = "keine Gegenstände zum Hinzufügen"
 # src/modkit/core/validate.cpp:741
+"no items to add" = "keine Gegenstände zum Hinzufügen"
+# src/modkit/core/validate.cpp:754
 "the entity is {0} and {1} at once" = "die Entität ist {0} und {1} zugleich"
-# src/modkit/core/validate.cpp:745
+# src/modkit/core/validate.cpp:758
 "an NPC of the world: his daily routine moves him again (and a removed NPC's quests break)" = "ein NPC der Welt: sein Tagesablauf bewegt ihn wieder (und die Quests eines entfernten NPCs brechen)"
-# src/modkit/core/validate.cpp:750
+# src/modkit/core/validate.cpp:763
 "the pose is not a usable number" = "die Lage ist keine brauchbare Zahl"
-# src/modkit/core/validate.cpp:755
+# src/modkit/core/validate.cpp:768
 "a move without a new position or rotation" = "eine Verschiebung ohne neue Position oder Drehung"
-# src/modkit/core/validate.cpp:759
-"items are added to a container the mod removes" = "Gegenstände werden zu einem Behälter hinzugefügt, den die Mod entfernt"
-# src/modkit/core/validate.cpp:769
-"a string row needs an id" = "eine Textzeile braucht eine Id"
-# src/modkit/core/validate.cpp:771
-"an id must not contain ; \" or a line break (strings/*.csv)" = "eine Id darf kein ; \" und keinen Zeilenumbruch enthalten (strings/*.csv)"
 # src/modkit/core/validate.cpp:772
-"the project has this string id twice (ids are not case sensitive)" = "das Projekt hat diese Text-Id doppelt (Ids unterscheiden nicht zwischen Groß- und Kleinschreibung)"
-# src/modkit/core/validate.cpp:773
-"the row has no text" = "die Zeile hat keinen Text"
-# src/modkit/core/validate.cpp:774
-"no text in {0}, the fallback language: the other languages show their own texts only" = "kein Text in {0}, der Ausweichsprache: die anderen Sprachen zeigen nur ihre eigenen Texte"
-# src/modkit/core/validate.cpp:777
-"a text in {0}, which is no language of the mod (it is exported anyway)" = "ein Text in {0}, das keine Sprache der Mod ist (er wird trotzdem exportiert)"
-# src/modkit/core/validate.cpp:781
-"the label of the item {0} has this id and wins" = "die Bezeichnung des Gegenstands {0} hat diese Id und setzt sich durch"
+"items are added to a container the mod removes" = "Gegenstände werden zu einem Behälter hinzugefügt, den die Mod entfernt"
 # src/modkit/core/validate.cpp:782
-"the description of the item {0} has this id and wins" = "die Beschreibung des Gegenstands {0} hat diese Id und setzt sich durch"
+"a string row needs an id" = "eine Textzeile braucht eine Id"
+# src/modkit/core/validate.cpp:784
+"an id must not contain ; \" or a line break (strings/*.csv)" = "eine Id darf kein ; \" und keinen Zeilenumbruch enthalten (strings/*.csv)"
+# src/modkit/core/validate.cpp:785
+"the project has this string id twice (ids are not case sensitive)" = "das Projekt hat diese Text-Id doppelt (Ids unterscheiden nicht zwischen Groß- und Kleinschreibung)"
+# src/modkit/core/validate.cpp:786
+"the row has no text" = "die Zeile hat keinen Text"
+# src/modkit/core/validate.cpp:787
+"no text in {0}, the fallback language: the other languages show their own texts only" = "kein Text in {0}, der Ausweichsprache: die anderen Sprachen zeigen nur ihre eigenen Texte"
 # src/modkit/core/validate.cpp:790
-"choose the template to patch" = "wähle die Vorlage, die geändert werden soll"
-# src/modkit/core/validate.cpp:793
-"this template is patched twice: both patches are applied, the later one wins on a shared property" = "diese Vorlage wird doppelt geändert: beide Änderungen werden angewendet, die spätere gewinnt bei einer gemeinsamen Eigenschaft"
+"a text in {0}, which is no language of the mod (it is exported anyway)" = "ein Text in {0}, das keine Sprache der Mod ist (er wird trotzdem exportiert)"
+# src/modkit/core/validate.cpp:794
+"the label of the item {0} has this id and wins" = "die Bezeichnung des Gegenstands {0} hat diese Id und setzt sich durch"
 # src/modkit/core/validate.cpp:795
-"no template of the game or the project has this name" = "keine Vorlage des Spiels oder des Projekts hat diesen Namen"
-# src/modkit/core/validate.cpp:796
-"the patch changes nothing" = "die Änderung ändert nichts"
-# src/modkit/core/validate.cpp:804
-"choose the shipped dialogue info to edit" = "wähle die mitgelieferte Dialog-Info, die bearbeitet werden soll"
-# src/modkit/core/validate.cpp:805
-"this info is edited twice: both edits are applied" = "diese Info wird doppelt bearbeitet: beide Änderungen werden angewendet"
+"the description of the item {0} has this id and wins" = "die Beschreibung des Gegenstands {0} hat diese Id und setzt sich durch"
+# src/modkit/core/validate.cpp:803
+"choose the template to patch" = "wähle die Vorlage, die geändert werden soll"
 # src/modkit/core/validate.cpp:806
-"an XP reward is either added or changed, not both" = "eine EP-Belohnung wird entweder hinzugefügt oder geändert, nicht beides"
-# src/modkit/core/validate.cpp:807
-"a changed XP reward needs the old and the new amount" = "eine geänderte EP-Belohnung braucht die alte und die neue Menge"
+"this template is patched twice: both patches are applied, the later one wins on a shared property" = "diese Vorlage wird doppelt geändert: beide Änderungen werden angewendet, die spätere gewinnt bei einer gemeinsamen Eigenschaft"
+# src/modkit/core/validate.cpp:808
+"no template of the game or the project has this name" = "keine Vorlage des Spiels oder des Projekts hat diesen Namen"
 # src/modkit/core/validate.cpp:809
-"an XP reward must not be negative" = "eine EP-Belohnung darf nicht negativ sein"
-# src/modkit/core/validate.cpp:810
-"the edit changes nothing" = "die Bearbeitung ändert nichts"
-# src/modkit/core/validate.cpp:813
-"property edit: unknown kind '{0}'" = "Eigenschaftsänderung: unbekannte Art „{0}“"
-# src/modkit/core/validate.cpp:814
-"a property edit needs the property's name" = "eine Eigenschaftsänderung braucht den Namen der Eigenschaft"
-# src/modkit/core/validate.cpp:815
-"a {0} edit needs the place (1 = the first) of the {1}" = "eine Änderung vom Typ {0} braucht die Stelle (1 = die erste) von {1}"
-# src/modkit/core/validate.cpp:816
-"an added condition needs its class (PlayerKnows, ItemAmount, ...)" = "eine hinzugefügte Bedingung braucht ihre Klasse (PlayerKnows, ItemAmount, ...)"
+"the patch changes nothing" = "die Änderung ändert nichts"
 # src/modkit/core/validate.cpp:817
-"the edit of {0} has no old value: it is applied only where the value is empty" = "die Änderung von {0} hat keinen alten Wert: sie wird nur angewendet, wo der Wert leer ist"
+"choose the shipped dialogue info to edit" = "wähle die mitgelieferte Dialog-Info, die bearbeitet werden soll"
+# src/modkit/core/validate.cpp:818
+"this info is edited twice: both edits are applied" = "diese Info wird doppelt bearbeitet: beide Änderungen werden angewendet"
+# src/modkit/core/validate.cpp:819
+"an XP reward is either added or changed, not both" = "eine EP-Belohnung wird entweder hinzugefügt oder geändert, nicht beides"
 # src/modkit/core/validate.cpp:820
-"a refill needs the trader's name" = "ein Nachschub braucht den Namen des Händlers"
-# src/modkit/core/validate.cpp:821
-"refill item '{0}' is no item of the game or the project" = "der Nachschubgegenstand „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
+"a changed XP reward needs the old and the new amount" = "eine geänderte EP-Belohnung braucht die alte und die neue Menge"
 # src/modkit/core/validate.cpp:822
-"a refill count must not be negative" = "eine Nachschubmenge darf nicht negativ sein"
+"an XP reward must not be negative" = "eine EP-Belohnung darf nicht negativ sein"
+# src/modkit/core/validate.cpp:823
+"the edit changes nothing" = "die Bearbeitung ändert nichts"
+# src/modkit/core/validate.cpp:826
+"property edit: unknown kind '{0}'" = "Eigenschaftsänderung: unbekannte Art „{0}“"
+# src/modkit/core/validate.cpp:827
+"a property edit needs the property's name" = "eine Eigenschaftsänderung braucht den Namen der Eigenschaft"
 # src/modkit/core/validate.cpp:828
-"the NPC's entity ID is not xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" = "die Entitäts-ID des NPCs ist nicht xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+"a {0} edit needs the place (1 = the first) of the {1}" = "eine Änderung vom Typ {0} braucht die Stelle (1 = die erste) von {1}"
+# src/modkit/core/validate.cpp:829
+"an added condition needs its class (PlayerKnows, ItemAmount, ...)" = "eine hinzugefügte Bedingung braucht ihre Klasse (PlayerKnows, ItemAmount, ...)"
 # src/modkit/core/validate.cpp:830
-"the limit must not be negative" = "die Grenze darf nicht negativ sein"
-# src/modkit/core/validate.cpp:831
-"no entity with this ID in the loaded world" = "keine Entität mit dieser ID in der geladenen Welt"
+"the edit of {0} has no old value: it is applied only where the value is empty" = "die Änderung von {0} hat keinen alten Wert: sie wird nur angewendet, wo der Wert leer ist"
+# src/modkit/core/validate.cpp:833
+"a refill needs the trader's name" = "ein Nachschub braucht den Namen des Händlers"
+# src/modkit/core/validate.cpp:834
+"refill item '{0}' is no item of the game or the project" = "der Nachschubgegenstand „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:835
+"a refill count must not be negative" = "eine Nachschubmenge darf nicht negativ sein"
 # src/modkit/core/validate.cpp:841
-"two asset files are called {0} (the export puts them into one folder)" = "zwei Ressourcendateien heißen {0} (der Export legt sie in einen Ordner)"
+"the NPC's entity ID is not xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" = "die Entitäts-ID des NPCs ist nicht xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# src/modkit/core/validate.cpp:843
+"the limit must not be negative" = "die Grenze darf nicht negativ sein"
 # src/modkit/core/validate.cpp:844
-"not a resource the engine loads (._xmsh, ._xmat, ._ximg, ._xmac, ._xmot, ._xsnd) and no audio file (.ogg, .wav, .mp3)" = "keine Ressource, die die Engine lädt (._xmsh, ._xmat, ._ximg, ._xmac, ._xmot, ._xsnd), und keine Audiodatei (.ogg, .wav, .mp3)"
-# src/modkit/core/validate.cpp:846
-"replaces the game's file of the same name everywhere it is used" = "ersetzt überall, wo sie verwendet wird, die gleichnamige Datei des Spiels"
+"no entity with this ID in the loaded world" = "keine Entität mit dieser ID in der geladenen Welt"
+# src/modkit/core/validate.cpp:854
+"two asset files are called {0} (the export puts them into one folder)" = "zwei Ressourcendateien heißen {0} (der Export legt sie in einen Ordner)"
 # src/modkit/core/validate.cpp:857
-"becomes {0}, which is also an asset file of the project" = "wird zu {0}, das auch eine Ressourcendatei des Projekts ist"
+"not a resource the engine loads (._xmsh, ._xmat, ._ximg, ._xmac, ._xmot, ._xsnd) and no audio file (.ogg, .wav, .mp3)" = "keine Ressource, die die Engine lädt (._xmsh, ._xmat, ._ximg, ._xmac, ._xmot, ._xsnd), und keine Audiodatei (.ogg, .wav, .mp3)"
 # src/modkit/core/validate.cpp:859
+"replaces the game's file of the same name everywhere it is used" = "ersetzt überall, wo sie verwendet wird, die gleichnamige Datei des Spiels"
+# src/modkit/core/validate.cpp:870
+"becomes {0}, which is also an asset file of the project" = "wird zu {0}, das auch eine Ressourcendatei des Projekts ist"
+# src/modkit/core/validate.cpp:872
 "becomes {0} like {1}" = "wird zu {0} wie {1}"
-# src/modkit/core/validate.cpp:861
+# src/modkit/core/validate.cpp:874
 "becomes {0} and replaces the game's texture of that name everywhere it is used" = "wird zu {0} und ersetzt überall, wo sie verwendet wird, die gleichnamige Textur des Spiels"
-# src/modkit/core/validate.cpp:865
+# src/modkit/core/validate.cpp:878
 "the export makes this file for the icon pictures: rename the project's file" = "der Export erzeugt diese Datei für die Symbolbilder: benenne die Datei des Projekts um"
-# src/modkit/core/validate.cpp:894
+# src/modkit/core/validate.cpp:907
 "the mod has no name" = "die Mod hat keinen Namen"
-# src/modkit/core/validate.cpp:895
+# src/modkit/core/validate.cpp:908
 "the mod needs at least one language" = "die Mod braucht mindestens eine Sprache"
 # src/modkit/core/voice.cpp:641
 "the CSV is empty" = "die CSV ist leer"

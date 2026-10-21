@@ -139,8 +139,22 @@ The editor's interface can be translated: English is built in, German ships comp
 
 ## Going further: Lua
 
-An exported mod is an ordinary mod folder: data files plus a generic Lua runtime on top of the layer's API. When you need something the editor
-does not make (your own game logic, behaviour scripts, GUI, overriding the game's native scripts), write a mod by hand: the
+### Lua inside the project
+
+![Lua](modkit/lua.png)
+
+When you need a little code next to what the editor makes, add it to the project in the **Lua** panel: **+ New Lua file** writes a commented
+starter next to the project and opens it in your code editor. A file can return two hooks: `before_install(data)` gets the generated tables
+before they are installed (here: double the value of every new item), and `after_install(runtime)` runs once the content exists. Scripts the file
+defines with `risen.script.define` are what the editor's *Run script* nodes and dialogue *Script* commands call.
+
+Hand-written code can never break the rest of the mod: every file is loaded protected, and an error is logged with the mod's id (the Problems
+panel shows it while the game runs) while the content keeps working. Details: [USER_GUIDE.md "Lua"](editor/USER_GUIDE.md#lua).
+
+### Mods written in Lua
+
+An exported mod is an ordinary mod folder: data files plus a generic Lua runtime on top of the layer's API. When you need something bigger than
+the editor's model (your own game logic, GUI, overriding the game's native scripts), write a mod by hand: the
 [modding guide](MODDING_GUIDE.md) is the start, [LUA_API.md](LUA_API.md) the reference, and [EXAMPLES.md](EXAMPLES.md) the verified example mods.
 Both kinds of mod run side by side.
 

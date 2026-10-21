@@ -279,6 +279,14 @@ struct BehaviorScript {
     std::string file;  // path relative to the project file
 };
 
+// hand-written Lua of the project (core/lua_files.h): a file next to the project, exported as lua/<name>.lua and loaded by main.lua (protected) before
+// the content is installed; it may return hooks { before_install = function(data) end, after_install = function(runtime) end }
+struct LuaFile {
+    std::string uid;
+    std::string name;  // the module name: lua/<name>.lua, require("lua.<name>") (a Lua identifier)
+    std::string file;  // path relative to the project file
+};
+
 // a text row of its own (an id of a string table that no object of the project owns): the per-language texts of strings/*.csv
 struct StringRow {
     std::string uid;
@@ -353,6 +361,7 @@ struct Project {
     WorldEdits world;
     std::vector<AssetFile> assets;
     std::vector<BehaviorScript> behaviors;
+    std::vector<LuaFile> lua_files;  // loaded in this order
     std::vector<StringRow> strings;
     std::vector<TemplatePatch> patches;
     std::vector<DialogEdit> dialog_edits;

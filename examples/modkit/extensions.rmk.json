@@ -1,0 +1,41 @@
+{
+  "format": "risen-modkit-project",
+  "format_version": 1,
+  "mod": {
+    "id": "modkit_ext",
+    "name": "risen-modkit Lua extensions",
+    "version": "1.0.0",
+    "author": "risen-spass",
+    "description": "Hand-written Lua in a risen-modkit project (Lua panel): hooks before and after the content is installed, a script for the editor's nodes, and a file that fails without taking the mod down. Exported to mods/modkit_ext, verified by the scenario modkit_ext (mods/modkit_ext_driver).",
+    "languages": [
+      "English"
+    ]
+  },
+  "items": [
+    {
+      "uid": "3a9e5c1d7b2f4e6a8c0d1e2f3a4b5c6d",
+      "mode": "new",
+      "name": "MKX_Ext_Blade",
+      "base": "It_1H_Sword",
+      "label": {
+        "English": "Extended Blade"
+      },
+      "description": {
+        "English": "Its price is set by hand-written Lua."
+      },
+      "value": 100
+    }
+  ],
+  "lua_files": [
+    {
+      "uid": "7c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f",
+      "name": "tweaks",
+      "file": "extensions/tweaks.lua"
+    },
+    {
+      "uid": "9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b",
+      "name": "faulty",
+      "file": "extensions/faulty.lua"
+    }
+  ]
+}

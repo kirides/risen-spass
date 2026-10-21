@@ -4,7 +4,7 @@
 world placements) in a desktop application and export an ordinary mod folder that the layer loads. The plan and the state of the stages are in
 [REQUIREMENTS.md](REQUIREMENTS.md); this guide describes what works now.
 
-Contents: [Build and start](#build-and-start) · [First start](#first-start) · [The window](#the-window) · [Items](#items) · [Recipes](#recipes) · [NPCs and monsters](#npcs-and-monsters) · [Dialogues](#dialogues) · [Quests](#quests) · [World](#world) · [Export](#export) · [Import](#import) ·
+Contents: [Build and start](#build-and-start) · [First start](#first-start) · [The window](#the-window) · [Items](#items) · [Recipes](#recipes) · [NPCs and monsters](#npcs-and-monsters) · [Dialogues](#dialogues) · [Lua](#lua) · [Quests](#quests) · [World](#world) · [Export](#export) · [Import](#import) ·
 [The exported mod](#the-exported-mod) · [Command line](#command-line) · [Limits](#limits)
 
 ## Build and start
@@ -55,6 +55,7 @@ the choice; it starts expanded.
 | **World** | the game world in 3D (below) |
 | **Assets** | the project's own files: compiled resources and audio (below) |
 | **Behaviours** | scripts that run on NPCs, like components in Unity / Unreal (below) |
+| **Lua** | hand-written Lua files of the project, loaded protected with hooks before and after the content is installed (below) |
 | **Problems** | what is wrong with the project (errors block the export, warnings do not); click a line to jump to the object |
 | **Log** | what the editor did, and problems reading the game data |
 | **Settings** | data directory, export folder, UI scale |
@@ -229,6 +230,37 @@ A behaviour is a Lua script that runs on every NPC it is attached to (the layer'
   parameter of the script becomes a field (number, checkbox, text -- a text field also takes a template dropped from the Browser); a value equal
   to the default is not stored, *default* resets one.
 * The export checks every script like the layer does (a broken one refuses the export with the reason) and copies it into `behaviors/` of the mod.
+
+## Lua
+
+Hand-written Lua for what the panels do not make: your own game logic, extra event handlers, scripts for the editor's nodes, computed changes of the
+generated data. The **Lua** panel lists the project's Lua files; they travel with the project like behaviour scripts.
+
+* **+ New Lua file** writes `lua/<name>.lua` next to the project from a commented starter (it lists every extension point) and opens it in your code
+  editor; **Add a file...** takes an existing one. The name is the module name (`lua.<name>`): letters, digits and `_`, not `custom`.
+* The panel compiles the file whenever it changes on disk and shows the syntax error, or the hooks and the script names it finds in the text. It does
+  not run the file.
+* The arrows set the **load order**. The exported `main.lua` runs:
+  1. the Lua files, top to bottom (their top-level code runs before the content exists: define scripts and register event handlers there);
+  2. `before_install(data)` of every file that returns one: `data` holds the generated tables (`data.balance` is a `risen.balance.install` spec,
+     `data.npcs`, `data.quests`, `data.dialogs`, `data.world`, `data.events`, ...) and may still be changed;
+  3. the editor's content is installed (and the event graphs);
+  4. `after_install(runtime)` of every file that returns one (`runtime` is `require("modkit.runtime")`);
+  5. `custom.lua` of the mod folder.
+* **Nothing hand-written can take the mod down.** Each file and each hook is loaded protected: an error is logged as `[<mod id>] lua.<name>: ...`
+  (the Problems panel shows it under *From the game* while the game runs) and that file is skipped; the content and the other files keep working.
+  What a file registered before its error stays registered.
+* The export compiles every file (a syntax error or a missing file refuses the export with the reason), copies it into `lua/` of the mod and removes
+  files of `lua/` that are no longer in the project. Import from the data files brings them back in order.
+* Hooks into the running content: the mod events `modkit.applied`, `modkit.quest_started`, `modkit.objective`, `modkit.quest_done`, `modkit.npc_ready`,
+  `modkit.world_spawned`, ... (see [The exported mod](#the-exported-mod)); `require("modkit.events")` (`set_enabled(graph, on)`, `fire_signal(name)`,
+  `var_get` / `var_set`) and `require("modkit.layers")` (`set`, `toggle`, `enabled`). A **Run script** node (Events) or a dialogue **Script**
+  command calls a script a Lua file defines with `risen.script.define(name, function(ctx) ... end)`.
+* `custom.lua` is the mod folder's own file: the export creates it once and never touches it again, but it is not part of the project (an export into
+  a new folder starts without it). Code that should stay with the project belongs in a Lua file.
+
+`examples/modkit/extensions.rmk.json` has a file with both hooks and one that fails on purpose (the scenario `modkit_ext` checks the exported mod in
+the game).
 
 ## Quests
 
@@ -482,7 +514,7 @@ Command line: `risen-modkit project.rmk.json --game-dir <Risen folder> --play`.
 * is refused while the Problems panel has errors,
 * writes only into an empty folder or one it wrote before (it recognises its own `modkit\project.json`), never into the game's `data` folder,
 * writes only the files that changed and removes generated files that are no longer needed,
-* creates `custom.lua` once for your own Lua code and never overwrites it.
+* creates `custom.lua` once for your own Lua code and never overwrites it (the project's own Lua files: [Lua](#lua)).
 
 Start the game: the layer loads the mod like any other (it is listed in the Mods tab of the ESC menu). With `[mods] watch = true` in the layer's
 `config.toml`, a re-export while the game runs reloads the mod (texts and numbers of items; new templates need a restart).
@@ -510,8 +542,9 @@ are listed in the project folder's `report.md`. [PACK2MOD.md](../PACK2MOD.md) "E
 ```
 <mods>\<id>\
   mod.toml              generated from the Mod panel
-  main.lua              generated: requires the runtime, installs the data, then requires custom.lua
+  main.lua              generated: requires the runtime and the data, loads the Lua files, installs the data, then custom.lua (hand-written code protected)
   custom.lua            yours: created once, never overwritten
+  lua\<name>.lua        the project's Lua files (Lua panel); data\lua_files.lua names them in load order
   data\balance.lua      items, recipes, NPC and monster templates as a risen.balance.install spec (readable, plain data)
   data\npcs.lua         the placed NPCs (risen.npc.persistent declarations)
   data\quests.lua       the quests (risen.quest.define)

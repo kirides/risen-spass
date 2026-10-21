@@ -1,0 +1,7 @@
+id          = "modkit_ext_driver"
+name        = "risen-modkit Lua extensions driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Development aid: checks hand-written Lua in an exported risen-modkit project (mods/modkit_ext, made from examples/modkit/extensions.rmk.json) in a running game as the risen.test scenario 'modkit_ext'."
+main        = "main.lua"
+requires    = ["modkit_ext"]

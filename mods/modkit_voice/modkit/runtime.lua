@@ -25,7 +25,10 @@
 --   "modkit.quest_started" (mod id, quest), "modkit.objective" (mod id, quest, step), "modkit.quest_done" (mod id, quest, result) for quest flows
 --   "modkit.world_spawned" (mod id, key, entity), "modkit.container_filled" (mod id, key, container), "modkit.world_removed" (mod id, key, entity id),
 --   "modkit.world_moved" (mod id, key, entity) for the world edits
-local M = { VERSION = 12 }
+--
+-- Hand-written Lua (M.extensions): the project's Lua files (lua/*.lua, loaded before the content, hooks before_install(data) / after_install(runtime))
+-- and custom.lua (loaded last); a module that fails is logged and skipped, it never takes the content down.
+local M = { VERSION = 13 }
 
 local unpack = table.unpack or unpack
 local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
@@ -578,6 +581,33 @@ local function apply_teachers(id, list)
             end
         end
     end
+end
+
+-- Hand-written Lua of the mod (the project's Lua files in lua/, then custom.lua): each module is required protected. One that fails is logged as
+-- "[mod id] ..." (the editor shows such lines in its Problems panel) and skipped; the generated content does not depend on it. Returns
+-- { call = function(hook, ...) }, which calls that hook of every loaded module that returned a table with it (protected too).
+function M.extensions(modules)
+    local id = mod and mod.id or "?"
+    local loaded = {}
+    for _, name in ipairs(modules or {}) do
+        local ok, res = pcall(require, name)
+        if not ok then
+            risen.log.error(("[%s] %s: %s (the rest of the mod is not affected)"):format(id, name, tostring(res)))
+        elseif type(res) == "table" then
+            loaded[#loaded + 1] = { name = name, hooks = res }
+        end
+    end
+    return {
+        call = function(hook, ...)
+            for _, e in ipairs(loaded) do
+                local f = e.hooks[hook]
+                if type(f) == "function" then
+                    local ok, why = pcall(f, ...)
+                    if not ok then risen.log.error(("[%s] %s.%s: %s"):format(id, e.name, hook, tostring(why))) end
+                end
+            end
+        end,
+    }
 end
 
 function M.install(data)
