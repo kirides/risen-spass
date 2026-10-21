@@ -39,6 +39,12 @@ void drop_hint() {
     ImGui::TextDisabled("%s", tr("or drop items here"));
 }
 
+// where the "x" of a row goes (right edge), taken at the start of the row: for ImGui::SameLine after a full-width tree node, which must
+// carry ImGuiTreeNodeFlags_AllowOverlap or it keeps the clicks on the button
+float remove_button_x() {
+    return ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - ImGui::CalcTextSize("x").x - ImGui::GetStyle().FramePadding.x * 2;
+}
+
 }  // namespace
 
 std::string name_prefix(const Project& p) {
@@ -352,9 +358,10 @@ bool condition_list(const char* id, json& cond, App& app, const char* none_label
             std::vector<std::string> errs;
             const json leaf = leaf_condition(items[i].value("kind", std::string()), items[i].value("args", json::object()), errs);
             const std::string text = leaf.is_null() ? std::string("?") : describe_condition(leaf);
-            const bool open = ImGui::TreeNodeEx("##c", ImGuiTreeNodeFlags_SpanAvailWidth | (items.size() == 1 ? ImGuiTreeNodeFlags_DefaultOpen : 0), "%s%s", text.c_str(),
-                                                errs.empty() ? "" : tr("  (incomplete)"));
-            ImGui::SameLine(ImGui::GetContentRegionAvail().x - 10);
+            const float x_at = remove_button_x();
+            const bool open = ImGui::TreeNodeEx("##c", ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap | (items.size() == 1 ? ImGuiTreeNodeFlags_DefaultOpen : 0),
+                                                "%s%s", text.c_str(), errs.empty() ? "" : tr("  (incomplete)"));
+            ImGui::SameLine(x_at);
             if (ImGui::SmallButton("x")) remove = static_cast<int>(i);
             if (open) {
                 if (condition_args(app, items[i])) rebuild = true;
@@ -455,12 +462,13 @@ bool behavior_uses(const char* id, std::vector<BehaviorUse>& uses, App& app) {
         if (s) info = behavior_info(app.project_file(s->file));
         else info.error = tr("no behaviour of this name in the project (Behaviours panel)");
         if (!u.params.is_object()) u.params = json::object();
-        const bool open = ImGui::TreeNodeEx("##b", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth, "%s", u.behavior.c_str());
+        const float x_at = remove_button_x();
+        const bool open = ImGui::TreeNodeEx("##b", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowOverlap, "%s", u.behavior.c_str());
         if (!info.description.empty()) {
             ImGui::SameLine();
             ImGui::TextDisabled("%s", info.description.c_str());
         }
-        ImGui::SameLine(ImGui::GetContentRegionAvail().x - 10);
+        ImGui::SameLine(x_at);
         if (ImGui::SmallButton("x")) remove = static_cast<int>(i);
         if (open) {
             if (!info.ok) {
