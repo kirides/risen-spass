@@ -1,7 +1,40 @@
 # risen-spass
 
-A **Lua (LuaJIT) modding layer for Risen Enhanced (x64)**: write new quests, dialogues, NPCs, items and texts in Lua, react to
-what happens in the game, and keep your mod's state in the savegame.
+A **modding layer for Risen Enhanced (x64)** with a **mod editor**: make new quests, dialogues, NPCs, items, spells, recipes and world
+changes, react to what happens in the game, and keep your mod's state in the savegame. Build mods visually in **risen-modkit**, or write them in
+Lua (LuaJIT) when you need more.
+
+![risen-modkit: a quest flow of the example mod](docs/modkit/quests.png)
+
+Risen's engine exports its C++ classes by name and its game scripts are native functions looked up by name in a registry.
+`risen-spass` binds to those exports (no hard-coded addresses, so it survives rebuilds of the same game version), hooks the
+engine's lifecycle, and exposes it to Lua with a sandbox per mod.
+
+## Making mods
+
+### Start here: the mod editor (no Lua)
+
+**[Modding with risen-modkit](docs/Modding_With_ModKit.md)** is the first tutorial: your first mod in a few steps, then a picture tour of
+everything the editor makes. **risen-modkit** is a cross-platform desktop editor (Windows, Linux, macOS) for items, recipes, NPCs and monsters,
+spells, dialogues, quests, events, layers, world placements, behaviours, strings and voice recording. It exports an ordinary mod folder that the
+layer loads, **Play** starts the game with it (or hot-reloads a running one), and it can import existing mods and `.pNN` archives (via
+`risen-pack2mod --project`). It only needs a copy of the game's `data` folder, not a running game.
+
+| Read | For |
+|---|---|
+| [Modding with risen-modkit](docs/Modding_With_ModKit.md) | **the tutorial**: build, set up, first mod, Play; a screenshot of every editor |
+| [Editor user guide](docs/editor/USER_GUIDE.md) | the reference: every editor panel, export / import, the command line, limits |
+| [Chronicle walkthrough](docs/editor/CHRONICLE.md) | a complete four-chapter example mod (`examples/modkit/chronicle.rmk.json`) with a table of which features it covers |
+| [Localization](docs/editor/LOCALIZATION.md) | the editor's UI languages (English embedded, German ships) and how to add one |
+| [Converting archive mods](docs/PACK2MOD.md) | `risen-pack2mod`: turn `.pNN` / `.pak` mods into a layer mod or a modkit project |
+| [Requirements and architecture](docs/editor/REQUIREMENTS.md) | the editor's design, stages E0-E20 and their state |
+
+More example projects are in [`examples/modkit`](examples/modkit).
+
+### Advanced: writing mods in Lua
+
+Everything the editor exports is plain Lua on top of the layer's API, and you can write mods by hand for what the editor does not cover:
+your own game logic, behaviour scripts, new GUI, overriding the game's native scripts.
 
 ```lua
 -- bin\spass\mods\hello_marta\main.lua
@@ -18,11 +51,13 @@ risen.on("load.before", content)
 risen.on("session.start", function() content(); risen.npc.spawn("Peasant_1_01", 0, 0, 0, { name = "Marta" }) end)
 ```
 
-Risen's engine exports its C++ classes by name and its game scripts are native functions looked up by name in a registry.
-`risen-spass` binds to those exports (no hard-coded addresses, so it survives rebuilds of the same game version), hooks the
-engine's lifecycle, and exposes it to Lua with a sandbox per mod.
+Read the [modding guide](docs/MODDING_GUIDE.md) (install, mod layout, the event model, recipes by goal, limits). The finished showcase mod [`mods/balance_example`](mods/balance_example/README.md) combines most of it; a real distributable mod is
+[Quick Loot](docs/QUICKLOOT.md) (right mouse button takes what you look at).
 
-## What you get
+Reference: [Lua API](docs/LUA_API.md) · [examples](docs/EXAMPLES.md) · [entity templates](docs/TEMPLATES.md) · [item properties](docs/ITEM_PROPERTIES.md) · [NPC properties](docs/NPC_PROPERTIES.md) · [spells](docs/SPELL_PROPERTIES.md) · [recipes](docs/RECIPE_PROPERTIES.md) · [converting archive mods](docs/PACK2MOD.md) · [engine notes](docs/RE.md) ·
+[developer guide](docs/DEVELOPMENT.md) · [roadmap](docs/NEXT_STEPS.md). Small mods: `mods/fetchquest` (a complete, savegame-safe quest), `mods/example_*` (sixteen verified patterns), `mods/stringsdemo`, `mods/_template`.
+
+## What the layer can do
 
 | | |
 |---|---|
@@ -37,29 +72,6 @@ engine's lifecycle, and exposes it to Lua with a sandbox per mod.
 | Mod manager | a **Mods** tab in the game's own ESC menu: every mod with version and state (failures in red with the reason), switch on / off with the dependencies asked and enforced, reload, load order with a default order, a warning before a mod that left NPCs in your game is switched off; built from the game's own widgets ([docs/MODDING_GUIDE.md](docs/MODDING_GUIDE.md) 4.22) |
 | Tooling | editor completion and type checks (LuaLS `types/risen.d.lua`), a test framework that plays your mod in an isolated windowed game and reports in a minute (`risen.test`), virtual file system access, template list ([docs/TEMPLATES.md](docs/TEMPLATES.md)) |
 | Safe | argument types are checked, a wrong call from Lua is an error and never a crash (a fuzz scenario calls every function with 1.6 million wrong arguments on each test run) |
-
-**Start here:** the [modding guide](docs/MODDING_GUIDE.md) (install, mod layout, the event model, recipes by goal, limits). The finished showcase mod [`mods/balance_example`](mods/balance_example/README.md) combines most of it; a real distributable mod is
-[Quick Loot](docs/QUICKLOOT.md) (right mouse button takes what you look at).
-
-Reference: [Lua API](docs/LUA_API.md) · [examples](docs/EXAMPLES.md) · [entity templates](docs/TEMPLATES.md) · [item properties](docs/ITEM_PROPERTIES.md) · [NPC properties](docs/NPC_PROPERTIES.md) · [spells](docs/SPELL_PROPERTIES.md) · [recipes](docs/RECIPE_PROPERTIES.md) · [converting archive mods](docs/PACK2MOD.md) · [engine notes](docs/RE.md) ·
-[developer guide](docs/DEVELOPMENT.md) · [roadmap](docs/NEXT_STEPS.md). Small mods: `mods/fetchquest` (a complete, savegame-safe quest), `mods/example_*` (sixteen verified patterns), `mods/stringsdemo`, `mods/_template`.
-
-## Modkit: make mods without writing Lua
-
-**risen-modkit** is a cross-platform desktop editor (Windows, Linux, macOS) for building mods visually: items, recipes, NPCs and monsters,
-spells, dialogues, quests, world placements, behaviours, strings and voice recording. It exports an ordinary mod folder that the layer loads,
-and can import existing mods and `.pNN` archives (via `risen-pack2mod --project`). It only needs a copy of the game's `data` folder, not a running game.
-
-| Read | For |
-|---|---|
-| [Editor user guide](docs/editor/USER_GUIDE.md) | build and start, first-time setup, every editor panel, export / import, the command line, limits |
-| [Chronicle walkthrough](docs/editor/CHRONICLE.md) | a complete example mod (`examples/modkit/chronicle.rmk.json`) with a table of which features it covers |
-| [Requirements and architecture](docs/editor/REQUIREMENTS.md) | the editor's design, stages E0-E20 and their state |
-| [Localization](docs/editor/LOCALIZATION.md) | the editor's UI languages (English embedded, German ships) and how to add one |
-| [Converting archive mods](docs/PACK2MOD.md) | `risen-pack2mod`: turn `.pNN` / `.pak` mods into a layer mod or a modkit project |
-
-Build it with `cmake --build build --config RelWithDebInfo --target risen-modkit` (see the user guide); more example projects are in [`examples/modkit`](examples/modkit).
-If you outgrow the editor, exported mods are plain Lua: continue with the [modding guide](docs/MODDING_GUIDE.md).
 
 ## Install
 

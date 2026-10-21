@@ -1,5 +1,8 @@
 # Modding guide
 
+> New to modding Risen? Start with the mod editor: [Modding with risen-modkit](Modding_With_ModKit.md) makes items, recipes, NPCs, dialogues, quests
+> and world edits without writing code. This guide is the advanced path: mods written by hand in Lua.
+
 A task-oriented guide to writing mods for Risen Enhanced (x64) with the Lua modding layer. It tells you **what to do for what you want** and where the traps are; the exhaustive
 reference is [LUA_API.md](LUA_API.md) (every function, option and event), the verified patterns are the example mods ([EXAMPLES.md](EXAMPLES.md)), and where the numbers of the
 game live is in [ITEM_PROPERTIES.md](ITEM_PROPERTIES.md), [NPC_PROPERTIES.md](NPC_PROPERTIES.md), [SPELL_PROPERTIES.md](SPELL_PROPERTIES.md) and [RECIPE_PROPERTIES.md](RECIPE_PROPERTIES.md).
