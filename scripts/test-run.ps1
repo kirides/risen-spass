@@ -12,7 +12,8 @@
     Ctrl-C or an error). The outcome is left in $global:SpassRun (Reason, Seconds, Result, Timing, Verdict).
 
 .PARAMETER GameDir  Test copy of Risen (default B:\DevDrive\risen-test, or the one of -Instance). Never point this at the real install.
-.PARAMETER Instance Parallel test instance 1..n (default 0 = the single main copy, no instance id). Instance 1 is B:\DevDrive\risen-test, n >= 2 is
+.PARAMETER Instance Parallel test instance 1..n (default 0 = the single main copy, mutex id "1" like instance 1: no test run ever uses the
+                    original "GenomeMutex", that one belongs to the user playing). Instance 1 is B:\DevDrive\risen-test, n >= 2 is
                     B:\DevDrive\risen-test<n> (created on first use from the main copy: bin copied, data\common and data\compiled junctioned,
                     see docs/DEVELOPMENT.md "Parallel instances"). The layer gets `[debug] instance = "<n>"` (own single-instance mutex), the
                     window is placed at its own offset, and only the Risen.exe of this copy is ever killed.
@@ -276,7 +277,9 @@ try {
     $cfg = @("log_level = `"$LogLevel`"")
     if ($Unsafe) { $cfg += '[lua]', 'unsafe = true' }
     $cfg += '[debug]', "app_data = `"$appData`""
-    if ($Instance -ge 1) { $cfg += "instance = `"$Instance`"" }
+    # Always an instance id, also for the single main copy (-Instance 0 = the same copy as 1): a test run must never take the engine's original
+    # "GenomeMutex", which belongs to the user playing the real install (with it the test game quits at start-up, or blocks the real one).
+    $cfg += "instance = `"$([Math]::Max($Instance, 1))`""
     $cfg += "trace_files = `"$TraceFiles`"", "trace = `"$Trace`"", "trace_scripts = `"$TraceScripts`"", "crash_dump = `"$CrashDump`"", "engine_guards = `"$EngineGuards`""
     if ($RaceProbe) { $cfg += 'race_probe = true' }
     if ($TraceFile) { $cfg += 'trace_file = true' }

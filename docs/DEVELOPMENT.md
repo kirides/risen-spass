@@ -274,6 +274,9 @@ Several `Risen.exe` can run at the same time when each has its **own test copy**
 (`src/game/instance_mutex.cpp`, hooks `CreateMutexA/W` and `OpenMutexA/W` before the engine runs) renames it to `GenomeMutex_<id>`. Nothing else is shared that matters: the packed archives open with
 read sharing (two games read the same `data\common` / `data\compiled` through junctions), Steam is not involved because `SteamAppId` is set (no restart, no dialog), and the savegames, `ConfigUser.xml`,
 `achievements.bin`, `.sentry-native` and `spass.log` live inside each copy (`[debug] app_data`, `bin\spass`). A parallel instance behaves exactly like a solo run (testdemo 37 s alone and two at once).
+**Every test run has an id** (user rule): `test-run.ps1` writes `instance = "1"` also for the default `-Instance 0` (the same copy as instance 1), `play-extmod.ps1` writes `"play"`. The original
+`GenomeMutex` belongs to the user playing the real install: a test run holding it would block the real game, and one started while the user plays quit at once (seen on 2026-10-22: `scene` exited
+with code 0 one second into start-up).
 
 * `test-run.ps1 -Instance <n>`: 1 is the main copy `B:\DevDrive\risen-test`, n >= 2 is `B:\DevDrive\risen-test<n>`, **created on first use** from the main copy (`robocopy` of `bin` without `spass`, 60 MB; `data\ini` copied;
   `data\common` and `data\compiled` as junctions to the same targets as the main copy; the main copy's `ConfigUser.xml` as seed; `data\extern\videos` with the empty `logo.ini` as always). Delete the directory
