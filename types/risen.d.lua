@@ -3466,6 +3466,38 @@ function cameraApi.settled() end
 ---@return string|nil reason
 function cameraApi.get() end
 
+---Names of the engine's camera types (`gCCameraTypeBase` of `compiled_camera.bin`, 61 in the game: `cam_normal` the follow camera, `cam_melee`, `cam_ranged*`, `cam_free`,
+---`cam_firstperson`, the dialogue and cutscene cameras ...), sorted. Lowercase.
+---@return string[]|nil names
+---@return string|nil reason No camera admin yet.
+function cameraApi.types() end
+
+---All properties of a camera type in the engine's text format (`"True"`/`"False"`, `"600"`, ...): `CamControl_AxisX/Y/Z` (the look input turns the camera, not the
+---hero), `CharacterMoveInCameraSpace`, `CharacterRotationInCameraSpace`, `CharacterControlMove/Rotation`, `CamFOV`, `CamTargetMin/MaxDistance`, the speeds, ... (RE.md section 61).
+---@param name string A type name, case-insensitive.
+---@return table<string,string>|nil props
+---@return string|nil reason Bad or unknown name, no camera admin.
+function cameraApi.type(name) end
+
+---Changes properties of a camera type; the engine reads them every frame, so a patched current type acts in the next frame. Values are numbers, booleans or engine text;
+---every name is checked before the first write. Not saved: the types are loaded again with the game, re-apply after a start. Verified: `{ CamControl_AxisX = true,
+---CharacterMoveInCameraSpace = true, CharacterRotationInCameraSpace = false }` on `cam_normal` makes TurnLeft/Right orbit the camera while the hero keeps his facing and walks
+---relative to the camera (he does not turn toward where he walks). Gotcha: with `CharacterRotationInCameraSpace = true` as well, hero and camera chase each other while moving
+---(the camera's yaw is relative to the hero).
+---@param name string
+---@param props table<string, number|boolean|string>
+---@return true|nil ok
+---@return string|nil reason Unknown type or property, a bad value, the engine refused one (the earlier ones of the table are then already written).
+function cameraApi.patch_type(name, props) end
+
+---Switches the camera to another type (`gCCameraAdmin::SetCurrentCameraByName`; a running dialogue or fixed camera stays). The game itself switches types on its own (weapon
+---drawn, interaction, dialogue), so this lasts until the next switch.
+---@param name string
+---@param instant? boolean Default false: the camera blends over; true cuts (yaw reset behind the hero, pitch 25).
+---@return true|nil ok
+---@return string|nil reason
+function cameraApi.use_type(name, instant) end
+
 ---Vector maths on points (`PointLike`). Angles are **degrees**, +y is up, a yaw of 0 looks along +z and 90 along +x (to the right of yaw 0), a pitch above the horizon is positive: the engine's convention (`Entity:direction()` of an NPC at a guard
 ---point with yaw 90 is `1, 0, 0`). Every function returns `nil, reason` for a bad argument (NaN, infinity, a stale entity, a table that is not a point); none raises an error.
 ---@class RisenMathApi

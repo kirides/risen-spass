@@ -1,0 +1,6 @@
+id          = "camera_probe"
+name        = "Camera type probe"
+version     = "0.1.0"
+author      = "risen-spass"
+description = "Dumps the engine's camera types (risen.camera.types / type) and tries the camera-space movement flags on cam_normal (scenario `camprobe`). Only meaningful in a test run."
+main        = "main.lua"

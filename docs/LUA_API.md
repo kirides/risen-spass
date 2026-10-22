@@ -1283,6 +1283,11 @@ risen.camera.set{ pos = { 1, 2, 3 }, target = { 4, 5, 6 }, fov = 60 }           
 risen.camera.settled()                -- IsCameraInDestinationPose
 risen.camera.get()                    -- risen.world.camera() + yaw, pitch, view (16 numbers), fixed, settled, type ("cam_cinema"/"cam_normal"), request
 risen.camera.release()                -- back to the follow camera
+risen.camera.types()                  -- the engine's camera types ("cam_normal", "cam_melee", ...; RE.md section 61)
+risen.camera.type("cam_normal")       -- { CamControl_AxisX = "False", CharacterMoveInCameraSpace = "False", CamFOV = "60", ... } (engine text)
+risen.camera.patch_type("cam_normal", { CamControl_AxisX = true, CharacterMoveInCameraSpace = true, CharacterRotationInCameraSpace = false })
+                                      -- free orbit: Turn keys / mouse X orbit the camera, the hero walks relative to the view (keeps his facing). Not saved.
+risen.camera.use_type("cam_free", false)  -- SetCurrentCameraByName (a dialogue / fixed camera stays); the game switches types on its own
 risen.world.weather_states()          -- { "Sunny_Full", "Stormy", "Stormy_Rain", "Foggy", "Foggy_Rain", ... } (26)
 risen.world.weather()                 -- { mode = 0, mode_name = "zones", weights = { Stormy_Rain = 0.98, ... }, dominant = "Stormy_Rain", thunder = true }
 risen.world.set_weather("Sunny_Full", { thunder = false })      -- forced (mode 2): the same everywhere, no random transitions; thunder flashes off

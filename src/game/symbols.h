@@ -541,6 +541,9 @@
     X(cam_in_dest_pose, L"Game.dll", "?IsCameraInDestinationPose@gCCameraAdmin@@QEBA_NXZ", bool (*)(const void* admin), false) \
     X(cam_default_fov, L"Game.dll", "?GetCameraFOV@gCCameraAdmin@@QEAAMXZ", float (*)(void* admin), false) \
     X(cam_current_name, L"Game.dll", "?GetCurrentCameraName@gCCameraAdmin@@QEAAAEAVbCString@@XZ", const void* (*)(void* admin), false) \
+    /* the camera types (eTDocObjectMap<gCCameraTypeBase>, a chained hash map: RE.md section 61) and switching between them */                      \
+    X(cam_get_types, L"Game.dll", "?GetCameraTypes@gCCameraAdmin@@QEBAAEBV?$eTDocObjectMap@VgCCameraTypeBase@@@@XZ", const void* (*)(const void* admin), false) \
+    X(cam_set_current, L"Game.dll", "?SetCurrentCameraByName@gCCameraAdmin@@QEAA_NAEBVbCString@@_N1@Z", bool (*)(void* admin, const void* name, bool instant, bool keepFixCamera), false) \
     X(weather_admin_vtable, L"Engine.dll", "??_7eCWeatherAdmin@@6B@", unsigned char*, false) \
     X(weather_states_count, L"Engine.dll", "?GetWeatherStatesCount@eCWeatherAdmin@@QEBAHXZ", int (*)(const void* admin), false) \
     X(weather_states_at, L"Engine.dll", "?GetWeatherStatesAt@eCWeatherAdmin@@QEBAPEAVeCWeatherStates@@H@Z", void* (*)(const void* admin, int index), false) \

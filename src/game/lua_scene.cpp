@@ -18,6 +18,7 @@
 #include "common/pose.h"
 #include "game/abi.h"
 #include "game/bindings.h"
+#include "game/properties.h"
 #include "game/symbols.h"
 
 // Renderer testing, phase 2 (docs/RE.md section 59; the D3D9-vs-Vulkan reference comparison of risen-enhanced-graphics): the scene a capture shows.
@@ -321,6 +322,147 @@ Two cameraGet(sol::this_state ts) {
         }
     }
     return okv(L, sol::make_object(L, t));
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------------
+// Camera types (RE.md section 61): the gCCameraTypeBase objects of compiled_camera.bin (`cam_normal`, `cam_melee`, ...), property objects the camera
+// admin and gCCharacterControl read every frame. GetCameraTypes returns an eTDocObjectMap: a chained hash map, map+0x10 Node** buckets, map+0x18 uint32
+// bucket count; a node is { bCString key, gCCameraTypeBase* value, ?, Node* next } (key +0x00, value +0x08, next +0x18). Keys are lowercase (the engine's
+// lookup lowercases the name first); the layer walks the map and compares case-insensitively instead of rehashing.
+
+struct CamTypeNode {
+    const char* key;  // bCString: a single pointer to the text
+    void* value;
+    void* unknown;
+    CamTypeNode* next;
+};
+
+std::string lowerAscii(std::string s) {
+    for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return s;
+}
+
+// name -> type for every camera type; empty without a camera admin. `stopAt` ends the walk at the first match (lowercase).
+std::vector<std::pair<std::string, void*>> cameraTypes(const std::string& stopAt = {}) {
+    std::vector<std::pair<std::string, void*>> out;
+    const Symbols& s = sym();
+    void* admin = cameraAdmin();
+    if (admin == nullptr || s.cam_get_types == nullptr) {
+        return out;
+    }
+    guarded([&] {
+        const auto* map = static_cast<const unsigned char*>(s.cam_get_types(admin));
+        if (map == nullptr) return;
+        auto* const* buckets = *reinterpret_cast<CamTypeNode* const* const*>(map + 0x10);
+        const uint32_t count = *reinterpret_cast<const uint32_t*>(map + 0x18);
+        if (buckets == nullptr || count == 0 || count > 1u << 20) return;
+        for (uint32_t i = 0; i < count; ++i) {
+            int guard = 0;
+            for (const CamTypeNode* n = buckets[i]; n != nullptr && guard < 10000; n = n->next, ++guard) {
+                if (n->value == nullptr) continue;
+                std::string name = n->key != nullptr ? n->key : "";
+                if (!stopAt.empty() && lowerAscii(name) == stopAt) {
+                    out.clear();
+                    out.emplace_back(std::move(name), n->value);
+                    return;
+                }
+                if (stopAt.empty()) out.emplace_back(std::move(name), n->value);
+            }
+        }
+        if (!stopAt.empty()) out.clear();
+    });
+    return out;
+}
+
+bool validCamTypeName(const std::string& n) {
+    if (n.empty() || n.size() > 96) return false;
+    for (unsigned char c : n)
+        if (!std::isalnum(c) && c != '_' && c != '-') return false;
+    return true;
+}
+
+void* cameraTypeByName(const std::string& name) {
+    auto found = cameraTypes(lowerAscii(name));
+    return found.empty() ? nullptr : found.front().second;
+}
+
+Two cameraTypeNames(sol::this_state ts) {
+    sol::state_view L(ts);
+    if (sym().cam_get_types == nullptr) return fail(L, "engine function gCCameraAdmin::GetCameraTypes is unavailable");
+    if (cameraAdmin() == nullptr) return fail(L, "no camera admin (gCCameraAdmin) yet");
+    auto all = cameraTypes();
+    std::sort(all.begin(), all.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+    sol::table t = L.create_table(static_cast<int>(all.size()), 0);
+    int i = 1;
+    for (const auto& [name, p] : all) t[i++] = name;
+    return okv(L, sol::make_object(L, t));
+}
+
+Two cameraTypeGet(sol::this_state ts, const std::string& name) {
+    sol::state_view L(ts);
+    if (!validCamTypeName(name)) return fail(L, "bad camera type name");
+    if (cameraAdmin() == nullptr) return fail(L, "no camera admin (gCCameraAdmin) yet");
+    void* type = cameraTypeByName(name);
+    if (type == nullptr) return fail(L, "no camera type '" + name + "'");
+    sol::table t = L.create_table();
+    for (const auto& [prop, ptype] : propertyList(type)) {
+        if (auto v = propertyGet(type, prop)) t[prop] = *v;
+    }
+    return okv(L, sol::make_object(L, t));
+}
+
+// patch_type(name, { Prop = value, ... }): every name is checked before the first write, values are numbers, booleans or engine text.
+Two cameraTypePatch(sol::this_state ts, const std::string& name, sol::table props) {
+    sol::state_view L(ts);
+    if (!validCamTypeName(name)) return fail(L, "bad camera type name");
+    if (cameraAdmin() == nullptr) return fail(L, "no camera admin (gCCameraAdmin) yet");
+    void* type = cameraTypeByName(name);
+    if (type == nullptr) return fail(L, "no camera type '" + name + "'");
+    std::vector<std::pair<std::string, std::string>> writes;
+    for (const auto& [k, v] : props) {
+        if (k.get_type() != sol::type::string) return fail(L, "property names must be strings");
+        const std::string prop = k.as<std::string>();
+        if (!propertyGet(type, prop)) return fail(L, "no such property: " + prop.substr(0, 60));
+        std::string text;
+        switch (v.get_type()) {
+            case sol::type::boolean: text = v.as<bool>() ? "true" : "false"; break;
+            case sol::type::number: {
+                const double d = v.as<double>();
+                if (!std::isfinite(d)) return fail(L, prop + ": not a finite number");
+                text = (d == std::floor(d) && std::fabs(d) < 1e9) ? std::to_string(static_cast<long long>(d)) : std::to_string(d);
+                break;
+            }
+            case sol::type::string: text = v.as<std::string>(); break;
+            default: return fail(L, prop + ": value must be a number, boolean or string");
+        }
+        if (text.size() > 256) return fail(L, prop + ": value too long");
+        writes.emplace_back(prop, std::move(text));
+    }
+    for (const auto& [prop, text] : writes) {
+        if (!propertySet(type, prop, text)) return fail(L, "the engine refused " + prop);
+    }
+    spdlog::info("camera: patched type {} ({} properties)", name, writes.size());
+    return okv(L, sol::make_object(L, true));
+}
+
+// use_type(name [, instant]): SetCurrentCameraByName(name, instant, keepFixCamera = true) - a running dialogue / fixed camera is not ended.
+Two cameraTypeUse(sol::this_state ts, const std::string& name, sol::optional<bool> instant) {
+    sol::state_view L(ts);
+    const Symbols& s = sym();
+    if (s.cam_set_current == nullptr) return fail(L, "engine function gCCameraAdmin::SetCurrentCameraByName is unavailable");
+    if (!validCamTypeName(name)) return fail(L, "bad camera type name");
+    void* admin = cameraAdmin();
+    if (admin == nullptr) return fail(L, "no camera admin (gCCameraAdmin) yet");
+    if (cameraTypeByName(name) == nullptr) return fail(L, "no camera type '" + name + "'");
+    bool ok = false;
+    if (!guarded([&] {
+            const BString n(lowerAscii(name));
+            ok = s.cam_set_current(admin, n.get(), instant.value_or(false), true);
+        })) {
+        return fail(L, "the engine raised an exception");
+    }
+    if (!ok) return fail(L, "the engine did not switch to '" + name + "'");
+    return okv(L, sol::make_object(L, true));
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------
@@ -694,6 +836,10 @@ void bindScene(sol::state_view lua, sol::table risen) {
     camera.set_function("release", cameraRelease);
     camera.set_function("settled", cameraSettled);
     camera.set_function("get", cameraGet);
+    camera.set_function("types", cameraTypeNames);
+    camera.set_function("type", cameraTypeGet);
+    camera.set_function("patch_type", cameraTypePatch);
+    camera.set_function("use_type", cameraTypeUse);
     risen["camera"] = camera;
 
     sol::table world = risen["world"];
