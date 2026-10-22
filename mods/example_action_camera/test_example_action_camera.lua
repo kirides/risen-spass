@@ -1,4 +1,4 @@
----@diagnostic disable: need-check-nil
+---@diagnostic disable: need-check-nil, param-type-mismatch
 -- Scenario `ex_action_camera`: the action camera of example_action_camera, measured with simulated keys (risen.input.simulate).
 --   .\scripts\test-run.ps1 -Instance 1 -Mods example_action_camera -WaitForResult -Seconds 300 -Scenario ex_action_camera -ShowChecks
 return function(mod)
@@ -12,6 +12,9 @@ return function(mod)
         "right: hero faces right of the view", "right: walks right of the view", "right: camera not dragged",
         "back: hero faces the camera", "back: walks toward the camera",
         "forward: hero faces the view", "forward: walks along the view", "forward: camera not dragged",
+        "weapon drawn", "weapon, no fight yet: runs turned", "attack: hero faces the camera",
+        "dodge 1: still facing the camera", "dodge 1: went left of the view", "dodge 2: still facing the camera", "dodge 2: went left of the view",
+        "dodge back: facing the camera, went back", "after the fight: runs turned again",
         "ranged: hero is the orientation", "ranged: turn turns the hero (game's own camera)", "back to ours: world-relative again",
         "loaded: still patched and world-relative", "loaded: hero turns where he runs",
     }
@@ -105,6 +108,64 @@ return function(mod)
         T.expect("forward: walks along the view", fwd.moved > 100 and near(fwd.travel_vs_view, 0), fmt(fwd))
         T.expect("forward: camera not dragged", math.abs(fwd.cam_turn) < TOL, fmt(fwd))
         log { what = "aligned", n = mod.state.aligned }
+
+        -- fights: an attack and dodges face the camera, chained dodges go where they are pressed relative to the view, then running turns the hero again
+        T.section("combat")
+        local player = risen.entity.player()
+        risen.item.give(player, "It_1H_Club_01", 1)
+        wait_s(0.5)
+        risen.input.simulate("WeaponMode", true); wait_s(0.3); risen.input.simulate("WeaponMode", false)
+        T.wait_until(function() return mod.state.weapon end, 10, "weapon drawn")
+        wait_s(1.5)
+        T.expect("weapon drawn", mod.state.weapon, tostring(player:state()))
+        local cright = hold("weapon right", "MoveRight", 1.2)
+        T.expect("weapon, no fight yet: runs turned", near(cright.hero_vs_view, 90), fmt(cright))
+
+        local a = state()
+        risen.input.simulate("PrimaryAction", true); T.sleep_frames(3); risen.input.simulate("PrimaryAction", false)
+        wait_s(0.4)
+        local b = state()
+        local att = { hero_vs_view = angle(a.cyaw, b.pyaw), travel_vs_view = 999, cam_turn = angle(a.cyaw, b.cyaw), moved = 0 }
+        log { what = "attack", hero_vs_view = att.hero_vs_view, state = tostring(player:state()) }
+        T.expect("attack: hero faces the camera", near(att.hero_vs_view, 0), fmt(att))
+
+        local function dodge(label, dir)
+            T.wait_until(function() return player:state() == "PS_Melee_Loop" end, 10, "ready to dodge")
+            wait_s(0.3)
+            local s0 = state()
+            local jumped = false
+            local off = risen.on("tick", function() if player:state() == "PS_Jump" then jumped = true end end)
+            risen.input.simulate(dir, true); T.sleep_frames(2)
+            risen.input.simulate("Jump", true); T.sleep_frames(3); risen.input.simulate("Jump", false)
+            T.wait_until(function() return jumped end, 3, "dodge started")
+            -- the dodge is a jump that carries the held direction: keep it down until he lands
+            T.wait_until(function() return player:state() ~= "PS_Jump" end, 5, "landed")
+            risen.input.simulate(dir, false)
+            T.wait_until(function() return player:state() == "PS_Melee_Loop" end, 10, "dodge over")
+            risen.off(off)
+            wait_s(0.3)
+            local s1 = state()
+            local dx, dz = s1.px - s0.px, s1.pz - s0.pz
+            local moved = math.sqrt(dx * dx + dz * dz)
+            local r = { what = label, moved = moved, jumped = tostring(jumped), hero_vs_view = angle(s0.cyaw, s1.pyaw), travel_vs_view = moved > 1 and angle(s0.cyaw, math.deg(math.atan2(dx, dz))) or 999,
+                        cam_turn = angle(s0.cyaw, s1.cyaw), hero_turn = angle(s0.pyaw, s1.pyaw) }
+            log(r)
+            return r
+        end
+        local d1 = dodge("dodge left 1", "MoveLeft")
+        T.expect("dodge 1: still facing the camera", near(d1.hero_vs_view, 0), fmt(d1))
+        T.expect("dodge 1: went left of the view", d1.moved > 50 and near(d1.travel_vs_view, -90), fmt(d1))
+        local d2 = dodge("dodge left 2", "MoveLeft")
+        T.expect("dodge 2: still facing the camera", near(d2.hero_vs_view, 0), fmt(d2))
+        T.expect("dodge 2: went left of the view", d2.moved > 50 and near(d2.travel_vs_view, -90), fmt(d2))
+        local d3 = dodge("dodge back", "MoveBackward")
+        T.expect("dodge back: facing the camera, went back", near(d3.hero_vs_view, 0) and d3.moved > 50 and near(d3.travel_vs_view, 180), fmt(d3))
+        wait_s(2.0) -- the combat window is over
+        local after = hold("after the fight right", "MoveRight", 1.5)
+        T.expect("after the fight: runs turned again", near(after.hero_vs_view, 90), fmt(after))
+        risen.input.simulate("WeaponMode", true); wait_s(0.3); risen.input.simulate("WeaponMode", false)
+        T.wait_until(function() return not mod.state.weapon end, 10, "weapon holstered")
+        wait_s(1)
 
         -- another camera type (the game switches to cam_ranged when the hero aims a bow or a spell): the hero is the orientation again, and released after
         T.section("other camera")

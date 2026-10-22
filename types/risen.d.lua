@@ -278,7 +278,8 @@ function Entity:turn_to(target) end
 ---(the character then faces his goal pose). Clears an alignment target entity. Verified on the player: with a free orbit camera (`mods/example_action_camera`) he turns 90 / 180 degrees
 ---within a second and walks on while turning.
 ---@param dir PointLike|nil
----@param immediate? boolean Default false (a smooth turn); true snaps in one frame.
+---@param immediate? boolean Default false (a smooth turn); true snaps in the next movement update. Gotcha: another `align(dir, false)` before that update cancels the snap
+---(it is one flag), so do not repeat calls every frame; an attack animation stops a smooth turn halfway, snap before attacks.
 ---@return true|nil ok
 ---@return string|nil reason Bad direction, stale entity, no gCCharacterMovement_PS (items, objects).
 function Entity:align(dir, immediate) end

@@ -8,6 +8,9 @@
 --   * The camera's yaw is measured relative to an "orientation" entity, the hero by default: when he turns, the camera turns with him. risen.camera.set_targets(player, nil)
 --     makes it world-relative; the game sets (hero, hero) again on its own at times, so the mod checks risen.camera.get().orientation every frame.
 --   * Entity:align(direction) is the direction the character's body turns toward, with his own turn speed (the engine keeps it until it is replaced).
+--   * Fights: with a weapon drawn (the hero's state `PS_Melee*`, Entity:state()) an attack, a parry or a dodge (Jump + a direction) turns the hero to the camera first - the
+--     input.action handler runs before the game handles the key - and for COMBAT_HOLD seconds he keeps facing it: the move keys strafe and the next dodge goes where you press
+--     relative to the view, instead of the hero turning toward every dodge direction.
 --   * Only the follow camera is changed: aiming a bow or a spell (cam_ranged*), dialogues and interactions keep the game's own camera, and the hero is the orientation again there.
 --
 -- Run the live check (see docs/EXAMPLES.md):
@@ -15,14 +18,50 @@
 
 local CAMERA = "cam_normal"                -- the type this mod changes (the game's follow camera; melee stays on it)
 local FLAGS = { CamControl_AxisX = true, CharacterMoveInCameraSpace = true, CharacterRotationInCameraSpace = false }
+local COMBAT_HOLD = 1.5                    -- seconds the hero keeps facing the camera after an attack, parry or dodge (weapon drawn)
+local COMBAT_SNAP = true                   -- turn to the camera at once when the attack / dodge key goes down (false: the normal turn speed)
 
 local held = {}                            -- action name -> down (from the input.action events: also sees keys a test simulates)
 local MOVES = { MoveForward = true, MoveBackward = true, MoveLeft = true, MoveRight = true }
+-- with a weapon drawn these turn the hero to the camera: attacks, parry, and Jump (Jump + a direction is the dodge)
+local COMBAT = { PrimaryAction = true, SecondaryAction = true, Jump = true, Attack = true, Parade = true, CounterAttack = true }
+
+local state = { world_relative = false, aligned = 0, weapon = false, combat_until = -1, now = 0, last_dir = nil }
+
+-- The camera's view on the ground, as a unit vector { x, 0, z }, or nil.
+local function view_direction(cam)
+    local len = math.sqrt(cam.dx * cam.dx + cam.dz * cam.dz)
+    if len < 1e-4 then return nil end
+    return { cam.dx / len, 0, cam.dz / len }
+end
+
+-- two flat directions closer than about half a degree (the second may be nil)
+local function same_direction(a, b)
+    if not b then return false end
+    local la, lb = math.sqrt(a[1] * a[1] + a[3] * a[3]), math.sqrt(b[1] * b[1] + b[3] * b[3])
+    if la < 1e-6 or lb < 1e-6 then return false end
+    return (a[1] * b[1] + a[3] * b[3]) / (la * lb) > 0.99996
+end
+
+-- the hero's state tells whether a weapon is drawn: PS_Melee* (drawn), PS_Normal* (holstered); a dodge passes PS_Jump / ZS_Jump_End / PS_Routine, which keep the last answer
+local function update_weapon(player)
+    local st = player:state() or ""
+    if st:find("^PS_Melee") then state.weapon = true
+    elseif st:find("^PS_Normal") then state.weapon = false end
+end
 
 risen.on("input.action", function(ev)
     if MOVES[ev.action] then
         if ev.phase == "pressed" or ev.phase == "held" then held[ev.action] = true
         elseif ev.phase == "released" then held[ev.action] = false end
+    elseif COMBAT[ev.action] and ev.phase == "pressed" and state.weapon then
+        -- this runs before the game handles the key: the attack / dodge starts already facing the camera
+        local player, cam = risen.entity.player(), risen.camera.get()
+        if player and cam and cam.type == CAMERA and not cam.fixed then
+            local view = view_direction(cam)
+            if view and player:align(view, COMBAT_SNAP) then state.last_dir = view end
+            state.combat_until = risen.clock() + COMBAT_HOLD
+        end
     end
 end)
 
@@ -33,10 +72,10 @@ local function wish_direction(cam)
     local f = v(held.MoveForward) - v(held.MoveBackward)
     local r = v(held.MoveRight) - v(held.MoveLeft)
     if f == 0 and r == 0 then return nil end
-    local len = math.sqrt(cam.dx * cam.dx + cam.dz * cam.dz)
-    if len < 1e-4 then return nil end
-    local fx, fz = cam.dx / len, cam.dz / len          -- the view, flat
-    local rx, rz = fz, -fx                              -- 90 degrees to the right of it
+    local view = view_direction(cam)
+    if not view then return nil end
+    local fx, fz = view[1], view[3]
+    local rx, rz = fz, -fx                              -- 90 degrees to the right of the view
     return { f * fx + r * rx, 0, f * fz + r * rz }
 end
 
@@ -47,13 +86,13 @@ local function patch()
     patched = ok == true
 end
 
-local state = { world_relative = false, aligned = 0 }
-
 local function frame()
+    state.now = risen.clock()
     local player = risen.entity.player()
     local cam = risen.camera.get()
     if not player or not cam then return end
     if not patched then patch() end
+    update_weapon(player)
     local ours = cam.type == CAMERA and not cam.fixed
     -- the yaw is world-relative only in our camera; the game's other cameras (bow, spells) keep theirs behind the hero
     if ours and cam.orientation ~= nil then
@@ -62,15 +101,25 @@ local function frame()
         risen.camera.set_targets(player, player)
         state.world_relative = false
     end
+    if not ours then state.last_dir = nil end -- the game's own turning runs there: hand the direction over again afterwards
     if ours then
-        local dir = wish_direction(cam)
-        if dir and player:align(dir) then state.aligned = state.aligned + 1 end
+        -- fighting (an attack, parry or dodge in the last COMBAT_HOLD seconds): face the camera, the move keys strafe and dodges go relative to the view;
+        -- otherwise the hero turns toward where he runs
+        local dir
+        if state.weapon and state.now < state.combat_until then dir = view_direction(cam)
+        else dir = wish_direction(cam) end
+        -- only a new direction is handed over: the engine keeps the last one, and setting the same one again would cancel the snap of an attack key
+        -- (`immediate` is a flag the engine clears after the turn, a repeated align(dir, false) clears it before)
+        if dir and not same_direction(dir, state.last_dir) and player:align(dir) then
+            state.last_dir = dir
+            state.aligned = state.aligned + 1
+        end
     end
 end
 
 risen.on("tick", frame)
 -- the types are loaded again with every start: patch again
-risen.on("session.start", function() patched = false end)
+risen.on("session.start", function() patched = false; state.last_dir = nil end)
 
 if risen.test.is_active() then
     require("test_example_action_camera")({ state = state, held = held, camera = CAMERA, flags = FLAGS })

@@ -7,6 +7,10 @@
 -- Every measurement is one "CAMPROBE {...}" log line; screenshots camprobe_*.png.
 local T = risen.test
 local settle = tonumber(T.param("settle", "30")) or 30
+if T.param("phase", "camera") == "combat" then
+    require("combat")()
+    return
+end
 
 T.plan {
     "new game started", "types listed", "cam_normal read", "patch refuses bad names",
