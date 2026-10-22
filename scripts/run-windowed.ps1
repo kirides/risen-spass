@@ -44,7 +44,10 @@ param(
     [string]$ScreenshotOn = '',
     [double]$ScreenshotDelay = 3,
     [string]$ScreenshotPath = (Join-Path $env:TEMP 'risen_shot.png'),
-    [switch]$AllowFocus
+    [switch]$AllowFocus,
+    # the executable in bin to start: a renamed copy of Risen.exe (e.g. RisenTest.exe) escapes per-executable driver
+    # profiles (AMD Adrenalin application profiles key on the file name)
+    [string]$Exe = 'Risen.exe'
 )
 $ErrorActionPreference = 'Stop'
 
@@ -97,7 +100,7 @@ $log = Join-Path $bin 'spass\spass.log'
 $env:SteamAppId = '40300'
 $env:SteamGameId = '40300'
 $started = Get-Date
-$p = Start-Process -FilePath (Join-Path $bin 'Risen.exe') -ArgumentList (@('-nosplash') + $ExtraArgs) -WorkingDirectory $bin -PassThru
+$p = Start-Process -FilePath (Join-Path $bin $Exe) -ArgumentList (@('-nosplash') + $ExtraArgs) -WorkingDirectory $bin -PassThru
 $global:SpassRun = [pscustomobject]@{ Reason = 'seconds'; Seconds = 0.0; Pid = $p.Id; ExitCode = $null; TookFocus = $null; ClippedCursor = $null }
 # a program that confined the cursor before the start is not the game's doing
 $clippedBefore = [RisenFocus]::CursorClipped()

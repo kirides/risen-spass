@@ -98,7 +98,10 @@ param(
     # print every check of the result, not only the failed ones
     [switch]$ShowChecks,
     # let the game take the foreground and the mouse cursor (normal play); by default a test run stays in the background ([debug] background)
-    [switch]$AllowFocus
+    [switch]$AllowFocus,
+    # the executable in bin to start (run-windowed.ps1 -Exe): a renamed copy of Risen.exe escapes per-executable driver
+    # profiles; created from bin\Risen.exe when missing
+    [string]$Exe = 'Risen.exe'
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -150,7 +153,9 @@ if (-not (Test-Path (Join-Path $externDir 'videos\logo.ini'))) {
 }
 
 # Only the Risen.exe of THIS test copy: other parallel instances (and the real install) are left alone.
-function Get-CopyRisen { Get-Process Risen -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path -like ($bin + '\*') } }
+if ($Exe -ne 'Risen.exe' -and -not (Test-Path (Join-Path $bin $Exe))) { Copy-Item (Join-Path $bin 'Risen.exe') (Join-Path $bin $Exe) }
+$exeName = [IO.Path]::GetFileNameWithoutExtension($Exe)
+function Get-CopyRisen { Get-Process $exeName -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path -like ($bin + '\*') } }
 function Stop-Risen {
     Get-CopyRisen | Stop-Process -Force -ErrorAction SilentlyContinue
     Get-CopyRisen | Wait-Process -Timeout 30 -ErrorAction SilentlyContinue
@@ -313,6 +318,7 @@ try {
     if ($Instance -ge 1) { $windowed.WindowX = 40 * $Instance; $windowed.WindowY = 40 * $Instance }
     if ($WaitForResult) { $windowed.ResultFile = $resultFile }
     if ($AllowFocus) { $windowed.AllowFocus = $true }
+    if ($Exe -ne 'Risen.exe') { $windowed.Exe = $Exe }
     & (Join-Path $PSScriptRoot 'run-windowed.ps1') @windowed 6>&1 |
         Select-String -Pattern $Filter | ForEach-Object { $_.Line }
     $launched = $global:SpassRun
