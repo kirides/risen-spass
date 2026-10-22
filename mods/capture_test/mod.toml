@@ -1,0 +1,6 @@
+id          = "capture_test"
+name        = "Capture scenario driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Checks risen.debug.screenshot (both backends, wait_frames, bursts), the time freeze and timer controls, risen.hud.set_visible and test waits while time is frozen (scenario `capture`). Only meaningful in a test run."
+main        = "main.lua"

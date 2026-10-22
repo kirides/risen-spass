@@ -121,6 +121,8 @@ add_library(spass_core STATIC
     src/game/lua_config.cpp
     src/game/lua_options.cpp
     src/game/lua_hud.cpp
+    src/game/lua_render.cpp
+    src/game/lua_scene.cpp
     src/game/lua_gui.cpp
     src/game/lua_input.cpp
     src/game/lua_interact.cpp

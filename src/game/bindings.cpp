@@ -140,6 +140,8 @@ void registerBindings() {
     rt.addBinding(bindWorld);
     rt.addBinding(bindDebug);
     rt.addBinding(bindScreenshot);   // risen.debug.screenshot
+    rt.addBinding(bindRender);       // risen.debug.time_freeze / time_scale / fixed_frame_time / app_state
+    rt.addBinding(bindScene);        // after bindWorld/bindDebug: risen.camera, risen.world.weather*, risen.debug.console
     rt.addBinding(bindEngineInfo);
     rt.addBinding(bindLoc);
     rt.addBinding(bindEntity);

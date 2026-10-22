@@ -43,6 +43,8 @@
       ex_ignore_theft - example: NPCs that ignore thefts while a game variable is set (risen.ai.perceive("theft") answers 0), animated and quick path (mods/example_ignore_theft)
       extplay      - the generated mod's play checks: a conversation runs added GiveXP / RunScript commands, Sam teaches past the game's cap and refuses at it, the melee table's styles (risen.npc.combat_style), a fight with a two-hander; skipped when the generated mod is absent
       extmod       - the generated Risen Extended mod (mods/risen_extended, made by risen-pack2mod or tools/extmod_gen.py; docs/EXTENDED_MOD_ANALYSIS.md): applied entries, the archive numbers in the engine, new items spawn / equip, recipes craft, monster actors, loose assets, save + load in a second process; skipped when the generated mod is absent
+      capture      - screenshots with wait_frames and bursts, the time freeze (identical frames, test waits still running), timer controls, the HUD off (mods/capture_test, RE.md section 58)
+      scene        - the fixed camera (risen.camera), forced weather (risen.world.set_weather), the console runner (risen.debug.console), the same spot twice, camera/weather/menu under the time freeze, time_scale(0), fixed_frame_time (mods/scene_test, RE.md section 59)
       hardening    - every public function and method called with ~1.6 million wrong-typed / hostile argument combinations (mods/hardening): the game must survive and keep ticking
 
 .DESCRIPTION
@@ -70,7 +72,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'behaviors', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'modmanager', 'options', 'modkit', 'modkit_ext', 'evlive', 'extras', 'modkit_voice', 'chronicle', 'meshprobe', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'behaviors', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'capture', 'scene', 'modmanager', 'options', 'modkit', 'modkit_ext', 'evlive', 'extras', 'modkit_voice', 'chronicle', 'meshprobe', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -295,6 +297,16 @@ $scenarios = [ordered]@{
     gui               = @{ Est = 60; Title = 'GUI building blocks (M16: pages, windows, clone, clicks, ESC, leaf page, screenshot)'; Kind = 'result'; Mods = @('gui_test'); Limit = 200
                            Phases = @(
                                @{ Name = ''; Param = @(); Start = 'new'; Keep = $false; Limit = 200; Unsafe = $true }
+                           ) }
+    # screenshots (both backends: the game's D3D9 here), wait_frames / bursts, time freeze (app state 8) with test waits running, timer controls, the HUD off (RE.md section 58)
+    capture           = @{ Est = 80; Title = 'capture controls (screenshot backends, wait_frames, bursts, time freeze, HUD off)'; Kind = 'result'; Mods = @('capture_test'); Limit = 300
+                           Phases = @(
+                               @{ Name = ''; Param = @(); Start = 'new'; Keep = $false; Limit = 300 }
+                           ) }
+    # the fixed camera, forced weather, console runner and how they work with the time freeze (RE.md section 59)
+    scene             = @{ Est = 160; Title = 'scene controls (fixed camera, forced weather, console runner, same spot twice)'; Kind = 'result'; Mods = @('scene_test'); Limit = 400
+                           Phases = @(
+                               @{ Name = ''; Param = @(); Start = 'new'; Keep = $false; Limit = 400 }
                            ) }
     # the in-game mod manager (M16): "main" drives the menu page through ESC and real clicks (reload, reorder with refusals, cascades, data prompt, quick save + load), "restart" is a fresh process that
     # keeps mods.toml (what the page chose is in force), "menu" runs at the main menu without a game

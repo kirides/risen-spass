@@ -108,6 +108,30 @@ TEST(risen_test_lua_api_checks_waits_and_scenarios) {
     test::pollWaits(lua);
     CHECK(test::finished() && run.total() == 1 && run.verdict("").pass);
 
+    // frame waits count only rendered frames (onFrame), tick waits only ticks: a frozen world (frames, no ticks) still ends sleep_frames
+    test::resetForTests();
+    lua.script(
+        "frames_done = false\n"
+        "risen.test.reset()  -- also forgets the finished scenario of the Lua side\n"
+        "risen.test.run(function()\n"
+        "  risen.test.sleep_frames(2)\n"
+        "  frames_done = true\n"
+        "end, 'frames')\n");
+    test::pollWaits(lua);  // the scenario starts (its first resume is a tick wait) and sleeps 2 frames
+    test::pollWaits(lua);
+    test::pollWaits(lua);
+    CHECK(!lua["frames_done"].get<bool>() && run.unfinished().size() == 1);
+    test::pollWaits(lua, true);
+    CHECK(!lua["frames_done"].get<bool>());
+    test::pollWaits(lua, true);
+    CHECK(lua["frames_done"].get<bool>() && test::finished());
+    test::resetForTests();
+    lua.script("risen.test.wait_frames(1, function(ok) frame_cb = ok end)");
+    test::pollWaits(lua);
+    CHECK(!lua["frame_cb"].get<sol::optional<bool>>().has_value());
+    test::pollWaits(lua, true);
+    CHECK(lua["frame_cb"].get<bool>());
+
     // a timeout fails the check and reports to the callback
     test::resetForTests();
     lua.script("risen.test.wait_for(function() return false end, 0.01, function(ok, why) fired = tostring(ok) .. ':' .. tostring(why) end, 'never')");

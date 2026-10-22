@@ -518,6 +518,41 @@
     X(cam_get_view, L"Engine.dll", "?GetViewMatrix@eCCameraBase@@QEBAAEBVbCMatrix@@XZ", const float* (*)(const void* cam), false) \
     X(cam_get_fov, L"Engine.dll", "?GetFieldOfView@eCCameraBase@@QEBAAEBMXZ", const float* (*)(const void* cam), false) \
     X(cam_get_aspect, L"Engine.dll", "?GetAspectRatio@eCCameraBase@@QEBAAEBMXZ", const float* (*)(const void* cam), false) \
+    /* ---- renderer testing (docs/RE.md section 58): app state 8 = time freeze, the frame timer, the HUD page mode ---- */ \
+    X(app_get_state, L"Engine.dll", "?GetAppState@eCApplication@@QEBAKXZ", unsigned long (*)(const void* app), false) \
+    X(app_set_state, L"Engine.dll", "?SetAppState@eCApplication@@QEAAXK@Z", void (*)(void* app, unsigned long state), false) \
+    X(timer_instance, L"Engine.dll", "?GetInstance@eCTimer@@SAAEAV1@XZ", void* (*)(), false) \
+    X(timer_set_scaling, L"Engine.dll", "?SetTimeScaling@eCTimer@@QEAAXM@Z", void (*)(void* timer, float scale), false) \
+    X(timer_get_scaling, L"Engine.dll", "?GetTimeScaling@eCTimer@@QEBAMXZ", float (*)(const void* timer), false) \
+    X(timer_set_fixed_frame, L"Engine.dll", "?SetFixedFrameTime@eCTimer@@QEAAXM@Z", void (*)(void* timer, float ms), false) \
+    X(timer_master_frame, L"Engine.dll", "?GetMasterFrameCounter@eCTimer@@QEBAKXZ", unsigned long (*)(const void* timer), false) \
+    X(gui_get_page_mode, L"Script.dll", "?GetPageMode@GUI2@@QEBA?AW4gEPageMode@@XZ", int (*)(const void* gui), false) \
+    X(gui_set_page_mode, L"Script.dll", "?SetPageMode@GUI2@@QEAAXAEBW4gEPageMode@@_N@Z", void (*)(void* gui, const int* mode, bool setUserMode), false) \
+    X(gui_restore_page_mode, L"Script.dll", "?RestoreUserPageMode@GUI2@@QEBAXXZ", void (*)(const void* gui), false) \
+    /* renderer testing, phase 2 (docs/RE.md section 59): the fixed camera of gCCameraAdmin (camera type cam_cinema), the forced weather of eCWeatherAdmin */ \
+    X(timer_frame_time, L"Engine.dll", "?GetFrameTime@eCTimer@@QEBAMXZ", float (*)(const void* timer), false) \
+    X(timer_game_time, L"Engine.dll", "?GetGameTime@eCTimer@@QEBAKXZ", unsigned long (*)(const void* timer), false) \
+    X(timer_total_time, L"Engine.dll", "?GetTotalTime@eCTimer@@QEBAKXZ", unsigned long (*)(const void* timer), false) \
+    X(world_playing_seconds, L"Script.dll", "?GetPlayingTimeInSeconds@Entity@@SAMXZ", float (*)(), false) \
+    X(cam_admin_vtable, L"Game.dll", "??_7gCCameraAdmin@@6B@", unsigned char*, false) \
+    X(cam_set_fix_eye, L"Game.dll", "?SetFixCamera@gCCameraAdmin@@QEAAXAEBVbCMatrix@@AEBVbCVector@@_NMMMMMMMM2@Z", void (*)(void* admin, const float* targetMatrix, const float* eye, bool instant, float fov, float fovSpeed, float moveSpeed, float rotSpeed, float moveAcc, float moveDec, float rotAcc, float rotDec, bool sync), false) \
+    X(cam_stop_fix, L"Game.dll", "?StopFixCamera@gCCameraAdmin@@QEAAXXZ", void (*)(void* admin), false) \
+    X(cam_fix_active, L"Game.dll", "?IsFixCameraActive@gCCameraAdmin@@QEBA_NXZ", bool (*)(const void* admin), false) \
+    X(cam_in_dest_pose, L"Game.dll", "?IsCameraInDestinationPose@gCCameraAdmin@@QEBA_NXZ", bool (*)(const void* admin), false) \
+    X(cam_default_fov, L"Game.dll", "?GetCameraFOV@gCCameraAdmin@@QEAAMXZ", float (*)(void* admin), false) \
+    X(cam_current_name, L"Game.dll", "?GetCurrentCameraName@gCCameraAdmin@@QEAAAEAVbCString@@XZ", const void* (*)(void* admin), false) \
+    X(weather_admin_vtable, L"Engine.dll", "??_7eCWeatherAdmin@@6B@", unsigned char*, false) \
+    X(weather_states_count, L"Engine.dll", "?GetWeatherStatesCount@eCWeatherAdmin@@QEBAHXZ", int (*)(const void* admin), false) \
+    X(weather_states_at, L"Engine.dll", "?GetWeatherStatesAt@eCWeatherAdmin@@QEBAPEAVeCWeatherStates@@H@Z", void* (*)(const void* admin, int index), false) \
+    X(weather_get_mode, L"Engine.dll", "?GetCurrentMode@eCWeatherAdmin@@QEBA?AW4eEWeatherAdminMode@@XZ", int (*)(const void* admin), false) \
+    X(weather_set_mode, L"Engine.dll", "?SetCurrentMode@eCWeatherAdmin@@QEAAXW4eEWeatherAdminMode@@@Z", void (*)(void* admin, int mode), false) \
+    X(wstate_get_name, L"Engine.dll", "?GetName@eCWeatherStates@@QEBAAEBVbCString@@XZ", const void* (*)(const void* state), false) \
+    X(wstate_get_blend, L"Engine.dll", "?GetBlendFactor@eCWeatherStates@@QEBAMXZ", float (*)(const void* state), false) \
+    X(wstate_set_blend, L"Engine.dll", "?SetBlendFactor@eCWeatherStates@@QEAAXM@Z", void (*)(void* state, float weight), false) \
+    X(wstate_get_thunder, L"Engine.dll", "?GetThunderProbability@eCWeatherStates@@QEBAAEBMXZ", const float* (*)(const void* state), false) \
+    X(wstate_set_thunder, L"Engine.dll", "?SetThunderProbability@eCWeatherStates@@QEAAXAEBM@Z", void (*)(void* state, const float* p), false) \
+    X(wstate_get_effect_prob, L"Engine.dll", "?GetEffectProbability@eCWeatherStates@@QEBAAEBMXZ", const float* (*)(const void* state), false) \
+    X(wstate_set_effect_prob, L"Engine.dll", "?SetEffectProbability@eCWeatherStates@@QEAAXAEBM@Z", void (*)(void* state, const float* p), false) \
     /* ---- area string properties (M5e, docs/RE.md section 40): the security zones ("SL_Public", ...) the theft assessment reads ---- */ \
     X(area_access_names, L"Engine.dll", "?AccessPropertyNameList@eCArea_StringProperty_PS@@QEAAAEAV?$bTObjArray@VbCString@@@@XZ", void* (*)(void* self), false)
 

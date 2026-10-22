@@ -18,6 +18,12 @@ void bindDebug(sol::state_view lua, sol::table risen);
 void installFileTrace();
 // risen.debug.screenshot / screenshot_status (screenshot.cpp): a PNG of the D3D9 back buffer through a Present hook that is installed on the first request. Register after bindDebug.
 void bindScreenshot(sol::state_view lua, sol::table risen);
+// risen.debug.time_freeze / time_scale / fixed_frame_time / app_state (lua_render.cpp, renderer testing). Register after bindDebug.
+void bindRender(sol::state_view lua, sol::table risen);
+// risen.camera.*, risen.world.weather_states / weather / set_weather, risen.debug.console (lua_scene.cpp, renderer testing). Register after bindWorld and bindDebug.
+void bindScene(sol::state_view lua, sol::table risen);
+// The application is in app state 8 (the debug time freeze): the frame hook then pumps the test waits (hooks.cpp).
+bool timeFrozen();
 // Starts tracing right away (config.toml [debug] trace_files); the same as risen.debug.trace_files(filter).
 void setFileTraceFilter(const std::string& filter);
 

@@ -137,6 +137,7 @@ T.allow_errors(true)     -- error-level log lines no longer count towards the fi
 T.finish("summary")      -- writes <Risen>\bin\spass\test-result.json and (with [test] enabled) ends the game
 T.fail("reason")         -- records a failed check and ends the run as "aborted: reason"
 T.wait_for(pred, 30, function(ok, why) end, "name")  -- callback style, without a coroutine; T.wait_ticks(n, cb)
+T.sleep_frames(30)       -- rendered frames (`ui.frame`): also counts while a menu pauses the world or time is frozen (T.wait_frames(n, cb) is the callback form)
 T.param("mode", "pass")  -- [test.params] of config.toml (scripts\test-run.ps1 -Param mode=fail)
 ```
 `risen.test.*` exists in every run and then only logs `[test] ok|FAIL name: detail` (a mod may ship its checks). It becomes a real run with
@@ -486,7 +487,9 @@ A consumed `pressed` should be followed by consuming the matching `held` and `re
 **Effects** (`risen.effect`): `risen.effect.start(name, entity)` starts an effect of the engine's effect system on the entity (`eff_item_<EffectMaterial>_transfer_01` is the item pick-up effect that plays `sfx_items_<material>_transfer_NN`), `risen.effect.count(prefix)` counts the `eff_*` effects the engine started (a test aid).
 **HUD** (`risen.hud`): `risen.hud.log(text [, type])` prints a line into the game log, `risen.hud.item_log("It_Apple" | entity [, amount])` an item line (icon, name, amount),
 `risen.hud.tutorial_stop(name)` ends a tutorial hint the way the game's take (`"takeitem"`) and corpse loot (`"loot"`) scripts do, `risen.hud.tutorial_done(name)` asks whether it is completed,
-`risen.hud.state()` -> `{ browsing, game, loot, mode, pages }` (`loot` = the loot window is open; `browsing` is true in this test copy, which makes the game's own use key ignore the press).
+`risen.hud.state()` -> `{ browsing, game, loot, mode, page_mode, pages }` (`loot` = the loot window is open; `browsing` is true in this test copy, which makes the game's own use key ignore the press;
+`page_mode` 1 = the HUD is hidden), `risen.hud.set_visible(false)` hides the whole HUD (bars, compass, hints, log: `GUI2::SetPageMode(1)`, not stored as the user's choice) and `set_visible(true)` restores the
+user's page mode (what the debug action `OnDebug_ToggleHUD` does; verified on screenshots, RE.md §58).
 
 **Options** (`risen.config`): `local cfg, problems = risen.config({ key = "SecondaryAction", items = true, repeat_ms = 80 })` reads `<mod dir>/config.toml` on top of the defaults (the defaults fix
 each option's type; a wrong type, an unknown key or a broken file is ignored and reported in `problems` and the log). On top of that file come the choices the player made in the
@@ -517,7 +520,7 @@ risen.script.define("My_Script", function() risen.gui.open(25) end)             
 * **Window messages** (a test aid, and a way to drive the stock menu): `risen.gui.key(0x1B)` is the Escape key as the window procedure delivers it (opens and closes the menu), `risen.gui.click(x, y)` / `w:click()` a left click at client pixels (`w:center()` converts the GUI's virtual 1365 x 768 coordinates), `risen.gui.mouse("move" | "down" | "up", x, y)`, `risen.gui.client_size()`.
   The window is never resized at run time (that misaligns the GUI and the mouse).
 * **Handles are checked:** a `GuiWindow` is used only after it was found again in the live page trees (or among the clones); one the engine deleted answers `nil` / `false` and nothing is touched. Setters return `true` or `nil, reason` (positions and sizes are range checked).
-* **Screenshots:** `risen.debug.screenshot("name" [, wait_frames])` writes `<Risen>\bin\spass\screenshots\name.png` (the D3D9 back buffer; the OS cannot capture it), `risen.debug.screenshot_status("name")` is `"pending"`, `"done"` or `"failed: ..."`. The hook is installed on the first request only.
+* **Screenshots:** `risen.debug.screenshot("name" [, wait_frames | { wait_frames, burst, interval }])` writes `<Risen>\bin\spass\screenshots\name.png` (the back buffer of the frame being presented: scene, post effects, GUI; the OS cannot capture it), a burst `name_b0.png` .. `name_b<n-1>.png` `interval` presented frames apart; `risen.debug.screenshot_status("name")` is `"pending"`, `"done"` or `"failed: ..."`. Two backends, chosen at the first request (`risen.debug.screenshot_backend()`): `"rvk"` when `bin\d3d9.dll` is the Vulkan renderer risen-enhanced-graphics in its Vulkan mode (its export `rvk_screenshot`), else `"d3d9"`, a hook on `IDirect3DDevice9::Present` installed on that request. `risen.debug.frame()` gives the frame number of the backend (RE.md §58).
 **Limits:** the special list widgets (savegames, achievements, key bindings) are not a generic API; windows are never deleted (a clone stays); keyboard / gamepad navigation of the menu was not driven (the PC menu is mouse driven; controller mode uses the `_C` page variants); texts you put on a page are not localized.
 
 ### New meshes, textures and icons — `risen.assets` (see `mods/newassets`, [RE.md §26](RE.md))
@@ -1257,8 +1260,40 @@ risen.vfs.size(path)                             -- unreliable for packed files 
 `mods/vfsprobe` crawls the tree and logs it. Paths are mount-relative (`ini`, `scripts`, `data/...`) or start with `#G3:/`.
 ```lua
 risen.debug.trace_files("SaveGames")  -- log every file the engine opens whose path contains that text; "" stops
-risen.debug.screenshot("menu", 30)    -- a PNG of the game window in <Risen>\bin\spass\screenshots\menu.png after 30 rendered frames (the OS cannot capture the D3D9 window); risen.debug.screenshot_status("menu") -> "pending" | "done" | "failed: ..."
+risen.debug.screenshot("menu", 30)    -- a PNG of the game window in <Risen>\bin\spass\screenshots\menu.png after 30 presented frames (the OS cannot capture the D3D9 window); risen.debug.screenshot_status("menu") -> "pending" | "done" | "failed: ..."
+risen.debug.screenshot("view", { wait_frames = 5, burst = 3, interval = 10 })   -- view_b0.png .. view_b2.png, 10 presented frames apart; "done" when all three are written
+risen.debug.screenshot_backend()      -- "rvk" (the Vulkan renderer risen-enhanced-graphics captures) | "d3d9" (the layer's Present hook) | nil before the first request
+risen.debug.frame()                   -- frame number, source: presented frames ("rvk"), Present calls seen ("d3d9"), eCTimer::GetMasterFrameCounter ("engine") before a backend is chosen
 ```
+Renderer testing (the D3D9-vs-Vulkan reference comparison of risen-enhanced-graphics; `mods/capture_test`, scenario `capture`, RE.md §58):
+```lua
+risen.debug.time_freeze(true)         -- app state 8, the engine's debug time freeze: rendering goes on, the world stands still (rain, animation, clock; no `tick`); false = running (0)
+risen.debug.app_state()               -- 0 running, 1 paused by a menu page, 8 frozen
+risen.debug.time_scale(0.5)           -- eCTimer::SetTimeScaling, 0..10; returns the scale in effect (no argument: only reads it)
+risen.debug.fixed_frame_time(16.7)    -- eCTimer::SetFixedFrameTime: every frame counts as that many ms (0 = off)
+risen.hud.set_visible(false)          -- the HUD off for a clean picture; true brings it back
+```
+While time is frozen there is no `tick`: the test waits (`wait_until`, `sleep_frames`) are pumped from the frame hook, `T.sleep(ticks)` would wait until time runs again. A menu page
+opened and closed while frozen keeps the freeze. `time_scale(0)` is no freeze (the world clock, the sea and the clouds go on), `fixed_frame_time` fixes only the frame time (RE.md §59).
+
+The scene of a picture (`mods/scene_test`, scenario `scene`, RE.md §59):
+```lua
+risen.camera.set{ target = { x, y + 150, z }, yaw = 200, pitch = -12, distance = 600 }  -- the engine's fixed camera (cam_cinema): there in the next frame, works while frozen
+risen.camera.set{ pos = { 1, 2, 3 }, target = { 4, 5, 6 }, fov = 60 }                 -- or look from pos at target; { pos, yaw, pitch } also works; instant = false flies
+risen.camera.settled()                -- IsCameraInDestinationPose
+risen.camera.get()                    -- risen.world.camera() + yaw, pitch, view (16 numbers), fixed, settled, type ("cam_cinema"/"cam_normal"), request
+risen.camera.release()                -- back to the follow camera
+risen.world.weather_states()          -- { "Sunny_Full", "Stormy", "Stormy_Rain", "Foggy", "Foggy_Rain", ... } (26)
+risen.world.weather()                 -- { mode = 0, mode_name = "zones", weights = { Stormy_Rain = 0.98, ... }, dominant = "Stormy_Rain", thunder = true }
+risen.world.set_weather("Sunny_Full", { thunder = false })      -- forced (mode 2): the same everywhere, no random transitions; thunder flashes off
+risen.world.set_weather({ Stormy_Rain = 0.75, Foggy = 0.25 })   -- weights; "auto" = back to the weather zones (and thunder back)
+risen.debug.console("SetVegWindParams", 0, 0, 0, 0)             -- any CON_* console command of Script_Game.dll -> ok, message; risen.debug.console_commands() lists the 44
+risen.debug.timer()                   -- { frame_ms, game_ms, total_ms, scale, frame, playing_s }
+risen.debug.set_game_time(20000000)   -- eCTimer's game time (+0x10): the phase of the timed shader elements (sea surface, clouds); set it a frame before time_freeze(true)
+```
+The cinema camera draws letterbox bars (2.37:1). Forced weather also applies in dungeons (force their own zone weights there); rain, wet ground and the sea need a few hundred frames after a
+switch. The same spot twice gives the identical camera, but the sea, clouds and idle animations stand at another phase in each freeze; `set_game_time` with the same value a frame before the
+freeze pins the sea surface and the clouds (RE.md §60), not animations, particles or the shore foam.
 
 ## risen.engine — what the layer found in the running game
 ```lua

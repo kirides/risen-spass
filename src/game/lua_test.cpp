@@ -32,6 +32,7 @@ const Clock::time_point g_start = Clock::now();
 testrun::Run g_run;
 std::atomic<bool> g_finished{false};
 std::atomic<int> g_pending{0};
+std::atomic<int> g_framePending{0};  // the frame waits among them (wait_frames: counted by onFrame)
 std::atomic<bool> g_watchdogStarted{false};
 double g_lastBeat = 0;
 bool g_firstTick = false;
@@ -89,6 +90,7 @@ struct Wait {
     Clock::time_point deadline;
     std::string name;
     int ticksLeft = -1;  // >= 0: a tick wait
+    int framesLeft = -1;  // >= 0: a frame wait (rendered frames, onFrame: also while the world is paused or frozen)
     double timeout = 0;
 };
 std::vector<Wait> g_waits;
@@ -200,7 +202,14 @@ void finishRun(const std::string& summary, const std::string& abortReason, bool 
     }
 }
 
-void updatePending() { g_pending.store(static_cast<int>(g_waits.size())); }
+void updatePending() {
+    int frames = 0;
+    for (const Wait& w : g_waits) {
+        frames += w.framesLeft >= 0 ? 1 : 0;
+    }
+    g_pending.store(static_cast<int>(g_waits.size()) - frames);
+    g_framePending.store(frames);
+}
 
 void addWait(Wait w, const std::string& description) {
     w.runId = g_run.beginWait(description);
@@ -313,6 +322,13 @@ end
 function risen.test.sleep(ticks)
     local r = in_scenario("sleep")
     T.wait_ticks(ticks or 1, function() r.resume() end)
+    coroutine.yield()
+end
+
+-- risen.test.sleep_frames(n): continue after n rendered frames (the `ui.frame` event: also counts while the world is paused or time is frozen)
+function risen.test.sleep_frames(n)
+    local r = in_scenario("sleep_frames")
+    T.wait_frames(n or 1, function() r.resume() end)
     coroutine.yield()
 end
 
@@ -503,6 +519,16 @@ void bindTest(sol::state_view lua, sol::table risen) {
         w.name = "ticks";
         addWait(std::move(w), "ticks");
     });
+    // risen.test.wait_frames(n, on_done): on_done(true) after n rendered frames (eCApplication::DoRender: the `ui.frame` event)
+    t.set_function("wait_frames", [](int n, sol::object done) {
+        Wait w;
+        if (done.get_type() == sol::type::function) {
+            w.done = done.as<sol::main_protected_function>();
+        }
+        w.framesLeft = n > 0 ? n : 1;
+        w.name = "frames";
+        addWait(std::move(w), "frames");
+    });
     risen["test"] = t;
     runChunk(lua, kLuaChunk, "=risen.test", sol::make_object(lua, risen));
 }
@@ -511,7 +537,7 @@ void bindTestForMod(sol::state_view lua, sol::table api) {
     runChunk(lua, kModChunk, "=risen.test.mod", sol::make_object(lua, api));
 }
 
-void pollWaits(sol::state_view lua) {
+void pollWaits(sol::state_view lua, bool frame) {
     (void)lua;
     if (g_waits.empty()) {
         return;
@@ -524,7 +550,15 @@ void pollWaits(sol::state_view lua) {
         bool completed = false;
         bool ok = false;
         std::string why;
-        if (w.ticksLeft >= 0) {
+        if ((w.framesLeft >= 0) != frame) {
+            keep.push_back(std::move(w));  // a frame wait on a tick, or the other way round
+            continue;
+        }
+        if (w.framesLeft >= 0) {
+            if (--w.framesLeft <= 0) {
+                completed = ok = true;
+            }
+        } else if (w.ticksLeft >= 0) {
             if (--w.ticksLeft <= 0) {
                 completed = ok = true;
             }
@@ -576,6 +610,16 @@ void onTick() {
         if (rt.running()) {
             auto lock = rt.lock();
             pollWaits(rt.lua());
+        }
+    }
+}
+
+void onFrame() {
+    if (g_framePending.load() > 0) {
+        auto& rt = lua::Runtime::instance();
+        if (rt.running()) {
+            auto lock = rt.lock();
+            pollWaits(rt.lua(), /*frame=*/true);
         }
     }
 }

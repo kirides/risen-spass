@@ -29,12 +29,13 @@ void bindTestForMod(sol::state_view lua, sol::table api);
 
 // Called by the engine hooks on the game thread.
 void onTick();                         // every frame (cheap when nothing is pending)
+void onFrame();                        // every rendered frame (eCApplication::DoRender): the wait_frames waits
 void mark(const std::string& name);    // "first_tick", "session.start", ... for the timing report
 void startWatchdog();                  // the deadline thread; call once the game is up (not from DllMain)
 void shutdown();                       // drops pending waits while the Lua state still exists
 
 // Exposed for the unit tests.
-void pollWaits(sol::state_view lua);
+void pollWaits(sol::state_view lua, bool frame = false);  // frame: the wait_frames waits, else the tick and predicate waits
 testrun::Run& currentRun();
 bool finished();
 void resetForTests();

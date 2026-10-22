@@ -18,6 +18,9 @@
                     window is placed at its own offset, and only the Risen.exe of this copy is ever killed.
 .PARAMETER Mods     Example mods from <repo>\mods to enable (copied); every other mod in the test copy is disabled
                     by renaming it to <name>.off. "autostart" (starts a new game on the first tick) is kept.
+.PARAMETER ModPath  Directories with mods of other repositories (one or more, e.g. -ModPath B:\other-repo\mods): a name in -Mods is looked up in them
+                    first, in the given order (<dir>\<name>\mod.toml), then in <repo>\mods. Such mods are copied into the test copy exactly like
+                    spass's own (the layer loads every mod from <bin>\spass\mods): no mod of another project has to live in this repository.
 .PARAMETER Seconds  Upper bound of the run (without -WaitForResult: how long the game runs).
 .PARAMETER Filter   Regex of log lines to print (default: everything of interest).
 .PARAMETER Keep     Do not delete spass.log and saves before the run (to test loading an earlier save).
@@ -38,6 +41,8 @@ param(
     [string]$GameDir = '',
     [int]$Instance = 0,
     [string[]]$Mods = @('persistdemo'),
+    # directories searched for the -Mods names before <repo>\mods (mods of other repositories)
+    [string[]]$ModPath = @(),
     [int]$Seconds = 300,
     [string]$Filter = 'lua:|save:|load:|session:|world:|\[error\]|\[warn\]|\[test\] (FAIL|finished|deadline)',
     [ValidateSet('trace', 'debug', 'info', 'warn', 'error')][string]$LogLevel = 'info',
@@ -213,7 +218,13 @@ try {
         $dst = Join-Path $modsDir $m
         Remove-Item "$dst.off" -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item $dst -Recurse -Force -ErrorAction SilentlyContinue
-        Copy-Item (Join-Path $repo "mods\$m") $dst -Recurse
+        $src = $null
+        foreach ($dir in @($ModPath) + @(Join-Path $repo 'mods')) {
+            if ($dir -and (Test-Path (Join-Path $dir "$m\mod.toml"))) { $src = Join-Path $dir $m; break }
+        }
+        if ($null -eq $src) { throw "mod '$m' not found in $((@($ModPath) + @(Join-Path $repo 'mods')) -join ', ')" }
+        if ($src -notlike "$repo*") { Write-Host "mod $m from $src" }
+        Copy-Item $src $dst -Recurse
     }
     if ($CorruptFile -ne '') {
         $modId, $rel = $CorruptFile -split ':', 2

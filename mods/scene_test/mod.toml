@@ -1,0 +1,6 @@
+id          = "scene_test"
+name        = "Scene scenario driver"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Checks the fixed camera (risen.camera), the forced weather (risen.world.set_weather), the console runner (risen.debug.console) and how they behave with the time freeze (scenario `scene`). Only meaningful in a test run."
+main        = "main.lua"

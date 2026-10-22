@@ -10,6 +10,7 @@
 // risen.hud (docs/RE.md section 31, docs/LUA_API.md "HUD"): the on-screen game log the engine's scripts print to.
 //   GUI2::PrintGameLog(text, type, flag, extra)   the text line (HUD page "log"); `*gui2 == 1` (the first byte of the `gui2` object) means the GUI exists
 //   GUI2::PrintItemLog(Entity item, amount)       the item line with icon and name ("+ 2 Apple"); the entity is passed by value (a one-pointer holder)
+//   GUI2::SetPageMode / RestoreUserPageMode / GetPageMode   the HUD's page mode (1 = HUD off), docs/RE.md section 58
 
 namespace spass::game {
 
@@ -137,6 +138,27 @@ void bindHud(sol::state_view lua, sol::table risen) {
     });
     effect.set_function("count", [](const std::string& prefix) { return effectStartCount(prefix); });
 
+    // risen.hud.set_visible(on) -> true | nil, reason: hides the whole HUD (GUI2::SetPageMode(1, false): page mode 1 = HUD off, not stored as the user's mode) or brings back the user's
+    // page mode (GUI2::RestoreUserPageMode); what the debug action OnDebug_ToggleHUD does
+    hud.set_function("set_visible", [fail, ok](sol::this_state ts, bool on) -> Two {
+        sol::state_view L(ts);
+        const Symbols& s = sym();
+        if (s.gui2_object == nullptr || s.gui_get_page_mode == nullptr || s.gui_set_page_mode == nullptr || s.gui_restore_page_mode == nullptr) {
+            return fail(L, "engine function GUI2::SetPageMode is unavailable");
+        }
+        if (!guarded([&] {
+                if (!on) {
+                    const int hudOff = 1;
+                    s.gui_set_page_mode(s.gui2_object, &hudOff, false);
+                } else if (s.gui_get_page_mode(s.gui2_object) == 1) {
+                    s.gui_restore_page_mode(s.gui2_object);
+                }
+            })) {
+            return fail(L, "the engine raised an exception");
+        }
+        return ok(L);
+    });
+
     hud.set_function("state", [](sol::this_state ts) -> sol::object {
         sol::state_view L(ts);
         const Symbols& s = sym();
@@ -149,6 +171,7 @@ void bindHud(sol::state_view lua, sol::table risen) {
             t["loot"] = s.gui_is_browsing_loot != nullptr && s.gui_is_browsing_loot(s.gui2_object);
             t["game"] = s.gui_is_browsing_game != nullptr && s.gui_is_browsing_game(s.gui2_object);
             t["mode"] = s.gui_get_mode != nullptr ? s.gui_get_mode(s.gui2_object) : -1;
+            t["page_mode"] = s.gui_get_page_mode != nullptr ? s.gui_get_page_mode(s.gui2_object) : -1;
             sol::table pages = L.create_table();
             int n = 0;
             if (s.gui_is_visible != nullptr) {

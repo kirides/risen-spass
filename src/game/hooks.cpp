@@ -74,7 +74,8 @@ void detourSessionProcess(void* self) {
 
 // eCApplication::DoRender(this, flag): the application's frame (the main loop renders once per pass), which also runs while the game is paused (a menu page is open), at the
 // main menu and while loading (gCHudModule2::Process and gCSession::Process do not). Raises `ui.frame`. In a frame without a session tick the per-frame bookkeeping that would wait for the next tick (queued mod reloads, the test
-// runner's waits) runs here, so that a menu driven by mods (and by risen.test) does not stall while the world is paused.
+// runner's waits) runs here, so that a menu driven by mods (and by risen.test) does not stall while the world is paused; the same while time is frozen
+// (app state 8, risen.debug.time_freeze), so that a scenario that freezes time and then waits does not stall. The frame waits (risen.test.wait_frames) count every rendered frame.
 void detourAppRender(void* self, bool flag) {
     auto& rt = lua::Runtime::instance();
     if (!g_sessionTicked && rt.running()) {
@@ -83,12 +84,13 @@ void detourAppRender(void* self, bool flag) {
         if (s.gui2_object != nullptr && s.gui_is_browsing != nullptr) {
             guarded([&] { menu = s.gui_is_browsing(s.gui2_object); });
         }
-        if (menu) {
+        if (menu || timeFrozen()) {
             rt.processPending();
             test::onTick();
         }
     }
     g_sessionTicked = false;
+    test::onFrame();
     if (rt.running() && rt.hasHandlers("ui.frame")) {
         rt.emit("ui.frame");
     }

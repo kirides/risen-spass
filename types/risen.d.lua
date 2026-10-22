@@ -2061,9 +2061,16 @@ function hudApi.tutorial_stop(name) end
 function hudApi.tutorial_done(name) end
 
 ---What the GUI shows: `browsing` (`GUI2::IsBrowsing`: some page that is more than the plain game view is visible; the game's own use key is ignored while it is true), `game` (the plain
----game view), `loot` (the loot window), `mode` (`gEHudMode`), `pages` (the visible `gEHudPage` numbers).
----@return { browsing: boolean, game: boolean, loot: boolean, mode: integer, pages: integer[] }|nil state
+---game view), `loot` (the loot window), `mode` (`gEHudMode`), `page_mode` (`gEPageMode` of the HUD: 1 = hidden by `set_visible(false)`), `pages` (the visible `gEHudPage` numbers).
+---@return { browsing: boolean, game: boolean, loot: boolean, mode: integer, page_mode: integer, pages: integer[] }|nil state
 function hudApi.state() end
+
+---Hides the whole HUD (`GUI2::SetPageMode(1)`, not stored as the user's choice) or brings back the user's page mode (`GUI2::RestoreUserPageMode`): what the debug action
+---`OnDebug_ToggleHUD` does. For screenshots without bars, compass and log.
+---@param on boolean
+---@return boolean|nil ok
+---@return string|nil reason
+function hudApi.set_visible(on) end
 
 ---------------------------------------------------------------------------------------------------------------------
 -- GUI windows (M16, docs/RE.md section 42, docs/LUA_API.md "GUI windows")
@@ -3383,6 +3390,82 @@ function worldApi.engine_free_los(a, b, strict) end
 ---@return string|nil reason
 function worldApi.camera() end
 
+---The names of the engine's weather states (`eCWeatherStates`, from `WeatherStates.g3ws`), in index order: `Sunny_Full`, `Stormy`, `Stormy_Rain`, `Foggy`, `Foggy_Rain`, `Sunny_Half`,
+---`Dungeon_Blue`, ... (26 in the shipped game; there is no `Game_Start`: the rainy beach of a new game is the weather zone blend `Stormy_Rain` 0.98 + `Gyrger_Sunny_Green` 0.02).
+---@return string[]|nil names
+---@return string|nil reason
+function worldApi.weather_states() end
+
+---@class WeatherInfo
+---@field mode integer `eCWeatherAdmin` mode: 0 the weather zones around the player (the game's normal), 1 the zones around the camera, 2 forced (`set_weather`), 3 reset.
+---@field mode_name "zones"|"camera"|"forced"|"reset"|"unknown"
+---@field weights table<string, number> The blend factor of every state above 0 (in mode 0 what the zones blend at the player's position: copy it to force the same look elsewhere).
+---@field dominant? string The state with the largest weight (its rain particles, thunder and loop sound are used).
+---@field thunder boolean false while `set_weather(..., { thunder = false })` suppresses thunder flashes and random weather effects.
+
+---The weather the engine renders this frame: mode, state weights, whether thunder is suppressed. `nil, reason` before the weather admin exists.
+---@return WeatherInfo|nil weather
+---@return string|nil reason
+function worldApi.weather() end
+
+---Forces the weather (`eCWeatherAdmin` mode 2, what the console command `Weather <state>` does): one state name (weight 1), or weights `{ Stormy_Rain = 0.75, Foggy = 0.25 }`
+---(normalised by the engine); `"auto"` goes back to the weather zones (mode 0) and brings thunder back unless `opts.thunder == false`. Forced weather ignores the zones and their random
+---transitions, so it looks the same in every run and **everywhere, also in dungeons and interiors** (force their own zone state, e.g. read `weather().weights` there first); the switch itself
+---has no blend (the engine sums the weights afresh every frame), but rain particles, wet surfaces and the sea follow over several seconds: settle before a picture. Not saved; it stays until
+---`"auto"` (also over a load). `opts.thunder = false` sets the thunder and random-effect probabilities of every state to 0 (the original values come back with `thunder = true` or `"auto"`).
+---Works while time is frozen (the lighting changes, the frozen rain does not move).
+---@param spec string|table<string, number> A state name (case-insensitive), weights by name (0..1000, at least one above 0), or `"auto"`.
+---@param opts? { thunder?: boolean }
+---@return true|nil ok
+---@return string|nil reason An unknown state name, a bad weight, no weather admin.
+function worldApi.set_weather(spec, opts) end
+
+---A fixed camera: `{ pos, target }` (look from `pos` at `target`), `{ target, yaw, pitch, distance }` (orbit: look at `target` from `distance` units, default 300) or `{ pos, yaw, pitch, distance }`
+---(look from `pos` in that direction; `distance` places the orbit target, default 100). Angles in degrees in the convention of `Entity:pose` (yaw 0 looks along +z, 90 along +x; pitch > 0 looks up).
+---@class CameraSpec
+---@field pos? number[]|{x: number, y: number, z: number} The eye.
+---@field target? number[]|{x: number, y: number, z: number} The point looked at.
+---@field yaw? number View direction, degrees.
+---@field pitch? number View direction, -89..89 degrees.
+---@field distance? number 1..100000.
+---@field fov? number Degrees, 5..170 (default: the normal camera's field of view, 60).
+---@field instant? boolean Default true: the camera jumps there in the first frame instead of flying.
+
+---@class CameraState: CameraInfo
+---@field yaw number The view direction's yaw, degrees 0..360.
+---@field pitch number The view direction's pitch, degrees.
+---@field view number[] The 16 numbers of the camera's view matrix (row-major).
+---@field fixed boolean A fixed camera (`risen.camera.set`, or a dialogue's fixed camera) is active.
+---@field settled boolean `gCCameraAdmin::IsCameraInDestinationPose`.
+---@field type string The camera type: `cam_normal` (follow camera), `cam_cinema` (fixed), ...
+---@field request? { pos: number[], target: number[], fov: number } What `risen.camera.set` asked for, while it is active.
+
+---The camera for pictures from fixed spots: the engine's fixed camera (`gCCameraAdmin::SetFixCamera`, camera type `cam_cinema`, the one dialogues use) and back to the follow camera.
+---@class RisenCameraApi
+local cameraApi = {}
+
+---Fixes the camera (see `CameraSpec`). With `instant` (default) it is there in the next frame, to a third of a unit; the same spec gives the same view matrix every time. Works while time is
+---frozen (the camera admin runs under the time freeze). The cinema camera draws black letterbox bars (the picture keeps 16:9 and is covered top and bottom: rows 113..787 of 900).
+---Player input does not move it; `release` goes back to the follow camera.
+---@param spec CameraSpec
+---@return true|nil ok
+---@return string|nil reason A bad spec (missing/extra fields, NaN, pitch beyond 89, pos = target), no camera admin.
+function cameraApi.set(spec) end
+
+---Back to the follow camera behind the player (`gCCameraAdmin::StopFixCamera`, camera type `cam_normal`). Harmless without a fixed camera.
+---@return true|nil ok
+---@return string|nil reason
+function cameraApi.release() end
+
+---`gCCameraAdmin::IsCameraInDestinationPose`: the camera has stopped moving; `nil` when the engine cannot be asked.
+---@return boolean|nil
+function cameraApi.settled() end
+
+---The render camera as `risen.world.camera()` plus yaw/pitch, the view matrix and the camera admin's state (fixed, settled, type, the active request).
+---@return CameraState|nil camera
+---@return string|nil reason
+function cameraApi.get() end
+
 ---Vector maths on points (`PointLike`). Angles are **degrees**, +y is up, a yaw of 0 looks along +z and 90 along +x (to the right of yaw 0), a pitch above the horizon is positive: the engine's convention (`Entity:direction()` of an NPC at a guard
 ---point with yaw 90 is `1, 0, 0`). Every function returns `nil, reason` for a bad argument (NaN, infinity, a stale entity, a table that is not a point); none raises an error.
 ---@class RisenMathApi
@@ -4263,18 +4346,90 @@ local debugApi = {}
 ---@param filter string
 function debugApi.trace_files(filter) end
 
----Asks for a PNG of the game's back buffer: the D3D9 window cannot be captured from outside (screenshots made by the OS are black), so the layer hooks `IDirect3DDevice9::Present` (installed on the first request) and copies the back buffer
----at the next frame (or after `wait_frames` rendered frames). The file is `<Risen>/bin/spass/screenshots/<name>.png`. Poll `screenshot_status`. A development aid: this is how the look of the menu page was verified.
+---Options of `risen.debug.screenshot`.
+---@class ScreenshotOptions
+---@field wait_frames? integer Presented frames to let pass before the (first) capture, 0..600 (default 0: the next presented frame).
+---@field burst? integer Captures, 1..32 (default 1). More than one writes `<name>_b0.png` .. `<name>_b<n-1>.png` instead of `<name>.png`.
+---@field interval? integer Presented frames between the captures of a burst, 1..600 (default 1).
+
+---Asks for a PNG of the game's back buffer (scene, post-processing and GUI of the frame being presented): the D3D9 window cannot be captured from outside (screenshots made by the OS are black).
+---The backend is chosen at the first request: `"rvk"` when `<Risen>/bin/d3d9.dll` is the Vulkan renderer risen-enhanced-graphics and accepts the request (its export `rvk_screenshot`, only in its Vulkan mode),
+---else `"d3d9"`: the layer hooks `IDirect3DDevice9::Present` (installed on that request) and copies the back buffer. The file is `<Risen>/bin/spass/screenshots/<name>.png` (an older file of that name is
+---deleted first). Poll `screenshot_status`. Numbers in `opts` are clamped to their ranges.
 ---@param name string 1-64 characters of letters, digits, `_`, `-` and `.`.
----@param wait_frames? integer 0..600
+---@param opts? integer|ScreenshotOptions `wait_frames` (0..600) or the options table.
 ---@return true|nil ok
 ---@return string|nil reason
-function debugApi.screenshot(name, wait_frames) end
+function debugApi.screenshot(name, opts) end
 
----`"pending"`, `"done"`, `"failed: <reason>"`, or `nil` when no screenshot of that name was asked for.
+---`"pending"`, `"done"`, `"failed: <reason>"`, or `nil` when no screenshot of that name was asked for. A burst is `"done"` when all its files are written.
 ---@param name string
 ---@return string|nil
 function debugApi.screenshot_status(name) end
+
+---The screenshot backend in use: `"rvk"` (the Vulkan renderer captures), `"d3d9"` (the layer's Present hook), or `nil` before the first `screenshot` request.
+---@return "rvk"|"d3d9"|nil
+function debugApi.screenshot_backend() end
+
+---A frame number for logs and for checking capture timing: the renderer's presented frames (source `"rvk"`), the `Present` calls the hook has seen (`"d3d9"`), or before a screenshot backend
+---is chosen `eCTimer::GetMasterFrameCounter` (`"engine"`). Compare numbers of the same source only.
+---@return integer|nil frame
+---@return "rvk"|"d3d9"|"engine"|nil source
+function debugApi.frame() end
+
+---`eCApplication::GetAppState`: 0 running, 1 paused (a menu page is open), 8 time freeze (`time_freeze`); `nil` when the engine cannot be asked.
+---@return integer|nil state
+function debugApi.app_state() end
+
+---The engine's debug time freeze: app state 8 (`eCApplication::SetAppState`, what the debug action `OnDebugToggleTimeFreeze` does), or back to 0 (running). Rendering goes on; the test
+---waits (`risen.test.wait_until`, `sleep_frames`) keep running while time is frozen. A menu page (inventory) opened and closed while frozen keeps the freeze (app state stays 8).
+---The camera admin and the weather admin still run while frozen (`risen.camera.set`, `risen.world.set_weather` take effect); particles, the sea, clouds, animations and the clock stand.
+---@param on boolean
+---@return true|nil ok
+---@return string|nil reason
+function debugApi.time_freeze(on) end
+
+---`eCTimer::SetTimeScaling`: the measured frame time is multiplied by `scale` (1 = normal, 0..10). Without an argument it only reads the scale. 0 is no freeze: ticks go on, the
+---timer's game time stands, the frame time drops to about 4 % of the real one, but the world clock (playing time) runs on in real time and the sea and clouds keep moving (use `time_freeze`).
+---@param scale? number
+---@return number|nil scale The scale in effect after the call.
+---@return string|nil reason
+function debugApi.time_scale(scale) end
+
+---`eCTimer::SetFixedFrameTime`: every frame counts as `ms` milliseconds (the engine sleeps when a real frame was shorter); 0 turns it off. Only the frame time is fixed: the
+---timer's game time and the world clock still follow the real time, and the sleep does not cap the frame rate (measured with 50 ms: frame time exactly 50 ms, 24..35 frames per second), so it does
+---not make the world deterministic per frame.
+---@param ms number 0..1000
+---@return true|nil ok
+---@return string|nil reason
+function debugApi.fixed_frame_time(ms) end
+
+---Sets the engine timer's game time (`eCTimer` +0x10, what `GetGameTime` and `timer().game_ms` read; checked against `GetGameTime` before and after the write). The engine's timed shader
+---elements (texture scrollers, oscillators, rotators, animated colours: the motion of the sea surface and of the clouds) are a pure function of it, so two runs that set the same value one or two
+---frames before `time_freeze(true)` freeze those at the same phase (renderer comparisons). Animations, particles, waves of the shore foam and SpeedTree wind step with the frame time and are not
+---affected. The game time jumps: timers based on it (AI, character movement) fire early or late once; use a value above the current one.
+---@param ms integer 0..4000000000
+---@return true|nil ok
+---@return string|nil reason
+function debugApi.set_game_time(ms) end
+
+---The engine timer's readings: `frame_ms` (`eCTimer::GetFrameTime`, the simulated length of the last frame), `game_ms` (`GetGameTime`: scaled time, stands at `time_scale(0)`), `total_ms`
+---(`GetTotalTime`, real), `scale`, `frame` (`GetMasterFrameCounter`) and `playing_s` (`Entity::GetPlayingTimeInSeconds`: the world clock, real time; absent without a world).
+---@return { frame_ms: number, game_ms: integer, total_ms: integer, scale: number, frame: integer, playing_s?: number }|nil
+function debugApi.timer() end
+
+---Runs a console command of the game (`CON_<cmd>` exported by `Script_Game.dll`, phase 2 = execute) with string arguments (numbers are turned into text) and returns its message.
+---`risen.debug.console("Weather", "Foggy_Rain")`, `("SetVegWindParams", 0, 0, 0, 0)`, `("timescale", 0.5)`, `("god")`, `("invisible")`, `("ShadowQuality", 2)`. The name is case-insensitive.
+---Self and other are the player (a null entity without a world). Some commands change the game for good (`give`, `kill`, `spawn`, `goto`, `set`, `setqueststatus`, `edit`): they are not filtered.
+---@param cmd string 1..64 characters, see `console_commands()`.
+---@param ... string|number Up to 16 arguments, each up to 256 characters.
+---@return boolean|nil ok The command's result (false: it refused, the message says why); `nil` for an unknown command or a bad argument.
+---@return string message What the command wrote (often empty on success), or the reason with `nil`.
+function debugApi.console(cmd, ...) end
+
+---The console commands `console` can run (the `CON_*` exports of `Script_Game.dll`, 44 in the shipped game), sorted.
+---@return string[]
+function debugApi.console_commands() end
 
 ---What the layer found in the running game.
 ---@class RisenEngineApi
@@ -4365,7 +4520,7 @@ function testApi.finish(summary) end
 ---@return boolean
 function testApi.fail(reason) end
 
----Polls `predicate()` once per frame (the `tick` event, not at the main menu). `on_done(true)` when it returned a truthy value; after `timeout_s`
+---Polls `predicate()` once per frame (the `tick` event; while a menu page is open or time is frozen every rendered frame; not at the main menu). `on_done(true)` when it returned a truthy value; after `timeout_s`
 ---seconds the check `wait <name>` fails and `on_done(false, "timeout")` is called (also when the predicate raised an error).
 ---@param predicate fun(): any
 ---@param timeout_s number
@@ -4377,6 +4532,15 @@ function testApi.wait_for(predicate, timeout_s, on_done, name) end
 ---@param n integer
 ---@param on_done fun(ok: boolean)
 function testApi.wait_ticks(n, on_done) end
+
+---Calls `on_done(true)` after `n` rendered frames (`eCApplication::DoRender`, the `ui.frame` event): unlike `wait_ticks` it also counts while a menu pauses the world or time is frozen.
+---@param n integer
+---@param on_done fun(ok: boolean)
+function testApi.wait_frames(n, on_done) end
+
+---Inside `run`: continues after `n` rendered frames (default 1), see `wait_frames`.
+---@param n? integer
+function testApi.sleep_frames(n) end
 
 ---Runs `fn` as a coroutine from the next frame on, so a scenario reads top to bottom: inside it `sleep`, `wait_until` and `wait_event` pause it.
 ---An error in `fn` fails the run (with the traceback); when `fn` returns, `finish()` is called. One scenario per mod layer.
@@ -4877,6 +5041,7 @@ function behaviorApi.failures() end
 ---@field combat RisenCombatApi
 ---@field gamevar RisenGamevarApi
 ---@field world RisenWorldApi
+---@field camera RisenCameraApi
 ---@field math RisenMathApi
 ---@field random RisenRandomApi
 ---@field loc RisenLocApi

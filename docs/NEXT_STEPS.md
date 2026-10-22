@@ -193,8 +193,16 @@ Done (M10): behaviour through routines (`risen.npc.set_routine`: posts, day/nigh
 Done: [`SYMBOLS.md`](SYMBOLS.md) generator, developer guide, example mods (`hello`, `fetchquest`, `stringsdemo`, `_template`), packaging (`scripts/package.ps1`, release zip with installer),
 LuaLS definitions (`types/risen.d.lua` + `tools/check_luadefs.py`), `ghidra-decompiler` subagent, test copy isolation (`[debug] app_data`), `CLAUDE.md`,
 background test runs (user request: a test game never takes the foreground or warps/confines the cursor; `[debug] background`, `test-run.ps1 -AllowFocus` opts out; RE.md section 57).
+Renderer testing for risen-enhanced-graphics (its `docs/research/reference-compare.md`), phase 1 done (RE.md section 58, scenario `capture`, `mods/capture_test`): screenshot backends `rvk` (the Vulkan
+renderer's `rvk_screenshot` export) and `d3d9` (Present hook, `wait_frames` fixed, bursts), `risen.debug.screenshot_backend/frame`, the time freeze (app state 8) and timer controls,
+`risen.hud.set_visible`, test waits pumped while frozen + `risen.test.wait_frames/sleep_frames`. Phase 2 done (RE.md section 59, scenario `scene`, `mods/scene_test`): the fixed camera
+(`risen.camera`, `gCCameraAdmin::SetFixCamera`), forced weather (`risen.world.weather_states/weather/set_weather`, thunder off), the console runner (`risen.debug.console`), `risen.debug.timer`.
+Phase 3 done (RE.md section 60): the time source of the sea and the clouds is the timer's game time (timed shader elements), `risen.debug.set_game_time` pins it
+a frame before the freeze; animations, shore foam and particles step with the frame time and stay unpinned (masked by the renderer's comparison).
+Open: the engine snapshot as a third backend (capture parity self-test); where the letterbox bars of `cam_cinema` come from (a fixed camera without them). The comparison mods themselves live in
+risen-enhanced-graphics (user decision 2026-10-21: no mods of other repositories in spass; `test-run.ps1 -ModPath <dir>` deploys them).
 Open: a shop-NPC example (needs the trade setup from section 2), persisting the Ghidra analysis (a project export or a script that applies the names/types from RE.md),
-a visual verification path (screen capture of the D3D9 window is black: hook `Present` or use the engine's screenshot function).
+~~a visual verification path~~ (done: `risen.debug.screenshot`, M16, and the rvk backend above).
 
 ## 7. Known issues
 * `LogTopic` and other loc-string properties cannot be set through property strings (use `Quest:set_topic`; same +8 rule for `gCInfoLocString`, `eCLocString` members).

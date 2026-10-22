@@ -29,6 +29,11 @@ local EXCLUDED = {
     ["risen.gui.mouse"] = "a valid message is a real mouse event on the game's GUI: checked with wrong types only, below",
     ["risen.gui.leaf_page"] = "installs a page controller on a page number: on the game view it would break the HUD (checked with wrong types only, below)",
     ["risen.gui.hide_page_on"] = "overrides the controller script of a menu page (checked with wrong types only, below)",
+    ["risen.debug.time_freeze"] = "true freezes time: no more ticks, the run would stall (checked with wrong types only, below)",
+    ["risen.debug.time_scale"] = "a valid scale slows or speeds up the whole run (checked with wrong types and out-of-range numbers only, below)",
+    ["risen.debug.fixed_frame_time"] = "a valid time makes every frame sleep up to a second (checked with wrong types and out-of-range numbers only, below)",
+    ["risen.hud.set_visible"] = "false hides the HUD for the rest of the run (checked with wrong types only, below)",
+    ["risen.debug.console"] = "a valid command name runs a real console command (kill, goto, spawn, edit...): checked with wrong types and unknown names only, below",
     ["risen.log.error"] = "writes [error] lines on purpose, which the test harness counts as a failure (the log functions take any values; checked once below with the others)",
 }
 -- Every usertype's destructor (`<Type>.__gc`): calling it by hand frees the object's memory under its owner's feet. It is the garbage collector's entry, not a native a mod calls.
@@ -345,6 +350,17 @@ T.run(function()
     for _, name in ipairs { "open", "close", "show", "key", "click", "mouse", "leaf_page", "hide_page_on" } do
         for _, v in ipairs { "x", true, {}, function() end, 0 / 0, -1, 1e300 } do pcall(risen.gui[name], v) pcall(risen.gui[name], v, v) pcall(risen.gui[name], v, v, v) end
     end
+    -- the clock and HUD controls (renderer testing): wrong types and out-of-range numbers only, then the normal state again
+    for _, v in ipairs { "x", {}, function() end, 0 / 0, -1, 1e300 } do
+        pcall(risen.debug.time_freeze, v) pcall(risen.hud.set_visible, v) pcall(risen.debug.time_scale, v) pcall(risen.debug.fixed_frame_time, v)
+    end
+    for _, v in ipairs { true, 11, 1001 } do pcall(risen.debug.time_scale, v) pcall(risen.debug.fixed_frame_time, v) end
+    risen.debug.time_freeze(false) risen.debug.time_scale(1) risen.debug.fixed_frame_time(0) risen.hud.set_visible(true)
+    -- the console runner: wrong types and names that are no command; then the scene controls the fuzzing may have changed go back to normal
+    for _, v in ipairs { {}, true, function() end, 0 / 0, "", ("x"):rep(300), "NoSuchCommand", "Weather\0x" } do
+        pcall(risen.debug.console, v) pcall(risen.debug.console, v, v) pcall(risen.debug.console, "NoSuchCommand", v, v)
+    end
+    risen.camera.release() risen.world.set_weather("auto")
     T.expect("fuzz finished", true, ("%d functions, %d calls: %d accepted, %d refused with an error, %d too slow (%s); excluded: %s"):format(
         stats.functions, stats.calls, stats.ok, stats.refused, #stats.slow, table.concat(stats.slow, ","), table.concat(stats.skipped, ",")))
 
