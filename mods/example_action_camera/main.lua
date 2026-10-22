@@ -10,7 +10,8 @@
 --   * Entity:align(direction) is the direction the character's body turns toward, with his own turn speed (the engine keeps it until it is replaced).
 --   * Fights: with a weapon drawn (the hero's state `PS_Melee*`, Entity:state()) an attack, a parry or a dodge (Jump + a direction) turns the hero to the camera first - the
 --     input.action handler runs before the game handles the key - and for COMBAT_HOLD seconds he keeps facing it: the move keys strafe and the next dodge goes where you press
---     relative to the view, instead of the hero turning toward every dodge direction.
+--     relative to the view, instead of the hero turning toward every dodge direction. The dodge reads its direction from the hero's facing in the frame the key
+--     arrives, so a Jump press while he does not face the camera yet is held back (the handler returns true) and replayed with risen.input.simulate once he does.
 --   * Only the follow camera is changed: aiming a bow or a spell (cam_ranged*), dialogues and interactions keep the game's own camera, and the hero is the orientation again there.
 --
 -- Run the live check (see docs/EXAMPLES.md):
@@ -50,20 +51,62 @@ local function update_weapon(player)
     elseif st:find("^PS_Normal") then state.weapon = false end
 end
 
+local function angle_between(a, b) -- |b - a| in degrees, 0..180
+    local d = (b - a) % 360
+    return d > 180 and 360 - d or d
+end
+
+-- The dodge (Jump + a move key) takes its direction from where the hero faces in the frame the key arrives, before a turn can happen: when he does not face the camera
+-- yet, the press is held back, the hero snaps to the camera, and the press is replayed (risen.input.simulate) once he faces it - so D + Space is a dodge to the right of
+-- the VIEW, not to the right of a hero who was running to the right.
+local FACING_TOLERANCE = 8                 -- degrees: closer than this to the view counts as facing it
+local MAX_WAIT_FRAMES = 6                  -- replay the jump after this many frames even when the turn did not finish
+local jump = { pending = false, frames = 0, replaying = false, release_next = false }
+
 risen.on("input.action", function(ev)
     if MOVES[ev.action] then
         if ev.phase == "pressed" or ev.phase == "held" then held[ev.action] = true
         elseif ev.phase == "released" then held[ev.action] = false end
-    elseif COMBAT[ev.action] and ev.phase == "pressed" and state.weapon then
-        -- this runs before the game handles the key: the attack / dodge starts already facing the camera
-        local player, cam = risen.entity.player(), risen.camera.get()
-        if player and cam and cam.type == CAMERA and not cam.fixed then
-            local view = view_direction(cam)
-            if view and player:align(view, COMBAT_SNAP) then state.last_dir = view end
-            state.combat_until = risen.clock() + COMBAT_HOLD
+        return
+    end
+    if ev.action == "Jump" then
+        if jump.replaying and ev.phase == "pressed" then jump.replaying = false; return end -- our own replay: let the game have it
+        if jump.pending then return true end                                              -- held / released while we wait: swallowed, the replay presses and releases
+    end
+    if not (COMBAT[ev.action] and ev.phase == "pressed" and state.weapon) then return end
+    -- this runs before the game handles the key: the attack / dodge starts already facing the camera
+    local player, cam = risen.entity.player(), risen.camera.get()
+    if not (player and cam and cam.type == CAMERA and not cam.fixed) then return end
+    local view = view_direction(cam)
+    if not view then return end
+    if player:align(view, COMBAT_SNAP) then state.last_dir = view end
+    state.combat_until = risen.clock() + COMBAT_HOLD
+    if ev.action == "Jump" then
+        local pose = player:pose()
+        if pose and angle_between(pose.yaw, cam.yaw) > FACING_TOLERANCE then
+            jump.pending, jump.frames = true, 0
+            return true -- the game does not see this press; frame() replays it when the hero faces the camera
         end
     end
 end)
+
+-- per frame: replay a held-back jump once the hero faces the camera, release it one frame later
+local function replay_jump(player, cam)
+    if jump.release_next then
+        jump.release_next = false
+        risen.input.simulate("Jump", false)
+    end
+    if not jump.pending then return end
+    jump.frames = jump.frames + 1
+    local pose = player:pose()
+    if (pose and angle_between(pose.yaw, cam.yaw) <= FACING_TOLERANCE) or jump.frames >= MAX_WAIT_FRAMES then
+        jump.pending = false
+        jump.replaying = true
+        jump.release_next = true
+        state.combat_until = risen.clock() + COMBAT_HOLD
+        risen.input.simulate("Jump", true)
+    end
+end
 
 local function v(b) return b and 1 or 0 end
 
@@ -115,11 +158,16 @@ local function frame()
             state.aligned = state.aligned + 1
         end
     end
+    replay_jump(player, cam)
 end
 
 risen.on("tick", frame)
 -- the types are loaded again with every start: patch again
-risen.on("session.start", function() patched = false; state.last_dir = nil end)
+risen.on("session.start", function()
+    patched = false
+    state.last_dir = nil
+    jump.pending, jump.replaying, jump.release_next = false, false, false
+end)
 
 if risen.test.is_active() then
     require("test_example_action_camera")({ state = state, held = held, camera = CAMERA, flags = FLAGS })

@@ -15,6 +15,7 @@ return function(mod)
         "weapon drawn", "weapon, no fight yet: runs turned", "attack: hero faces the camera",
         "dodge 1: still facing the camera", "dodge 1: went left of the view", "dodge 2: still facing the camera", "dodge 2: went left of the view",
         "dodge back: facing the camera, went back", "after the fight: runs turned again",
+        "running dodge: faces the camera when the dodge starts", "running dodge: goes right of the view",
         "ranged: hero is the orientation", "ranged: turn turns the hero (game's own camera)", "back to ours: world-relative again",
         "loaded: still patched and world-relative", "loaded: hero turns where he runs",
     }
@@ -163,6 +164,30 @@ return function(mod)
         wait_s(2.0) -- the combat window is over
         local after = hold("after the fight right", "MoveRight", 1.5)
         T.expect("after the fight: runs turned again", near(after.hero_vs_view, 90), fmt(after))
+
+        -- the user's case: camera to the front, the hero runs to the right (faces right), Space: he snaps to the front and dodges to the right of the view
+        do
+            T.wait_until(function() return player:state() == "PS_Melee_Loop" end, 10, "ready to jump")
+            local s0 = state()
+            risen.input.simulate("MoveRight", true)
+            wait_s(1.0) -- he turns to the right of the view and runs
+            local jumped = false
+            local off = risen.on("tick", function() if player:state() == "PS_Jump" then jumped = true end end)
+            risen.input.simulate("Jump", true); T.sleep_frames(3); risen.input.simulate("Jump", false)
+            T.wait_until(function() return jumped end, 3, "jump started")
+            local mid = state()
+            T.wait_until(function() return player:state() ~= "PS_Jump" end, 5, "landed")
+            risen.input.simulate("MoveRight", false)
+            risen.off(off)
+            wait_s(0.5)
+            local s1 = state()
+            local r = { what = "running jump", jumped = tostring(jumped), hero_at_jump = angle(s0.cyaw, mid.pyaw), hero_vs_view = angle(s0.cyaw, s1.pyaw),
+                        travel_vs_view = angle(s0.cyaw, math.deg(math.atan2(s1.px - s0.px, s1.pz - s0.pz))), cam_turn = angle(s0.cyaw, s1.cyaw),
+                        moved = math.sqrt((s1.px - s0.px) ^ 2 + (s1.pz - s0.pz) ^ 2), window = tostring(risen.clock() < mod.state.combat_until) }
+            log(r)
+            T.expect("running dodge: faces the camera when the dodge starts", jumped and near(r.hero_at_jump, 0) and near(r.hero_vs_view, 0), fmt(r) .. " at jump " .. string.format("%.1f", r.hero_at_jump))
+            T.expect("running dodge: goes right of the view", r.moved > 50 and near(r.travel_vs_view, 90), fmt(r))
+        end
         risen.input.simulate("WeaponMode", true); wait_s(0.3); risen.input.simulate("WeaponMode", false)
         T.wait_until(function() return not mod.state.weapon end, 10, "weapon holstered")
         wait_s(1)
