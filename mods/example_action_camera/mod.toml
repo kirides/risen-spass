@@ -1,0 +1,6 @@
+id          = "example_action_camera"
+name        = "Example: action camera (free orbit, hero turns where he runs)"
+version     = "0.1.0"
+author      = "risen-spass"
+description = "The mouse orbits the camera around the hero instead of turning him; the move keys are relative to the view and the hero turns toward where he runs (an Elden Ring style third-person camera): risen.camera.patch_type / set_targets, Entity:align."
+main        = "main.lua"

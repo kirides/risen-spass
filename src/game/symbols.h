@@ -543,6 +543,9 @@
     X(cam_current_name, L"Game.dll", "?GetCurrentCameraName@gCCameraAdmin@@QEAAAEAVbCString@@XZ", const void* (*)(void* admin), false) \
     /* the camera types (eTDocObjectMap<gCCameraTypeBase>, a chained hash map: RE.md section 61) and switching between them */                      \
     X(cam_get_types, L"Game.dll", "?GetCameraTypes@gCCameraAdmin@@QEBAAEBV?$eTDocObjectMap@VgCCameraTypeBase@@@@XZ", const void* (*)(const void* admin), false) \
+    X(cam_set_targets, L"Game.dll", "?SetCameraTargets@gCCameraAdmin@@QEAAXPEBVeCEntity@@0_NAEBVbCVector@@10M@Z", void (*)(void* admin, const void* target, const void* orientation, bool headBone, const float* offset, bool force, const void* extra, float speed), false) \
+    /* the character's alignment direction (+0x4c8, world space, turned toward with the character's own turn speed): RE.md section 61 */           \
+    X(cm_set_alignment_lookat, L"Game.dll", "?SetAlignmentLookAt@gCCharacterMovement_PS@@QEAAXAEBVbCVector@@_N@Z", void (*)(void* ps, const float* dir, bool immediate), false) \
     X(cam_set_current, L"Game.dll", "?SetCurrentCameraByName@gCCameraAdmin@@QEAA_NAEBVbCString@@_N1@Z", bool (*)(void* admin, const void* name, bool instant, bool keepFixCamera), false) \
     X(weather_admin_vtable, L"Engine.dll", "??_7eCWeatherAdmin@@6B@", unsigned char*, false) \
     X(weather_states_count, L"Engine.dll", "?GetWeatherStatesCount@eCWeatherAdmin@@QEBAHXZ", int (*)(const void* admin), false) \

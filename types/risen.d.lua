@@ -273,6 +273,16 @@ function Entity:stop_goto() end
 ---@return boolean started
 function Entity:turn_to(target) end
 
+---The world direction the character's body turns toward (`gCCharacterMovement_PS::SetAlignmentLookAt`; y is ignored), with his own turn speed and acceleration. The engine keeps
+---it until something replaces it (the player's turn input, the camera-space movement with `CharacterRotationInCameraSpace`), so one call is enough; `nil` or a zero vector clears it
+---(the character then faces his goal pose). Clears an alignment target entity. Verified on the player: with a free orbit camera (`mods/example_action_camera`) he turns 90 / 180 degrees
+---within a second and walks on while turning.
+---@param dir PointLike|nil
+---@param immediate? boolean Default false (a smooth turn); true snaps in one frame.
+---@return true|nil ok
+---@return string|nil reason Bad direction, stale entity, no gCCharacterMovement_PS (items, objects).
+function Entity:align(dir, immediate) end
+
 ---Equips every equippable inventory stack.
 ---@return integer equipped How many stacks were equipped.
 function Entity:equip_all() end
@@ -3439,6 +3449,8 @@ function worldApi.set_weather(spec, opts) end
 ---@field settled boolean `gCCameraAdmin::IsCameraInDestinationPose`.
 ---@field type string The camera type: `cam_normal` (follow camera), `cam_cinema` (fixed), ...
 ---@field request? { pos: number[], target: number[], fov: number } What `risen.camera.set` asked for, while it is active.
+---@field target? Entity The entity the camera follows (`risen.camera.set_targets`; the hero in the game).
+---@field orientation? Entity The entity the camera's yaw is relative to (the hero in the game); `nil` = world axes.
 
 ---The camera for pictures from fixed spots: the engine's fixed camera (`gCCameraAdmin::SetFixCamera`, camera type `cam_cinema`, the one dialogues use) and back to the follow camera.
 ---@class RisenCameraApi
@@ -3497,6 +3509,18 @@ function cameraApi.patch_type(name, props) end
 ---@return true|nil ok
 ---@return string|nil reason
 function cameraApi.use_type(name, instant) end
+
+---Which entity the camera follows and which one its yaw is relative to (`gCCameraAdmin::SetCameraTargets`). The game uses `(hero, hero)`: when the hero turns, the camera turns
+---with him. `orientation = nil` makes the yaw world-relative, so a mod can turn the hero (`Entity:align`) under a free orbit camera without dragging the view. The engine recomputes
+---yaw, pitch and distance from the current camera position: the view does not jump. The game sets `(hero, hero)` again when the controlled character changes (a load, for example),
+---and a camera type without `CamControl_AxisX` resets the yaw to 0 every frame (with no orientation: looking along world +z), so give such types the hero back (`camera.get().orientation`
+---tells the current state). A dialogue camera ignores the call; a fixed camera needs `force`.
+---@param target Entity
+---@param orientation Entity|nil
+---@param opts? { head?: boolean, offset?: PointLike, force?: boolean } `head` (default true): aim at the target's head bone; `offset`: added to the target point.
+---@return true|nil ok
+---@return string|nil reason
+function cameraApi.set_targets(target, orientation, opts) end
 
 ---Vector maths on points (`PointLike`). Angles are **degrees**, +y is up, a yaw of 0 looks along +z and 90 along +x (to the right of yaw 0), a pitch above the horizon is positive: the engine's convention (`Entity:direction()` of an NPC at a guard
 ---point with yaw 90 is `1, 0, 0`). Every function returns `nil, reason` for a bad argument (NaN, infinity, a stale entity, a table that is not a point); none raises an error.

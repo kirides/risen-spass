@@ -18,6 +18,7 @@
 #include "common/pose.h"
 #include "game/abi.h"
 #include "game/bindings.h"
+#include "game/lua_entity.h"
 #include "game/properties.h"
 #include "game/symbols.h"
 
@@ -313,6 +314,16 @@ Two cameraGet(sol::this_state ts) {
         t["fixed"] = fixed;
         t["settled"] = settled;
         t["type"] = name;
+        // the entities of SetCameraTargets: the followed one (proxy +0x40) and the one the yaw is relative to (+0x50)
+        if (s.eproxy_get_entity != nullptr) {
+            void *target = nullptr, *orient = nullptr;
+            guarded([&] {
+                target = s.eproxy_get_entity(static_cast<char*>(admin) + 0x40);
+                orient = s.eproxy_get_entity(static_cast<char*>(admin) + 0x50);
+            });
+            if (target != nullptr) t["target"] = makeEntityObject(L, target);
+            if (orient != nullptr) t["orientation"] = makeEntityObject(L, orient);
+        }
         if (fixed && g_camRequest.active) {
             sol::table r = L.create_table();
             r["pos"] = L.create_table_with(1, g_camRequest.eye[0], 2, g_camRequest.eye[1], 3, g_camRequest.eye[2]);
@@ -442,6 +453,43 @@ Two cameraTypePatch(sol::this_state ts, const std::string& name, sol::table prop
         if (!propertySet(type, prop, text)) return fail(L, "the engine refused " + prop);
     }
     spdlog::info("camera: patched type {} ({} properties)", name, writes.size());
+    return okv(L, sol::make_object(L, true));
+}
+
+// set_targets(target, orientation|nil [, { head, offset, force }]): gCCameraAdmin::SetCameraTargets. The camera follows `target` (proxy admin+0x40) and its yaw is
+// relative to `orientation`'s rotation (proxy +0x50; none = world axes). The engine recomputes yaw/pitch/distance from the current camera position, so the view
+// does not jump. A dialogue camera ignores the call; a fixed camera needs force. The game sets (hero, hero) again when the controlled character changes.
+Two cameraSetTargets(sol::this_state ts, sol::object targetObj, sol::object orientObj, sol::optional<sol::table> opts) {
+    sol::state_view L(ts);
+    const Symbols& s = sym();
+    if (s.cam_set_targets == nullptr) return fail(L, "engine function gCCameraAdmin::SetCameraTargets is unavailable");
+    if (!targetObj.is<LuaEntity>()) return fail(L, "target must be an entity");
+    if (orientObj.get_type() != sol::type::lua_nil && !orientObj.is<LuaEntity>()) return fail(L, "orientation must be an entity or nil");
+    bool head = true, force = false;
+    std::array<float, 3> offset{0, 0, 0};
+    if (opts) {
+        sol::table o = *opts;
+        for (const auto& [k, v] : o) {
+            const std::string key = k.get_type() == sol::type::string ? k.as<std::string>() : std::string();
+            if (key == "head" && v.get_type() == sol::type::boolean) head = v.as<bool>();
+            else if (key == "force" && v.get_type() == sol::type::boolean) force = v.as<bool>();
+            else if (key == "offset" && readVec(v, offset)) {}
+            else return fail(L, "bad option '" + key.substr(0, 40) + "' (head: boolean, force: boolean, offset: {x, y, z})");
+        }
+    }
+    void* target = ptr(targetObj.as<LuaEntity>());
+    if (target == nullptr) return fail(L, "stale target entity");
+    void* orient = nullptr;
+    if (orientObj.is<LuaEntity>()) {
+        orient = ptr(orientObj.as<LuaEntity>());
+        if (orient == nullptr) return fail(L, "stale orientation entity");
+    }
+    void* admin = cameraAdmin();
+    if (admin == nullptr) return fail(L, "no camera admin (gCCameraAdmin) yet");
+    // speed -1 like gCSession::OnControlEntity
+    if (!guarded([&] { s.cam_set_targets(admin, target, orient, head, offset.data(), force, nullptr, -1.0f); })) {
+        return fail(L, "the engine raised an exception");
+    }
     return okv(L, sol::make_object(L, true));
 }
 
@@ -840,6 +888,7 @@ void bindScene(sol::state_view lua, sol::table risen) {
     camera.set_function("type", cameraTypeGet);
     camera.set_function("patch_type", cameraTypePatch);
     camera.set_function("use_type", cameraTypeUse);
+    camera.set_function("set_targets", cameraSetTargets);
     risen["camera"] = camera;
 
     sol::table world = risen["world"];

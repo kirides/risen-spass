@@ -1288,6 +1288,9 @@ risen.camera.type("cam_normal")       -- { CamControl_AxisX = "False", Character
 risen.camera.patch_type("cam_normal", { CamControl_AxisX = true, CharacterMoveInCameraSpace = true, CharacterRotationInCameraSpace = false })
                                       -- free orbit: Turn keys / mouse X orbit the camera, the hero walks relative to the view (keeps his facing). Not saved.
 risen.camera.use_type("cam_free", false)  -- SetCurrentCameraByName (a dialogue / fixed camera stays); the game switches types on its own
+risen.camera.set_targets(player, nil) -- the camera follows the player, its yaw is world-relative (the game: (hero, hero), the camera turns with him); get().target / .orientation
+player:align({ 1, 0, 0 })             -- the character's body turns toward a world direction with his own turn speed (SetAlignmentLookAt); nil clears it
+                                      -- together: mods/example_action_camera (free orbit camera, the hero turns where he runs)
 risen.world.weather_states()          -- { "Sunny_Full", "Stormy", "Stormy_Rain", "Foggy", "Foggy_Rain", ... } (26)
 risen.world.weather()                 -- { mode = 0, mode_name = "zones", weights = { Stormy_Rain = 0.98, ... }, dominant = "Stormy_Rain", thunder = true }
 risen.world.set_weather("Sunny_Full", { thunder = false })      -- forced (mode 2): the same everywhere, no random transitions; thunder flashes off

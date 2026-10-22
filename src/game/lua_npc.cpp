@@ -1,5 +1,7 @@
+#include <cmath>
 #include <cstring>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <spdlog/spdlog.h>
@@ -127,6 +129,42 @@ void addNpcMethods(sol::usertype<LuaEntity>& ut) {
                    return s.ent_turn_to(&h, &t);
                })
             .value_or(false);
+    };
+
+    // entity:align({x, y, z} [, immediate]) / entity:align(nil): gCCharacterMovement_PS::SetAlignmentLookAt, the world direction the character's body turns toward
+    // (y ignored) with its own turn speed; it stays until replaced (the engine's own writers: the camera-space movement with CharacterRotationInCameraSpace, the
+    // vanilla turn input). nil / a zero vector clears it (the character then faces its goal pose). Clears an alignment target entity (RE.md section 61).
+    ut["align"] = [&s](sol::this_state ts, const LuaEntity& e, sol::object dir, sol::optional<bool> immediate) -> std::tuple<sol::object, sol::object> {
+        sol::state_view L(ts);
+        auto fail = [&](const char* why) { return std::make_tuple(sol::make_object(L, sol::lua_nil), sol::make_object(L, why)); };
+        if (s.cm_set_alignment_lookat == nullptr) return fail("engine function gCCharacterMovement_PS::SetAlignmentLookAt is unavailable");
+        float d[3] = {0, 0, 0};
+        if (dir.get_type() == sol::type::table) {
+            sol::table t = dir.as<sol::table>();
+            const char* keys[3] = {"x", "y", "z"};
+            for (int i = 0; i < 3; ++i) {
+                sol::object v = t[i + 1];
+                if (v.get_type() != sol::type::number) v = t[keys[i]];
+                if (v.get_type() != sol::type::number) return fail("direction must be {x, y, z}");
+                const double n = v.as<double>();
+                if (!std::isfinite(n) || std::fabs(n) > 1e7) return fail("direction must be finite");
+                d[i] = static_cast<float>(n);
+            }
+        } else if (dir.get_type() != sol::type::lua_nil) {
+            return fail("direction must be {x, y, z} or nil");
+        }
+        void* ent = ptr(e);
+        if (ent == nullptr) return fail("stale entity");
+        void* ps = nullptr;
+        if (s.ent_get_property_set != nullptr) {
+            guarded([&] {
+                const BString cls("gCCharacterMovement_PS");
+                ps = s.ent_get_property_set(ent, cls.get());
+            });
+        }
+        if (ps == nullptr) return fail("the entity has no gCCharacterMovement_PS");
+        if (!guarded([&] { s.cm_set_alignment_lookat(ps, d, immediate.value_or(false)); })) return fail("the engine raised an exception");
+        return std::make_tuple(sol::make_object(L, true), sol::make_object(L, sol::lua_nil));
     };
 
     // ---- any property of any property set, by name ----------------------------------------------------------------
