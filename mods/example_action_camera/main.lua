@@ -10,10 +10,10 @@
 --   * Entity:align(direction) is the direction the character's body turns toward, with his own turn speed (the engine keeps it until it is replaced).
 --   * Fights: with a weapon drawn (the hero's state `PS_Melee*`, Entity:state()) an attack or a parry turns the hero to the camera first - the input.action handler runs
 --     before the game handles the key - and for COMBAT_HOLD seconds he keeps facing it, so the move keys strafe around what you look at.
---   * Jumps and dodges (Jump + a move key) take their direction from the held key read from the HERO's point of view, while walking reads it from the camera's. So at the
---     moment of a jump the mod translates the held keys: running to the right of the view (D) the hero faces right, D is "forward" for him, and the game is shown MoveForward
---     instead of MoveRight for the jump (the Jump press is held back for the two frames that takes, with the input.action handler returning true, and replayed with
---     risen.input.simulate); the real keys are given back when he lands. Without a weapon that is a jump where he runs, with one a dodge where he runs.
+--   * Space is the action MoveUp, and the game reads the held move key on the press from the HERO's point of view: forward = jump, left / right / back = a side or
+--     back step. The mod holds the press back for a few frames and replays it (risen.input.simulate) so that it means what the player means: without a weapon, running
+--     to the right (D, the hero faces right) is a jump where he runs (the game is shown MoveForward for the take-off); with a weapon he snaps to the camera first and the
+--     step goes to the right of the view. See the comment at JUMP_KEY.
 --   * Only the follow camera is changed: aiming a bow or a spell (cam_ranged*), dialogues and interactions keep the game's own camera, and the hero is the orientation again there.
 --
 -- Run the live check (see docs/EXAMPLES.md):
@@ -90,21 +90,66 @@ local function same_keys(a, b)
     return true
 end
 
--- A jump with translated keys. stage: "swap" (show the game the hero-relative keys) -> "press" (Jump) -> "release" -> "air" (until he lands) -> keys given back.
-local jump = { active = false, stage = nil, keys = nil, expect = {}, replaying = false, seen = false, t0 = 0 }
+-- The jump key. On the keyboard Space is the action MoveUp (the action `Jump` is only on a gamepad button, and always a plain jump): the game decides on the
+-- press (Script_Game OnPlayerGameKeyPressed, RE.md section 61): MoveForward held -> a jump; otherwise MoveLeft / MoveRight / MoveBackward held -> a side step /
+-- back step (PS_StrafeLeft / PS_StrafeRight / PS_JumpBack), all relative to the HERO. With our camera the hero faces where he runs, so D (running to the right of
+-- the view) is "his right" and Space would side-step away from his path. So the press is held back for a few frames (the handler returns true) and replayed with
+-- risen.input.simulate once the game will read it the way the player means it:
+--   * no weapon ("translate"): the game is shown the keys as the hero sees them (D while he faces right -> MoveForward) for the take-off, so it is a jump where he
+--     runs; the real keys come back as soon as the jump has started (the flight follows the keys relative to the view, like walking)
+--   * weapon drawn ("snap"): the hero snaps to the camera first, so D is "right" for him too and the game's side step goes to the right of the view
+local JUMP_KEY = "MoveUp"
+-- the states of a jump or step: PS_Jump, the steps without a weapon (PS_StrafeLeft / PS_StrafeRight / PS_JumpBack) and with one (PS_Melee_Move, also the attacks; then ZS_Slide_Loop)
+local JUMP_STATES = { PS_Jump = true, ZS_Jump_End = true, PS_StrafeLeft = true, PS_StrafeRight = true, PS_JumpBack = true, PS_Melee_Move = true, ZS_Slide_Loop = true }
+local FACING_TOLERANCE = 8                 -- degrees: closer than this to the view counts as facing it
+local MAX_WAIT_FRAMES = 6                  -- replay after this many frames even when the snap did not finish
+local jump = { active = false, mode = nil, stage = nil, keys = nil, expect = {}, replaying = false, seen = false, t0 = 0, frames = 0 }
 
 local function simulate(key, down)
     jump.expect[key] = down and "pressed" or "released"
     risen.input.simulate(key, down)
 end
 
+local function angle_between(a, b) -- |b - a| in degrees, 0..180
+    local d = (b - a) % 360
+    return d > 180 and 360 - d or d
+end
+
+local function keys_text(t)
+    local s = {}
+    for _, k in ipairs({ "MoveForward", "MoveBackward", "MoveLeft", "MoveRight" }) do if t[k] then s[#s + 1] = k end end
+    return table.concat(s, "+")
+end
+
+-- A trace of every jump in the log (spass.log, "action camera trace"): the engine's own key states, the hero's state and facing, every key event, per frame from
+-- the jump key press until a few seconds later. It is how a jump that looks wrong in play is explained afterwards.
+local TRACE = true
+local trace = { frames = 0, until_t = -1 }
+local TRACE_KEYS = { "MoveForward", "MoveBackward", "MoveLeft", "MoveRight", "MoveUp", "Jump" }
+local function tlog(fmt, ...) if TRACE and risen.clock() < trace.until_t then risen.log.info("action camera trace: " .. string.format(fmt, ...)) end end
+local function engine_keys()
+    local s = {}
+    for _, k in ipairs(TRACE_KEYS) do
+        if risen.input.pressed("action:" .. k) then s[#s + 1] = k end
+    end
+    return table.concat(s, "+")
+end
+
 risen.on("input.action", function(ev)
     local a = ev.action
+    if (a == JUMP_KEY or a == "Jump") and ev.phase == "pressed" and not jump.replaying and TRACE then
+        trace.frames, trace.until_t = 0, risen.clock() + 4
+        local p = risen.entity.player()
+        local pose, cam = p and p:pose(), risen.camera.get()
+        tlog("%s pressed: real keys %s, engine keys %s, hero yaw %.1f, view yaw %.1f, state %s, weapon %s, busy %s", a, keys_text(held), engine_keys(),
+            pose and pose.yaw or -1, cam and cam.yaw or -1, p and p:state() or "?", tostring(state.weapon), tostring(jump.active))
+    end
+    if (MOVES[a] or a == JUMP_KEY or a == "Jump") and ev.phase ~= "held" then tlog("event %s %s", a, ev.phase) end
     if MOVES[a] then
-        if jump.active then
+        if jump.active and jump.mode == "translate" then
             if jump.expect[a] == ev.phase then jump.expect[a] = nil; return end   -- our own swap: let the game have it
             if ev.phase == "held" and jump.keys[a] then return end                 -- the shown key stays down for the game
-            -- a real key change during the jump: remembered for when he lands, the game keeps the shown keys
+            -- a real key change during the take-off: remembered for afterwards, the game keeps the shown keys
             if ev.phase == "pressed" or ev.phase == "held" then held[a] = true elseif ev.phase == "released" then held[a] = false end
             return true
         end
@@ -112,19 +157,28 @@ risen.on("input.action", function(ev)
         elseif ev.phase == "released" then held[a] = false end
         return
     end
-    if a == "Jump" then
+    if a == JUMP_KEY then
         if jump.replaying and ev.phase == "pressed" then jump.replaying = false; return end   -- our replay
-        if jump.active then return true end                                                 -- the real press / release while we translate
+        if jump.active then return true end                                                 -- the real press / release while we wait
         if ev.phase ~= "pressed" or not moving() or not TRANSLATE_JUMPS then return end
         local player, cam = risen.entity.player(), risen.camera.get()
         if not (player and cam and cam.type == CAMERA and not cam.fixed) then return end
-        local dir, pose = wish_direction(cam), player:pose()
-        if not (dir and pose) then return end
-        local keys = hero_keys(dir, pose.yaw)
+        local dir, pose, view = wish_direction(cam), player:pose(), view_direction(cam)
+        if not (dir and pose and view) then return end
         state.jumps = state.jumps + 1
-        if same_keys(keys, held) then return end   -- he already sees it that way (facing the camera): the game can have the press as it is
+        if state.weapon then
+            if angle_between(pose.yaw, cam.yaw) <= FACING_TOLERANCE then return end   -- already facing the camera: the game's side step is right as it is
+            if player:align(view, true) then state.last_dir = view end
+            state.translated = state.translated + 1
+            jump.active, jump.mode, jump.stage, jump.frames = true, "snap", "face", 0
+            tlog("snap: weapon drawn, turning to the camera before the step")
+            return true
+        end
+        local keys = hero_keys(dir, pose.yaw)
+        if same_keys(keys, held) then return end   -- he sees it the same way (facing the camera)
         state.translated = state.translated + 1
-        jump.active, jump.stage, jump.keys, jump.expect, jump.seen = true, "swap", keys, {}, false
+        jump.active, jump.mode, jump.stage, jump.keys, jump.expect, jump.seen = true, "translate", "swap", keys, {}, false
+        tlog("translate: hero sees %s, held back the press", keys_text(keys))
         return true
     end
     if not (COMBAT[a] and ev.phase == "pressed" and state.weapon) then return end
@@ -137,10 +191,16 @@ risen.on("input.action", function(ev)
     state.combat_until = risen.clock() + COMBAT_HOLD
 end)
 
--- per frame: the stages of a translated jump
-local function run_jump(player)
+-- per frame: the stages of a held-back jump key
+local function run_jump(player, cam)
     if not jump.active then return end
-    if jump.stage == "swap" then
+    if jump.stage == "face" then   -- snap: wait until he faces the camera
+        jump.frames = jump.frames + 1
+        local pose = player:pose()
+        if (pose and angle_between(pose.yaw, cam.yaw) <= FACING_TOLERANCE) or jump.frames >= MAX_WAIT_FRAMES then jump.stage = "press" end
+        return
+    end
+    if jump.stage == "swap" then   -- translate: show the game the hero's keys
         for k in pairs(MOVES) do
             if held[k] and not jump.keys[k] then simulate(k, false) end
             if jump.keys[k] and not held[k] then simulate(k, true) end
@@ -148,16 +208,19 @@ local function run_jump(player)
         jump.stage = "press"
     elseif jump.stage == "press" then
         jump.replaying = true
-        risen.input.simulate("Jump", true)
+        risen.input.simulate(JUMP_KEY, true)
         jump.stage, jump.t0 = "release", risen.clock()
     elseif jump.stage == "release" then
-        risen.input.simulate("Jump", false)
-        jump.stage = "air"
+        risen.input.simulate(JUMP_KEY, false)
+        if jump.mode == "snap" then
+            state.combat_until = risen.clock() + COMBAT_HOLD   -- he keeps facing the camera after the step, like after an attack
+            jump.active, jump.stage = false, nil
+        else
+            jump.stage = "air"
+        end
     elseif jump.stage == "air" then
-        -- the jump picks its kind (forward jump, side dodge, ...) from the keys at the take-off; its travel follows the keys relative to the view like walking:
-        -- so the real keys go back as soon as the jump has started
-        local st = player:state() or ""
-        if st == "PS_Jump" then jump.seen = true end
+        -- translate: the real keys go back as soon as the jump has started
+        if JUMP_STATES[player:state() or ""] then jump.seen = true end
         if jump.seen or risen.clock() - jump.t0 > JUMP_TIMEOUT then
             for k in pairs(MOVES) do
                 if jump.keys[k] and not held[k] then simulate(k, false) end
@@ -192,7 +255,7 @@ local function frame()
     end
     if not ours then state.last_dir = nil end -- the game's own turning runs there: hand the direction over again afterwards
     local st = player:state() or ""
-    local airborne = jump.active or st == "PS_Jump" or st == "ZS_Jump_End"   -- no turning during a jump or dodge: it goes where it was started
+    local airborne = jump.active or JUMP_STATES[st] ~= nil   -- no turning during a jump or step: it goes where it was started
     if ours and not airborne then
         -- fighting (an attack or parry in the last COMBAT_HOLD seconds): face the camera, the move keys strafe; otherwise the hero turns toward where he runs
         local dir
@@ -205,7 +268,18 @@ local function frame()
             state.aligned = state.aligned + 1
         end
     end
-    run_jump(player)
+    run_jump(player, cam)
+    if TRACE and state.now < trace.until_t then
+        trace.frames = trace.frames + 1
+        local pose = player:pose()
+        local yaw = pose and pose.yaw or -1
+        local sig = st .. "|" .. engine_keys() .. "|" .. tostring(jump.stage) .. "|" .. math.floor(yaw / 5)
+        if sig ~= trace.last then -- only frames where something changed
+            trace.last = sig
+            tlog("frame %d: state %s, engine keys %s, hero yaw %.1f, view yaw %.1f, stage %s, pos %.0f %.0f", trace.frames, st, engine_keys(), yaw, cam.yaw,
+                tostring(jump.stage), pose and pose.x or 0, pose and pose.z or 0)
+        end
+    end
 end
 
 risen.on("tick", frame)
