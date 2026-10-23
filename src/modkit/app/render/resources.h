@@ -81,6 +81,7 @@ private:
     std::unordered_map<std::string, bool> requested_;  // lower-case name -> failed
     GLuint white_ = 0;
     bool s3tc_ = false;
+    float aniso_ = 1.0f;  // the anisotropic filter level used for world textures (4x, or the GPU's maximum when lower)
 
     mutable std::mutex mu_;
     std::condition_variable cv_;

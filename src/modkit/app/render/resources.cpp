@@ -15,6 +15,8 @@ namespace mk::gfx {
 namespace {
 
 constexpr GLenum kDxt1 = 0x83F1, kDxt3 = 0x83F2, kDxt5 = 0x83F3;  // GL_EXT_texture_compression_s3tc
+constexpr GLenum kTexMaxAnisotropy = 0x84FE, kMaxAnisotropy = 0x84FF;  // GL_EXT_texture_filter_anisotropic
+constexpr GLfloat kWantedAnisotropy = 4.0f;
 constexpr uint32_t kMaxTexture = 1024;  // larger images start at a smaller mip level (memory)
 
 std::string key_of(const std::string& name) { return p2m::lower(name); }
@@ -23,10 +25,17 @@ std::string key_of(const std::string& name) { return p2m::lower(name); }
 
 ResourceCache::ResourceCache(std::shared_ptr<const GameData> game) : game_(std::move(game)) {
     GLint n = 0;
+    bool has_aniso = false;
     glGetIntegerv(GL_NUM_EXTENSIONS, &n);
     for (GLint i = 0; i < n; ++i) {
         const char* e = reinterpret_cast<const char*>(glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i)));
         if (e && std::strcmp(e, "GL_EXT_texture_compression_s3tc") == 0) s3tc_ = true;
+        if (e && std::strcmp(e, "GL_EXT_texture_filter_anisotropic") == 0) has_aniso = true;
+    }
+    if (has_aniso) {
+        GLfloat max_aniso = 1.0f;
+        glGetFloatv(kMaxAnisotropy, &max_aniso);
+        aniso_ = std::clamp(max_aniso, 1.0f, kWantedAnisotropy);
     }
     if (!s3tc_) log_info("render: no S3TC on this GPU: textures are decompressed on the CPU");
     glGenTextures(1, &white_);
@@ -290,6 +299,7 @@ void ResourceCache::upload_texture(Done& d) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    if (aniso_ > 1.0f) glTexParameterf(GL_TEXTURE_2D, kTexMaxAnisotropy, aniso_);
     textures_[key_of(d.name)] = t;
     texture_sizes_[key_of(d.name)] = {static_cast<int>(img.width), static_cast<int>(img.height)};
 }
