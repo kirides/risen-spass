@@ -72,19 +72,21 @@ end
 -- `Talk` comes before its `Loot`). Any other unknown can script could print ("the door is locked"), so such a target is declined unasked.
 M.SILENT_CAN = { CanInteract_Player_Talk = true }
 
--- A lock as the engine stores it (gCLock_PS): returns "none" | "open" | "key" | "needs lockpick" and, for "key", why it must not be taken.
--- `props` = { Status, Key, Difficulty, OnLockStatusChanged } as text, `has(templateName)` -> bool.
+-- A lock as the engine stores it (gCLock_PS): returns "none" (no lock) | "open" | "key" (unlock with the key of the inventory) | "refuse" and why.
+-- `props` = { Status, Key, Difficulty, OnLockStatusChanged } as text (nil = the target has no gCLock_PS), `has(templateName)` -> bool.
+-- Quick loot never stands in for the lockpick mini-game: the only lock it opens is a locked one whose own key the player carries. The engine's `Unlock` also
+-- opens a Difficulty 0 lock without a key (RE.md section 31), quick loot does not. A lock it cannot read, or a status it does not know, is refused (fail closed).
 function M.lock_plan(props, has)
-    if props == nil or props.Status == nil then return "none" end
-    if props.Status ~= "gELockStatus_Locked" then return "open" end
+    if props == nil then return "none" end
+    if props.Status == "gELockStatus_Unlocked" then return "open" end
+    if props.Status ~= "gELockStatus_Locked" then return "refuse", "unknown lock status " .. tostring(props.Status) end
     local key = props.Key
-    if key ~= nil and key ~= "" and key ~= "(no template)" and has(key) then
-        if props.OnLockStatusChanged ~= nil and props.OnLockStatusChanged ~= "" then
-            return "needs lockpick", "unlocking runs the script " .. props.OnLockStatusChanged
-        end
-        return "key"
+    if key == nil or key == "" or key == "(no template)" then return "refuse", "locked without a key: needs a lockpick" end
+    if not has(key) then return "refuse", "locked and its key " .. key .. " is not in the inventory" end
+    if props.OnLockStatusChanged ~= nil and props.OnLockStatusChanged ~= "" then
+        return "refuse", "unlocking runs the script " .. props.OnLockStatusChanged
     end
-    return "needs lockpick", "locked and no key in the inventory"
+    return "key"
 end
 
 -- Is this entity a living human that could see a theft? (`props` = species text, alive, down flags)

@@ -17,7 +17,7 @@ local PLAN_DEFAULT = {
     "dead human: handled as corpse", "dead human: tutorial hint loot can be ended", "dead human: the club moved, fists and joint stayed", "dead human: same items as the engine's loot window", "dead human: inventory events, one pair per stack",
     "knocked-out human looted", "living human declined", "witness: a living human nearby does not stop the pick-up (assess mode, no watched area)", "monster corpse (wolf) looted", "monster corpse: trophy taken, fist stayed", "monster corpse: same items as the engine's loot window", "monster corpses of other species looted", "washed-up body (Beach_Seaman_Dead) looted", "washed-up body: the hero says his remark (GamestartLoot)", "washed-up body: same items as the engine's loot window", "trophies without skill: only the unconditional ones", "trophies without skill: nothing left on the carcasses", "trophies with the Trophy skill: fur taken", "trophies with skill and recipes: horns, claws, tusks, stings taken", "trophies: nothing lootable left on the carcasses", "trophies: same items as the engine's loot window (skill learned)", "door-like object declined", "empty chest declined",
     "plain chest looted", "plain chest: items moved and chest empty", "plain chest: same items as the engine path", "chest is not left in an interaction",
-    "locked chest without key declined", "locked chest stays locked", "locked chest with key looted", "key chest unlocked and key kept", "quest-script lock declined while locked", "quest-script lock script not run", "chest with unlocked quest-script lock looted",
+    "locked chest without key declined", "locked chest stays locked", "lockpick chest declined with lockpicks and the skill", "lockpick chest: still locked, nothing taken, no lockpick used", "Difficulty 0 lock without key declined", "wrong key: declined and still locked", "locked chest with key looted", "key chest unlocked and key kept", "quest-script lock declined while locked", "quest-script lock script not run", "chest with unlocked quest-script lock looted",
     "cupboard looted", "sarcophagus looted", "trap sarcophagus declined", "trap sarcophagus: nothing spawned by the quick path", "trap sarcophagus: engine path spawns the skeleton exactly once",
     "weapon drawn: declined", "weapon drawn: item stays", "weapon away again: works", "too far: declined",
     "key path: press takes the item", "key path: the press was consumed", "key path: no focus target does not consume", "key path: hold takes the next target",
@@ -433,6 +433,40 @@ local function default_phase()
     r = try(c3)
     check("locked chest without key declined", not r.handled and risen.item.count(p, "It_Apple") == pc.It_Apple, tostring(r.reason))
     T.eq("locked chest stays locked", c3:get_property("gCLock_PS", "Status"), "gELockStatus_Locked")
+    -- a lock the mini-game could open: lockpicks in the inventory and the skill learned (26/27 are Mining/Lockpick in an unresolved order, RE.md section 23: both)
+    local c5 = chest("Object_Interact_Animated_Chest_Poor", true)
+    c5:set_property("gCLock_PS", "Key", "")
+    c5:set_property("gCLock_PS", "Difficulty", "1")
+    risen.item.give(p, "It_Lockpick", 5)
+    local skill0 = { [26] = (risen.npc.skill_raw(p, 26)) or 0, [27] = (risen.npc.skill_raw(p, 27)) or 0 }
+    risen.npc.set_skill_base(p, 26, 3)
+    risen.npc.set_skill_base(p, 27, 3)
+    T.sleep(3)
+    pc = counts(p, P0)
+    local picks = risen.item.count(p, "It_Lockpick")
+    r = try(c5)
+    T.sleep(5)
+    check("lockpick chest declined with lockpicks and the skill", not r.handled, tostring(r.reason))
+    check("lockpick chest: still locked, nothing taken, no lockpick used", c5:get_property("gCLock_PS", "Status") == "gELockStatus_Locked" and risen.item.count(p, "It_Apple") == pc.It_Apple
+        and risen.item.count(c5, "It_Apple") == 2 and risen.item.count(p, "It_Lockpick") == picks and risen.interact.current(p) == nil,
+        ("%s apples %d->%d lockpicks %d->%d"):format(tostring(c5:get_property("gCLock_PS", "Status")), pc.It_Apple, risen.item.count(p, "It_Apple"), picks, risen.item.count(p, "It_Lockpick")))
+    risen.npc.set_skill_base(p, 26, skill0[26])
+    risen.npc.set_skill_base(p, 27, skill0[27])
+    risen.item.take(p, "It_Lockpick", risen.item.count(p, "It_Lockpick"))
+    -- Difficulty 0: the engine's Unlock opens it without a key, quick loot only opens a lock with its key
+    local c6 = chest("Object_Interact_Animated_Chest_Poor", true)
+    c6:set_property("gCLock_PS", "Key", "")
+    c6:set_property("gCLock_PS", "Difficulty", "0")
+    r = try(c6)
+    check("Difficulty 0 lock without key declined", not r.handled and c6:get_property("gCLock_PS", "Status") == "gELockStatus_Locked" and risen.item.count(c6, "It_Apple") == 2, tostring(r.reason))
+    -- another key than the lock's own
+    local c7 = chest("Object_Interact_Animated_Chest_Poor", true)
+    c7:set_property("gCLock_PS", "Key", "It_Key_Alvaro")
+    risen.item.give(p, "It_Key_Gamestart", 1)
+    T.sleep(3)
+    r = try(c7)
+    check("wrong key: declined and still locked", not r.handled and c7:get_property("gCLock_PS", "Status") == "gELockStatus_Locked" and risen.item.count(c7, "It_Apple") == 2, tostring(r.reason))
+    risen.item.take(p, "It_Key_Gamestart", 1)
     c3:set_property("gCLock_PS", "Key", "It_Key_Gamestart")
     risen.item.give(p, "It_Key_Gamestart", 1)
     T.sleep(3)

@@ -10,7 +10,7 @@ modifier    = "none"        # none | shift | ctrl | alt: must be held with the k
 items       = true          # items lying on the ground
 corpses     = true          # dead and knocked-out humans
 chests      = true          # chests, cupboards, sarcophagi
-keys        = true          # locked chests are opened with the key from the inventory (never lockpicked)
+keys        = true          # a locked chest whose own key is in the inventory is opened with it; never lockpicked, every other locked chest is declined
 print       = true          # HUD line for picked-up ground items (looted stacks are printed by the game itself)
 pickup_sound = true         # the sound of the take animation for ground items: the pick-up effect with the item material's transfer sound (apple, gold, wood, potion...)
 pickup_sound_gap = 600      # ms: after one pick-up sound the next waits this long, so holding the key does not pile the sounds up (the items are still taken); 0 = a sound for every item

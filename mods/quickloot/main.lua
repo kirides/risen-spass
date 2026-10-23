@@ -6,7 +6,7 @@
 --   chests, cupboards,    the same AutoLoot; a locked chest is opened with the key of the inventory first (Status := Unlocked, what the `Unlock` script does)
 --   sarcophagi
 -- Dead bodies are the humans', the washed-up bodies of the beach (PreInteract_Player_Loot_Comment) and monster/animal carcasses (their species' can script puts the trophies in).
--- Declined (nothing happens, the use key still runs the engine's interaction): anything else (traps, quest sarcophagi, mining, doors, living characters), locks that need a lockpick or whose unlocking runs a script, empty containers, targets too far, a weapon drawn or any other player
+-- Declined (nothing happens, the use key still runs the engine's interaction): anything else (traps, quest sarcophagi, mining, doors, living characters), every locked lock but one whose key is in the inventory (no lockpicking, no Difficulty 0 shortcut) and locks whose unlocking runs a script, empty containers, targets too far, a weapon drawn or any other player
 -- state than walking around.
 --
 -- Witnesses (`witness_mode`): taking an item or opening a chest/cupboard is theft to the game's NPCs. The animated path calls the engine's perception
@@ -162,15 +162,20 @@ local function take_corpse(player, body)
     return taken > 0, ("%d stack(s)"):format(taken)
 end
 
+-- the lock plan of a target (policy.lock_plan): the lock is detected by its property set, so a lock whose Status cannot be read is refused, not taken for "no lock"
 local LOCK_PROPS = { "Status", "Key", "Difficulty", "OnLockStatusChanged" }
-local function take_container(player, box, before_take)
+local function lock_plan(player, box)
     local lock = nil
-    if box:get_property("gCLock_PS", "Status") ~= nil then
+    if box:list_properties("gCLock_PS") ~= nil then
         lock = {}
         for _, p in ipairs(LOCK_PROPS) do lock[p] = box:get_property("gCLock_PS", p) end
     end
-    local plan, why = policy.lock_plan(lock, function(tpl) return risen.item.count(player, tpl) > 0 end)
-    if plan == "needs lockpick" then return false, why end
+    return policy.lock_plan(lock, function(tpl) return (risen.item.count(player, tpl) or 0) > 0 end)
+end
+
+local function take_container(player, box, before_take)
+    local plan, why = lock_plan(player, box)
+    if plan == "refuse" then return false, why end
     if plan == "key" and not cfg.keys then return false, "keys = false" end
     if lootable_stacks(box) == 0 then return false, "nothing to take" end
     if before_take then
@@ -230,13 +235,13 @@ local function attempt(target, source)
         if kind == nil and it.can ~= "" and not policy.SILENT_CAN[it.can] then
             return decline("unknown interaction " .. it.interact .. " (its can script " .. it.can .. " may print a message: not asked)")
         end
+        if kind == "container" then
+            -- before its can script: CanInteract_Player_Chest would print the lockpick messages (NoLockpick, TooDifficult...)
+            local plan, why_lock = lock_plan(player, target)
+            if plan == "refuse" then return decline("locked: " .. tostring(why_lock), "container") end
+        end
         if it.can == "" then
             accept = true
-        elseif kind == "container" and target:get_property("gCLock_PS", "Status") == "gELockStatus_Locked" then
-            local lock = { Status = "gELockStatus_Locked", Key = target:get_property("gCLock_PS", "Key"), OnLockStatusChanged = target:get_property("gCLock_PS", "OnLockStatusChanged") }
-            local plan = policy.lock_plan(lock, function(tpl) return risen.item.count(player, tpl) > 0 end)
-            if plan == "needs lockpick" then return decline("locked: needs a lockpick or runs a script", "container") end
-            accept = risen.script.call(it.can, player, target) ~= 0
         else
             accept = risen.script.call(it.can, player, target) ~= 0
         end

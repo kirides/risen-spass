@@ -90,6 +90,10 @@ TEST(quickloot_policy_decides_from_the_interaction_scripts) {
         result.lock_nokey = (policy.lock_plan({ Status = "gELockStatus_Locked", Key = "It_Other", OnLockStatusChanged = "" }, has))
         result.lock_notemplate = (policy.lock_plan({ Status = "gELockStatus_Locked", Key = "(no template)" }, has))
         result.lock_script = (policy.lock_plan({ Status = "gELockStatus_Locked", Key = "It_Key", OnLockStatusChanged = "OnQuestSuccess_X" }, has))
+        result.lock_empty = (policy.lock_plan({ Status = "gELockStatus_Locked", Key = "", Difficulty = "0" }, has))   -- the engine opens it without a key, quick loot does not
+        result.lock_pick = (policy.lock_plan({ Status = "gELockStatus_Locked", Key = "(no template)", Difficulty = "2" }, function() return true end))
+        result.lock_unread = (policy.lock_plan({}, has))                                                             -- a gCLock_PS whose Status could not be read
+        result.lock_unknown = (policy.lock_plan({ Status = "gELockStatus_Jammed", Key = "It_Key" }, has))
         result.witness = tostring(policy.is_witness("gESpecies_Human", false, false)) .. tostring(policy.is_witness("gESpecies_Human", true, false))
             .. tostring(policy.is_witness("gESpecies_Human", false, true)) .. tostring(policy.is_witness("gESpecies_Wolf", false, false))
         -- which interactions the engine runs its theft assessment for (RE.md section 40): items, chests, cupboards; not corpses, sarcophagi, traps
@@ -119,7 +123,8 @@ TEST(quickloot_policy_decides_from_the_interaction_scripts) {
     CHECK(get("quest_item") == "-true" && get("titan") == "-true" && get("trap") == "-true" && get("post_script") == "-true" && get("bed") == "-true");
     CHECK(get("choice") == "Interact_Player_Loot" && get("asked") == "CanInteract_Player_Talk,CanInteract_Player_Loot");
     CHECK(get("lock_none") == "none" && get("lock_open") == "open" && get("lock_key") == "key");
-    CHECK(get("lock_nokey") == "needs lockpick" && get("lock_notemplate") == "needs lockpick" && get("lock_script") == "needs lockpick");
+    CHECK(get("lock_nokey") == "refuse" && get("lock_notemplate") == "refuse" && get("lock_script") == "refuse");
+    CHECK(get("lock_empty") == "refuse" && get("lock_pick") == "refuse" && get("lock_unread") == "refuse" && get("lock_unknown") == "refuse");
     CHECK(get("witness") == "truefalsefalsefalse");
     CHECK(get("theft") == "true,true,true" && get("no_theft") == "false,false,false,false");
     CHECK(get("mode_assess") == "assess" && get("mode_veto") == "veto" && get("mode_ignore") == "ignore" && get("mode_number") == "nil");
