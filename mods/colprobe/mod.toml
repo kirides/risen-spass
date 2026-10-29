@@ -1,0 +1,6 @@
+id          = "colprobe"
+name        = "Collision probe"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Measures the collision of a shipped rock and of a scaled copy with rays (docs/RE.md section 61); scripts/colprobe.ps1 puts the generated mesh into assets/."
+main        = "main.lua"

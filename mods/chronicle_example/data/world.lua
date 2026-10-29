@@ -53,6 +53,7 @@ return {
             position = { -31132, 690, -3097 },
             rotation = { 15, 0, 0 },
             world = "World",
+            fit_collision = true,
         },
         {
             key = "57b1770aa80c",
@@ -60,6 +61,7 @@ return {
             position = { -31756, 690, -2737 },
             rotation = { 55, 0, 0 },
             world = "World",
+            fit_collision = true,
         },
         {
             key = "648f1cf2a9b7",
@@ -67,6 +69,7 @@ return {
             position = { -32380, 690, -3097 },
             rotation = { 95, 0, 0 },
             world = "World",
+            fit_collision = true,
         },
         {
             key = "c8991a604d98",
@@ -74,6 +77,7 @@ return {
             position = { -32380, 690, -3817 },
             rotation = { 135, 0, 0 },
             world = "World",
+            fit_collision = true,
         },
         {
             key = "89a7eba20d26",
@@ -81,6 +85,7 @@ return {
             position = { -31756, 690, -4177 },
             rotation = { 175, 0, 0 },
             world = "World",
+            fit_collision = true,
         },
         {
             key = "86b5d2ec73cc",
@@ -88,6 +93,7 @@ return {
             position = { -31132, 690, -3817 },
             rotation = { 215, 0, 0 },
             world = "World",
+            fit_collision = true,
         },
         {
             key = "3624b5555761",
@@ -95,6 +101,7 @@ return {
             position = { -35560, 410, -6820 },
             rotation = { 30, 0, 0 },
             world = "World",
+            fit_collision = true,
         },
         {
             key = "50d0c305620d",
@@ -102,6 +109,7 @@ return {
             position = { -34560, 410, -6760 },
             rotation = { 140, 0, 0 },
             world = "World",
+            fit_collision = true,
         },
         {
             key = "ee3a56dda8e2",

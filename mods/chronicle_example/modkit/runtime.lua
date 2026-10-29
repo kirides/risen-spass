@@ -30,7 +30,7 @@
 --
 -- Hand-written Lua (M.extensions): the project's Lua files (lua/*.lua, loaded before the content, hooks before_install(data) / after_install(runtime))
 -- and custom.lua (loaded last); a module that fails is logged and skipped, it never takes the content down.
-local M = { VERSION = 15 }
+local M = { VERSION = 16 }
 
 local unpack = table.unpack or unpack
 local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
@@ -328,7 +328,41 @@ local function in_world(world)
 end
 M.in_world = in_world
 
-local function apply_world(id, w)
+-- a spawned object with a scaled mesh (an object look): the baked triangle-mesh collision keeps the shipped size, so it is replaced by a box that follows the bounding box
+-- (Entity:fit_collision, docs/RE.md section 65). The engine builds the shipped collision again from the template after a load (fit once per world load), and the box
+-- only gets its size when its physics shape exists, which is the case while the player is near: every few seconds the boxes are fitted again (cheap, a handful of objects).
+local fitted, fit_done, fit_hooked = {}, {}, false
+local function reset_fits() fitted, fit_done = {}, {} end
+local function fit_collision_later(id, ent)
+    local key = tostring(ent:id())
+    if fit_done[key] then return end
+    local ok, why = ent:fit_collision(true, 1)
+    if not ok then
+        if not warned["fit." .. key] then
+            warned["fit." .. key] = true
+            risen.log.warn(("%s: cannot fit the collision: %s"):format(id, tostring(why)))
+        end
+        return
+    end
+    fit_done[key] = true
+    fitted[#fitted + 1] = ent
+    if not fit_hooked then
+        fit_hooked = true
+        local frames = 0
+        risen.on("tick", function()
+            frames = frames + 1
+            if frames % 150 == 0 or frames == 40 then
+                for i = #fitted, 1, -1 do
+                    local okr = pcall(function() return fitted[i]:refit_collision() end)
+                    if not okr then table.remove(fitted, i) end
+                end
+            end
+        end)
+    end
+end
+
+local function apply_world(id, w, fresh)
+    if fresh then reset_fits() end
     for _, s in ipairs(w.spawns or {}) do
         if not in_world(s.world) then goto next_spawn end
         local key = "modkit.world.spawn." .. s.key
@@ -365,6 +399,13 @@ local function apply_world(id, w)
             elseif not warned[key] then
                 warned[key] = true
                 risen.log.warn(("%s: cannot spawn %s"):format(id, s.template))
+            end
+        end
+        if s.fit_collision then
+            do
+                local cur = risen.save.get(key)
+                local ent = type(cur) == "string" and risen.entity.by_id(cur) or nil
+                if ent then fit_collision_later(id, ent) end
             end
         end
         ::next_spawn::
@@ -734,7 +775,7 @@ function M.install(data)
     end
     local w = data.world or {}
     if nonempty(w.spawns) or nonempty(w.containers) or nonempty(w.removals) or nonempty(w.moves) then
-        risen.on("world.ready", function() apply_world(id, w) end)
+        risen.on("world.ready", function() apply_world(id, w, true) end)
         if layers then
             risen.on("modkit.layer_changed", function()
                 if risen.entity.player() then apply_world(id, w) end

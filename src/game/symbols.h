@@ -263,6 +263,9 @@
     X(veg_remove_region, L"Engine.dll", "?RemoveEntries@eCVegetation_Grid@@QEAAXAEBVbCVector2@@MPEBV?$bTObjArray@UeSVegetationMeshID@@@@@Z", void (*)(void* grid, const float* xz, float radius, const void* ids), false) \
     X(veg_insert, L"Engine.dll", "?InsertEntry@eCVegetation_Grid@@QEAAXAEBUeSVegetationNodeEntry@@@Z", void (*)(void* grid, const void* entry), false) \
     X(veg_update_bounds, L"Engine.dll", "?UpdateBounds@eCVegetation_PS@@QEAAXXZ", void (*)(void* ps), false) \
+    X(col_remove_type, L"Engine.dll", "?RemoveShapes@eCCollisionShape_PS@@UEAAXW4eECollisionShapeType@@@Z", void (*)(void* ps, int type), false) \
+    X(col_add_dynamic, L"Engine.dll", "?AddDynamicShape@eCCollisionShape_PS@@UEAA?AW4bEResult@@W4eECollisionShapeType@@W4eEShapeGroup@@W4eEShapeAABBAdapt@@M@Z", int (*)(void* ps, int type, int group, int adapt, float scale), false) \
+    X(col_refit, L"Engine.dll", "?OnUpdatedWorldTreeBoundary@eCCollisionShape_PS@@MEAAXXZ", void (*)(void* ps), false) \
     X(ent_get_property_set, L"Engine.dll", "?GetPropertySet@eCEntity@@QEAAPEAVeCEntityPropertySet@@AEBVbCString@@@Z", void* (*)(void* self, const void* className), false) \
     X(acc_ctor_object, L"SharedBase.dll", "??0bCAccessorProperty@@QEAA@PEBVbCObjectBase@@@Z", void* (*)(void* self, const void* obj), false) \
     X(acc_next, L"SharedBase.dll", "??EbCAccessorProperty@@QEAAAEAV0@XZ", void* (*)(void* self), false) \

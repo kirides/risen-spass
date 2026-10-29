@@ -412,6 +412,9 @@ json quests_data(const Project& p) {
 
 json world_data(const Project& p) {
     json spawns = json::array(), containers = json::array();
+    std::set<std::string> scaled_looks;  // looks with a scaled mesh: their baked collision keeps the shipped size, the runtime fits a box to the mesh
+    for (auto& l : p.looks)
+        if (l.scale != std::array<float, 3>{1, 1, 1}) scaled_looks.insert(p2m::lower(l.name));
     for (auto& s : p.world.spawns) {
         json e = json::object();
         e["key"] = s.uid.substr(0, 12);  // the key of "already done" in risen.save: stable across renames
@@ -420,6 +423,7 @@ json world_data(const Project& p) {
         if (s.rotation[0] != 0 || s.rotation[1] != 0 || s.rotation[2] != 0) e["rotation"] = json::array({s.rotation[0], s.rotation[1], s.rotation[2]});
         if (s.amount != 1) e["amount"] = s.amount;
         e["world"] = world_of(p, s.world);  // the runtime applies it only while this world is active
+        if (scaled_looks.count(p2m::lower(s.template_name))) e["fit_collision"] = true;
         if (const LayerDef* l = layer_of_spawn(p, s.uid)) e["layer"] = l->name;
         spawns.push_back(e);
     }

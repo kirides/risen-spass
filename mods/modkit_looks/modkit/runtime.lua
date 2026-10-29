@@ -13,6 +13,7 @@
 --   patches   free property edits of any template (risen.template.patch), applied like the balance data
 --   dialog_edits  XP rewards and trader refills on shipped dialogue infos (risen.dialog.get / add_command), chapter 1's stock at the start of a new game
 --   world     teaching limits of placed NPCs (risen.npc.set_teach_limit), entities spawned at a position and items put into containers of the world (by entity ID), once per savegame on world.ready
+--   vegetation  grass painted / erased with the editor's brush (risen.vegetation, a seeded scatter on the ground), on every world.ready
 --   looks     templates made from a shipped object template with their own mesh (risen.template.create, first tick); spawns use them by name
 --   assets    the icon image lists (risen.assets.load_icons) registered on the first tick, before the balance data makes the items that use them
 --
@@ -29,7 +30,7 @@
 --
 -- Hand-written Lua (M.extensions): the project's Lua files (lua/*.lua, loaded before the content, hooks before_install(data) / after_install(runtime))
 -- and custom.lua (loaded last); a module that fails is logged and skipped, it never takes the content down.
-local M = { VERSION = 14 }
+local M = { VERSION = 16 }
 
 local unpack = table.unpack or unpack
 local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
@@ -327,7 +328,41 @@ local function in_world(world)
 end
 M.in_world = in_world
 
-local function apply_world(id, w)
+-- a spawned object with a scaled mesh (an object look): the baked triangle-mesh collision keeps the shipped size, so it is replaced by a box that follows the bounding box
+-- (Entity:fit_collision, docs/RE.md section 65). The engine builds the shipped collision again from the template after a load (fit once per world load), and the box
+-- only gets its size when its physics shape exists, which is the case while the player is near: every few seconds the boxes are fitted again (cheap, a handful of objects).
+local fitted, fit_done, fit_hooked = {}, {}, false
+local function reset_fits() fitted, fit_done = {}, {} end
+local function fit_collision_later(id, ent)
+    local key = tostring(ent:id())
+    if fit_done[key] then return end
+    local ok, why = ent:fit_collision(true, 1)
+    if not ok then
+        if not warned["fit." .. key] then
+            warned["fit." .. key] = true
+            risen.log.warn(("%s: cannot fit the collision: %s"):format(id, tostring(why)))
+        end
+        return
+    end
+    fit_done[key] = true
+    fitted[#fitted + 1] = ent
+    if not fit_hooked then
+        fit_hooked = true
+        local frames = 0
+        risen.on("tick", function()
+            frames = frames + 1
+            if frames % 150 == 0 or frames == 40 then
+                for i = #fitted, 1, -1 do
+                    local okr = pcall(function() return fitted[i]:refit_collision() end)
+                    if not okr then table.remove(fitted, i) end
+                end
+            end
+        end)
+    end
+end
+
+local function apply_world(id, w, fresh)
+    if fresh then reset_fits() end
     for _, s in ipairs(w.spawns or {}) do
         if not in_world(s.world) then goto next_spawn end
         local key = "modkit.world.spawn." .. s.key
@@ -364,6 +399,13 @@ local function apply_world(id, w)
             elseif not warned[key] then
                 warned[key] = true
                 risen.log.warn(("%s: cannot spawn %s"):format(id, s.template))
+            end
+        end
+        if s.fit_collision then
+            do
+                local cur = risen.save.get(key)
+                local ent = type(cur) == "string" and risen.entity.by_id(cur) or nil
+                if ent then fit_collision_later(id, ent) end
             end
         end
         ::next_spawn::
@@ -414,6 +456,62 @@ local function apply_world(id, w)
         end
         ::next_moves::
     end
+end
+
+-- ---- grass painted with the brush (risen.vegetation, docs/RE.md section 64): on every world.ready, because the grid is rebuilt from the layer on every load ----
+-- A seeded generator (the same plants every time), plants on the ground found with a vertical ray from the stroke's height, a shuffled mesh from the list.
+local function veg_random(seed)
+    local s = (tonumber(seed) or 1) % 2147483647
+    if s <= 0 then s = s + 2147483646 end
+    return function()
+        s = (s * 48271) % 2147483647
+        return s / 2147483647
+    end
+end
+
+local function apply_vegetation(id, strokes)
+    local touched = {}
+    local here = risen.world.name and risen.world.name()
+    for _, v in ipairs(strokes) do
+        if v.world and here and v.world ~= here then goto continue end
+        do
+            local ent = risen.entity.by_id(v.id)
+            if not ent then
+                if not warned["veg." .. v.id] then
+                    warned["veg." .. v.id] = true
+                    risen.log.warn(("%s: no vegetation entity %s (%s) in this world"):format(id, v.id, tostring(v.name)))
+                end
+                goto continue
+            end
+            local x0, y0, z0, r = v.position[1], v.position[2], v.position[3], v.radius
+            if v.mode == "erase" then
+                local ok, why = risen.vegetation.remove(ent, x0, z0, r)
+                if not ok then risen.log.warn(("%s: vegetation erase: %s"):format(id, tostring(why))) end
+            else
+                local rnd = veg_random(v.seed)
+                local n = math.floor(v.density * math.pi * r * r / 10000 + 0.5)
+                local smin, smax = v.scale[1], v.scale[2]
+                local added, missed = 0, 0
+                for _ = 1, n do
+                    local a, d = rnd() * 2 * math.pi, math.sqrt(rnd()) * r
+                    local x, z = x0 + math.cos(a) * d, z0 + math.sin(a) * d
+                    local mesh = v.meshes[math.floor(rnd() * #v.meshes) + 1]
+                    local yaw, sc, vs = rnd() * 360, smin + rnd() * (smax - smin), 0.85 + rnd() * 0.3
+                    -- the ground: a ray straight down through the stroke's height range
+                    local blocked, _, hx, hy, hz = risen.world.trace(x, y0 + r + 500, z, x, y0 - r - 500, z)
+                    if blocked and hy then
+                        if risen.vegetation.add(ent, { mesh = mesh, x = x, y = hy, z = z, yaw = yaw, scale = sc, scale_v = sc * vs, color = v.color }) then added = added + 1 else missed = missed + 1 end
+                    else
+                        missed = missed + 1
+                    end
+                end
+                risen.log.info(("%s: vegetation stroke %s: %d plants (%d without ground)"):format(id, tostring(v.name), added, missed))
+            end
+            touched[ent] = true
+        end
+        ::continue::
+    end
+    for ent in pairs(touched) do risen.vegetation.update(ent) end
 end
 
 -- ---- patches of any template: risen.template.patch, applied like the balance data (first tick, then with the live entities on every session.start) ----
@@ -677,7 +775,7 @@ function M.install(data)
     end
     local w = data.world or {}
     if nonempty(w.spawns) or nonempty(w.containers) or nonempty(w.removals) or nonempty(w.moves) then
-        risen.on("world.ready", function() apply_world(id, w) end)
+        risen.on("world.ready", function() apply_world(id, w, true) end)
         if layers then
             risen.on("modkit.layer_changed", function()
                 if risen.entity.player() then apply_world(id, w) end
@@ -685,6 +783,7 @@ function M.install(data)
         end
     end
     if nonempty(w.teachers) then risen.on("world.ready", function() apply_teachers(id, w.teachers) end) end
+    if nonempty(w.vegetation) then risen.on("world.ready", function() apply_vegetation(id, w.vegetation) end) end
     -- behaviours: the scripts first (risen.behavior.define), then the attachments; an NPC that is not in the world yet gets his when he appears
     local b = data.behaviors or {}
     for _, s in ipairs(b.scripts or {}) do

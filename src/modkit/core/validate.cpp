@@ -860,6 +860,7 @@ void check_extras(Ctx& c) {
         }
         if (++meseen[p2m::lower(x.mesh)] == 2) c.add(Severity::Error, A, x.uid, subj, tr("this mesh is changed twice: only one change per mesh is exported"));
         if (x.changes_nothing()) c.add(Severity::Warning, A, x.uid, subj, tr("the change does nothing"));
+        if (x.scale != std::array<float, 3>{1, 1, 1}) c.add(Severity::Warning, A, x.uid, subj, tr("the collision of the shipped mesh keeps its size for every object that uses it: make a look of one object (its collision follows the scale)"));
         for (auto& [i, mat] : x.materials) {
             if (!c.g || c.g->exists(mat)) continue;
             bool mine = false;

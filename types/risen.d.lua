@@ -49,6 +49,20 @@ function Entity:id() end
 ---@return boolean|nil saved `nil` when the engine function is missing or the handle is stale.
 function Entity:save_relevant() end
 
+---Replaces the entity's baked triangle-mesh collision by a box that follows its bounding box (docs/RE.md section 65). A mesh that was scaled (an object look, a mesh edit) keeps the collision of the shipped mesh;
+---this makes the collision as big as the new mesh (a box: the rock's real shape is not followed). `tree` (default `true`) fits to the whole tree boundary, `false` to the entity's own node; `scale` (default 1; 1 = the bounding box, measured with rays on a 3x scaled rock) scales the box.
+---Call `refit_collision` a frame or two later (the physics shape exists after the next physics step). `true`, or `nil, reason`.
+---@param tree? boolean
+---@param scale? number 0.01 to 100.
+---@return true|nil ok
+---@return string|nil reason
+function Entity:fit_collision(tree, scale) end
+
+---Fits the box made by `fit_collision` to the entity's bounding box now (`eCCollisionShape_PS::OnUpdatedWorldTreeBoundary`). `true`, or `nil, reason`.
+---@return true|nil ok
+---@return string|nil reason
+function Entity:refit_collision() end
+
 ---Makes the engine save (`true`) or skip (`false`) this entity in savegames. A skipped entity is gone after a load.
 ---@param on boolean
 ---@return boolean ok

@@ -7,6 +7,7 @@ return {
             template = "MKL_BigRock",
             position = { -31950, 620, -4500 },
             world = "World",
+            fit_collision = true,
         },
     },
     containers = {},

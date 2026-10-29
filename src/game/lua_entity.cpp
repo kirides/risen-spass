@@ -198,6 +198,46 @@ void bindEntity(sol::state_view lua, sol::table risen) {
         "set_save_relevant", [&s](const LuaEntity& self, bool on) {
             return s.eent_set_save_relevant != nullptr && tryRun("set_save_relevant", [&] { s.eent_set_save_relevant(ptr(self), on); });
         },
+        // entity:fit_collision([tree [, scale]]) -> true | nil, reason: replaces the entity's baked triangle-mesh collision (which keeps the size of the shipped mesh) by a box that follows the entity's
+        // bounding box (docs/RE.md section 65): eCCollisionShape_PS::RemoveShapes(TriMesh) + AddDynamicShape(Box, Static, LocalTree | LocalNode, scale); call refit_collision() a frame later
+        "fit_collision", [&s](sol::this_state ts, const LuaEntity& self, sol::optional<bool> tree, sol::optional<double> scale) -> std::tuple<sol::object, sol::object> {
+            auto fail = [&](const std::string& why) -> std::tuple<sol::object, sol::object> { return {sol::make_object(ts, sol::lua_nil), sol::make_object(ts, why)}; };
+            if (s.col_remove_type == nullptr || s.col_add_dynamic == nullptr || s.ent_get_property_set == nullptr) return fail("the engine functions of the collision are missing");
+            const double sc = scale.value_or(1.0);
+            if (!(sc > 0.01 && sc < 100.0)) return fail("the scale must be between 0.01 and 100");
+            void* e = ptr(self);
+            if (e == nullptr) return fail("the entity is gone");
+            void* ps = nullptr;
+            guarded([&] {
+                const BString cls("eCCollisionShape_PS");
+                ps = s.ent_get_property_set(e, cls.get());
+            });
+            if (ps == nullptr) return fail("the entity has no collision");
+            int result = 0;
+            if (!guarded([&] {
+                    s.col_remove_type(ps, 1);  // eECollisionShapeType_TriMesh
+                    result = s.col_add_dynamic(ps, 3 /*Box*/, 1 /*Static*/, tree.value_or(true) ? 2 /*LocalTree*/ : 1 /*LocalNode*/, static_cast<float>(sc * 2.0));  // the engine's box comes out half the size of the bounding box times the adapt scale: 2 makes `scale` 1 = the box
+                }))
+                return fail("the engine call failed");
+            if (result != 1) return fail("the engine did not make the shape");
+            return {sol::make_object(ts, true), sol::make_object(ts, sol::lua_nil)};
+        },
+        // entity:refit_collision() -> true | nil, reason: fits the box of fit_collision to the bounding box now (eCCollisionShape_PS::OnUpdatedWorldTreeBoundary): the engine's own call comes with the next boundary change,
+        // and the physics shape only exists after a physics step
+        "refit_collision", [&s](sol::this_state ts, const LuaEntity& self) -> std::tuple<sol::object, sol::object> {
+            auto fail = [&](const std::string& why) -> std::tuple<sol::object, sol::object> { return {sol::make_object(ts, sol::lua_nil), sol::make_object(ts, why)}; };
+            if (s.col_refit == nullptr || s.ent_get_property_set == nullptr) return fail("the engine function is missing");
+            void* e = ptr(self);
+            if (e == nullptr) return fail("the entity is gone");
+            void* ps = nullptr;
+            guarded([&] {
+                const BString cls("eCCollisionShape_PS");
+                ps = s.ent_get_property_set(e, cls.get());
+            });
+            if (ps == nullptr) return fail("the entity has no collision");
+            if (!guarded([&] { s.col_refit(ps); })) return fail("the engine call failed");
+            return {sol::make_object(ts, true), sol::make_object(ts, sol::lua_nil)};
+        },
         "set_frozen",[&s](const LuaEntity& self, bool on) { return tryRun("set_frozen", [&] { EntityHolder h{ptr(self)}; s.ent_set_frozen(&h, on); }); },
         "enable_rendering", [&s](const LuaEntity& self, bool on) { return tryRun("enable_rendering", [&] { EntityHolder h{ptr(self)}; s.ent_enable_rendering(&h, on); }); },
         // entity:teleport("EntityName")  or  entity:teleport(otherEntity)
