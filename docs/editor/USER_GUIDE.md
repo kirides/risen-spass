@@ -352,6 +352,24 @@ The Browser and the item editor show a turning preview of a template's mesh (dra
   world is possible but his daily routine walks him off again, and removing one can break quests (the Problems panel warns).
 * **Chests**: select a chest (or any entity with an inventory) of the world: *Add items to this container* lists items the mod puts into it once per
   savegame (found by the entity's ID).
+* **Copy, duplicate, delete**: *Place a copy* (inspector, for an item / object / interactive of the world) puts the same template down again as a new
+  object of the mod; **Ctrl+D** with the cursor in the view duplicates the selected spawn (or copies the selected world object), **Delete** removes
+  the selected spawn from the project (or marks the selected world object as removed).
+* **Mesh, materials and looks** (the inspector of any entity with a mesh shows them):
+  * *Mesh*: the sub-meshes with their triangles, the size, and for each sub-mesh the material it names (click to pick another) plus a scale. A change
+    rewrites the shipped mesh and is exported as a loose copy under the same name, so **every object that uses that mesh changes**. 750 of the
+    game's meshes (the static ones: rocks, buildings, props) can be changed; trees and creatures say so.
+  * *Materials*: for the selected material the eight shader slots (Diffuse, Opacity, SelfIllumination, Specular, SpecularPower, Normal,
+    Distortion, LightEmission) with a thumbnail and the image behind each: click to choose another game image or a project picture (the pictures of
+    the Assets panel are offered too), an empty slot takes an image the same way (the editor adds a texture node to the material), and *channel*
+    chooses which channel of the image a slot reads (so one packed map can feed several slots). The shader flags (specular, normal map compression,
+    lighting, fog, shadows, ambient occlusion, ...) are check boxes. Changed values are orange, *Reset* undoes them. Again the change is a loose copy
+    of the material: every user of it changes. The diffuse change shows in the 3D view at once.
+  * **Give it its own look** (button on a world object): only this object changes. The editor makes a copy of its mesh and of its materials under
+    new names (`<mod>_<template>_<n>`), removes the original and spawns the copy in its place. Select the new yellow object: *Look of this object* has
+    the scale and, per sub-mesh, *Give it its own material* with the same slot / flag editor.
+  The Problems panel checks the changes (a sub-mesh that does not exist, a slot without a texture, a name clash ...). Verified in the game
+  (RE.md sections 60-62): `scripts/matprobe.ps1`, `scripts/looks-probe.ps1`.
 * The export writes them into `data\world.lua`; the runtime spawns and fills on `world.ready` and remembers it in the savegame's mod data, so a load never
   spawns or fills twice; a spawned object is marked for the savegame (objects are not by themselves).
 
