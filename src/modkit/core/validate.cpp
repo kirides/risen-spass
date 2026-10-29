@@ -797,6 +797,19 @@ void check_extras(Ctx& c) {
             if (!it.description.empty() && low == p2m::lower("ITEMDESC_" + it.name)) c.add(Severity::Warning, A, s.uid, subj, trf("the description of the item {0} has this id and wins", {it.name}));
         }
     }
+    for (auto& v : c.p.vegetation) {
+        const char* A = "Vegetation";
+        const std::string subj = v.entity_name.empty() ? v.entity : v.entity_name;
+        if (v.entity.empty()) c.add(Severity::Error, A, v.uid, subj, tr("the stroke names no vegetation layer"));
+        if (!(v.radius > 0 && v.radius <= 100000) || !std::isfinite(v.x) || !std::isfinite(v.y) || !std::isfinite(v.z))
+            c.add(Severity::Error, A, v.uid, subj, tr("the radius or the position is not a usable number"));
+        if (v.erase) continue;
+        if (v.meshes.empty()) c.add(Severity::Error, A, v.uid, subj, tr("choose the plants to scatter"));
+        if (!(v.density > 0 && v.density <= 200)) c.add(Severity::Error, A, v.uid, subj, tr("the density must be between 0 and 200 plants per 100 x 100 units"));
+        if (!(v.scale_min > 0 && v.scale_max >= v.scale_min && v.scale_max <= 20)) c.add(Severity::Error, A, v.uid, subj, tr("the scales must be positive and the largest not smaller than the smallest"));
+        const double plants = v.density * 3.14159265 * v.radius * v.radius / 10000.0;
+        if (plants > 20000) c.add(Severity::Warning, A, v.uid, subj, trf("this stroke scatters about {0} plants at every load: lower the density or the radius", {std::to_string(static_cast<long>(plants))}));
+    }
     std::map<std::string, int> wseen;
     for (auto& x : c.p.waters) {
         const char* A = "Water";

@@ -1095,6 +1095,16 @@ risen.world.set_sector("OutMain_Story_Chapter3_Lizards_Off", true)  -- World::Se
 (watch `save.after` / `load.after` / `session.start`). `is_save_allowed()` is false while a conversation is open; a save requested then crashed the game when the conversation had run a `Give`
 command (and so did the next new game): finish the conversation first (an `End` command as the last line of the info, or let the player leave it).
 
+## risen.vegetation: grass, bushes and plants of the world (RE.md section 64)
+```lua
+local veg = risen.entity.by_id("<id of the *_Vegetation entity>")   -- one per vegetation layer (the editor's World view lists them)
+risen.vegetation.info(veg)                                 -- true | nil, reason
+risen.vegetation.remove(veg, x, z, radius)                 -- every plant within the radius (all meshes)
+risen.vegetation.add(veg, { mesh = 0x00030000, x = x, y = y, z = z, yaw = 40, scale = 1.2, scale_v = 0.8, color = 0xFF154527 })
+risen.vegetation.update(veg)                               -- after a batch
+```
+The grid is rebuilt from the layer on every load: apply again on `world.ready`.
+
 ## risen.loc — localization overlay
 ```lua
 risen.loc.trace(true)                                 -- log every string id the game reads

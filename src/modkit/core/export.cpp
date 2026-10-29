@@ -476,6 +476,26 @@ json world_data(const Project& p) {
         teachers.push_back(e);
     }
     if (!teachers.empty()) w["teachers"] = teachers;
+    // grass painted with the brush: applied on every world.ready (the vegetation grid is rebuilt from the layer on every load)
+    json strokes = json::array();
+    for (auto& v : p.vegetation) {
+        json e = json::object();
+        e["id"] = v.entity;
+        if (!v.entity_name.empty()) e["name"] = v.entity_name;
+        e["mode"] = v.erase ? "erase" : "add";
+        e["position"] = json::array({v.x, v.y, v.z});
+        e["radius"] = v.radius;
+        if (!v.erase) {
+            e["density"] = v.density;
+            e["meshes"] = v.meshes;
+            e["seed"] = v.seed;
+            e["scale"] = json::array({v.scale_min, v.scale_max});
+            e["color"] = v.color;
+        }
+        e["world"] = world_of(p, v.world);
+        strokes.push_back(e);
+    }
+    if (!strokes.empty()) w["vegetation"] = strokes;
     return w;
 }
 

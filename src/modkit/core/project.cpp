@@ -709,6 +709,27 @@ json to_json(const Project& p) {
         }
         j["materials"] = a;
     }
+    if (!p.vegetation.empty()) {
+        json a = json::array();
+        for (auto& x : p.vegetation) {
+            json o = json::object();
+            o["uid"] = x.uid;
+            o["entity"] = x.entity;
+            put_str(o, "entity_name", x.entity_name);
+            if (x.erase) o["erase"] = true;
+            o["position"] = json::array({x.x, x.y, x.z});
+            o["radius"] = x.radius;
+            o["density"] = x.density;
+            if (!x.meshes.empty()) o["meshes"] = x.meshes;
+            o["seed"] = x.seed;
+            o["scale"] = json::array({x.scale_min, x.scale_max});
+            o["color"] = x.color;
+            put_str(o, "world", x.world);
+            put_str(o, "notes", x.notes);
+            a.push_back(o);
+        }
+        j["vegetation"] = a;
+    }
     if (!p.waters.empty()) {
         json a = json::array();
         for (auto& x : p.waters) {
@@ -1160,6 +1181,30 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
                 else if (k[0] == 'c' && v.is_number_integer()) x.channels[name] = v.get<int>();
             }
         }
+        r.get(e, "notes", x.notes);
+        return x;
+    });
+    read_list(j, "vegetation", p.vegetation, warnings, [](const Reader& r, const json& e) {
+        VegStroke x;
+        r.get_uid(e, x.uid);
+        r.get(e, "entity", x.entity);
+        r.get(e, "entity_name", x.entity_name);
+        r.get(e, "erase", x.erase);
+        if (auto it = e.find("position"); it != e.end() && it->is_array() && it->size() == 3)
+            for (size_t k = 0; k < 3; ++k)
+                if ((*it)[k].is_number()) (k == 0 ? x.x : k == 1 ? x.y : x.z) = (*it)[k].get<double>();
+        r.get(e, "radius", x.radius);
+        r.get(e, "density", x.density);
+        if (auto it = e.find("meshes"); it != e.end() && it->is_array())
+            for (auto& m : *it)
+                if (m.is_number_unsigned()) x.meshes.push_back(m.get<uint32_t>());
+        r.get(e, "seed", x.seed);
+        if (auto it = e.find("scale"); it != e.end() && it->is_array() && it->size() == 2 && (*it)[0].is_number() && (*it)[1].is_number()) {
+            x.scale_min = (*it)[0].get<double>();
+            x.scale_max = (*it)[1].get<double>();
+        }
+        if (auto it = e.find("color"); it != e.end() && it->is_number_unsigned()) x.color = it->get<uint32_t>();
+        r.get(e, "world", x.world);
         r.get(e, "notes", x.notes);
         return x;
     });

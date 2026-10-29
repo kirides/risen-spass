@@ -30,6 +30,7 @@ struct WorldEntity {
     uint32_t start = 0, end = 0;  // byte range of the record in the layer file
     TplKind kind = TplKind::Other;  // the template's kind, or derived from the entity's own property sets
     bool npc = false, inventory = false;  // has gCNPC_PS / gCInventory_PS
+    bool vegetation = false;              // has eCVegetation_PS: the grid of grass, bushes and plants of its layer (core/vegetation.h)
 
     float x() const { return matrix[12]; }
     float y() const { return matrix[13]; }

@@ -259,6 +259,10 @@
     X(inv_find_stack, L"Script.dll", "?FindStackIndex@PSInventory@@QEBAHAEBVTemplate@@H_N@Z", int (*)(const void* self, const void* tpl, int startIndex, bool skipEquipped), false) \
     X(inv_delete_items, L"Script.dll", "?DeleteItems@PSInventory@@QEAA_NHH@Z", bool (*)(void* self, int stack, int count), false) \
     X(inv_stack_amount, L"Script.dll", "?GetAmount@PSInventory@@QEBAHH@Z", int (*)(const void* self, int stack), false) \
+    X(veg_get_grid, L"Engine.dll", "?GetGrid@eCVegetation_PS@@QEBAPEAVeCVegetation_Grid@@XZ", void* (*)(const void* ps), false) \
+    X(veg_remove_region, L"Engine.dll", "?RemoveEntries@eCVegetation_Grid@@QEAAXAEBVbCVector2@@MPEBV?$bTObjArray@UeSVegetationMeshID@@@@@Z", void (*)(void* grid, const float* xz, float radius, const void* ids), false) \
+    X(veg_insert, L"Engine.dll", "?InsertEntry@eCVegetation_Grid@@QEAAXAEBUeSVegetationNodeEntry@@@Z", void (*)(void* grid, const void* entry), false) \
+    X(veg_update_bounds, L"Engine.dll", "?UpdateBounds@eCVegetation_PS@@QEAAXXZ", void (*)(void* ps), false) \
     X(ent_get_property_set, L"Engine.dll", "?GetPropertySet@eCEntity@@QEAAPEAVeCEntityPropertySet@@AEBVbCString@@@Z", void* (*)(void* self, const void* className), false) \
     X(acc_ctor_object, L"SharedBase.dll", "??0bCAccessorProperty@@QEAA@PEBVbCObjectBase@@@Z", void* (*)(void* self, const void* obj), false) \
     X(acc_next, L"SharedBase.dll", "??EbCAccessorProperty@@QEAAAEAV0@XZ", void* (*)(void* self), false) \

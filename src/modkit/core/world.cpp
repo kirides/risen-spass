@@ -89,6 +89,7 @@ std::shared_ptr<World> load_world(const GameData& g, const std::string& world, c
             for (const GSet& s : ge.sets) {
                 if (s.cls == "gCNPC_PS") e.npc = true;
                 else if (s.cls == "gCInventory_PS") e.inventory = true;
+                else if (s.cls == "eCVegetation_PS") e.vegetation = true;
                 // level meshes name a virtual path ("#G3:/data/raw/meshes/World//Harbour_01_L01._xmsh"): resources are found by the bare name (RE.md section 26)
                 else if (s.cls == "eCMesh_PS")
                     for (const p2m::Prop& pr : s.props)

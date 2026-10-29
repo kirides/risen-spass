@@ -361,6 +361,7 @@ TEST(gamedata_real_archives) {
 #include "mesh_edit_tests.inc"
 #include "looks_tests.inc"
 #include "water_tests.inc"
+#include "vegetation_tests.inc"
 #include "dialog_sim_tests.inc"
 #include "pack2project_tests.inc"
 #include "extras_tests.inc"

@@ -3104,6 +3104,41 @@ function gamevarApi.exists(name) end
 ---@return boolean removed
 function gamevarApi.remove(name) end
 
+---The vegetation of the world (grass, bushes, plants): the grid of an `eCVegetation_PS`, one entity per `*_Vegetation` layer (docs/RE.md section 64). The grid is rebuilt from the layer on
+---every world load and is not saved: apply changes again after every load (`world.ready`).
+---@class RisenVegetationApi
+local vegetationApi = {}
+
+---Whether the entity holds a vegetation grid. `true`, or `nil, reason`.
+---@param entity Entity
+---@return true|nil ok
+---@return string|nil reason
+function vegetationApi.info(entity) end
+
+---Takes every plant within `radius` of the point (x, z) out of the entity's grid (all meshes; `eCVegetation_Grid::RemoveEntries`). Call `update` after a batch. `true`, or `nil, reason`.
+---@param entity Entity
+---@param x number
+---@param z number
+---@param radius number 0 to 100000.
+---@return true|nil ok
+---@return string|nil reason
+function vegetationApi.remove(entity, x, z, radius) end
+
+---One plant in the entity's grid (`eCVegetation_Grid::InsertEntry`; the grid grows when the point is outside it). `mesh` is the mesh id of the vegetation (low 16 bits the type, high 16 bits the mesh slot of the
+---layer's vegetation, e.g. `0x00030000`), `yaw` the turn in degrees, `scale` the horizontal and `scale_v` the vertical scale (default `scale`), `color` ARGB (default `0xFF154527`, the dark green
+---many shipped plants carry). Call `update` after a batch. `true`, or `nil, reason`.
+---@param entity Entity
+---@param spec { mesh: integer, x: number, y: number, z: number, yaw?: number, scale?: number, scale_v?: number, color?: integer }
+---@return true|nil ok
+---@return string|nil reason
+function vegetationApi.add(entity, spec) end
+
+---Refreshes the bounds of the entity's vegetation after a batch of `add` / `remove` calls (`eCVegetation_PS::UpdateBounds`). `true`, or `nil, reason`.
+---@param entity Entity
+---@return true|nil ok
+---@return string|nil reason
+function vegetationApi.update(entity) end
+
 ---Session-level actions. `new_game`, `quick_load`, `quick_save` and `auto_save` are requests the engine performs on its
 ---next processing step: watch `session.start`, `load.after`, `save.after`.
 ---@class RisenWorldApi
@@ -5098,6 +5133,7 @@ function behaviorApi.failures() end
 ---@field combat RisenCombatApi
 ---@field gamevar RisenGamevarApi
 ---@field world RisenWorldApi
+---@field vegetation RisenVegetationApi
 ---@field camera RisenCameraApi
 ---@field math RisenMathApi
 ---@field random RisenRandomApi

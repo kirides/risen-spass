@@ -73,6 +73,7 @@ add_library(modkit_core STATIC
     core/spells.cpp
     core/tpl_inventory.cpp
     core/validate.cpp
+    core/vegetation.cpp
     core/water.cpp
     core/voice.cpp
     core/wizards.cpp
