@@ -95,3 +95,50 @@ TEST(material_slots_link_the_shader_to_its_textures) {
     std::printf("  %zu linked slots, %zu without a node\n", linked, lost);
     CHECK(linked > 400 && lost == 0);
 }
+
+TEST(material_edit_is_saved_validated_and_exported) {
+    auto g = game_data();
+    if (!g) {
+        std::printf("  (skipped: no --data)\n");
+        return;
+    }
+    Project p = load_showcase();
+    mk::MaterialEdit e;
+    e.uid = new_uid();
+    e.material = "ItWpn_SwordMisc_01_Diffuse_01._xmat";
+    e.slots["Normal"] = "my_normal_map_with_a_longer_name.tga";
+    e.props["eCShaderDefault.EnableSpecular"] = 0;
+    p.materials.push_back(e);
+    // the project file keeps it
+    const Project q = project_from_json(to_json(p));
+    CHECK(q.materials.size() == 1 && q.materials[0].slots.at("Normal") == "my_normal_map_with_a_longer_name.tga" && q.materials[0].props.at("eCShaderDefault.EnableSpecular") == 0);
+    // validation: fine as it is, an error for a slot without a sampler and for a material the game does not have
+    auto errors = [&](const Project& x) {
+        size_t n = 0;
+        for (auto& pr : validate(x, g.get()))
+            if (pr.area == "Materials" && pr.severity == Severity::Error) ++n;
+        return n;
+    };
+    CHECK(errors(q) == 0);
+    Project bad = q;
+    bad.materials[0].slots["Opacity"] = "x.tga";
+    CHECK(errors(bad) == 1);
+    bad = q;
+    bad.materials[0].material = "No_Such_Material._xmat";
+    CHECK(errors(bad) == 1);
+    // export: the game's material rewritten under its own name
+    const fs::path out = temp_dir("matexport") / "mods" / "m";
+    ExportOptions o;
+    o.project_dir = showcase_dir();
+    o.game = g.get();
+    const ExportResult r = export_mod(q, u8str(out), o);
+    CHECK(r.ok);
+    const fs::path file = out / "assets" / "ItWpn_SwordMisc_01_Diffuse_01._xmat";
+    CHECK(fs::exists(file));
+    if (fs::exists(file)) {
+        const mk::Material m = mk::Material::parse(read_text(file));
+        CHECK(m.sampler_images().size() == 2 && m.sampler_images()[1] == "my_normal_map_with_a_longer_name.tga");
+        CHECK(!m.objects[1].get_bool("EnableSpecular", true));
+    }
+    CHECK(read_text(out / "mod.toml").find("assets      = \"assets\"") != std::string::npos);
+}

@@ -11,6 +11,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include "core/material.h"
+
 namespace mk {
 
 using json = nlohmann::ordered_json;
@@ -364,6 +366,7 @@ struct Project {
     std::vector<LuaFile> lua_files;  // loaded in this order
     std::vector<StringRow> strings;
     std::vector<TemplatePatch> patches;
+    std::vector<MaterialEdit> materials;  // changed shipped materials (core/material.h)
     std::vector<DialogEdit> dialog_edits;
     std::vector<TeacherLimit> teachers;
     json editor = json::object();  // editor-only state (notes, view settings); exported with project.json

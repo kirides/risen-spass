@@ -136,6 +136,7 @@ add_executable(risen-modkit
     app/panels/settings_panel.cpp
     app/panels/spells_panel.cpp
     app/panels/world_panel.cpp
+    app/panels/material_ui.cpp
     app/render/gl_util.cpp
     app/render/mesh_preview.cpp
     app/render/mesh_renderer.cpp

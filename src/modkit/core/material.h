@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -48,6 +49,16 @@ struct MatSlot {
     int node = -1;         // index into Material::objects of the linked node, -1 when none / not found
 };
 
+// A change of a shipped material (the project's `materials` section): the image behind named shader slots and shader / resource properties.
+// Exported as a loose copy of the material under the same name (assets/<name>), which shadows the packed one (docs/RE.md sections 26 and 60).
+struct MaterialEdit {
+    std::string uid;
+    std::string material;                        // "ItWpn_SwordMisc_01_Diffuse_01._xmat"
+    std::map<std::string, std::string> slots;    // slot name ("Diffuse", "Normal", ...) -> the image name as a sampler writes it ("X.tga")
+    std::map<std::string, int> props;            // "eCShaderDefault.EnableSpecular" -> value (bool 0/1, int, enum number)
+    std::string notes;
+};
+
 struct Material {
     std::string header;  // the 0x28 bytes; the three sizes at 12, 16 and 20 are rewritten by write()
     std::vector<MatObject> objects;
@@ -67,5 +78,8 @@ struct Material {
     int slot_sampler(const MatSlot& slot, int depth = 0) const;
     std::string slot_image(const MatSlot& slot, int depth = 0) const;
 };
+
+// the edit applied to a parsed material; false with `error` set when a slot has no sampler behind it or a property does not exist / has another type
+bool apply_material_edit(Material& m, const MaterialEdit& e, std::string& error);
 
 }  // namespace mk

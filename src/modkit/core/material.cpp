@@ -303,4 +303,38 @@ std::string Material::slot_image(const MatSlot& slot, int depth) const {
     return img;
 }
 
+bool apply_material_edit(Material& m, const MaterialEdit& e, std::string& error) {
+    const auto slots = m.slots();
+    for (const auto& [name, image] : e.slots) {
+        int sampler = -1;
+        for (const auto& s : slots)
+            if (s.name == name) sampler = m.slot_sampler(s);
+        if (sampler < 0) {
+            error = "slot " + name + " has no texture sampler in " + e.material;
+            return false;
+        }
+        if (!m.objects[static_cast<size_t>(sampler)].set_string("ImageFilePath", image)) {
+            error = "the sampler behind " + name + " has no image path";
+            return false;
+        }
+    }
+    for (const auto& [key, value] : e.props) {
+        const auto dot = key.find('.');
+        bool done = false;
+        for (auto& o : m.objects) {
+            if (dot == std::string::npos || o.cls != key.substr(0, dot)) continue;
+            const std::string pn = key.substr(dot + 1);
+            const MatProp* p = o.find(pn);
+            if (!p) continue;
+            if (p->payload.size() == 1) done = o.set_bool(pn, value != 0) || done;
+            else done = o.set_int(pn, value) || done;
+        }
+        if (!done) {
+            error = "no property " + key + " (or not a number) in " + e.material;
+            return false;
+        }
+    }
+    return true;
+}
+
 }  // namespace mk

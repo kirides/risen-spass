@@ -25,7 +25,8 @@ struct GpuMesh {
     GLuint vao = 0, vbo = 0, ibo = 0;
     bool index32 = true;
     struct Sub {
-        std::string texture;  // compiled image name ("" = none)
+        std::string texture;   // compiled image name ("" = none)
+        std::string material;  // the sub-mesh's material, lower case ("x._xmat"; "" = none): the editor may show another diffuse image for it
         uint32_t first = 0, count = 0;
     };
     std::vector<Sub> subs;
@@ -45,6 +46,10 @@ public:
     bool failed(const std::string& name) const;
     // the texture of an image name, a white texture until it is ready or when it cannot be read
     GLuint texture(const std::string& name);
+    // the texture a sub-mesh is drawn with: the diffuse image of an edited material, else its own (main thread)
+    GLuint texture_of(const GpuMesh::Sub& sub);
+    // changed shipped materials in the editor: lower-case material name -> compiled diffuse image ("x._ximg"); main thread
+    void set_diffuse_overrides(std::unordered_map<std::string, std::string> m) { diffuse_override_ = std::move(m); }
     // the size of the picture the texture was made from (not of the level that was uploaded); false until it is ready
     bool texture_size(const std::string& name, int& width, int& height) const;
     // main thread: uploads finished work, at most `budget_ms` milliseconds
@@ -65,6 +70,7 @@ private:
         std::string name;
         std::unique_ptr<MeshData> mesh;
         std::vector<std::string> textures;  // per sub-mesh
+        std::vector<std::string> materials;  // per sub-mesh, lower case
         std::unique_ptr<ImageData> image;
         std::string error;
     };
@@ -77,6 +83,7 @@ private:
     std::shared_ptr<const GameData> game_;
     std::unordered_map<std::string, std::unique_ptr<GpuMesh>> meshes_;  // lower-case name
     std::unordered_map<std::string, GLuint> textures_;
+    std::unordered_map<std::string, std::string> diffuse_override_;
     std::unordered_map<std::string, std::pair<int, int>> texture_sizes_;
     std::unordered_map<std::string, bool> requested_;  // lower-case name -> failed
     GLuint white_ = 0;

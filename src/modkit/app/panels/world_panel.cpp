@@ -19,6 +19,7 @@
 #include "app/dragdrop.h"
 #include "app/editor_util.h"
 #include "common/pose.h"
+#include "app/panels/material_ui.h"
 #include "app/panels/panels.h"
 #include "app/pickers.h"
 #include "app/render/gl_util.h"
@@ -658,6 +659,7 @@ private:
         const ImVec2 avail = ImGui::GetContentRegionAvail();
         const int w = std::max(16, static_cast<int>(avail.x)), h = std::max(16, static_cast<int>(avail.y));
         sync_edits(app);
+        materials_.sync(app);
         if (boxes_dirty_) rebuild_boxes();
         if (overlay_dirty_) rebuild_overlay(app);
         // input first, so the frame shows this frame's camera
@@ -1492,6 +1494,10 @@ private:
             app.defer([&app, t] { app.select_in(kPanelBrowser, t); });
         }
         draw_world_edit(app, e);
+        if (selected_ < mesh_names_.size() && !mesh_names_[selected_].empty()) {
+            ImGui::SeparatorText(tr("Materials"));
+            materials_.draw(app, mesh_names_[selected_]);
+        }
         if (props_for_ != selected_) {
             props_ = entity_properties(*app.game, *world_, e);
             inv_ = e.inventory ? entity_inventory(*app.game, *world_, e) : std::vector<std::pair<std::string, int>>{};
@@ -1526,6 +1532,7 @@ private:
         }
     }
 
+    MaterialInspector materials_;
     std::shared_ptr<const World> world_;
     std::future<std::shared_ptr<World>> loading_;
     std::string loading_name_ = "World";

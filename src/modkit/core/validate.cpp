@@ -795,6 +795,29 @@ void check_extras(Ctx& c) {
             if (!it.description.empty() && low == p2m::lower("ITEMDESC_" + it.name)) c.add(Severity::Warning, A, s.uid, subj, trf("the description of the item {0} has this id and wins", {it.name}));
         }
     }
+    std::map<std::string, int> mseen;
+    for (auto& x : c.p.materials) {
+        const char* A = "Materials";
+        const std::string subj = x.material.empty() ? "(no material)" : x.material;
+        if (x.material.empty()) {
+            c.add(Severity::Error, A, x.uid, subj, tr("choose the material to change"));
+            continue;
+        }
+        if (++mseen[p2m::lower(x.material)] == 2) c.add(Severity::Error, A, x.uid, subj, tr("this material is changed twice: only one change per material is exported"));
+        if (x.slots.empty() && x.props.empty()) c.add(Severity::Warning, A, x.uid, subj, tr("the change does nothing"));
+        if (!c.g) continue;
+        if (!c.g->exists(x.material)) {
+            c.add(Severity::Error, A, x.uid, subj, tr("the game has no material with this name"));
+            continue;
+        }
+        try {
+            Material m = Material::parse(c.g->read(x.material));
+            std::string why;
+            if (!apply_material_edit(m, x, why)) c.add(Severity::Error, A, x.uid, subj, why);
+        } catch (const std::exception& e) {
+            c.add(Severity::Error, A, x.uid, subj, e.what());
+        }
+    }
     std::map<std::string, int> seen;
     for (auto& x : c.p.patches) {
         const char* A = "Patches";

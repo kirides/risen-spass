@@ -695,6 +695,19 @@ json to_json(const Project& p) {
         }
         j["patches"] = a;
     }
+    if (!p.materials.empty()) {
+        json a = json::array();
+        for (auto& x : p.materials) {
+            json o = json::object();
+            o["uid"] = x.uid;
+            o["material"] = x.material;
+            if (!x.slots.empty()) o["slots"] = x.slots;
+            if (!x.props.empty()) o["props"] = x.props;
+            put_str(o, "notes", x.notes);
+            a.push_back(o);
+        }
+        j["materials"] = a;
+    }
     if (!p.dialog_edits.empty()) {
         json a = json::array();
         for (auto& x : p.dialog_edits) {
@@ -1072,6 +1085,21 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
         r.get_uid(e, x.uid);
         r.get(e, "template", x.template_name);
         get_props(r, e, x.properties);
+        r.get(e, "notes", x.notes);
+        return x;
+    });
+    read_list(j, "materials", p.materials, warnings, [](const Reader& r, const json& e) {
+        MaterialEdit x;
+        r.get_uid(e, x.uid);
+        r.get(e, "material", x.material);
+        for (const char* k : {"slots", "props"}) {
+            auto it = e.find(k);
+            if (it == e.end() || !it->is_object()) continue;
+            for (auto& [name, v] : it->items()) {
+                if (k[0] == 's' && v.is_string()) x.slots[name] = v.get<std::string>();
+                else if (k[0] == 'p' && v.is_number_integer()) x.props[name] = v.get<int>();
+            }
+        }
         r.get(e, "notes", x.notes);
         return x;
     });

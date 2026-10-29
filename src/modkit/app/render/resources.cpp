@@ -196,6 +196,7 @@ void ResourceCache::worker() {
                     } catch (...) {
                     }
                     d.textures.push_back(tex);
+                    d.materials.push_back(p2m::lower(s.material));
                 }
             } else {
                 d.image = std::make_unique<ImageData>(decode_image(read(job.name)));
@@ -262,7 +263,7 @@ void ResourceCache::upload_mesh(Done& d) {
     g->index32 = m.index32;
     for (size_t i = 0; i < m.submeshes.size(); ++i) {
         const SubMesh& s = m.submeshes[i];
-        g->subs.push_back({i < d.textures.size() ? d.textures[i] : std::string(), s.first_index, s.index_count});
+        g->subs.push_back({i < d.textures.size() ? d.textures[i] : std::string(), i < d.materials.size() ? d.materials[i] : std::string(), s.first_index, s.index_count});
         g->triangles += s.index_count / 3;
     }
     g->box_min = {m.box_min[0], m.box_min[1], m.box_min[2]};
@@ -304,4 +305,14 @@ void ResourceCache::upload_texture(Done& d) {
     texture_sizes_[key_of(d.name)] = {static_cast<int>(img.width), static_cast<int>(img.height)};
 }
 
+}  // namespace mk::gfx
+
+namespace mk::gfx {
+GLuint ResourceCache::texture_of(const GpuMesh::Sub& sub) {
+    if (!diffuse_override_.empty() && !sub.material.empty()) {
+        auto it = diffuse_override_.find(sub.material);
+        if (it != diffuse_override_.end()) return texture(it->second);
+    }
+    return texture(sub.texture);
+}
 }  // namespace mk::gfx

@@ -664,7 +664,7 @@ std::map<std::string, std::string> render_mod(const Project& p) {
     if (!m.load_after.empty()) toml += "load_after  = " + toml_list(m.load_after) + "\n";
     if (!m.requires_mods.empty()) toml += "requires    = " + toml_list(m.requires_mods) + "\n";
     // the compiled resources are mounted from assets/ (audio files go to sounds/ and are compiled by the layer when a line uses them)
-    const bool resources = std::any_of(p.assets.begin(), p.assets.end(), [](const AssetFile& a) { return !is_raw_audio(a.file); });
+    const bool resources = !p.materials.empty() || std::any_of(p.assets.begin(), p.assets.end(), [](const AssetFile& a) { return !is_raw_audio(a.file); });
     toml += resources ? "assets      = \"assets\"\n" : "assets      = false\n";
     f["mod.toml"] = toml;
 
@@ -842,6 +842,21 @@ ExportResult export_mod(const Project& p, const std::string& out_dir, const Expo
                 icons.push_back({project_icon_name(p.mod.id, name), *pic});
             else
                 put("assets/" + picture_compiled_name(name), build_ximg(*pic, XimgKind::Texture, u8str(src.extension())));
+        }
+        // changed shipped materials: the game's file rewritten, under its own name (a loose file shadows the packed one)
+        for (const MaterialEdit& e : p.materials) {
+            if (!opts.game || !opts.game->exists(e.material)) {
+                r.errors.push_back("material " + e.material + ": " + (opts.game ? "the game has no such material" : "the game data is not loaded"));
+                continue;
+            }
+            try {
+                Material m = Material::parse(opts.game->read(e.material));
+                std::string why;
+                if (!apply_material_edit(m, e, why)) throw std::runtime_error(why);
+                put("assets/" + e.material, m.write());
+            } catch (const std::exception& ex) {
+                r.errors.push_back("material " + e.material + ": " + ex.what());
+            }
         }
         if (!icons.empty()) {
             std::sort(icons.begin(), icons.end(), [](const auto& a, const auto& b) { return a.first < b.first; });

@@ -93,7 +93,7 @@ void MeshRenderer::draw(const GpuMesh& mesh, const glm::mat4& model, ResourceCac
     prog_.set("tint", tint);
     glBindVertexArray(mesh.vao);
     for (auto& s : mesh.subs) {
-        glBindTexture(GL_TEXTURE_2D, res.texture(s.texture));
+        glBindTexture(GL_TEXTURE_2D, res.texture_of(s));
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(s.count), mesh.index32 ? GL_UNSIGNED_INT : GL_UNSIGNED_SHORT,
                        reinterpret_cast<void*>(static_cast<intptr_t>(s.first) * (mesh.index32 ? 4 : 2)));
     }
