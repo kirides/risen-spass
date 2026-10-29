@@ -264,7 +264,7 @@ author = "risen-spass"
 "Create and link" = "Erstellen und verknüpfen"
 # src/modkit/app/node_canvas.cpp:109 (+1)
 "Create" = "Erstellen"
-# src/modkit/app/node_canvas.cpp:390 (+4)
+# src/modkit/app/node_canvas.cpp:390 (+5)
 "Duplicate" = "Duplizieren"
 # src/modkit/app/palette.cpp:48
 "Shipped {0}" = "Mitgeliefert: {0}"
@@ -1792,99 +1792,105 @@ author = "risen-spass"
 "A mod layer switches its members on and off as a whole (Layers panel, the Layer node of the event graphs). Without one the object is always there." = "Eine Mod-Ebene schaltet ihre Mitglieder als Ganzes ein und aus (Bereich Ebenen, der Ebenen-Knoten der Ereignisgraphen). Ohne Ebene ist das Objekt immer da."
 # src/modkit/app/panels/world_panel.cpp:529
 "Edit layer" = "Ebene bearbeiten"
-# src/modkit/app/panels/world_panel.cpp:746
+# src/modkit/app/panels/world_panel.cpp:747
 "camera %.0f %.0f %.0f   speed %.0f   %zu meshes drawn" = "Kamera %.0f %.0f %.0f   Geschwindigkeit %.0f   %zu Meshes gezeichnet"
-# src/modkit/app/panels/world_panel.cpp:848
+# src/modkit/app/panels/world_panel.cpp:849
 "Nothing under the cursor to place on (the sky?)" = "Unter dem Cursor ist nichts zum Platzieren (der Himmel?)"
-# src/modkit/app/panels/world_panel.cpp:858
+# src/modkit/app/panels/world_panel.cpp:859
 "Choose the template of the new NPC first" = "Wähle zuerst die Vorlage des neuen NPCs"
-# src/modkit/app/panels/world_panel.cpp:861
+# src/modkit/app/panels/world_panel.cpp:862
 "Choose the item to place first" = "Wähle zuerst den Gegenstand zum Platzieren"
-# src/modkit/app/panels/world_panel.cpp:884
-"Move %s here" = "%s hierher verschieben"
 # src/modkit/app/panels/world_panel.cpp:885
-"A new NPC of %s here" = "Ein neuer NPC von %s hier"
+"Move %s here" = "%s hierher verschieben"
 # src/modkit/app/panels/world_panel.cpp:886
-"Spawn %s here" = "%s hier spawnen"
+"A new NPC of %s here" = "Ein neuer NPC von %s hier"
 # src/modkit/app/panels/world_panel.cpp:887
+"Spawn %s here" = "%s hier spawnen"
+# src/modkit/app/panels/world_panel.cpp:888
 "%s cannot be placed in the world" = "%s kann nicht in der Welt platziert werden"
-# src/modkit/app/panels/world_panel.cpp:903 (+1)
+# src/modkit/app/panels/world_panel.cpp:904 (+1)
 "Placed {0}" = "{0} platziert"
-# src/modkit/app/panels/world_panel.cpp:915
+# src/modkit/app/panels/world_panel.cpp:916
 "Placed {0} (a new NPC: name, inventory and routine in the NPCs panel)" = "{0} platziert (ein neuer NPC: Name, Inventar und Tagesablauf im Bereich NPCs)"
-# src/modkit/app/panels/world_panel.cpp:1110
+# src/modkit/app/panels/world_panel.cpp:941
+"Copied {0}" = "{0} kopiert"
+# src/modkit/app/panels/world_panel.cpp:956
+"Placed a copy of {0}" = "Kopie von {0} platziert"
+# src/modkit/app/panels/world_panel.cpp:1173
 "Select a placed NPC, a spawned object or a moved entity of the project to align it" = "Wähle einen platzierten NPC, ein gespawntes Objekt oder eine verschobene Entität des Projekts, um sie auszurichten"
-# src/modkit/app/panels/world_panel.cpp:1182
+# src/modkit/app/panels/world_panel.cpp:1245
 "Nothing below {0} to align it with (meshes further than the draw distance are not drawn)" = "Unter {0} ist nichts, woran es sich ausrichten ließe (Meshes jenseits der Zeichenentfernung werden nicht gezeichnet)"
-# src/modkit/app/panels/world_panel.cpp:1188
+# src/modkit/app/panels/world_panel.cpp:1251
 "{0} already rests on the mesh below" = "{0} liegt schon auf dem Mesh darunter"
-# src/modkit/app/panels/world_panel.cpp:1194
+# src/modkit/app/panels/world_panel.cpp:1257
 "Placed {0} with the mesh below (height {1})" = "{0} auf dem Mesh darunter platziert (Höhe {1})"
-# src/modkit/app/panels/world_panel.cpp:1194
+# src/modkit/app/panels/world_panel.cpp:1257
 "Aligned {0} with the mesh below (height {1})" = "{0} am Mesh darunter ausgerichtet (Höhe {1})"
-# src/modkit/app/panels/world_panel.cpp:1199
+# src/modkit/app/panels/world_panel.cpp:1262
 "Align with mesh" = "Am Mesh ausrichten"
-# src/modkit/app/panels/world_panel.cpp:1200
+# src/modkit/app/panels/world_panel.cpp:1263
 "Lets the object down (or up) onto the surface below it: the table under an apple, the ground under a crate. Its lowest point goes onto the highest point of what is below its footprint. Key: End (in the view)." = "Setzt das Objekt auf die Fläche darunter ab (oder hebt es hinauf): den Tisch unter einen Apfel, den Boden unter eine Kiste. Sein tiefster Punkt kommt auf den höchsten Punkt dessen, was unter seiner Grundfläche liegt. Taste: Ende (in der Ansicht)."
-# src/modkit/app/panels/world_panel.cpp:1209
+# src/modkit/app/panels/world_panel.cpp:1272
 "placed NPC of the project (%s)" = "platzierter NPC des Projekts (%s)"
-# src/modkit/app/panels/world_panel.cpp:1211 (+2)
+# src/modkit/app/panels/world_panel.cpp:1274 (+2)
 "position" = "Position"
-# src/modkit/app/panels/world_panel.cpp:1217 (+1)
+# src/modkit/app/panels/world_panel.cpp:1280 (+1)
 "world" = "Welt"
-# src/modkit/app/panels/world_panel.cpp:1219
+# src/modkit/app/panels/world_panel.cpp:1282
 "Edit in NPCs" = "In NPCs bearbeiten"
-# src/modkit/app/panels/world_panel.cpp:1228
+# src/modkit/app/panels/world_panel.cpp:1291
 "spawned once per savegame by the mod" = "von der Mod einmal pro Spielstand gespawnt"
-# src/modkit/app/panels/world_panel.cpp:1233 (+1)
+# src/modkit/app/panels/world_panel.cpp:1296 (+1)
 "Amount" = "Menge"
-# src/modkit/app/panels/world_panel.cpp:1244 (+1)
+# src/modkit/app/panels/world_panel.cpp:1307 (+1)
 "yaw, pitch, roll" = "Gieren, Nicken, Rollen"
-# src/modkit/app/panels/world_panel.cpp:1254
+# src/modkit/app/panels/world_panel.cpp:1319
 "Remove from the project" = "Aus dem Projekt entfernen"
-# src/modkit/app/panels/world_panel.cpp:1260
+# src/modkit/app/panels/world_panel.cpp:1325
 "an entity of the world, moved by the mod on every world.ready" = "eine Entität der Welt, von der Mod bei jedem world.ready verschoben"
-# src/modkit/app/panels/world_panel.cpp:1261
+# src/modkit/app/panels/world_panel.cpp:1326
 "id %s" = "Id %s"
-# src/modkit/app/panels/world_panel.cpp:1277
+# src/modkit/app/panels/world_panel.cpp:1342
 "Back to its place (drop the move)" = "Zurück an seinen Platz (Verschiebung verwerfen)"
-# src/modkit/app/panels/world_panel.cpp:1297
+# src/modkit/app/panels/world_panel.cpp:1362
 "Items this mod adds" = "Gegenstände, die diese Mod hinzufügt"
-# src/modkit/app/panels/world_panel.cpp:1302
+# src/modkit/app/panels/world_panel.cpp:1367
 "Add items to this container" = "Gegenstände zu diesem Behälter hinzufügen"
-# src/modkit/app/panels/world_panel.cpp:1313
+# src/modkit/app/panels/world_panel.cpp:1378
 "Put once per savegame into this entity (risen.entity.by_id)." = "Einmal pro Spielstand in diese Entität gelegt (risen.entity.by_id)."
-# src/modkit/app/panels/world_panel.cpp:1318
+# src/modkit/app/panels/world_panel.cpp:1383
 "Remove these additions" = "Diese Ergänzungen entfernen"
-# src/modkit/app/panels/world_panel.cpp:1329
+# src/modkit/app/panels/world_panel.cpp:1394
 "Change it in the world" = "In der Welt ändern"
-# src/modkit/app/panels/world_panel.cpp:1335
+# src/modkit/app/panels/world_panel.cpp:1400
 "Removed by this mod." = "Von dieser Mod entfernt."
-# src/modkit/app/panels/world_panel.cpp:1337
+# src/modkit/app/panels/world_panel.cpp:1402
 "Keep it" = "Behalten"
-# src/modkit/app/panels/world_panel.cpp:1344
+# src/modkit/app/panels/world_panel.cpp:1409
 "Moved by this mod." = "Von dieser Mod verschoben."
-# src/modkit/app/panels/world_panel.cpp:1346
+# src/modkit/app/panels/world_panel.cpp:1411
 "Edit the move" = "Verschiebung bearbeiten"
-# src/modkit/app/panels/world_panel.cpp:1352
+# src/modkit/app/panels/world_panel.cpp:1417
 "Move or turn it" = "Verschieben oder drehen"
-# src/modkit/app/panels/world_panel.cpp:1368
+# src/modkit/app/panels/world_panel.cpp:1433
 "Drag the gizmo (move / turn) or type the new pose" = "Ziehe das Gizmo (verschieben / drehen) oder tippe die neue Lage ein"
-# src/modkit/app/panels/world_panel.cpp:1371
+# src/modkit/app/panels/world_panel.cpp:1436
 "Remove it from the world" = "Aus der Welt entfernen"
-# src/modkit/app/panels/world_panel.cpp:1381
+# src/modkit/app/panels/world_panel.cpp:1440
+"Place a copy" = "Kopie platzieren"
+# src/modkit/app/panels/world_panel.cpp:1442
 "An NPC: his routine moves him again, and removing him can break quests." = "Ein NPC: sein Tagesablauf bewegt ihn wieder, und sein Entfernen kann Quests zerstören."
-# src/modkit/app/panels/world_panel.cpp:1451
+# src/modkit/app/panels/world_panel.cpp:1512
 "Click an entity in the view, or find one by name." = "Klicke eine Entität in der Ansicht an oder suche eine nach Namen."
-# src/modkit/app/panels/world_panel.cpp:1454
+# src/modkit/app/panels/world_panel.cpp:1515
 "Colours: the kind of the entity's template (see Show). Magenta: the project's placed NPCs, yellow: its spawns; members of a mod layer have the layer's colour (see Mod layers). Drag the thin bar left of this panel to change its width." = "Farben: die Art der Vorlage der Entität (siehe Anzeigen). Magenta: die platzierten NPCs des Projekts, Gelb: seine Spawns; Mitglieder einer Mod-Ebene haben die Farbe der Ebene (siehe Mod-Ebenen). Ziehe die dünne Leiste links von diesem Bereich, um seine Breite zu ändern."
-# src/modkit/app/panels/world_panel.cpp:1460
+# src/modkit/app/panels/world_panel.cpp:1521
 "(NPC)" = "(NPC)"
-# src/modkit/app/panels/world_panel.cpp:1481
+# src/modkit/app/panels/world_panel.cpp:1542
 "Appears" = "Erscheint"
-# src/modkit/app/panels/world_panel.cpp:1484
+# src/modkit/app/panels/world_panel.cpp:1545
 "Copy id" = "Id kopieren"
-# src/modkit/app/panels/world_panel.cpp:1486
+# src/modkit/app/panels/world_panel.cpp:1547
 "Copy position" = "Position kopieren"
 # src/modkit/app/pickers.cpp:70
 "No template with this name in the game data or the project" = "Keine Vorlage mit diesem Namen in den Spieldaten oder im Projekt"

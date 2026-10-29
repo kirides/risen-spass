@@ -697,6 +697,7 @@ private:
         if (const ui::DragTemplate* d = ui::drop_target(place_kinds(), placed)) dropped = *d;
         if (hovered && ui::dragging()) drop_preview(*ui::dragging());
         if (hovered && ImGui::IsKeyPressed(ImGuiKey_F) && selected_ < world_->entities.size()) fly_to(world_->entities[selected_]);
+        if (hovered && !ImGui::IsMouseDown(ImGuiMouseButton_Right)) view_shortcuts(app);
         if (hovered && ImGui::IsKeyPressed(ImGuiKey_End) && !proj_sel_.empty()) settle_req_ = proj_sel_;
         // align with mesh: asked for by the button / End, or after a placement (once the object's mesh is there, two seconds at most)
         if (!settle_req_.empty()) {
@@ -927,6 +928,68 @@ private:
         after_place(app, sp.uid, trf("Placed {0}", {tpl}));
         settle_auto_ = sp.uid;  // onto the surface with its lowest point once its mesh is loaded
         settle_wait_ = 0;
+    }
+
+    // a copy of one of the project's spawns, a little aside, selected
+    void duplicate_spawn(App& app, const std::string& uid) {
+        for (size_t i = 0; i < app.project.world.spawns.size(); ++i) {
+            if (app.project.world.spawns[i].uid != uid) continue;
+            WorldSpawn sp = app.project.world.spawns[i];
+            sp.uid = new_uid();
+            sp.position[0] += 120;
+            app.project.world.spawns.push_back(sp);
+            after_place(app, sp.uid, trf("Copied {0}", {sp.template_name}));
+            return;
+        }
+    }
+    // a world entity's template placed again as a new object of the project (same pose, a little aside)
+    bool copy_entity(App& app, const WorldEntity& e) {
+        const TemplateInfo* t = e.template_name.empty() ? nullptr : app.game->tpl(e.template_name);
+        if (!t || !place_kinds_has(t->kind)) return false;
+        WorldSpawn sp;
+        sp.uid = new_uid();
+        sp.template_name = e.template_name;
+        sp.position = {e.x() + 120, e.y(), e.z()};
+        sp.rotation = {std::round(e.yaw()), 0, 0};
+        sp.world = stamp(app);
+        app.project.world.spawns.push_back(sp);
+        after_place(app, sp.uid, trf("Placed a copy of {0}", {e.template_name}));
+        return true;
+    }
+    static bool place_kinds_has(TplKind k) {
+        return k == TplKind::Item || k == TplKind::Recipe || k == TplKind::Object || k == TplKind::Interactive || k == TplKind::Effect;
+    }
+    void remove_entity(App& app, const WorldEntity& e) {
+        for (auto& r : app.project.world.removals)
+            if (r.guid == e.guid) return;
+        EntityRef r;
+        r.uid = new_uid();
+        r.guid = e.guid;
+        r.entity_name = e.name;
+        r.layer = world_->layers[e.layer].name;
+        r.world = stamp(app);
+        app.project.world.removals.push_back(r);
+        app.touch();
+    }
+    // Delete / Ctrl+D in the view: the selected project spawn or world entity
+    void view_shortcuts(App& app) {
+        const bool del = ImGui::IsKeyPressed(ImGuiKey_Delete, false);
+        const bool dup = ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false);
+        if (!del && !dup) return;
+        if (!proj_sel_.empty()) {
+            auto& v = app.project.world.spawns;
+            if (del && std::any_of(v.begin(), v.end(), [&](const WorldSpawn& x) { return x.uid == proj_sel_; })) {
+                v.erase(std::remove_if(v.begin(), v.end(), [&](const WorldSpawn& x) { return x.uid == proj_sel_; }), v.end());
+                proj_sel_.clear();
+                overlay_dirty_ = true;
+                app.touch();
+            } else if (dup) {
+                duplicate_spawn(app, proj_sel_);
+            }
+        } else if (selected_ < world_->entities.size()) {
+            if (del) remove_entity(app, world_->entities[selected_]);
+            else copy_entity(app, world_->entities[selected_]);
+        }
     }
 
     Vec3* project_position(App& app, const std::string& uid) {
@@ -1251,6 +1314,8 @@ private:
                 overlay_dirty_ = true;
                 ch = true;
             }
+            if (ImGui::Button(tr("Duplicate"))) duplicate_spawn(app, s.uid);
+            ImGui::SameLine();
             if (ImGui::Button(tr("Remove from the project"))) remove = s.uid;
         }
         std::string drop;
@@ -1368,15 +1433,11 @@ private:
             app.status(tr("Drag the gizmo (move / turn) or type the new pose"));
         }
         ImGui::SameLine();
-        if (ImGui::SmallButton(tr("Remove it from the world"))) {
-            EntityRef r;
-            r.uid = new_uid();
-            r.guid = e.guid;
-            r.entity_name = e.name;
-            r.layer = world_->layers[e.layer].name;
-            r.world = stamp(app);
-            rem.push_back(r);
-            app.touch();
+        if (ImGui::SmallButton(tr("Remove it from the world"))) remove_entity(app, e);
+        const TemplateInfo* ct = e.template_name.empty() ? nullptr : app.game->tpl(e.template_name);
+        if (ct && place_kinds_has(ct->kind)) {
+            ImGui::SameLine();
+            if (ImGui::SmallButton(tr("Place a copy"))) copy_entity(app, e);
         }
         if (e.npc) ImGui::TextDisabled("%s", tr("An NPC: his routine moves him again, and removing him can break quests."));
     }
