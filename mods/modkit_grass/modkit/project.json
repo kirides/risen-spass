@@ -1,0 +1,73 @@
+{
+  "format": "risen-modkit-project",
+  "format_version": 1,
+  "mod": {
+    "id": "modkit_grass",
+    "name": "risen-modkit grass example",
+    "version": "1.0.0",
+    "author": "risen-spass",
+    "description": "Plants painted with the brush: the plants at the start are erased in a circle and new ones scattered on the ground (docs/RE.md section 64). Checked live with scripts/grass-probe.ps1.",
+    "languages": [
+      "English"
+    ]
+  },
+  "items": [],
+  "item_groups": [],
+  "recipes": [],
+  "npc_templates": [],
+  "npcs": [],
+  "dialogs": [],
+  "quests": [],
+  "world": {
+    "world": "World",
+    "spawns": [],
+    "containers": [],
+    "removals": [],
+    "moves": []
+  },
+  "assets": [],
+  "vegetation": [
+    {
+      "uid": "44444444444444444444444444444441",
+      "entity": "777ab89a-c9e2-410c-bc0e-dd6f5ba98157",
+      "entity_name": "Game_Start_Vegetation",
+      "erase": true,
+      "position": [
+        -38400.0,
+        0.0,
+        -5900.0
+      ],
+      "radius": 1500.0,
+      "density": 6.0,
+      "seed": 1,
+      "scale": [
+        0.8,
+        1.4
+      ],
+      "color": 4279584039
+    },
+    {
+      "uid": "44444444444444444444444444444442",
+      "entity": "777ab89a-c9e2-410c-bc0e-dd6f5ba98157",
+      "entity_name": "Game_Start_Vegetation",
+      "position": [
+        -38400.0,
+        0.0,
+        -5900.0
+      ],
+      "radius": 800.0,
+      "density": 10.0,
+      "meshes": [
+        196608,
+        262144
+      ],
+      "seed": 3,
+      "scale": [
+        1.0,
+        1.8
+      ],
+      "color": 4279584039
+    }
+  ],
+  "editor": {}
+}

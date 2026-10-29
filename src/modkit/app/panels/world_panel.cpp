@@ -21,6 +21,7 @@
 #include "common/pose.h"
 #include "app/panels/material_ui.h"
 #include "app/panels/panels.h"
+#include "core/vegetation.h"
 #include "core/water.h"
 #include "app/pickers.h"
 #include "app/render/gl_util.h"
@@ -301,6 +302,8 @@ private:
         ImGui::RadioButton(tr("Place item / object"), &mode_, 2);
         ImGui::SameLine();
         if (ImGui::RadioButton(tr("Paint water"), &mode_, 3)) overlay_dirty_ = true;
+        ImGui::SameLine();
+        if (ImGui::RadioButton(tr("Paint grass"), &mode_, 4)) overlay_dirty_ = true;
         if (mode_ == 1) {
             ImGui::SameLine();
             ImGui::SetNextItemWidth(200);
@@ -322,6 +325,8 @@ private:
             }
         } else if (mode_ == 3) {
             draw_water_tools(app);
+        } else if (mode_ == 4) {
+            draw_grass_tools(app);
         } else if (mode_ == 2) {
             ImGui::SameLine();
             ui::template_picker("##itemt", place_item_, app.game.get(), {TplKind::Item, TplKind::Recipe, TplKind::Object, TplKind::Interactive, TplKind::Effect},
@@ -342,6 +347,141 @@ private:
         ImGui::RadioButton(tr("turn"), &gizmo_op_, 1);
         ImGui::TextDisabled(tr("right mouse: look, WASD/QE: move, wheel: speed, click: %s, F: focus, End: align with mesh, gizmo: move / turn the selected project object"),
                             mode_ == 0 ? tr("select") : tr("place on the ground"));
+    }
+
+    // ---- Paint grass: the strokes of the project (core/vegetation.h) over the game's vegetation layers ----
+    struct VegLayer {
+        size_t entity = 0;  // index into world_->entities
+        std::string name;   // the layer's name
+        VegetationInfo info;
+    };
+    void load_veg_layers(App& app) {
+        if (veg_loaded_ || !world_) return;
+        veg_loaded_ = true;
+        for (size_t i = 0; i < world_->entities.size(); ++i) {
+            const WorldEntity& e = world_->entities[i];
+            if (!e.vegetation) continue;
+            try {
+                if (auto v = read_vegetation(app.game->read_path(world_->layers[e.layer].path))) veg_layers_.push_back({i, world_->layers[e.layer].name, std::move(*v)});
+            } catch (const std::exception&) {
+            }
+        }
+        std::sort(veg_layers_.begin(), veg_layers_.end(), [](const VegLayer& a, const VegLayer& b) { return a.name < b.name; });
+    }
+    // the vegetation layer whose grid covers the point (the nearest cell otherwise)
+    int veg_layer_at(double x, double z) const {
+        int best = -1;
+        double best_d = 1e30;
+        for (size_t i = 0; i < veg_layers_.size(); ++i) {
+            const auto& in = veg_layers_[i].info;
+            const double d = in.node_dimension > 0 ? in.node_dimension : 1000;
+            const double cx = x / d, cz = z / d;
+            const double dx = std::max({in.rect[0] - cx, 0.0, cx - in.rect[2]}), dz = std::max({in.rect[1] - cz, 0.0, cz - in.rect[3]});
+            const double dist = dx * dx + dz * dz;
+            if (dist < best_d) {
+                best_d = dist;
+                best = static_cast<int>(i);
+            }
+        }
+        return best;
+    }
+    void pick_default_plants() {
+        veg_pick_.clear();
+        if (veg_cur_ < 0 || veg_cur_ >= static_cast<int>(veg_layers_.size())) return;
+        std::vector<std::pair<uint32_t, uint32_t>> by;  // entries, id
+        for (auto& [id, n] : veg_layers_[static_cast<size_t>(veg_cur_)].info.per_mesh) by.push_back({n, id});
+        std::sort(by.rbegin(), by.rend());
+        for (size_t i = 0; i < by.size() && i < 3; ++i) veg_pick_.insert(by[i].second);
+    }
+    void draw_grass_tools(App& app) {
+        load_veg_layers(app);
+        ImGui::SameLine();
+        ImGui::RadioButton(tr("add"), &veg_mode_, 0);
+        ImGui::SameLine();
+        ImGui::RadioButton(tr("erase"), &veg_mode_, 1);
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(80);
+        float r = static_cast<float>(veg_radius_);
+        if (ImGui::DragFloat(tr("radius"), &r, 5.0f, 20.0f, 5000.0f, "%.0f")) veg_radius_ = r;
+        if (veg_mode_ == 0) {
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(70);
+            float d = static_cast<float>(veg_density_);
+            if (ImGui::DragFloat(tr("density"), &d, 0.1f, 0.1f, 100.0f, "%.1f")) veg_density_ = d;
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(110);
+            float sc[2] = {static_cast<float>(veg_scale_[0]), static_cast<float>(veg_scale_[1])};
+            if (ImGui::DragFloat2(tr("size"), sc, 0.01f, 0.1f, 5.0f, "%.2f")) {
+                veg_scale_ = {sc[0], std::max(sc[0], sc[1])};
+            }
+        }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(170);
+        const bool have = veg_cur_ >= 0 && veg_cur_ < static_cast<int>(veg_layers_.size());
+        if (ImGui::BeginCombo("##veglayer", have ? veg_layers_[static_cast<size_t>(veg_cur_)].name.c_str() : tr("vegetation layer"))) {
+            for (size_t i = 0; i < veg_layers_.size(); ++i)
+                if (ImGui::Selectable(veg_layers_[i].name.c_str(), static_cast<int>(i) == veg_cur_)) {
+                    veg_cur_ = static_cast<int>(i);
+                    pick_default_plants();
+                }
+            ImGui::EndCombo();
+        }
+        if (have && veg_mode_ == 0) {
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(160);
+            if (ImGui::BeginCombo("##vegplants", trf("{0} plants chosen", {std::to_string(veg_pick_.size())}).c_str())) {
+                for (auto& m : veg_layers_[static_cast<size_t>(veg_cur_)].info.meshes) {
+                    const auto cnt = veg_layers_[static_cast<size_t>(veg_cur_)].info.per_mesh.find(m.id);
+                    bool on = veg_pick_.count(m.id) != 0;
+                    const std::string label = m.path + "  (" + std::to_string(cnt == veg_layers_[static_cast<size_t>(veg_cur_)].info.per_mesh.end() ? 0u : cnt->second) + ")##" + std::to_string(m.id);
+                    if (ImGui::Checkbox(label.c_str(), &on)) {
+                        if (on) veg_pick_.insert(m.id);
+                        else veg_pick_.erase(m.id);
+                    }
+                }
+                ImGui::EndCombo();
+            }
+        }
+        if (!app.project.vegetation.empty()) {
+            ImGui::SameLine();
+            ImGui::TextDisabled(tr("%zu strokes"), app.project.vegetation.size());
+            ImGui::SameLine();
+            if (ImGui::Button(tr("Undo stroke"))) {
+                app.project.vegetation.pop_back();
+                overlay_dirty_ = true;
+                app.touch();
+            }
+        }
+    }
+    void add_stroke(App& app, const Vec3& pos) {
+        load_veg_layers(app);
+        if (veg_layers_.empty()) return app.status(tr("This world has no vegetation layers"));
+        // the layer under the brush, unless one was chosen
+        if (veg_cur_ < 0) {
+            veg_cur_ = std::max(0, veg_layer_at(pos[0], pos[2]));
+            pick_default_plants();
+        }
+        const VegLayer& L = veg_layers_[static_cast<size_t>(veg_cur_)];
+        if (veg_mode_ == 0 && veg_pick_.empty()) return app.status(tr("Choose the plants to scatter first"));
+        VegStroke s;
+        s.uid = new_uid();
+        s.entity = world_->entities[L.entity].guid;
+        s.entity_name = L.name;
+        s.erase = veg_mode_ == 1;
+        s.x = std::round(pos[0]);
+        s.y = std::round(pos[1]);
+        s.z = std::round(pos[2]);
+        s.radius = veg_radius_;
+        s.density = veg_density_;
+        s.meshes.assign(veg_pick_.begin(), veg_pick_.end());
+        s.seed = static_cast<int>(app.project.vegetation.size()) * 7919 + 1;
+        s.scale_min = veg_scale_[0];
+        s.scale_max = veg_scale_[1];
+        s.world = stamp(app);
+        app.project.vegetation.push_back(s);
+        overlay_dirty_ = true;
+        app.touch();
+        app.status(s.erase ? trf("Erased the plants of {0} within {1} units", {L.name, p2m::fmt_g(s.radius)}) : trf("Painted {0}: about {1} plants at every load", {L.name, std::to_string(static_cast<long>(s.density * 3.14159265 * s.radius * s.radius / 10000.0))}));
     }
 
     // Paint water: clicks on the ground add the outline's points (the height is the first one's), Finish makes the body; existing bodies are edited here
@@ -743,6 +883,17 @@ private:
                 overlay_.line(to_gl(static_cast<float>(a[0]), static_cast<float>(wb.height), static_cast<float>(a[1])), to_gl(static_cast<float>(b2[0]), static_cast<float>(wb.height), static_cast<float>(b2[1])), c);
             }
         }
+        // grass strokes: a circle on the ground height of the click, green = plants added, red = erased
+        for (auto& st : app.project.vegetation) {
+            if (!here(app, st.world)) continue;
+            const ImU32 c = st.erase ? IM_COL32(255, 90, 70, 255) : IM_COL32(110, 230, 90, 255);
+            const int seg = 28;
+            for (int i = 0; i < seg; ++i) {
+                const double a0 = 6.2831853 * i / seg, a1 = 6.2831853 * (i + 1) / seg;
+                overlay_.line(to_gl(static_cast<float>(st.x + std::cos(a0) * st.radius), static_cast<float>(st.y + 6), static_cast<float>(st.z + std::sin(a0) * st.radius)),
+                              to_gl(static_cast<float>(st.x + std::cos(a1) * st.radius), static_cast<float>(st.y + 6), static_cast<float>(st.z + std::sin(a1) * st.radius)), c);
+            }
+        }
         for (size_t i = 0; i < water_pts_.size(); ++i) {
             const glm::vec3 a = to_gl(static_cast<float>(water_pts_[i][0]), static_cast<float>(water_h_), static_cast<float>(water_pts_[i][1]));
             overlay_.cross(a, 40, IM_COL32(0, 255, 255, 255));
@@ -975,6 +1126,8 @@ private:
         } else if (mode_ == 1) {
             if (place_template_.empty()) return app.status(tr("Choose the template of the new NPC first"));
             if (auto pos = ground_pos(app, u, v, w, h, vp)) place_npc_ = new_npc(app, place_template_, *pos);
+        } else if (mode_ == 4) {
+            if (auto pos = ground_pos(app, u, v, w, h, vp)) add_stroke(app, *pos);
         } else if (mode_ == 3) {
             if (auto pos = ground_pos(app, u, v, w, h, vp)) {
                 if (water_pts_.empty()) water_h_ = (*pos)[1];
@@ -1286,7 +1439,7 @@ private:
     void draw_project_meshes(App& app, const glm::mat4& vp, const std::string& skip = {}) {
         mesh_r_.begin(vp, glm::vec3(0.35f, -1.0f, 0.25f));
         for (auto& n : app.project.npcs) {
-            if (n.offset || !here(app, n.world)) continue;
+            if (n.uid == skip || n.offset || !here(app, n.world)) continue;  // the skipped one is the object being aligned: it must not count as the surface under itself
             if (const LayerDef* L = layer_of_npc(app.project, n.name); L && mod_layer_hidden_.count(L->name)) continue;
             const std::string mesh = npc_mesh(app, n.template_name);
             if (mesh.empty()) continue;
@@ -1350,6 +1503,7 @@ private:
         for (auto& n : app.project.npcs)
             if (n.uid == uid) {
                 is_npc = true;
+                skip_spawn = uid;  // his own body is not the ground (he floated on his own head before)
                 what = n.name;
                 mx.y = p.y + 100;  // starts above his knees: a slightly sunken NPC comes up
             }
@@ -1761,6 +1915,12 @@ private:
     }
 
     MaterialInspector materials_;
+    std::vector<VegLayer> veg_layers_;
+    bool veg_loaded_ = false;
+    int veg_cur_ = -1, veg_mode_ = 0;
+    double veg_radius_ = 400, veg_density_ = 6;
+    std::array<double, 2> veg_scale_{0.8, 1.4};
+    std::set<uint32_t> veg_pick_;
     std::vector<std::array<double, 2>> water_pts_;  // the outline being painted
     double water_h_ = 0;
     std::string water_mat_ = "Special_Water_Island_01_Diffuse_01._xmat", water_sel_;
