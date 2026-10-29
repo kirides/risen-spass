@@ -21,6 +21,7 @@
 #include "common/pose.h"
 #include "app/panels/material_ui.h"
 #include "app/panels/panels.h"
+#include "core/water.h"
 #include "app/pickers.h"
 #include "app/render/gl_util.h"
 #include "app/render/mesh_renderer.h"
@@ -298,6 +299,8 @@ private:
         ImGui::RadioButton(tr("Place NPC"), &mode_, 1);
         ImGui::SameLine();
         ImGui::RadioButton(tr("Place item / object"), &mode_, 2);
+        ImGui::SameLine();
+        if (ImGui::RadioButton(tr("Paint water"), &mode_, 3)) overlay_dirty_ = true;
         if (mode_ == 1) {
             ImGui::SameLine();
             ImGui::SetNextItemWidth(200);
@@ -317,6 +320,8 @@ private:
                     if (t.mode == Mode::New) mine.push_back(t.name);
                 ui::template_picker("##npct", place_template_, app.game.get(), {TplKind::Npc, TplKind::Monster}, mine, 200);
             }
+        } else if (mode_ == 3) {
+            draw_water_tools(app);
         } else if (mode_ == 2) {
             ImGui::SameLine();
             ui::template_picker("##itemt", place_item_, app.game.get(), {TplKind::Item, TplKind::Recipe, TplKind::Object, TplKind::Interactive, TplKind::Effect},
@@ -337,6 +342,104 @@ private:
         ImGui::RadioButton(tr("turn"), &gizmo_op_, 1);
         ImGui::TextDisabled(tr("right mouse: look, WASD/QE: move, wheel: speed, click: %s, F: focus, End: align with mesh, gizmo: move / turn the selected project object"),
                             mode_ == 0 ? tr("select") : tr("place on the ground"));
+    }
+
+    // Paint water: clicks on the ground add the outline's points (the height is the first one's), Finish makes the body; existing bodies are edited here
+    void draw_water_tools(App& app) {
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(220);
+        if (ImGui::BeginCombo("##watermat", water_mat_.c_str())) {
+            for (auto& m : water_materials())
+                if (ImGui::Selectable(m.c_str(), m == water_mat_)) water_mat_ = m;
+            ImGui::EndCombo();
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled(tr("%zu points"), water_pts_.size());
+        ImGui::SameLine();
+        ImGui::BeginDisabled(water_pts_.size() < 3);
+        if (ImGui::Button(tr("Finish"))) finish_water(app);
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(water_pts_.empty());
+        if (ImGui::Button(tr("Undo point"))) {
+            water_pts_.pop_back();
+            overlay_dirty_ = true;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(tr("Cancel"))) {
+            water_pts_.clear();
+            overlay_dirty_ = true;
+        }
+        ImGui::EndDisabled();
+        if (!app.project.waters.empty()) {
+            ImGui::SameLine();
+            WaterBody* cur = nullptr;
+            for (auto& x : app.project.waters)
+                if (x.uid == water_sel_) cur = &x;
+            ImGui::SetNextItemWidth(160);
+            if (ImGui::BeginCombo("##waters", cur ? cur->name.c_str() : tr("water bodies"))) {
+                for (auto& x : app.project.waters)
+                    if (ImGui::Selectable(x.name.c_str(), x.uid == water_sel_)) {
+                        water_sel_ = x.uid;
+                        overlay_dirty_ = true;
+                    }
+                ImGui::EndCombo();
+            }
+            if (cur) {
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(90);
+                float h = static_cast<float>(cur->height);
+                if (ImGui::DragFloat("##waterh", &h, 1.0f, -100000, 100000, "%.0f")) {
+                    cur->height = h;
+                    app.touch();
+                }
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(200);
+                if (ImGui::BeginCombo("##curmat", cur->material.c_str())) {
+                    for (auto& m : water_materials())
+                        if (ImGui::Selectable(m.c_str(), m == cur->material)) {
+                            cur->material = m;
+                            app.touch();
+                        }
+                    ImGui::EndCombo();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button(tr("Remove water"))) {
+                    const std::string uid = cur->uid;
+                    auto& v = app.project.waters;
+                    v.erase(std::remove_if(v.begin(), v.end(), [&](const WaterBody& x) { return x.uid == uid; }), v.end());
+                    water_sel_.clear();
+                    overlay_dirty_ = true;
+                    app.touch();
+                }
+            }
+        }
+    }
+    void finish_water(App& app) {
+        WaterBody b;
+        b.uid = new_uid();
+        const std::string prefix = (app.project.mod.id.empty() ? std::string("Mod") : app.project.mod.id) + "_Water_";
+        for (int n = 1;; ++n) {
+            b.name = prefix + std::to_string(n);
+            bool taken = app.game->tpl(b.name) != nullptr;
+            for (auto& x : app.project.waters) taken |= p2m::lower(x.name) == p2m::lower(b.name);
+            if (!taken) break;
+        }
+        b.material = water_mat_;
+        b.height = std::round(water_h_);
+        b.points = water_pts_;
+        b.world = stamp(app);
+        water_pts_.clear();
+        if (!water_polygon_simple(b)) {
+            app.status(tr("The outline crosses itself or has no area: undo a point or cancel"));
+            water_pts_ = b.points;
+            return;
+        }
+        water_sel_ = b.uid;
+        app.project.waters.push_back(b);
+        overlay_dirty_ = true;
+        app.touch();
+        app.status(trf("Painted {0}", {b.name}));
     }
 
     void draw_layers(App& app) {
@@ -631,6 +734,20 @@ private:
             if (e->has_box()) overlay_.box(to_gl(e->box_min[0], e->box_min[1], e->box_max[2]) - glm::vec3(8), to_gl(e->box_max[0], e->box_max[1], e->box_min[2]) + glm::vec3(8), c);
             else overlay_.cross(to_gl(e->x(), e->y(), e->z()), 50, c);
         }
+        // painted water: the outline of every body (blue, the selected one bright) and the points of the one being painted (cyan)
+        for (auto& wb : app.project.waters) {
+            if (!here(app, wb.world)) continue;
+            const ImU32 c = wb.uid == water_sel_ ? IM_COL32(140, 230, 255, 255) : IM_COL32(60, 120, 255, 255);
+            for (size_t i = 0; i < wb.points.size(); ++i) {
+                const auto &a = wb.points[i], &b2 = wb.points[(i + 1) % wb.points.size()];
+                overlay_.line(to_gl(static_cast<float>(a[0]), static_cast<float>(wb.height), static_cast<float>(a[1])), to_gl(static_cast<float>(b2[0]), static_cast<float>(wb.height), static_cast<float>(b2[1])), c);
+            }
+        }
+        for (size_t i = 0; i < water_pts_.size(); ++i) {
+            const glm::vec3 a = to_gl(static_cast<float>(water_pts_[i][0]), static_cast<float>(water_h_), static_cast<float>(water_pts_[i][1]));
+            overlay_.cross(a, 40, IM_COL32(0, 255, 255, 255));
+            if (i > 0) overlay_.line(to_gl(static_cast<float>(water_pts_[i - 1][0]), static_cast<float>(water_h_), static_cast<float>(water_pts_[i - 1][1])), a, IM_COL32(0, 255, 255, 255));
+        }
         for (auto& [i, m] : moved_matrix_) {
             const WorldEntity& e = world_->entities[i];
             const glm::vec3 from = to_gl(e.x(), e.y(), e.z()), to = to_gl(m[12], m[13], m[14]);
@@ -858,6 +975,12 @@ private:
         } else if (mode_ == 1) {
             if (place_template_.empty()) return app.status(tr("Choose the template of the new NPC first"));
             if (auto pos = ground_pos(app, u, v, w, h, vp)) place_npc_ = new_npc(app, place_template_, *pos);
+        } else if (mode_ == 3) {
+            if (auto pos = ground_pos(app, u, v, w, h, vp)) {
+                if (water_pts_.empty()) water_h_ = (*pos)[1];
+                water_pts_.push_back({(*pos)[0], (*pos)[2]});
+                overlay_dirty_ = true;
+            }
         } else {
             if (place_item_.empty()) return app.status(tr("Choose the item to place first"));
             if (auto pos = ground_pos(app, u, v, w, h, vp)) new_spawn(app, place_item_, *pos, place_amount_);
@@ -1638,6 +1761,9 @@ private:
     }
 
     MaterialInspector materials_;
+    std::vector<std::array<double, 2>> water_pts_;  // the outline being painted
+    double water_h_ = 0;
+    std::string water_mat_ = "Special_Water_Island_01_Diffuse_01._xmat", water_sel_;
     std::shared_ptr<const World> world_;
     std::future<std::shared_ptr<World>> loading_;
     std::string loading_name_ = "World";
