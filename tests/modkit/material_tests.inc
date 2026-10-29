@@ -121,7 +121,7 @@ TEST(material_edit_is_saved_validated_and_exported) {
     };
     CHECK(errors(q) == 0);
     Project bad = q;
-    bad.materials[0].slots["Opacity"] = "x.tga";
+    bad.materials[0].slots["Bogus"] = "x.tga";
     CHECK(errors(bad) == 1);
     bad = q;
     bad.materials[0].material = "No_Such_Material._xmat";
@@ -141,4 +141,43 @@ TEST(material_edit_is_saved_validated_and_exported) {
         CHECK(!m.objects[1].get_bool("EnableSpecular", true));
     }
     CHECK(read_text(out / "mod.toml").find("assets      = \"assets\"") != std::string::npos);
+}
+
+TEST(material_edit_adds_a_texture_to_an_empty_slot) {
+    auto g = game_data();
+    if (!g) {
+        std::printf("  (skipped: no --data)\n");
+        return;
+    }
+    const p2m::Bytes raw = g->read("ItWpn_SwordMisc_01_Diffuse_01._xmat");
+    mk::Material m = mk::Material::parse(raw);
+    CHECK(!m.slots()[1].linked && !m.slots()[2].linked);  // Opacity, SelfIllumination are empty
+    mk::MaterialEdit e;
+    e.material = "ItWpn_SwordMisc_01_Diffuse_01._xmat";
+    e.slots["Opacity"] = "my_orm_map.tga";
+    e.slots["SelfIllumination"] = "my_orm_map.tga";
+    e.channels["Opacity"] = 3;           // .g
+    e.channels["SelfIllumination"] = 4;  // .b
+    e.channels["Specular"] = 2;          // the existing slot reads .r now
+    std::string why;
+    CHECK(mk::apply_material_edit(m, e, why));
+    const p2m::Bytes out = m.write();
+    const mk::Material again = mk::Material::parse(out);  // sizes, node count and covers are consistent
+    CHECK(again.objects.size() == m.objects.size() && again.objects.size() == 8);
+    const auto s = again.slots();
+    CHECK(s[1].linked && s[1].node >= 0 && again.slot_image(s[1]) == "my_orm_map.tga" && s[1].component == 3);
+    CHECK(s[2].linked && again.slot_image(s[2]) == "my_orm_map.tga" && s[2].component == 4);
+    CHECK(s[3].component == 2);
+    CHECK(again.slot_image(s[0]) == "ItWpn_SwordMisc_01_Diffuse_01.tga" && again.slot_image(s[5]) == "ItWpn_SwordMisc_01_Normal_01.tga");
+    CHECK(again.write() == out);  // stable
+    CHECK(again.guid_of(6) != again.guid_of(7));
+    // an unknown slot or a channel of an empty slot is refused
+    mk::Material n = mk::Material::parse(raw);
+    mk::MaterialEdit bad;
+    bad.material = e.material;
+    bad.channels["Opacity"] = 3;
+    CHECK(!mk::apply_material_edit(n, bad, why));
+    bad.channels.clear();
+    bad.slots["Nope"] = "x.tga";
+    CHECK(!mk::apply_material_edit(n, bad, why));
 }

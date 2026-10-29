@@ -703,6 +703,7 @@ json to_json(const Project& p) {
             o["material"] = x.material;
             if (!x.slots.empty()) o["slots"] = x.slots;
             if (!x.props.empty()) o["props"] = x.props;
+            if (!x.channels.empty()) o["channels"] = x.channels;
             put_str(o, "notes", x.notes);
             a.push_back(o);
         }
@@ -723,6 +724,7 @@ json to_json(const Project& p) {
                 mo["material"] = m.material;
                 if (!m.slots.empty()) mo["slots"] = m.slots;
                 if (!m.props.empty()) mo["props"] = m.props;
+                if (!m.channels.empty()) mo["channels"] = m.channels;
                 ms[std::to_string(i)] = mo;
             }
             if (!ms.empty()) o["materials"] = ms;
@@ -1132,12 +1134,13 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
         MaterialEdit x;
         r.get_uid(e, x.uid);
         r.get(e, "material", x.material);
-        for (const char* k : {"slots", "props"}) {
+        for (const char* k : {"slots", "props", "channels"}) {
             auto it = e.find(k);
             if (it == e.end() || !it->is_object()) continue;
             for (auto& [name, v] : it->items()) {
                 if (k[0] == 's' && v.is_string()) x.slots[name] = v.get<std::string>();
                 else if (k[0] == 'p' && v.is_number_integer()) x.props[name] = v.get<int>();
+                else if (k[0] == 'c' && v.is_number_integer()) x.channels[name] = v.get<int>();
             }
         }
         r.get(e, "notes", x.notes);
@@ -1164,6 +1167,9 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
                 if (auto p2 = v.find("props"); p2 != v.end() && p2->is_object())
                     for (auto& [n, val] : p2->items())
                         if (val.is_number_integer()) m.props[n] = val.get<int>();
+                if (auto c2 = v.find("channels"); c2 != v.end() && c2->is_object())
+                    for (auto& [n, val] : c2->items())
+                        if (val.is_number_integer()) m.channels[n] = val.get<int>();
                 x.materials[std::atoi(k.c_str())] = m;
             }
         r.get(e, "notes", x.notes);

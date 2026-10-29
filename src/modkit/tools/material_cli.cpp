@@ -2,7 +2,7 @@
 // material editor (scripts, mods/matprobe) to make a loose `._xmat` from a shipped one without storing any game data in the repository.
 //   risen-material <Risen>\data dump  <Name._xmat>
 //   risen-material <Risen>\data mesh  <Name._xmsh> <out file> [--scale s] [--material 0=Other._xmat] ...
-//   risen-material <Risen>\data patch <Name._xmat> <out file> [--slot Normal=new.tga] [--set Class.Prop=value] ...
+//   risen-material <Risen>\data patch <Name._xmat> <out file> [--slot Slot=image.tga] [--channel Slot=0..5] [--set Class.Prop=value] ...
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -55,30 +55,18 @@ int main(int argc, char** argv) {
             return 0;
         }
         if (cmd == "patch" && argc >= 5) {
+            MaterialEdit e;
+            e.material = argv[3];
             for (int i = 5; i + 1 < argc; i += 2) {
                 const std::string flag = argv[i], arg = argv[i + 1], key = arg.substr(0, arg.find('=')), val = arg.substr(arg.find('=') + 1);
                 if (arg.find('=') == std::string::npos) throw std::runtime_error("expected key=value: " + arg);
-                if (flag == "--slot") {
-                    bool done = false;
-                    for (const auto& s : m.slots())
-                        if (s.name == key) {
-                            const int n = m.slot_sampler(s);
-                            if (n >= 0) done = m.objects[static_cast<size_t>(n)].set_string("ImageFilePath", val);
-                        }
-                    if (!done) throw std::runtime_error("no sampler behind slot " + key);
-                } else if (flag == "--set") {
-                    const auto dot = key.find('.');
-                    bool done = false;
-                    for (auto& o : m.objects)
-                        if (o.cls == key.substr(0, dot)) {
-                            const std::string pn = key.substr(dot + 1);
-                            const MatProp* pr = o.find(pn);
-                            if (pr && pr->payload.size() == 1) done = o.set_bool(pn, val != "0") || done;
-                            else done = o.set_string(pn, val) || o.set_int(pn, std::atoi(val.c_str())) || done;
-                        }
-                    if (!done) throw std::runtime_error("cannot set " + key);
-                } else throw std::runtime_error("unknown option " + flag);
+                if (flag == "--slot") e.slots[key] = val;
+                else if (flag == "--channel") e.channels[key] = std::atoi(val.c_str());
+                else if (flag == "--set") e.props[key] = std::atoi(val.c_str());
+                else throw std::runtime_error("unknown option " + flag);
             }
+            std::string why;
+            if (!apply_material_edit(m, e, why)) throw std::runtime_error(why);
             const std::string out = m.write();
             std::ofstream f(argv[4], std::ios::binary);
             f.write(out.data(), static_cast<std::streamsize>(out.size()));

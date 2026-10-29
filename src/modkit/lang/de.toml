@@ -1008,21 +1008,27 @@ author = "risen-spass"
 "image" = "Bild"
 # src/modkit/app/panels/material_ui.cpp:298
 "no texture (a constant or an effect)" = "keine Textur (eine Konstante oder ein Effekt)"
-# src/modkit/app/panels/material_ui.cpp:304
+# src/modkit/app/panels/material_ui.cpp:302
+"(empty) click to add an image" = "(leer) Klicken, um ein Bild hinzuzufügen"
+# src/modkit/app/panels/material_ui.cpp:305
+"(empty)" = "(leer)"
+# src/modkit/app/panels/material_ui.cpp:305
 "click to choose another image" = "Klicken, um ein anderes Bild zu wählen"
-# src/modkit/app/panels/material_ui.cpp:327
+# src/modkit/app/panels/material_ui.cpp:335
+"channel" = "Kanal"
+# src/modkit/app/panels/material_ui.cpp:357
 "Shader flags" = "Shader-Flags"
-# src/modkit/app/panels/material_ui.cpp:348
+# src/modkit/app/panels/material_ui.cpp:378
 "Reset the whole material" = "Ganzes Material zurücksetzen"
-# src/modkit/app/panels/material_ui.cpp:361
+# src/modkit/app/panels/material_ui.cpp:391
 "The mesh of this object cannot be changed by the editor." = "Das Mesh dieses Objekts kann der Editor nicht ändern."
-# src/modkit/app/panels/material_ui.cpp:370
+# src/modkit/app/panels/material_ui.cpp:400
 "scale x, y, z of this object's own mesh" = "Skalierung x, y, z des eigenen Meshes dieses Objekts"
-# src/modkit/app/panels/material_ui.cpp:374
+# src/modkit/app/panels/material_ui.cpp:404
 "Sub-mesh {0}: {1}" = "Teilmesh {0}: {1}"
-# src/modkit/app/panels/material_ui.cpp:377
+# src/modkit/app/panels/material_ui.cpp:407
 "Give it its own material" = "Eigenes Material geben"
-# src/modkit/app/panels/material_ui.cpp:394
+# src/modkit/app/panels/material_ui.cpp:424
 "this object has its own copy of the material" = "Dieses Objekt hat eine eigene Kopie des Materials"
 # src/modkit/app/panels/npc_groups_panel.cpp:51
 "A group changes many NPC and monster templates at once, relative to their shipped values: a pattern on the name (\"^Wolf\"), a template group path (\"Monster/Kapitel 2\") or a list of names." = "Eine Gruppe ändert viele NPC- und Monstervorlagen auf einmal, relativ zu ihren mitgelieferten Werten: ein Muster auf den Namen („^Wolf“), ein Vorlagengruppenpfad („Monster/Kapitel 2“) oder eine Namensliste."

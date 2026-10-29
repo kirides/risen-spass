@@ -296,6 +296,92 @@ int Material::slot_sampler(const MatSlot& slot, int depth) const {
     return -1;
 }
 
+int Material::add_sampler(const std::string& image) {
+    size_t sh = objects.size();
+    for (size_t i = 0; i < objects.size(); ++i)
+        if (objects[i].cls == "eCShaderDefault") sh = i;
+    if (sh == objects.size() || objects[sh].tail.size() != 2 + 256 + 2 + 2 + 20 + 16 + 1 + 4) return -1;
+    MatObject o;
+    o.cls = "eCColorSrcSampler";
+    o.version = 1;
+    auto str = [](const std::string& v) {
+        std::string r;
+        w16(r, static_cast<uint16_t>(v.size()));
+        return r + v;
+    };
+    auto enum0 = [] {
+        std::string r;
+        w16(r, 0xc9);
+        w32(r, 0);
+        return r;
+    };
+    o.props.push_back({"ImageFilePath", "bCImageResourceString", str(image)});
+    o.props.push_back({"TexRepeatU", "bTPropertyContainer<enum eEColorSrcSampleTexRepeat>", enum0()});
+    o.props.push_back({"TexRepeatV", "bTPropertyContainer<enum eEColorSrcSampleTexRepeat>", enum0()});
+    o.props.push_back({"AnimationSpeed", "float", std::string(4, '\0')});
+    o.props.push_back({"SwitchRepeat", "bTPropertyContainer<enum eEColorSrcSwitchRepeat>", enum0()});
+    o.props.push_back({"SwitchBegin", "int", std::string(4, '\0')});
+    // tail: version 1, an empty TexCoord proxy (index 0, invalid guid), -1, the element suffix (versions 1 and 2, own guid, editor rect, bool)
+    std::string t;
+    w16(t, 1);
+    w32(t, 0);
+    t.append(20, '\0');
+    w32(t, 0xffffffffu);
+    w16(t, 1);
+    w16(t, 2);
+    // a deterministic guid from the image name and the node number (FNV-1a, twice): the same edit exports the same bytes
+    uint64_t a = 1469598103934665603ull, b = 0x9e3779b97f4a7c15ull;
+    for (char c : image + "#" + std::to_string(objects.size())) {
+        a = (a ^ static_cast<uint8_t>(c)) * 1099511628211ull;
+        b = (b + static_cast<uint8_t>(c)) * 0xff51afd7ed558ccdull;
+    }
+    t.append(reinterpret_cast<const char*>(&a), 8);
+    t.append(reinterpret_cast<const char*>(&b), 8);
+    t.push_back(1);
+    t.append(3, '\0');
+    w32(t, 0x1f0);
+    w32(t, static_cast<uint32_t>(0x20 + 0x60 * objects.size()));
+    w32(t, 0x2e0);
+    w32(t, static_cast<uint32_t>(0xc8 + 0x60 * objects.size()));
+    t.push_back(0);
+    o.tail = t;
+    objects.push_back(std::move(o));
+    // the shader's node count and the nodes its body covers
+    std::string& st = objects[sh].tail;
+    const uint32_t n = r32(st, st.size() - 4) + 1;
+    std::memcpy(&st[st.size() - 4], &n, 4);
+    objects[sh].covers += 1;
+    return static_cast<int>(objects.size() - 1);
+}
+
+bool Material::link_slot(size_t slot, size_t node, uint32_t component, uint32_t modifier) {
+    size_t sh = objects.size();
+    for (size_t i = 0; i < objects.size(); ++i)
+        if (objects[i].cls == "eCShaderDefault") sh = i;
+    if (sh == objects.size() || slot >= 8 || node >= objects.size() || objects[sh].tail.size() < 2 + 256) return false;
+    const std::string g = guid_of(node);
+    if (g.size() != 32) return false;
+    std::string& t = objects[sh].tail;
+    const size_t p = 2 + 32 * slot;
+    const uint32_t ver = 0x29a;
+    std::memcpy(&t[p], &ver, 4);
+    std::memcpy(&t[p + 4], &component, 4);
+    std::memcpy(&t[p + 8], &modifier, 4);
+    for (size_t i = 0; i < 16; ++i) t[p + 12 + i] = static_cast<char>(std::stoi(g.substr(i * 2, 2), nullptr, 16));
+    t[p + 28] = 1;
+    t[p + 29] = t[p + 30] = t[p + 31] = 0;
+    return true;
+}
+
+bool Material::set_slot_component(size_t slot, uint32_t component) {
+    size_t sh = objects.size();
+    for (size_t i = 0; i < objects.size(); ++i)
+        if (objects[i].cls == "eCShaderDefault") sh = i;
+    if (sh == objects.size() || slot >= 8 || objects[sh].tail.size() < 2 + 256) return false;
+    std::memcpy(&objects[sh].tail[2 + 32 * slot + 4], &component, 4);
+    return true;
+}
+
 std::string Material::slot_image(const MatSlot& slot, int depth) const {
     const int i = slot_sampler(slot, depth);
     std::string img;
@@ -304,17 +390,52 @@ std::string Material::slot_image(const MatSlot& slot, int depth) const {
 }
 
 bool apply_material_edit(Material& m, const MaterialEdit& e, std::string& error) {
-    const auto slots = m.slots();
+    static const char* const kNames[8] = {"Diffuse", "Opacity", "SelfIllumination", "Specular", "SpecularPower", "Normal", "Distortion", "LightEmission"};
+    auto slot_index = [&](const std::string& name) {
+        for (size_t k = 0; k < 8; ++k)
+            if (name == kNames[k]) return static_cast<int>(k);
+        return -1;
+    };
     for (const auto& [name, image] : e.slots) {
-        int sampler = -1;
-        for (const auto& s : slots)
-            if (s.name == name) sampler = m.slot_sampler(s);
+        const int k = slot_index(name);
+        if (k < 0) {
+            error = "unknown slot " + name + " in " + e.material;
+            return false;
+        }
+        const auto slots = m.slots();
+        if (slots.empty()) {
+            error = e.material + " has no shader the editor can change";
+            return false;
+        }
+        const MatSlot& s = slots[static_cast<size_t>(k)];
+        if (!s.linked) {
+            const int node = m.add_sampler(image);
+            const auto ch = e.channels.find(name);
+            if (node < 0 || !m.link_slot(static_cast<size_t>(k), static_cast<size_t>(node), ch != e.channels.end() ? static_cast<uint32_t>(ch->second) : 0u)) {
+                error = "slot " + name + " cannot get an image in " + e.material;
+                return false;
+            }
+            continue;
+        }
+        const int sampler = m.slot_sampler(s);
         if (sampler < 0) {
             error = "slot " + name + " has no texture sampler in " + e.material;
             return false;
         }
         if (!m.objects[static_cast<size_t>(sampler)].set_string("ImageFilePath", image)) {
             error = "the sampler behind " + name + " has no image path";
+            return false;
+        }
+    }
+    for (const auto& [name, comp] : e.channels) {
+        const int k = slot_index(name);
+        if (k < 0 || comp < 0 || comp > 5) {
+            error = "bad channel setting for " + name + " in " + e.material;
+            return false;
+        }
+        if (e.slots.count(name) && !m.slots()[static_cast<size_t>(k)].linked) continue;
+        if (!m.slots()[static_cast<size_t>(k)].linked || !m.set_slot_component(static_cast<size_t>(k), static_cast<uint32_t>(comp))) {
+            error = "slot " + name + " has no image to take a channel of in " + e.material;
             return false;
         }
     }

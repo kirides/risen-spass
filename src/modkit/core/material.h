@@ -56,6 +56,7 @@ struct MaterialEdit {
     std::string material;                        // "ItWpn_SwordMisc_01_Diffuse_01._xmat"
     std::map<std::string, std::string> slots;    // slot name ("Diffuse", "Normal", ...) -> the image name as a sampler writes it ("X.tga")
     std::map<std::string, int> props;            // "eCShaderDefault.EnableSpecular" -> value (bool 0/1, int, enum number)
+    std::map<std::string, int> channels;         // slot name -> the channel of its image: 0 all, 1 .rgb, 2 .r, 3 .g, 4 .b, 5 .a (a packed map feeds several slots)
     std::string notes;
 };
 
@@ -73,13 +74,19 @@ struct Material {
     std::vector<MatSlot> slots() const;
     // the node's own GUID as 32 hex digits ("" when its tail has no element suffix)
     std::string guid_of(size_t object) const;
+    // a new texture sampler node at the end of the file; its index, or -1 (the material has no eCShaderDefault of the known shape)
+    int add_sampler(const std::string& image);
+    // slot index (0..7, the order of slots()) -> node `node` (an index into objects), through `component` / `modifier`; false when the shader tail is not the known one
+    bool link_slot(size_t slot, size_t node, uint32_t component, uint32_t modifier = 0);
+    bool set_slot_component(size_t slot, uint32_t component);
     // the image a slot ends up at: follows combiners through their first input that reaches a sampler; "" when none
     // the sampler object a slot ends up at (same walk), -1 when none
     int slot_sampler(const MatSlot& slot, int depth = 0) const;
     std::string slot_image(const MatSlot& slot, int depth = 0) const;
 };
 
-// the edit applied to a parsed material; false with `error` set when a slot has no sampler behind it or a property does not exist / has another type
+// the edit applied to a parsed material: an image for a slot (an empty slot gets a new sampler), the channel of a slot, shader properties; false with `error` set
+// when a slot does not exist, has a node that is not a texture, or a property does not exist / has another type
 bool apply_material_edit(Material& m, const MaterialEdit& e, std::string& error);
 
 }  // namespace mk

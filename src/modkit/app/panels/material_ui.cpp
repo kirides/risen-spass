@@ -247,7 +247,7 @@ void MaterialInspector::draw(App& app, const std::string& mesh) {
     };
     t.prune = [&app] {
         auto& v = app.project.materials;
-        v.erase(std::remove_if(v.begin(), v.end(), [](const MaterialEdit& e) { return e.slots.empty() && e.props.empty() && e.notes.empty(); }), v.end());
+        v.erase(std::remove_if(v.begin(), v.end(), [](const MaterialEdit& e) { return e.slots.empty() && e.props.empty() && e.channels.empty() && e.notes.empty(); }), v.end());
     };
     t.reset = [&app, material] {
         auto& v = app.project.materials;
@@ -282,9 +282,9 @@ void MaterialInspector::draw_material(App& app, const std::string& material, con
         const auto orig_slots = orig.m.slots();
         for (size_t k = 0; k < slots.size(); ++k) {
             const MatSlot& s = slots[k];
-            if (!s.linked || s.node < 0) continue;
-            const int sampler = cur.slot_sampler(s);
-            const std::string img = cur.slot_image(s);
+            const bool empty = !s.linked || s.node < 0;
+            const int sampler = empty ? -1 : cur.slot_sampler(s);
+            const std::string img = empty ? std::string() : cur.slot_image(s);
             const std::string orig_img = k < orig_slots.size() ? orig.m.slot_image(orig_slots[k]) : std::string();
             ImGui::PushID(s.name.c_str());
             ImGui::TableNextRow();
@@ -292,16 +292,17 @@ void MaterialInspector::draw_material(App& app, const std::string& material, con
             if (res && !img.empty()) ImGui::Image(static_cast<ImTextureID>(static_cast<intptr_t>(res->texture(compiled_image(img)))), ImVec2(40, 40));
             ImGui::TableNextColumn();
             ImGui::TextUnformatted(s.name.c_str());
-            ImGui::TextDisabled("%s%s", cur.objects[static_cast<size_t>(s.node)].cls.c_str() + 2, s.component < 6 ? kComponents[s.component] : "");
+            if (!empty) ImGui::TextDisabled("%s", cur.objects[static_cast<size_t>(s.node)].cls.c_str() + 2);
             ImGui::TableNextColumn();
-            if (sampler < 0) {
+            if (!empty && sampler < 0) {
                 ImGui::TextDisabled("%s", tr("no texture (a constant or an effect)"));
             } else {
                 const bool changed = img != orig_img;
                 if (changed) ImGui::PushStyleColor(ImGuiCol_Text, kChanged);
-                if (ImGui::Button((img.empty() ? std::string("...") : img).c_str(), ImVec2(-1, 0))) ImGui::OpenPopup("pick");
+                const std::string label = img.empty() ? std::string(tr("(empty) click to add an image")) : img;
+                if (ImGui::Button(label.c_str(), ImVec2(-1, 0))) ImGui::OpenPopup("pick");
                 if (changed) ImGui::PopStyleColor();
-                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", changed ? trf("shipped: {0}", {orig_img}).c_str() : tr("click to choose another image"));
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", changed ? trf("shipped: {0}", {orig_img.empty() ? std::string(tr("(empty)")) : orig_img}).c_str() : tr("click to choose another image"));
                 std::string picked;
                 if (pick_image(app, "pick", &picked)) {
                     MaterialEdit& e = edit();
@@ -310,10 +311,39 @@ void MaterialInspector::draw_material(App& app, const std::string& material, con
                     prune();
                     app.touch();
                 }
-                if (changed && ImGui::SmallButton(tr("Reset"))) {
-                    if (MaterialEdit* e = t.find()) e->slots.erase(s.name);
-                    prune();
-                    app.touch();
+                if (!empty) {
+                    // the channel of the image this slot reads: a packed map (occlusion / roughness / metal) feeds several slots through .r .g .b
+                    int comp = static_cast<int>(s.component < 6 ? s.component : 0);
+                    const int shipped_comp = k < orig_slots.size() && orig_slots[k].linked ? static_cast<int>(orig_slots[k].component) : 0;
+                    ImGui::SetNextItemWidth(90);
+                    const char* names[6] = {"all", ".rgb", ".r", ".g", ".b", ".a"};
+                    if (comp != shipped_comp) ImGui::PushStyleColor(ImGuiCol_Text, kChanged);
+                    const bool open = ImGui::BeginCombo("##ch", names[comp]);
+                    if (comp != shipped_comp) ImGui::PopStyleColor();
+                    if (open) {
+                        for (int c = 0; c < 6; ++c)
+                            if (ImGui::Selectable(names[c], c == comp)) {
+                                MaterialEdit& e = edit();
+                                if (c == shipped_comp && !(k < orig_slots.size() && !orig_slots[k].linked && e.slots.count(s.name))) e.channels.erase(s.name);
+                                else e.channels[s.name] = c;
+                                prune();
+                                app.touch();
+                            }
+                        ImGui::EndCombo();
+                    }
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("%s", tr("channel"));
+                }
+                if (changed || (!empty && s.component != (k < orig_slots.size() ? orig_slots[k].component : 0u))) {
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton(tr("Reset"))) {
+                        if (MaterialEdit* e = t.find()) {
+                            e->slots.erase(s.name);
+                            e->channels.erase(s.name);
+                        }
+                        prune();
+                        app.touch();
+                    }
                 }
             }
             ImGui::PopID();

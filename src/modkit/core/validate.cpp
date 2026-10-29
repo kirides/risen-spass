@@ -852,7 +852,7 @@ void check_extras(Ctx& c) {
             continue;
         }
         if (++mseen[p2m::lower(x.material)] == 2) c.add(Severity::Error, A, x.uid, subj, tr("this material is changed twice: only one change per material is exported"));
-        if (x.slots.empty() && x.props.empty()) c.add(Severity::Warning, A, x.uid, subj, tr("the change does nothing"));
+        if (x.slots.empty() && x.props.empty() && x.channels.empty()) c.add(Severity::Warning, A, x.uid, subj, tr("the change does nothing"));
         if (!c.g) continue;
         if (!c.g->exists(x.material)) {
             c.add(Severity::Error, A, x.uid, subj, tr("the game has no material with this name"));
