@@ -226,7 +226,7 @@ $scenarios = [ordered]@{
     # risen-modkit (docs/editor/REQUIREMENTS.md): the exported showcase project, checked by mods/modkit_driver
     # a mesh made by risen-modkit's 3D model import (mods/meshprobe/probe.obj -> assets/Spass_Probe._xmsh): the engine loads the item and three pictures are taken (look at them: bin\spass\screenshots\meshprobe_*.png)
     meshprobe         = @{ Est = 80; Title = 'risen-modkit 3D model import (mesh in the engine)'; Kind = 'result'; Mods = @('meshprobe', 'meshprobe_shots'); Limit = 220 }
-    chronicle         = @{ Est = 265; Title = 'risen-modkit chronicle example: chapters 1-4 played through (dialogues, quests, layers, sectors, events, quick save/load)'; Kind = 'result'; Mods = @('chronicle_example', 'chronicle_driver'); Limit = 700 }
+    chronicle         = @{ Prepare = @('chronicle', 'chronicle_example'); Est = 265; Title = 'risen-modkit chronicle example: chapters 1-4 played through (dialogues, quests, layers, sectors, events, quick save/load)'; Kind = 'result'; Mods = @('chronicle_example', 'chronicle_driver'); Limit = 700 }
     evlive            = @{ Est = 70; Title = 'risen-modkit events: graphs, layers, sectors, movement debounce'; Kind = 'result'; Mods = @('modkit_events', 'modkit_events_driver'); Limit = 500 }
     # the voice recording workflow of risen-modkit: recordings imported and converted by the editor play for the NPC's and the hero's lines (English, then German)
     modkit_voice      = @{ Est = 110; Title = 'risen-modkit voice recordings: imported, converted (ffmpeg) and played (en, de)'; Kind = 'result'; Mods = @('modkit_voice', 'modkit_voice_driver'); Limit = 300
@@ -464,6 +464,13 @@ foreach ($name in $selected) {
     }
     $limit = [int][math]::Min($s.Limit, $left)
     Write-Host "== $name ($($s.Title)), limit $limit s"
+    # files that derive from the game (looks, changed meshes and materials) are not committed: the project is exported again first (risen-modkit --export)
+    if ($s.Prepare) {
+        $exe = Join-Path (Split-Path -Parent $here) 'build\src\modkit\RelWithDebInfo\risen-modkit.exe'
+        $proj = Join-Path (Split-Path -Parent $here) "examples\modkit\$($s.Prepare[0]).rmk.json"
+        & $exe $proj --data (Join-Path $GameDir 'data') --export (Join-Path (Split-Path -Parent $here) "mods\$($s.Prepare[1])") | Out-Null
+        if ($LASTEXITCODE) { Write-Host "   export of $($s.Prepare[0]) failed" -ForegroundColor Red }
+    }
     $t0 = Get-Date
     $row = [pscustomobject]@{ Scenario = $name; Result = 'FAIL'; Checks = '-'; Seconds = 0; Note = '' }
     # every run of the scenario: one entry (a single run) or one per phase (several game processes)

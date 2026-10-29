@@ -9,6 +9,7 @@ local data = {
     world = require("data.world"),
     assets = require("data.assets"),
     patches = require("data.patches"),
+    looks = require("data.looks"),
     dialog_edits = require("data.dialog_edits"),
     layers = require("data.layers"),
     events = require("data.events"),

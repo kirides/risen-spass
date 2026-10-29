@@ -47,6 +47,7 @@ the Problems tab shows **0** problems (and no warning).
 | Recipes: new (anvil, alchemy), learn from the start, changed shipped | `MKC_Recipe_Chronicle_Blade` (reward), `MKC_Recipe_Tide_Potion` (learn), `It_1H_Steel_Hot` |
 | Spells: changed shipped, new spell (crystal + scroll) | `Light`, `Frost`, `MKC_Ember_Whisper` |
 | NPC templates: new human, trader (trade property), monsters, bosses, loot, behaviour; changed shipped | `MKC_Maren_T`, `MKC_Smuggler_T`, `MKC_Ash_Raider_T`, `MKC_Ash_Warlord_T`, `MKC_Tide_Lord_T`; `LizardWarrior`, `Wolf_Black` |
+| Object looks (a shipped rock with its own mesh scale and materials), changed materials, painted water, painted grass | `MKC_Standing_Stone` (six of them in a ring around the tide circle: the flat rock stretched tall, its own darker texture and normal map), `MKC_Ash_Boulder` (two at the Ash camp: a wide, low rock, own material with the specular off), the pond `MKC_Tide_Pool` (a polygon with the island water material next to the circle), three grass strokes on the vegetation layer `Game_Start_Vegetation` (the camp is erased and scattered with dead branches, tall grass inside the stone ring); checked by `c1: looks, a pond and painted grass of the editor` (RE.md sections 60-64) |
 | NPC groups (name pattern + exclude, group path, factors, skills) | `^Wolf` except `Young`, `Monster/Kapitel 3` |
 | Placed NPCs: absolute position, inventory + equip, level / hp / guild, routine (post, day-evening-night, patrol), version, Appears when / Leaves when | Maren, scout, warlord, raiders (patrol), smuggler, lord, guards |
 | Dialogues: Option (permanent, Important, parent / choices), Line (npc, player, other NPC), Command (Give, GiveXP, SetGameEvent, SetSectorStatus, DoTrade), Quest, Log, Script, End, Return to start ("Who are you?", "Enough about the Chronicle."), Back to the choices (the lore sub-menu loops), Condition, All of, Any of, Not, Comment, voiced line (two languages) | Maren, scout, smuggler |
@@ -82,6 +83,10 @@ amulet's value written by `before_install` (2000, the project says 1500), the pa
 Building this mod found and fixed four bugs (each its own commit with a test): the export wrote patrol routines and template behaviours in an order the import does not read back
 (round trip), a quest's Either / or raised when its *first* path decided, the kill that *starts* a quest was counted by its own kill objective, and `on_talk` of a behaviour
 attached to a template never reached an NPC with a unique name.
+
+## Generated files
+
+The looks, the pond and the changed meshes are made from game files, so their `assets/` (`MKC_Standing_Stone*`, `MKC_Ash_Boulder*`, `MKC_Tide_Pool*`) are **not committed** (`mods/chronicle_example/.gitignore`): `risen-modkit examples/modkit/chronicle.rmk.json --data <Risen>\data --export mods/chronicle_example` makes them, and `scripts/smoke-test.ps1` does it before the scenario `chronicle` (`Prepare`).
 
 ## Known limits
 

@@ -6637,6 +6637,118 @@
           679.0,
           -3607.0
         ]
+      },
+      {
+        "uid": "b68a6d511c92a70af83d3918bab97008",
+        "template": "MKC_Standing_Stone",
+        "position": [
+          -31132.0,
+          690.0,
+          -3097.0
+        ],
+        "rotation": [
+          15.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "uid": "57b1770aa80c628a775a3028c2fd6b1b",
+        "template": "MKC_Standing_Stone",
+        "position": [
+          -31756.0,
+          690.0,
+          -2737.0
+        ],
+        "rotation": [
+          55.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "uid": "648f1cf2a9b70a83293a43a09b3a2450",
+        "template": "MKC_Standing_Stone",
+        "position": [
+          -32380.0,
+          690.0,
+          -3097.0
+        ],
+        "rotation": [
+          95.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "uid": "c8991a604d98482104dc6f9698817d59",
+        "template": "MKC_Standing_Stone",
+        "position": [
+          -32380.0,
+          690.0,
+          -3817.0
+        ],
+        "rotation": [
+          135.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "uid": "89a7eba20d2621509863a27bd8c72e1a",
+        "template": "MKC_Standing_Stone",
+        "position": [
+          -31756.0,
+          690.0,
+          -4177.0
+        ],
+        "rotation": [
+          175.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "uid": "86b5d2ec73ccbf49d8b37c3f36be837b",
+        "template": "MKC_Standing_Stone",
+        "position": [
+          -31132.0,
+          690.0,
+          -3817.0
+        ],
+        "rotation": [
+          215.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "uid": "3624b5555761722d802c261b82c0e942",
+        "template": "MKC_Ash_Boulder",
+        "position": [
+          -35560.0,
+          410.0,
+          -6820.0
+        ],
+        "rotation": [
+          30.0,
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "uid": "50d0c305620d7ba08ab82f81878e7bdc",
+        "template": "MKC_Ash_Boulder",
+        "position": [
+          -34560.0,
+          410.0,
+          -6760.0
+        ],
+        "rotation": [
+          140.0,
+          0.0,
+          0.0
+        ]
       }
     ],
     "containers": [
@@ -6778,6 +6890,152 @@
         }
       },
       "notes": "The Ash Camp's fire glows far into the ashen night (550 in the game)."
+    }
+  ],
+  "vegetation": [
+    {
+      "uid": "95e95656792b0954d9d7e43441621908",
+      "entity": "777ab89a-c9e2-410c-bc0e-dd6f5ba98157",
+      "entity_name": "Game_Start_Vegetation",
+      "erase": true,
+      "position": [
+        -35080.0,
+        420.0,
+        -6646.0
+      ],
+      "radius": 520.0,
+      "density": 6.0,
+      "seed": 1,
+      "scale": [
+        0.8,
+        1.4
+      ],
+      "color": 4279584039
+    },
+    {
+      "uid": "636152af12160c40a2be7d199b8d52a6",
+      "entity": "777ab89a-c9e2-410c-bc0e-dd6f5ba98157",
+      "entity_name": "Game_Start_Vegetation",
+      "position": [
+        -35080.0,
+        420.0,
+        -6646.0
+      ],
+      "radius": 480.0,
+      "density": 7.0,
+      "meshes": [
+        65536,
+        131072
+      ],
+      "seed": 11,
+      "scale": [
+        0.9,
+        1.6
+      ],
+      "color": 4279584039,
+      "notes": "dead branches: the camp is scorched"
+    },
+    {
+      "uid": "de01a8f28a063dbe39e0c2791e7512e4",
+      "entity": "777ab89a-c9e2-410c-bc0e-dd6f5ba98157",
+      "entity_name": "Game_Start_Vegetation",
+      "position": [
+        -31756.0,
+        699.0,
+        -3457.0
+      ],
+      "radius": 900.0,
+      "density": 5.0,
+      "meshes": [
+        786432,
+        917504,
+        1441792
+      ],
+      "seed": 23,
+      "scale": [
+        1.0,
+        1.7
+      ],
+      "color": 4279584039,
+      "notes": "tall grass inside the circle of stones"
+    }
+  ],
+  "waters": [
+    {
+      "uid": "ee3a56dda8e2aa0a23577121f7aa2884",
+      "name": "MKC_Tide_Pool",
+      "material": "Special_Water_Island_01_Diffuse_01._xmat",
+      "height": 708.0,
+      "points": [
+        [
+          -30960.0,
+          -3700.0
+        ],
+        [
+          -30500.0,
+          -3820.0
+        ],
+        [
+          -30240.0,
+          -3470.0
+        ],
+        [
+          -30420.0,
+          -3150.0
+        ],
+        [
+          -30900.0,
+          -3240.0
+        ]
+      ],
+      "notes": "A shallow pool: a flat mesh with the island water material (the surface only: nothing to wade through)."
+    }
+  ],
+  "looks": [
+    {
+      "uid": "b657ca66e110a4e1860b84c1e0911638",
+      "name": "MKC_Standing_Stone",
+      "base": "Obj_Nat_Stone_Small_Flat_01",
+      "mesh": "Obj_Nat_Stone_Small_Flat_01._xmsh",
+      "scale": [
+        1.2000000476837158,
+        3.4000000953674316,
+        1.2000000476837158
+      ],
+      "materials": {
+        "0": {
+          "material": "Nat_Stone_Objects_02_Diffuse_01._xmat",
+          "slots": {
+            "Diffuse": "Nat_Stone_Objects_04_Diffuse_01.tga",
+            "Normal": "Nat_Stone_Objects_04_Normal_01.tga"
+          }
+        }
+      },
+      "notes": "A tall, narrow stone of the old tide circle: the shipped flat rock stretched, with its own darker texture. Only these stones change, not the rocks of the island."
+    },
+    {
+      "uid": "580020dbed619f5776809cec46c8bb8d",
+      "name": "MKC_Ash_Boulder",
+      "base": "Obj_Nat_Stone_Small_Flat_01",
+      "mesh": "Obj_Nat_Stone_Small_Flat_01._xmsh",
+      "scale": [
+        3.0,
+        2.200000047683716,
+        2.5999999046325684
+      ],
+      "materials": {
+        "0": {
+          "material": "Nat_Stone_Objects_02_Diffuse_01._xmat",
+          "slots": {
+            "Diffuse": "Nat_Stone_Objects_05_Diffuse_01.tga",
+            "Normal": "Nat_Stone_Objects_05_Normal_01.tga"
+          },
+          "props": {
+            "eCShaderDefault.EnableSpecular": 0
+          }
+        }
+      },
+      "notes": "The boulders at the Ash camp: a wide, low rock with a rough, dull texture."
     }
   ],
   "dialog_edits": [

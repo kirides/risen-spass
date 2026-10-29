@@ -40,6 +40,7 @@ T.plan {
     "c1: changed shipped templates and the NPC groups",
     "c1: world edits: spawns, removal, move",
     "c1: the imported 3D model is the tablet's mesh",
+    "c1: looks, a pond and painted grass of the editor",
     "c1: the tablet is picked up: the event fires once",
     "c1: the behaviour of Maren starts with its params",
     "c1: dialogue options exist",
@@ -373,6 +374,23 @@ T.run(function()
     local mesh_res = risen.assets.info("MKC_Tablet._xmsh")
     T.expect("c1: the imported 3D model is the tablet's mesh", tostring(mt and mt:get_property("eCMesh_PS", "MeshFileName")):lower() == "mkc_tablet.xmsh" and mesh_res ~= nil
         and tostring(mesh_res.source):find(MOD, 1, true) ~= nil, ("mesh %s source %s"):format(tostring(mt and mt:get_property("eCMesh_PS", "MeshFileName")), tostring(mesh_res and mesh_res.source)))
+    -- the editor's world features (WLD-10..14): object looks with their own mesh and materials, a painted pond, painted grass (docs/RE.md sections 61-64)
+    local function spawned_count(name)
+        local n = 0
+        for _, e in ipairs(spawned) do
+            local t = e:template()
+            if t and t:name() == name then n = n + 1 end
+        end
+        return n
+    end
+    T.wait_until(function() return spawned_count("MKC_Standing_Stone") >= 6 and spawned_count("MKC_Tide_Pool") >= 1 end, 30, "looks and pond spawned")
+    local stone_t, pond_t = risen.template.get("MKC_Standing_Stone"), risen.template.get("MKC_Tide_Pool")
+    local stone_mesh, stone_mat = risen.assets.info("MKC_Standing_Stone._xmsh"), risen.assets.info("MKC_Standing_Stone_0._xmat")
+    local veg = risen.entity.by_id("777ab89a-c9e2-410c-bc0e-dd6f5ba98157")
+    T.eq("c1: looks, a pond and painted grass of the editor",
+         { stone_t ~= nil and tostring(stone_t:get_property("eCMesh_PS", "MeshFileName")):lower(), pond_t ~= nil, spawned_count("MKC_Standing_Stone"), spawned_count("MKC_Ash_Boulder"), spawned_count("MKC_Tide_Pool"),
+           stone_mesh ~= nil and tostring(stone_mesh.source):find(MOD, 1, true) ~= nil, stone_mat ~= nil, veg ~= nil and risen.vegetation.info(veg) == true },
+         { "mkc_standing_stone.xmsh", true, 6, 2, 1, true, true, true })
     -- pick the tablet up like the player; a second one must not pay again
     local xp0 = select(2, wallet())
     risen.item.pick_up(p1, tablet)

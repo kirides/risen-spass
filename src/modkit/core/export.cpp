@@ -764,7 +764,7 @@ std::map<std::string, std::string> render_mod(const Project& p0) {
         f["data/events.lua"] = data_file("Event graphs (docs/editor/REQUIREMENTS.md 7.5): triggers, conditions, flow and actions, run by modkit/events.lua.", events_data(p));
         f["modkit/events.lua"] = events_lua();
     }
-    f["modkit/project.json"] = dump_project(p);
+    f["modkit/project.json"] = dump_project(p0);
 
     // strings: the first language is the fallback for every language (all.csv), the others get their own file
     const auto rows = string_rows(p);
@@ -814,7 +814,7 @@ ExportResult export_mod(const Project& p0, const std::string& out_dir, const Exp
             return r;
         }
     }
-    const auto files = render_mod(p);
+    const auto files = render_mod(p0);
     try {
         for (auto& [rel, content] : files) {
             if (write_text_if_changed(out / u8(rel), content)) r.written.push_back(rel);

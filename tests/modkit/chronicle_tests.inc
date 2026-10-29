@@ -115,15 +115,33 @@ TEST(chronicle_validates_clean_and_uses_every_feature) {
 
 TEST(chronicle_import_round_trip) {
     // export the chronicle, import it from its data files alone, export again: every generated file but the project is the same
+    auto g = game_data();  // the chronicle's looks and painted water are made from game files
+    if (!g) {
+        std::printf("  (skipped: no --data)\n");
+        return;
+    }
     const Project p = load_chronicle();
     const fs::path dir = temp_dir("import_chronicle") / "chronicle_example";
     ExportOptions o;
     o.project_dir = chronicle_dir();
-    CHECK(export_mod(p, u8str(dir), o).ok);
+    o.game = g.get();
+    const ExportResult first = export_mod(p, u8str(dir), o);
+    for (auto& e : first.errors) std::printf("  export: %s\n", e.c_str());
+    CHECK(first.ok);
     const ImportResult via_project = import_mod(u8str(dir));
     CHECK(via_project.ok && via_project.from_project_file);
     CHECK_EQ(dump_project(via_project.project), dump_project(p));
-    const ImportResult r = import_mod(u8str(dir), true);
+    // the import from the data files alone does not know the editor's looks, painted water and grass strokes (they have no data-file form of their own):
+    // that half of the round trip runs on the project without them
+    Project plain = p;
+    plain.looks.clear();
+    plain.waters.clear();
+    plain.vegetation.clear();
+    auto& sp = plain.world.spawns;
+    sp.erase(std::remove_if(sp.begin(), sp.end(), [](const WorldSpawn& x) { return x.template_name == "MKC_Standing_Stone" || x.template_name == "MKC_Ash_Boulder"; }), sp.end());
+    const fs::path dir2 = temp_dir("import_chronicle_plain") / "chronicle_example";
+    CHECK(export_mod(plain, u8str(dir2), o).ok);
+    const ImportResult r = import_mod(u8str(dir2), true);
     for (auto& w : r.warnings) std::printf("  import: %s\n", w.c_str());
     CHECK(r.ok && !r.from_project_file);
     if (!r.ok) {
@@ -136,7 +154,7 @@ TEST(chronicle_import_round_trip) {
     CHECK_EQ(r.project.quests.size(), p.quests.size());
     CHECK_EQ(r.project.dialogs.size(), p.dialogs.size());
     CHECK_EQ(r.project.npcs.size(), p.npcs.size());
-    const auto a = render_mod(p), b = render_mod(r.project);
+    const auto a = render_mod(plain), b = render_mod(r.project);
     for (auto& [rel, content] : a) {
         if (rel == "modkit/project.json") continue;
         auto it = b.find(rel);
