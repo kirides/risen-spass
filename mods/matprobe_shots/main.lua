@@ -31,10 +31,13 @@ T.run(function()
         local l = math.sqrt(cam.dx * cam.dx + cam.dz * cam.dz)
         if l > 0.01 then dx, dz = cam.dx / l, cam.dz / l end
     end
-    local club = risen.entity.spawn("It_1H_Club", px + dx * 150, py + 10, pz + dz * 150)
+    local tpl = T.param("template", "It_1H_Club")
+    local club = risen.entity.spawn(tpl, px + dx * T.param("dist", 150), py + 10, pz + dz * T.param("dist", 150))
     T.expect("the club exists", club ~= nil)
     wait_s(2)
-    local r = risen.assets.resource("ItWpn_SwordMisc_01_Diffuse_01._xmat")
+    local mname = T.param("material", "ItWpn_SwordMisc_01_Diffuse_01._xmat")
+    risen.log.info("matprobe: lookup " .. tostring(risen.vfs.lookup(mname)) .. " / " .. tostring(risen.vfs.lookup_physical(mname)))
+    local r = risen.assets.resource(T.param("material", "ItWpn_SwordMisc_01_Diffuse_01._xmat"))
     risen.log.info("matprobe: material resource " .. tostring(r and r.state) .. " " .. tostring(r and r.path))
     T.expect("the material resource is loaded", r ~= nil and r.state == 3)
     local done = 0
