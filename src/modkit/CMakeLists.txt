@@ -63,6 +63,7 @@ add_library(modkit_core STATIC
     core/search.cpp
     core/lua_files.cpp
     core/lua_writer.cpp
+    core/material.cpp
     core/mesh.cpp
     core/meshwrite.cpp
     core/model_import.cpp

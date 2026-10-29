@@ -1,0 +1,300 @@
+#include "core/material.h"
+
+#include <algorithm>
+#include <cstring>
+
+namespace mk {
+namespace {
+
+const char kHdr[6] = {1, 0, 1, 1, 0, 1};
+
+uint16_t r16(const p2m::Bytes& b, size_t p) { return p2m::rd16(b, p); }
+uint32_t r32(const p2m::Bytes& b, size_t p) { return p2m::rd32(b, p); }
+void w16(std::string& s, uint16_t v) { s.append(reinterpret_cast<const char*>(&v), 2); }
+void w32(std::string& s, uint32_t v) { s.append(reinterpret_cast<const char*>(&v), 4); }
+void put32(std::string& s, size_t at, uint32_t v) { std::memcpy(&s[at], &v, 4); }
+
+void need(const p2m::Bytes& b, size_t p, size_t n, const char* what) {
+    if (p > b.size() || n > b.size() - p) throw p2m::Error(std::string("material: truncated at ") + what);
+}
+
+std::string read_str(const p2m::Bytes& b, size_t& p) {
+    need(b, p, 2, "string length");
+    const size_t n = r16(b, p);
+    need(b, p + 2, n, "string");
+    std::string s = b.substr(p + 2, n);
+    p += 2 + n;
+    return s;
+}
+
+// an object header with a plausible class name: tail data can contain the six header bytes by chance
+bool object_at(const p2m::Bytes& b, size_t p) {
+    if (p + 8 > b.size() || std::memcmp(b.data() + p, kHdr, 6) != 0) return false;
+    const size_t n = static_cast<uint8_t>(b[p + 6]);
+    if (n < 8 || n > 0x40 || b[p + 7] != 0 || p + 8 + n + 3 > b.size()) return false;
+    const char* name = b.data() + p + 8;
+    if (!((name[0] == 'e' || name[0] == 'g') && name[1] == 'C')) return false;
+    for (size_t i = 2; i < n; ++i) {
+        const char c = name[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')) return false;
+    }
+    return std::memcmp(name + n, "\x01\x00\x00", 3) == 0;
+}
+
+std::string str_bytes(const std::string& s) {
+    std::string o;
+    w16(o, static_cast<uint16_t>(s.size()));
+    return o + s;
+}
+
+}  // namespace
+
+MatProp* MatObject::find(const std::string& name) {
+    for (auto& p : props)
+        if (p.name == name) return &p;
+    return nullptr;
+}
+const MatProp* MatObject::find(const std::string& name) const { return const_cast<MatObject*>(this)->find(name); }
+
+bool MatObject::get_string(const std::string& name, std::string* out) const {
+    const MatProp* p = find(name);
+    if (!p || p->payload.size() < 2 || p->payload.size() != 2u + r16(p->payload, 0)) return false;
+    if (out) *out = p->payload.substr(2);
+    return true;
+}
+bool MatObject::set_string(const std::string& name, const std::string& value) {
+    MatProp* p = find(name);
+    if (!p || p->payload.size() < 2 || p->payload.size() != 2u + r16(p->payload, 0) || value.size() > 0xffff) return false;
+    p->payload = str_bytes(value);
+    return true;
+}
+bool MatObject::get_bool(const std::string& name, bool fallback) const {
+    const MatProp* p = find(name);
+    return p && p->payload.size() == 1 ? p->payload[0] != 0 : fallback;
+}
+bool MatObject::set_bool(const std::string& name, bool v) {
+    MatProp* p = find(name);
+    if (!p || p->payload.size() != 1) return false;
+    p->payload[0] = v ? 1 : 0;
+    return true;
+}
+bool MatObject::get_int(const std::string& name, int32_t* out) const {
+    const MatProp* p = find(name);
+    if (!p) return false;
+    if (p->payload.size() == 4) {
+        if (out) *out = static_cast<int32_t>(r32(p->payload, 0));
+        return true;
+    }
+    if (p->payload.size() == 6 && r16(p->payload, 0) == 0xc9) {  // an enum: u16 0xc9 + u32
+        if (out) *out = static_cast<int32_t>(r32(p->payload, 2));
+        return true;
+    }
+    return false;
+}
+bool MatObject::set_int(const std::string& name, int32_t v) {
+    MatProp* p = find(name);
+    if (!p) return false;
+    if (p->payload.size() == 4) {
+        put32(p->payload, 0, static_cast<uint32_t>(v));
+        return true;
+    }
+    if (p->payload.size() == 6 && r16(p->payload, 0) == 0xc9) {
+        put32(p->payload, 2, static_cast<uint32_t>(v));
+        return true;
+    }
+    return false;
+}
+bool MatObject::get_float(const std::string& name, float* out) const {
+    const MatProp* p = find(name);
+    if (!p || p->payload.size() != 4) return false;
+    if (out) std::memcpy(out, p->payload.data(), 4);
+    return true;
+}
+bool MatObject::set_float(const std::string& name, float v) {
+    MatProp* p = find(name);
+    if (!p || p->payload.size() != 4) return false;
+    std::memcpy(&p->payload[0], &v, 4);
+    return true;
+}
+
+Material Material::parse(const p2m::Bytes& b) {
+    if (b.size() < 0x28 || b.compare(0, 8, "GR01SM01") != 0) throw p2m::Error("not a GR01/SM01 material");
+    Material m;
+    m.header = b.substr(0, 0x28);
+    std::vector<size_t> begins, body_ends;
+    size_t p = 0x28;
+    while (p < b.size()) {
+        if (!object_at(b, p)) throw p2m::Error("material: no object at " + std::to_string(p));
+        MatObject o;
+        size_t q = p + 6;
+        o.cls = read_str(b, q);
+        need(b, q, 7, "class record");
+        o.version = r16(b, q + 3);
+        q += 5;
+        if (r16(b, q) != 0xc9) throw p2m::Error("material: " + o.cls + ": no body marker");
+        const size_t body_begin = q + 6, size = r32(b, q + 2);
+        need(b, body_begin, size, "object body");
+        q = body_begin;
+        need(b, q, 6, "property count");
+        if (r16(b, q) != 0xc9) throw p2m::Error("material: " + o.cls + ": no property marker");
+        const size_t n = r32(b, q + 2);
+        q += 6;
+        for (size_t i = 0; i < n; ++i) {
+            MatProp pr;
+            pr.name = read_str(b, q);
+            pr.type = read_str(b, q);
+            need(b, q, 6, "property header");
+            if (r16(b, q) != 0x1e) throw p2m::Error("material: " + o.cls + "." + pr.name + ": no 0x1e");
+            const size_t psize = r32(b, q + 2);
+            need(b, q + 6, psize, "property value");
+            pr.payload = b.substr(q + 6, psize);
+            q += 6 + psize;
+            o.props.push_back(std::move(pr));
+        }
+        if (q > body_begin + size) throw p2m::Error("material: " + o.cls + ": properties exceed the body");
+        size_t next = p + 1;
+        while (next < b.size() && !object_at(b, next)) ++next;
+        o.tail = b.substr(q, next - q);
+        begins.push_back(p);
+        body_ends.push_back(body_begin + size);
+        m.objects.push_back(std::move(o));
+        p = next;
+    }
+    begins.push_back(b.size());
+    // which objects does each body cover: its end must be an object boundary
+    for (size_t i = 0; i < m.objects.size(); ++i) {
+        size_t e = i + 1;
+        while (e < begins.size() && begins[e] < body_ends[i]) ++e;
+        if (e >= begins.size() || begins[e] != body_ends[i]) throw p2m::Error("material: " + m.objects[i].cls + ": body ends inside an object");
+        m.objects[i].covers = e - i - 1;
+    }
+    return m;
+}
+
+p2m::Bytes Material::write() const {
+    std::string out = header;
+    std::vector<size_t> begins, size_at, body_begin;
+    for (const MatObject& o : objects) {
+        begins.push_back(out.size());
+        out.append(kHdr, 6);
+        out += str_bytes(o.cls);
+        out.append("\x01\x00\x00", 3);
+        w16(out, o.version);
+        w16(out, 0xc9);
+        size_at.push_back(out.size());
+        w32(out, 0);
+        body_begin.push_back(out.size());
+        w16(out, 0xc9);
+        w32(out, static_cast<uint32_t>(o.props.size()));
+        for (const MatProp& p : o.props) {
+            out += str_bytes(p.name);
+            out += str_bytes(p.type);
+            w16(out, 0x1e);
+            w32(out, static_cast<uint32_t>(p.payload.size()));
+            out += p.payload;
+        }
+        out += o.tail;
+    }
+    begins.push_back(out.size());
+    for (size_t i = 0; i < objects.size(); ++i) {
+        const size_t e = std::min(i + 1 + objects[i].covers, begins.size() - 1);
+        put32(out, size_at[i], static_cast<uint32_t>(begins[e] - body_begin[i]));
+    }
+    if (!begins.empty() && begins.size() > 1) {
+        const size_t first = begins[1] - 0x28;
+        put32(out, 12, static_cast<uint32_t>(first));
+        put32(out, 16, static_cast<uint32_t>(0x28 + first));
+        put32(out, 20, static_cast<uint32_t>(out.size() - (0x28 + first)));
+    }
+    return out;
+}
+
+std::vector<MatObject*> Material::of_class(const std::string& cls) {
+    std::vector<MatObject*> r;
+    for (auto& o : objects)
+        if (o.cls == cls) r.push_back(&o);
+    return r;
+}
+
+std::vector<std::string> Material::sampler_images() const {
+    std::vector<std::string> r;
+    for (const auto& o : objects) {
+        std::string s;
+        if (o.cls == "eCColorSrcSampler" && o.get_string("ImageFilePath", &s)) r.push_back(s);
+    }
+    return r;
+}
+
+namespace {
+std::string hex16(const std::string& b, size_t p) {
+    static const char* d = "0123456789abcdef";
+    std::string o;
+    for (size_t i = 0; i < 16; ++i) {
+        const auto c = static_cast<uint8_t>(b[p + i]);
+        o += d[c >> 4];
+        o += d[c & 15];
+    }
+    return o;
+}
+const char* kSlotNames[8] = {"Diffuse", "Opacity", "SelfIllumination", "Specular", "SpecularPower", "Normal", "Distortion", "LightEmission"};
+}  // namespace
+
+std::string Material::guid_of(size_t i) const {
+    if (i >= objects.size()) return {};
+    const MatObject& o = objects[i];
+    if (o.cls.rfind("eCShader", 0) == 0) {
+        if (o.tail.size() < 2 + 256 + 4 + 20) return {};
+        return hex16(o.tail, 2 + 256 + 4);
+    }
+    if (o.tail.size() < 41) return {};
+    return hex16(o.tail, o.tail.size() - 37);
+}
+
+std::vector<MatSlot> Material::slots() const {
+    std::vector<MatSlot> r;
+    size_t sh = objects.size();
+    for (size_t i = 0; i < objects.size(); ++i)
+        if (objects[i].cls == "eCShaderDefault") sh = i;
+    if (sh == objects.size() || objects[sh].tail.size() < 2 + 256) return r;
+    const std::string& t = objects[sh].tail;
+    for (int k = 0; k < 8; ++k) {
+        const size_t p = 2 + 32 * k;
+        MatSlot s;
+        s.name = kSlotNames[k];
+        s.component = r32(t, p + 4);
+        s.modifier = r32(t, p + 8);
+        s.linked = t[p + 12 + 16] != 0;
+        if (s.linked) {
+            s.guid = hex16(t, p + 12);
+            for (size_t i = 0; i < objects.size(); ++i)
+                if (i != sh && guid_of(i) == s.guid) s.node = static_cast<int>(i);
+        }
+        r.push_back(std::move(s));
+    }
+    return r;
+}
+
+std::string Material::slot_image(const MatSlot& slot, int depth) const {
+    if (slot.node < 0 || depth > 8) return {};
+    const MatObject& o = objects[static_cast<size_t>(slot.node)];
+    std::string img;
+    if (o.cls == "eCColorSrcSampler" && o.get_string("ImageFilePath", &img)) return img;
+    if (o.cls == "eCColorSrcCombiner" && o.tail.size() >= 2 + 64) {
+        for (int k = 0; k < 2; ++k) {
+            const size_t p = 2 + 32 * k;
+            if (!o.tail[p + 28]) continue;
+            const std::string g = hex16(o.tail, p + 12);
+            for (size_t i = 0; i < objects.size(); ++i)
+                if (guid_of(i) == g) {
+                    MatSlot sub;
+                    sub.linked = true;
+                    sub.node = static_cast<int>(i);
+                    const std::string r = slot_image(sub, depth + 1);
+                    if (!r.empty()) return r;
+                }
+        }
+    }
+    return {};
+}
+
+}  // namespace mk
