@@ -274,11 +274,10 @@ std::vector<MatSlot> Material::slots() const {
     return r;
 }
 
-std::string Material::slot_image(const MatSlot& slot, int depth) const {
-    if (slot.node < 0 || depth > 8) return {};
+int Material::slot_sampler(const MatSlot& slot, int depth) const {
+    if (slot.node < 0 || depth > 8) return -1;
     const MatObject& o = objects[static_cast<size_t>(slot.node)];
-    std::string img;
-    if (o.cls == "eCColorSrcSampler" && o.get_string("ImageFilePath", &img)) return img;
+    if (o.cls == "eCColorSrcSampler") return slot.node;
     if (o.cls == "eCColorSrcCombiner" && o.tail.size() >= 2 + 64) {
         for (int k = 0; k < 2; ++k) {
             const size_t p = 2 + 32 * k;
@@ -289,12 +288,19 @@ std::string Material::slot_image(const MatSlot& slot, int depth) const {
                     MatSlot sub;
                     sub.linked = true;
                     sub.node = static_cast<int>(i);
-                    const std::string r = slot_image(sub, depth + 1);
-                    if (!r.empty()) return r;
+                    const int r = slot_sampler(sub, depth + 1);
+                    if (r >= 0) return r;
                 }
         }
     }
-    return {};
+    return -1;
+}
+
+std::string Material::slot_image(const MatSlot& slot, int depth) const {
+    const int i = slot_sampler(slot, depth);
+    std::string img;
+    if (i >= 0) objects[static_cast<size_t>(i)].get_string("ImageFilePath", &img);
+    return img;
 }
 
 }  // namespace mk

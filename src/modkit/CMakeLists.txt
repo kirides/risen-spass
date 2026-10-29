@@ -164,6 +164,9 @@ if(WIN32)
     endif()
 endif()
 
+add_executable(risen-material tools/material_cli.cpp)
+target_link_libraries(risen-material PRIVATE modkit_core)
+
 if(SPASS_BUILD_TESTS)
     add_executable(modkit_tests "${CMAKE_SOURCE_DIR}/tests/modkit/modkit_tests.cpp")
     # LuaJIT compiles the runtime and the exported data files in the tests (the same LuaJIT the layer runs them with)

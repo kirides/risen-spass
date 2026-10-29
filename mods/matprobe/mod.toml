@@ -1,0 +1,6 @@
+id          = "matprobe"
+name        = "Material probe"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Carries the loose material that scripts/matprobe.ps1 makes with risen-material (assets/ is filled by the script, nothing of the game is stored here)."
+main        = "main.lua"

@@ -63,6 +63,8 @@ struct Material {
     // the node's own GUID as 32 hex digits ("" when its tail has no element suffix)
     std::string guid_of(size_t object) const;
     // the image a slot ends up at: follows combiners through their first input that reaches a sampler; "" when none
+    // the sampler object a slot ends up at (same walk), -1 when none
+    int slot_sampler(const MatSlot& slot, int depth = 0) const;
     std::string slot_image(const MatSlot& slot, int depth = 0) const;
 };
 

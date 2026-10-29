@@ -1,0 +1,6 @@
+id          = "matprobe_shots"
+name        = "Material probe screenshots"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Pictures of the club and the state of its material resource, without and with mods/matprobe (scripts/matprobe.ps1)."
+main        = "main.lua"
