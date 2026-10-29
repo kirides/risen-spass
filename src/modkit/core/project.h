@@ -12,6 +12,7 @@
 #include <nlohmann/json.hpp>
 
 #include "core/material.h"
+#include "core/mesh_edit.h"
 
 namespace mk {
 
@@ -367,6 +368,7 @@ struct Project {
     std::vector<StringRow> strings;
     std::vector<TemplatePatch> patches;
     std::vector<MaterialEdit> materials;  // changed shipped materials (core/material.h)
+    std::vector<MeshEdit> meshes;         // changed shipped meshes (core/mesh_edit.h)
     std::vector<DialogEdit> dialog_edits;
     std::vector<TeacherLimit> teachers;
     json editor = json::object();  // editor-only state (notes, view settings); exported with project.json

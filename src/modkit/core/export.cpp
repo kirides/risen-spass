@@ -664,7 +664,7 @@ std::map<std::string, std::string> render_mod(const Project& p) {
     if (!m.load_after.empty()) toml += "load_after  = " + toml_list(m.load_after) + "\n";
     if (!m.requires_mods.empty()) toml += "requires    = " + toml_list(m.requires_mods) + "\n";
     // the compiled resources are mounted from assets/ (audio files go to sounds/ and are compiled by the layer when a line uses them)
-    const bool resources = !p.materials.empty() || std::any_of(p.assets.begin(), p.assets.end(), [](const AssetFile& a) { return !is_raw_audio(a.file); });
+    const bool resources = !p.materials.empty() || !p.meshes.empty() || std::any_of(p.assets.begin(), p.assets.end(), [](const AssetFile& a) { return !is_raw_audio(a.file); });
     toml += resources ? "assets      = \"assets\"\n" : "assets      = false\n";
     f["mod.toml"] = toml;
 
@@ -857,6 +857,17 @@ ExportResult export_mod(const Project& p, const std::string& out_dir, const Expo
             } catch (const std::exception& ex) {
                 r.errors.push_back("material " + e.material + ": " + ex.what());
             }
+        }
+        // changed shipped meshes: decoded, changed, written again under the same name
+        for (const MeshEdit& e : p.meshes) {
+            if (!opts.game || !opts.game->exists(e.mesh)) {
+                r.errors.push_back("mesh " + e.mesh + ": " + (opts.game ? "the game has no such mesh" : "the game data is not loaded"));
+                continue;
+            }
+            p2m::Bytes bytes;
+            std::string why;
+            if (!apply_mesh_edit(opts.game->read(e.mesh), e, bytes, why)) r.errors.push_back("mesh " + e.mesh + ": " + why);
+            else put("assets/" + e.mesh, bytes);
         }
         if (!icons.empty()) {
             std::sort(icons.begin(), icons.end(), [](const auto& a, const auto& b) { return a.first < b.first; });

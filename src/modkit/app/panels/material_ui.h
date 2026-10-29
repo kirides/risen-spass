@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "core/material.h"
+#include "core/mesh_edit.h"
 
 namespace mk {
 
@@ -33,10 +34,16 @@ private:
     const std::vector<std::string>& images(App& app);
     void draw_material(App& app, const std::string& material);
     bool pick_image(App& app, const char* id, std::string* picked);
+    bool pick_name(const char* id, const std::vector<std::string>& all, std::string* picked, const char* suffix);
+    const std::vector<std::string>& material_names(App& app);
+    const MeshInfo* info_of(App& app, const std::string& mesh);
+    void draw_mesh(App& app, const std::string& mesh);
 
     std::string selected_, filter_;
     std::map<std::string, Original> originals_;  // by lower-case name
     std::map<std::string, std::vector<std::string>> mesh_materials_;
+    std::map<std::string, std::pair<bool, MeshInfo>> mesh_infos_;
+    std::vector<std::string> material_names_;
     std::vector<std::string> images_;  // stems of the game's and the project's images
     size_t images_assets_ = SIZE_MAX;
 };

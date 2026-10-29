@@ -1,6 +1,7 @@
 // risen-material: look at and change the game's compiled materials from the command line (docs/RE.md section 60). Used by the live checks of the
 // material editor (scripts, mods/matprobe) to make a loose `._xmat` from a shipped one without storing any game data in the repository.
 //   risen-material <Risen>\data dump  <Name._xmat>
+//   risen-material <Risen>\data mesh  <Name._xmsh> <out file> [--scale s] [--material 0=Other._xmat] ...
 //   risen-material <Risen>\data patch <Name._xmat> <out file> [--slot Normal=new.tga] [--set Class.Prop=value] ...
 #include <cstdio>
 #include <cstdlib>
@@ -8,6 +9,7 @@
 
 #include "core/gamedata.h"
 #include "core/material.h"
+#include "core/mesh_edit.h"
 
 using namespace mk;
 
@@ -18,8 +20,24 @@ int main(int argc, char** argv) {
     }
     try {
         auto g = GameData::load(argv[1]);
-        Material m = Material::parse(g->read(argv[3]));
         const std::string cmd = argv[2];
+        if (cmd == "mesh" && argc >= 5) {
+            MeshEdit e;
+            e.mesh = argv[3];
+            for (int i = 5; i + 1 < argc; i += 2) {
+                const std::string flag = argv[i], arg = argv[i + 1];
+                if (flag == "--scale") e.scale = {std::stof(arg), std::stof(arg), std::stof(arg)};
+                else if (flag == "--material") e.materials[std::atoi(arg.c_str())] = arg.substr(arg.find('=') + 1);
+                else throw std::runtime_error("unknown option " + flag);
+            }
+            std::string out, why;
+            if (!apply_mesh_edit(g->read(argv[3]), e, out, why)) throw std::runtime_error(why);
+            std::ofstream f(argv[4], std::ios::binary);
+            f.write(out.data(), static_cast<std::streamsize>(out.size()));
+            std::printf("wrote %s (%zu bytes)\n", argv[4], out.size());
+            return 0;
+        }
+        Material m = Material::parse(g->read(argv[3]));
         if (cmd == "dump") {
             for (const auto& o : m.objects) {
                 std::printf("%s\n", o.cls.c_str());

@@ -84,13 +84,12 @@ const std::vector<std::string>& MaterialInspector::images(App& app) {
     return images_;
 }
 
-bool MaterialInspector::pick_image(App& app, const char* id, std::string* picked) {
+bool MaterialInspector::pick_name(const char* id, const std::vector<std::string>& all, std::string* picked, const char* suffix) {
     bool done = false;
     if (ImGui::BeginPopup(id)) {
         ImGui::SetNextItemWidth(320);
         if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
         ImGui::InputTextWithHint("##f", tr("filter"), &filter_);
-        const auto& all = images(app);
         std::vector<const std::string*> hits;
         const std::string f = p2m::lower(filter_);
         for (auto& s : all)
@@ -101,7 +100,7 @@ bool MaterialInspector::pick_image(App& app, const char* id, std::string* picked
             while (clip.Step())
                 for (int i = clip.DisplayStart; i < clip.DisplayEnd; ++i)
                     if (ImGui::Selectable(hits[static_cast<size_t>(i)]->c_str())) {
-                        *picked = *hits[static_cast<size_t>(i)] + ".tga";
+                        *picked = *hits[static_cast<size_t>(i)] + suffix;
                         done = true;
                         ImGui::CloseCurrentPopup();
                     }
@@ -112,8 +111,117 @@ bool MaterialInspector::pick_image(App& app, const char* id, std::string* picked
     return done;
 }
 
+bool MaterialInspector::pick_image(App& app, const char* id, std::string* picked) { return pick_name(id, images(app), picked, ".tga"); }
+
+const std::vector<std::string>& MaterialInspector::material_names(App& app) {
+    if (material_names_.empty()) {
+        for (auto& a : app.game->assets("_xmat")) material_names_.push_back(stem_of(a.name));
+        std::sort(material_names_.begin(), material_names_.end(), [](const std::string& x, const std::string& y) { return p2m::lower(x) < p2m::lower(y); });
+    }
+    return material_names_;
+}
+
+const MeshInfo* MaterialInspector::info_of(App& app, const std::string& mesh) {
+    auto it = mesh_infos_.find(mesh);
+    if (it == mesh_infos_.end()) {
+        std::pair<bool, MeshInfo> v;
+        try {
+            v.second = mesh_info(app.game->read(mesh));
+            v.first = true;
+        } catch (const std::exception&) {
+        }
+        it = mesh_infos_.emplace(mesh, std::move(v)).first;
+    }
+    return it->second.first ? &it->second.second : nullptr;
+}
+
+void MaterialInspector::draw_mesh(App& app, const std::string& mesh) {
+    const MeshInfo* info = info_of(app, mesh);
+    if (!info) return;
+    uint32_t tris = 0, verts = 0;
+    for (auto& s : info->subs) {
+        tris += s.triangles;
+        verts += s.vertices;
+    }
+    ImGui::TextDisabled(tr("%zu sub-mesh(es), %u vertices, %u triangles"), info->subs.size(), verts, tris);
+    ImGui::TextDisabled(tr("size %.0f x %.0f x %.0f"), info->box_max[0] - info->box_min[0], info->box_max[1] - info->box_min[1], info->box_max[2] - info->box_min[2]);
+    if (!info->writable) {
+        ImGui::TextDisabled("%s", tr("This mesh cannot be changed by the editor."));
+        ImGui::TextDisabled("%s", info->why_not.c_str());
+        return;
+    }
+    auto find = [&]() -> MeshEdit* {
+        for (auto& e : app.project.meshes)
+            if (p2m::lower(e.mesh) == p2m::lower(mesh)) return &e;
+        return nullptr;
+    };
+    auto edit = [&]() -> MeshEdit& {
+        if (MeshEdit* e = find()) return *e;
+        MeshEdit e;
+        e.uid = new_uid();
+        e.mesh = mesh;
+        app.project.meshes.push_back(e);
+        return app.project.meshes.back();
+    };
+    auto prune = [&] {
+        auto& v = app.project.meshes;
+        v.erase(std::remove_if(v.begin(), v.end(), [](const MeshEdit& e) { return e.changes_nothing() && e.notes.empty(); }), v.end());
+    };
+    for (size_t i = 0; i < info->subs.size(); ++i) {
+        ImGui::PushID(static_cast<int>(i));
+        const MeshEdit* e = find();
+        const bool changed = e && e->materials.count(static_cast<int>(i)) != 0;
+        const std::string shown = changed ? e->materials.at(static_cast<int>(i)) : info->subs[i].material;
+        ImGui::TextDisabled("#%zu  %u tri", i, info->subs[i].triangles);
+        ImGui::SameLine();
+        if (changed) ImGui::PushStyleColor(ImGuiCol_Text, kChanged);
+        if (ImGui::Button(shown.c_str(), ImVec2(changed ? -60.0f : -1.0f, 0))) ImGui::OpenPopup("mat");
+        if (changed) ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered() && changed) ImGui::SetTooltip("%s", trf("shipped: {0}", {info->subs[i].material}).c_str());
+        std::string picked;
+        if (pick_name("mat", material_names(app), &picked, "._xmat")) {
+            MeshEdit& m = edit();
+            if (p2m::lower(picked) == p2m::lower(info->subs[i].material)) m.materials.erase(static_cast<int>(i));
+            else m.materials[static_cast<int>(i)] = picked;
+            prune();
+            app.touch();
+        }
+        if (changed) {
+            ImGui::SameLine();
+            if (ImGui::SmallButton(tr("Reset"))) {
+                find()->materials.erase(static_cast<int>(i));
+                prune();
+                app.touch();
+            }
+        }
+        ImGui::PopID();
+    }
+    const MeshEdit* cur = find();
+    float sc[3] = {cur ? cur->scale[0] : 1.0f, cur ? cur->scale[1] : 1.0f, cur ? cur->scale[2] : 1.0f};
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::DragFloat3("##scale", sc, 0.01f, 0.01f, 100.0f, "%.2f")) {
+        MeshEdit& m = edit();
+        for (int k = 0; k < 3; ++k) m.scale[static_cast<size_t>(k)] = std::max(0.01f, sc[k]);
+        prune();
+        app.touch();
+    }
+    ImGui::TextDisabled("%s", tr("scale x, y, z (the mesh itself: every object that uses it changes)"));
+    if (find()) {
+        if (ImGui::Button(tr("Reset the whole mesh"))) {
+            auto& v = app.project.meshes;
+            v.erase(std::remove_if(v.begin(), v.end(), [&](const MeshEdit& e) { return p2m::lower(e.mesh) == p2m::lower(mesh); }), v.end());
+            app.touch();
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("%s", tr("exported as a loose copy of the mesh"));
+    }
+}
+
 void MaterialInspector::draw(App& app, const std::string& mesh) {
     if (!app.game || mesh.empty()) return;
+    ImGui::SeparatorText(tr("Mesh"));
+    draw_mesh(app, mesh);
+    ImGui::SeparatorText(tr("Materials"));
     const auto& mats = materials_of(app, mesh);
     if (mats.empty()) {
         ImGui::TextDisabled("%s", tr("This mesh has no materials the editor can change."));

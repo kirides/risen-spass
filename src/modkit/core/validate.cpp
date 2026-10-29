@@ -1,4 +1,6 @@
 #include "core/validate.h"
+
+#include <filesystem>
 #include "core/i18n.h"
 
 #include <algorithm>
@@ -794,6 +796,31 @@ void check_extras(Ctx& c) {
             if (!it.label.empty() && low == p2m::lower("FO_" + it.name)) c.add(Severity::Warning, A, s.uid, subj, trf("the label of the item {0} has this id and wins", {it.name}));
             if (!it.description.empty() && low == p2m::lower("ITEMDESC_" + it.name)) c.add(Severity::Warning, A, s.uid, subj, trf("the description of the item {0} has this id and wins", {it.name}));
         }
+    }
+    std::map<std::string, int> meseen;
+    for (auto& x : c.p.meshes) {
+        const char* A = "Meshes";
+        const std::string subj = x.mesh.empty() ? "(no mesh)" : x.mesh;
+        if (x.mesh.empty()) {
+            c.add(Severity::Error, A, x.uid, subj, tr("choose the mesh to change"));
+            continue;
+        }
+        if (++meseen[p2m::lower(x.mesh)] == 2) c.add(Severity::Error, A, x.uid, subj, tr("this mesh is changed twice: only one change per mesh is exported"));
+        if (x.changes_nothing()) c.add(Severity::Warning, A, x.uid, subj, tr("the change does nothing"));
+        for (auto& [i, mat] : x.materials) {
+            if (!c.g || c.g->exists(mat)) continue;
+            bool mine = false;
+            for (auto& a : c.p.assets) mine |= p2m::lower(std::filesystem::path(a.file).filename().string()) == p2m::lower(mat);
+            if (!mine) c.add(Severity::Warning, A, x.uid, subj, trf("sub-mesh {0}: no material of the game or the project is called {1}", {std::to_string(i), mat}));
+        }
+        if (!c.g) continue;
+        if (!c.g->exists(x.mesh)) {
+            c.add(Severity::Error, A, x.uid, subj, tr("the game has no mesh with this name"));
+            continue;
+        }
+        p2m::Bytes bytes;
+        std::string why;
+        if (!apply_mesh_edit(c.g->read(x.mesh), x, bytes, why)) c.add(Severity::Error, A, x.uid, subj, why);
     }
     std::map<std::string, int> mseen;
     for (auto& x : c.p.materials) {

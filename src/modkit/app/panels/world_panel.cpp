@@ -1556,7 +1556,6 @@ private:
         }
         draw_world_edit(app, e);
         if (selected_ < mesh_names_.size() && !mesh_names_[selected_].empty()) {
-            ImGui::SeparatorText(tr("Materials"));
             materials_.draw(app, mesh_names_[selected_]);
         }
         if (props_for_ != selected_) {

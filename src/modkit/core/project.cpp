@@ -708,6 +708,23 @@ json to_json(const Project& p) {
         }
         j["materials"] = a;
     }
+    if (!p.meshes.empty()) {
+        json a = json::array();
+        for (auto& x : p.meshes) {
+            json o = json::object();
+            o["uid"] = x.uid;
+            o["mesh"] = x.mesh;
+            if (!x.materials.empty()) {
+                json m = json::object();
+                for (auto& [i, name] : x.materials) m[std::to_string(i)] = name;
+                o["materials"] = m;
+            }
+            if (x.scale != std::array<float, 3>{1, 1, 1}) o["scale"] = json::array({x.scale[0], x.scale[1], x.scale[2]});
+            put_str(o, "notes", x.notes);
+            a.push_back(o);
+        }
+        j["meshes"] = a;
+    }
     if (!p.dialog_edits.empty()) {
         json a = json::array();
         for (auto& x : p.dialog_edits) {
@@ -1100,6 +1117,19 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
                 else if (k[0] == 'p' && v.is_number_integer()) x.props[name] = v.get<int>();
             }
         }
+        r.get(e, "notes", x.notes);
+        return x;
+    });
+    read_list(j, "meshes", p.meshes, warnings, [](const Reader& r, const json& e) {
+        MeshEdit x;
+        r.get_uid(e, x.uid);
+        r.get(e, "mesh", x.mesh);
+        if (auto it = e.find("materials"); it != e.end() && it->is_object())
+            for (auto& [k, v] : it->items())
+                if (v.is_string()) x.materials[std::atoi(k.c_str())] = v.get<std::string>();
+        if (auto it = e.find("scale"); it != e.end() && it->is_array() && it->size() == 3)
+            for (size_t k = 0; k < 3; ++k)
+                if ((*it)[k].is_number()) x.scale[k] = (*it)[k].get<float>();
         r.get(e, "notes", x.notes);
         return x;
     });

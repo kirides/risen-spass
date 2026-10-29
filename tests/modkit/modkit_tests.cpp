@@ -358,6 +358,7 @@ TEST(gamedata_real_archives) {
 #include "sectors_tests.inc"
 #include "genome_tests.inc"
 #include "material_tests.inc"
+#include "mesh_edit_tests.inc"
 #include "dialog_sim_tests.inc"
 #include "pack2project_tests.inc"
 #include "extras_tests.inc"
