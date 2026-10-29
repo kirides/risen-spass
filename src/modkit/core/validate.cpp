@@ -797,6 +797,25 @@ void check_extras(Ctx& c) {
             if (!it.description.empty() && low == p2m::lower("ITEMDESC_" + it.name)) c.add(Severity::Warning, A, s.uid, subj, trf("the description of the item {0} has this id and wins", {it.name}));
         }
     }
+    std::map<std::string, int> wseen;
+    for (auto& x : c.p.waters) {
+        const char* A = "Water";
+        const std::string subj = x.name.empty() ? "(no name)" : x.name;
+        if (x.name.empty()) {
+            c.add(Severity::Error, A, x.uid, subj, tr("name the water body: it becomes the name of a template"));
+            continue;
+        }
+        for (char ch : x.name)
+            if (!std::isalnum(static_cast<unsigned char>(ch)) && ch != '_') {
+                c.add(Severity::Error, A, x.uid, subj, tr("the name may only have letters, digits and underscores"));
+                break;
+            }
+        if (++wseen[p2m::lower(x.name)] == 2) c.add(Severity::Error, A, x.uid, subj, tr("two water bodies have this name"));
+        if (c.g && c.g->tpl(x.name)) c.add(Severity::Error, A, x.uid, subj, tr("a template of the game has this name"));
+        if (!water_polygon_simple(x)) c.add(Severity::Error, A, x.uid, subj, tr("the outline needs at least three points, an area, and no crossing edges"));
+        if (c.g && !x.material.empty() && !c.g->exists(x.material)) c.add(Severity::Error, A, x.uid, subj, tr("the game has no material with this name"));
+        if (c.g && !c.g->tpl("Obj_Nat_Waterfall_Large")) c.add(Severity::Error, A, x.uid, subj, tr("the game has no template Obj_Nat_Waterfall_Large to make the surface from"));
+    }
     std::map<std::string, int> lseen;
     for (auto& x : c.p.looks) {
         const char* A = "Looks";
@@ -956,6 +975,7 @@ std::vector<Problem> validate(const Project& p, const GameData* game, const Worl
     Ctx c{p, game, world, out, {}, {}, {}, {}};
     for (auto& s : skill_names(game)) c.skills.insert(s);
     for (auto& l : p.looks) c.new_templates.insert(p2m::lower(l.name));
+    for (auto& w : p.waters) c.new_templates.insert(p2m::lower(w.name));
     for (auto& i : p.items)
         if (i.mode == Mode::New) c.new_templates.insert(p2m::lower(i.name));
     for (auto& r : p.recipes)

@@ -27,6 +27,7 @@ struct ObjectLook {
     std::array<float, 3> scale{1, 1, 1};
     std::map<int, MaterialEdit> materials;  // sub-mesh index -> a clone of the sub-mesh's material with these changes (MaterialEdit::material = the source)
     std::string notes;
+    bool generated = false;  // a water body's template: its mesh is made by core/water.cpp, not by a mesh edit (never saved)
 };
 
 // the files of a look: relative name ("assets/Name._xmsh") -> bytes. False with `error` when something does not fit (no such mesh, a sub-mesh out of range, a

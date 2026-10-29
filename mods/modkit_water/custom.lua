@@ -1,0 +1,4 @@
+-- custom.lua: hand-written additions to the mod. risen-modkit creates this file once and never overwrites it.
+-- Everything of the layer's API is available (types/risen.d.lua, docs/MODDING_GUIDE.md); the exported content is
+-- installed before this file runs, and an error here is logged without taking the content down.
+-- This file lives only in the mod folder: code that should travel with the project belongs in the editor's Lua panel.

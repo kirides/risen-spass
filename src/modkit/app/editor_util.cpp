@@ -571,6 +571,8 @@ std::vector<std::string> project_item_names(const Project& p) {
         if (r.mode == Mode::New && !r.name.empty()) v.push_back(r.name);
     for (auto& l : p.looks)
         if (!l.name.empty()) v.push_back(l.name);
+    for (auto& w : p.waters)
+        if (!w.name.empty()) v.push_back(w.name);
     for (auto& s : p.spells) {  // the item templates of a new spell: crystal / rune, scroll, orb
         if (s.mode != Mode::New || s.name.empty()) continue;
         if (s.forms.empty()) v.push_back(s.name);

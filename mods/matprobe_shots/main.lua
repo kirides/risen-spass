@@ -38,7 +38,7 @@ T.run(function()
         risen.log.info("matprobe: template.create -> " .. tostring(t) .. " " .. tostring(why))
         if t then tpl = "Spass_Derived" end
     end
-    local club = risen.entity.spawn(tpl, px + dx * T.param("dist", 150), py + 10, pz + dz * T.param("dist", 150))
+    local club = risen.entity.spawn(tpl, px + dx * T.param("dist", 150), py + T.param("lift", 10), pz + dz * T.param("dist", 150))
     T.expect("the club exists", club ~= nil)
     local set_mesh = T.param("set_mesh", "")
     if club and set_mesh ~= "" then

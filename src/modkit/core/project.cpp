@@ -709,6 +709,23 @@ json to_json(const Project& p) {
         }
         j["materials"] = a;
     }
+    if (!p.waters.empty()) {
+        json a = json::array();
+        for (auto& x : p.waters) {
+            json o = json::object();
+            o["uid"] = x.uid;
+            o["name"] = x.name;
+            o["material"] = x.material;
+            o["height"] = x.height;
+            json pts = json::array();
+            for (auto& q : x.points) pts.push_back(json::array({q[0], q[1]}));
+            o["points"] = pts;
+            put_str(o, "world", x.world);
+            put_str(o, "notes", x.notes);
+            a.push_back(o);
+        }
+        j["waters"] = a;
+    }
     if (!p.looks.empty()) {
         json a = json::array();
         for (auto& x : p.looks) {
@@ -1143,6 +1160,19 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
                 else if (k[0] == 'c' && v.is_number_integer()) x.channels[name] = v.get<int>();
             }
         }
+        r.get(e, "notes", x.notes);
+        return x;
+    });
+    read_list(j, "waters", p.waters, warnings, [](const Reader& r, const json& e) {
+        WaterBody x;
+        r.get_uid(e, x.uid);
+        r.get(e, "name", x.name);
+        r.get(e, "material", x.material);
+        r.get(e, "height", x.height);
+        if (auto it = e.find("points"); it != e.end() && it->is_array())
+            for (auto& q : *it)
+                if (q.is_array() && q.size() == 2 && q[0].is_number() && q[1].is_number()) x.points.push_back({q[0].get<double>(), q[1].get<double>()});
+        r.get(e, "world", x.world);
         r.get(e, "notes", x.notes);
         return x;
     });

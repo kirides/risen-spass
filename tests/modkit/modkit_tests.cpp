@@ -360,6 +360,7 @@ TEST(gamedata_real_archives) {
 #include "material_tests.inc"
 #include "mesh_edit_tests.inc"
 #include "looks_tests.inc"
+#include "water_tests.inc"
 #include "dialog_sim_tests.inc"
 #include "pack2project_tests.inc"
 #include "extras_tests.inc"

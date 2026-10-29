@@ -1,0 +1,22 @@
+{
+  "format": "risen-modkit-project",
+  "format_version": 1,
+  "mod": {
+    "id": "modkit_water",
+    "name": "risen-modkit water example",
+    "version": "1.0.0",
+    "author": "risen-spass",
+    "description": "A pond painted as a polygon: a flat mesh with the island water material, spawned at its centre (docs/RE.md section 63). Checked live with scripts/water-probe.ps1.",
+    "languages": ["English"]
+  },
+  "waters": [
+    {
+      "uid": "33333333333333333333333333333333",
+      "name": "MKW_Pond",
+      "material": "Special_Water_Island_01_Diffuse_01._xmat",
+      "height": 620,
+      "points": [[-32400, -4900], [-31600, -4800], [-31300, -4300], [-31800, -3900], [-32300, -4200]]
+    }
+  ],
+  "world": { "world": "World" }
+}

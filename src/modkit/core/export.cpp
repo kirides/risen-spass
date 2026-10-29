@@ -648,7 +648,8 @@ json behaviors_data(const Project& p) {
     return json{{"scripts", scripts}, {"npcs", npcs}, {"templates", templates}};
 }
 
-std::map<std::string, std::string> render_mod(const Project& p) {
+std::map<std::string, std::string> render_mod(const Project& p0) {
+    const Project p = with_water(p0);
     std::map<std::string, std::string> f;
     const ModInfo& m = p.mod;
 
@@ -664,7 +665,7 @@ std::map<std::string, std::string> render_mod(const Project& p) {
     if (!m.load_after.empty()) toml += "load_after  = " + toml_list(m.load_after) + "\n";
     if (!m.requires_mods.empty()) toml += "requires    = " + toml_list(m.requires_mods) + "\n";
     // the compiled resources are mounted from assets/ (audio files go to sounds/ and are compiled by the layer when a line uses them)
-    const bool resources = !p.materials.empty() || !p.meshes.empty() || !p.looks.empty() || std::any_of(p.assets.begin(), p.assets.end(), [](const AssetFile& a) { return !is_raw_audio(a.file); });
+    const bool resources = !p.materials.empty() || !p.meshes.empty() || !p.looks.empty() || !p.waters.empty() || std::any_of(p.assets.begin(), p.assets.end(), [](const AssetFile& a) { return !is_raw_audio(a.file); });
     toml += resources ? "assets      = \"assets\"\n" : "assets      = false\n";
     f["mod.toml"] = toml;
 
@@ -768,7 +769,8 @@ std::map<std::string, std::string> render_mod(const Project& p) {
     return f;
 }
 
-ExportResult export_mod(const Project& p, const std::string& out_dir, const ExportOptions& opts) {
+ExportResult export_mod(const Project& p0, const std::string& out_dir, const ExportOptions& opts) {
+    const Project p = with_water(p0);
     ExportResult r;
     const fs::path out = u8(out_dir);
     std::error_code ec;
@@ -865,7 +867,17 @@ ExportResult export_mod(const Project& p, const std::string& out_dir, const Expo
             }
         }
         // object looks: a mesh and the clones of the materials under new names
+        for (const WaterBody& w : p0.waters) {
+            std::map<std::string, std::string> made;
+            std::string why;
+            if (!build_water(w, made, why)) {
+                r.errors.push_back("water " + w.name + ": " + why);
+                continue;
+            }
+            for (auto& [rel, bytes] : made) put(rel, bytes);
+        }
         for (const ObjectLook& l : p.looks) {
+            if (l.generated) continue;
             if (!opts.game) {
                 r.errors.push_back("look " + l.name + ": the game data is not loaded");
                 continue;
