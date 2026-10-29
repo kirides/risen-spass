@@ -22,7 +22,7 @@ T.run(function()
     pcall(risen.world.set_time, 12, 0)
     wait_s(3)
     local ent = risen.entity.by_id(GUID)
-    local ok, why = false, "no entity"
+    local ok, why = nil, "no entity"
     if ent then ok, why = risen.vegetation.info(ent) end
     risen.log.info("vegprobe: info " .. tostring(ok) .. " " .. tostring(why))
     T.expect("the vegetation entity answers", ok == true)
