@@ -234,22 +234,10 @@ void MaterialInspector::draw(App& app, const std::string& mesh) {
         const std::string label = m + (edited ? "  *" : "");
         if (ImGui::Selectable(label.c_str(), same(m))) selected_ = m;
     }
-    draw_material(app, selected_);
-}
-
-void MaterialInspector::draw_material(App& app, const std::string& material) {
-    const Original& orig = original(app, material);
-    if (!orig.ok) {
-        ImGui::TextWrapped("%s", trf("The material cannot be read: {0}", {orig.error}).c_str());
-        return;
-    }
-    // what the material looks like with the project's change applied
-    Material cur = orig.m;
-    if (const MaterialEdit* e = find_edit(app.project, material)) {
-        std::string why;
-        apply_material_edit(cur, *e, why);
-    }
-    auto edit = [&]() -> MaterialEdit& {
+    MatTarget t;
+    const std::string material = selected_;
+    t.find = [&app, material]() -> MaterialEdit* { return find_edit(app.project, material); };
+    t.create = [&app, material]() -> MaterialEdit& {
         if (MaterialEdit* e = find_edit(app.project, material)) return *e;
         MaterialEdit e;
         e.uid = new_uid();
@@ -257,10 +245,32 @@ void MaterialInspector::draw_material(App& app, const std::string& material) {
         app.project.materials.push_back(e);
         return app.project.materials.back();
     };
-    auto prune = [&] {
+    t.prune = [&app] {
         auto& v = app.project.materials;
         v.erase(std::remove_if(v.begin(), v.end(), [](const MaterialEdit& e) { return e.slots.empty() && e.props.empty() && e.notes.empty(); }), v.end());
     };
+    t.reset = [&app, material] {
+        auto& v = app.project.materials;
+        v.erase(std::remove_if(v.begin(), v.end(), [&](const MaterialEdit& e) { return p2m::lower(e.material) == p2m::lower(material); }), v.end());
+    };
+    t.note = tr("exported as a loose copy of the material (every object that uses it changes)");
+    draw_material(app, selected_, t);
+}
+
+void MaterialInspector::draw_material(App& app, const std::string& material, const MatTarget& t) {
+    const Original& orig = original(app, material);
+    if (!orig.ok) {
+        ImGui::TextWrapped("%s", trf("The material cannot be read: {0}", {orig.error}).c_str());
+        return;
+    }
+    // what the material looks like with the project's change applied
+    Material cur = orig.m;
+    if (const MaterialEdit* e = t.find()) {
+        std::string why;
+        apply_material_edit(cur, *e, why);
+    }
+    auto edit = [&]() -> MaterialEdit& { return t.create(); };
+    auto prune = [&] { t.prune(); };
     gfx::ResourceCache* res = app.resources();
 
     ImGui::SeparatorText(tr("Shader slots"));
@@ -301,7 +311,7 @@ void MaterialInspector::draw_material(App& app, const std::string& material) {
                     app.touch();
                 }
                 if (changed && ImGui::SmallButton(tr("Reset"))) {
-                    if (MaterialEdit* e = find_edit(app.project, material)) e->slots.erase(s.name);
+                    if (MaterialEdit* e = t.find()) e->slots.erase(s.name);
                     prune();
                     app.touch();
                 }
@@ -333,15 +343,58 @@ void MaterialInspector::draw_material(App& app, const std::string& material) {
             }
         }
     }
-    if (find_edit(app.project, material)) {
+    if (t.find()) {
         ImGui::Spacing();
         if (ImGui::Button(tr("Reset the whole material"))) {
-            auto& v = app.project.materials;
-            v.erase(std::remove_if(v.begin(), v.end(), [&](const MaterialEdit& e) { return p2m::lower(e.material) == p2m::lower(material); }), v.end());
+            t.reset();
             app.touch();
         }
         ImGui::SameLine();
-        ImGui::TextDisabled("%s", tr("exported as a loose copy of the material"));
+        ImGui::TextDisabled("%s", t.note);
+    }
+}
+
+void MaterialInspector::draw_look(App& app, ObjectLook& look) {
+    if (look.mesh.empty() || !app.game) return;
+    const MeshInfo* info = info_of(app, look.mesh);
+    if (!info || !info->writable) {
+        ImGui::TextDisabled("%s", tr("The mesh of this object cannot be changed by the editor."));
+        return;
+    }
+    float sc[3] = {look.scale[0], look.scale[1], look.scale[2]};
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::DragFloat3("##lookscale", sc, 0.01f, 0.01f, 100.0f, "%.2f")) {
+        for (int k = 0; k < 3; ++k) look.scale[static_cast<size_t>(k)] = std::max(0.01f, sc[k]);
+        app.touch();
+    }
+    ImGui::TextDisabled("%s", tr("scale x, y, z of this object's own mesh"));
+    for (size_t i = 0; i < info->subs.size(); ++i) {
+        ImGui::PushID(static_cast<int>(i));
+        const int idx = static_cast<int>(i);
+        ImGui::SeparatorText(trf("Sub-mesh {0}: {1}", {std::to_string(i), info->subs[i].material}).c_str());
+        auto it = look.materials.find(idx);
+        if (it == look.materials.end()) {
+            if (ImGui::Button(tr("Give it its own material"))) {
+                MaterialEdit m;
+                m.uid = new_uid();
+                m.material = info->subs[i].material;
+                m.notes = "own";
+                look.materials[idx] = m;
+                app.touch();
+            }
+        } else {
+            MatTarget t;
+            t.find = [&look, idx]() -> MaterialEdit* {
+                auto f = look.materials.find(idx);
+                return f == look.materials.end() ? nullptr : &f->second;
+            };
+            t.create = [&look, idx]() -> MaterialEdit& { return look.materials[idx]; };
+            t.prune = [] {};  // an own material stays, even when nothing differs from the shipped one yet
+            t.reset = [&look, idx] { look.materials.erase(idx); };
+            t.note = tr("this object has its own copy of the material");
+            draw_material(app, it->second.material, t);
+        }
+        ImGui::PopID();
     }
 }
 

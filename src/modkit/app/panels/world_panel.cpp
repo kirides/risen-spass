@@ -956,6 +956,39 @@ private:
         after_place(app, sp.uid, trf("Placed a copy of {0}", {e.template_name}));
         return true;
     }
+    // the selected world object made into a look of its own: a spawn of the new look takes its place (the original is removed)
+    void make_look(App& app, size_t index) {
+        const WorldEntity& e = world_->entities[index];
+        if (index >= mesh_names_.size() || mesh_names_[index].empty()) return;
+        std::string stem;
+        for (char c : e.template_name) stem += (std::isalnum(static_cast<unsigned char>(c)) || c == '_') ? c : '_';
+        const std::string prefix = (app.project.mod.id.empty() ? std::string("Mod") : app.project.mod.id) + "_" + stem;
+        std::string name;
+        for (int n = 1;; ++n) {
+            name = prefix + "_" + std::to_string(n);
+            bool taken = app.game->tpl(name) != nullptr;
+            for (auto& l : app.project.looks) taken |= p2m::lower(l.name) == p2m::lower(name);
+            if (!taken) break;
+        }
+        ObjectLook look;
+        look.uid = new_uid();
+        look.name = name;
+        look.base = e.template_name;
+        look.mesh = mesh_names_[index];
+        app.project.looks.push_back(look);
+        spass::pose::Matrix m;
+        std::copy(e.matrix.begin(), e.matrix.end(), m.begin());
+        const spass::pose::Angles a = spass::pose::decompose(m);
+        WorldSpawn sp;
+        sp.uid = new_uid();
+        sp.template_name = name;
+        sp.position = {e.x(), e.y(), e.z()};
+        sp.rotation = {std::round(a.yaw * 10) / 10, std::round(a.pitch * 10) / 10, std::round(a.roll * 10) / 10};
+        sp.world = stamp(app);
+        app.project.world.spawns.push_back(sp);
+        remove_entity(app, e);
+        after_place(app, sp.uid, trf("Made the look {0}", {name}));
+    }
     static bool place_kinds_has(TplKind k) {
         return k == TplKind::Item || k == TplKind::Recipe || k == TplKind::Object || k == TplKind::Interactive || k == TplKind::Effect;
     }
@@ -1097,6 +1130,8 @@ private:
                 if (it.mesh) mesh = *it.mesh;
                 else if (const TemplateInfo* b = app.game ? app.game->tpl(it.base) : nullptr) mesh = b->mesh;
             }
+        for (auto& l : app.project.looks)  // a look: its base object's mesh (the editor draws the shipped mesh, not the rewritten one)
+            if (p2m::lower(l.name) == p2m::lower(s.template_name)) return l.mesh;
         return mesh.empty() ? std::string() : compiled_name(p2m::bare_name(mesh));
     }
     static spass::pose::Matrix spawn_matrix(const WorldSpawn& s) {
@@ -1309,6 +1344,12 @@ private:
                 overlay_dirty_ = true;
                 ch = true;
             }
+            for (auto& look : app.project.looks)
+                if (p2m::lower(look.name) == p2m::lower(s.template_name)) {
+                    ImGui::SeparatorText(tr("Look of this object"));
+                    materials_.draw_look(app, look);
+                    break;
+                }
             align_button(s.uid);
             if (ui::world_combo(tr("world##spawn"), s.world, app)) {
                 overlay_dirty_ = true;
@@ -1438,6 +1479,10 @@ private:
         if (ct && place_kinds_has(ct->kind)) {
             ImGui::SameLine();
             if (ImGui::SmallButton(tr("Place a copy"))) copy_entity(app, e);
+            if (selected_ < mesh_names_.size() && !mesh_names_[selected_].empty() && (ct->kind == TplKind::Object || ct->kind == TplKind::Interactive)) {
+                if (ImGui::SmallButton(tr("Give it its own look"))) make_look(app, selected_);
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("A copy of this object with its own mesh and materials replaces it: only this object changes, not every object of the same kind."));
+            }
         }
         if (e.npc) ImGui::TextDisabled("%s", tr("An NPC: his routine moves him again, and removing him can break quests."));
     }

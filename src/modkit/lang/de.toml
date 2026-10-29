@@ -996,24 +996,34 @@ author = "risen-spass"
 "exported as a loose copy of the mesh" = "wird als lose Kopie des Meshes exportiert"
 # src/modkit/app/panels/material_ui.cpp:227
 "This mesh has no materials the editor can change." = "Dieses Mesh hat keine Materialien, die der Editor ändern kann."
-# src/modkit/app/panels/material_ui.cpp:243
+# src/modkit/app/panels/material_ui.cpp:256
+"exported as a loose copy of the material (every object that uses it changes)" = "wird als lose Kopie des Materials exportiert (jedes Objekt, das es nutzt, ändert sich)"
+# src/modkit/app/panels/material_ui.cpp:263
 "The material cannot be read: {0}" = "Das Material kann nicht gelesen werden: {0}"
-# src/modkit/app/panels/material_ui.cpp:266
+# src/modkit/app/panels/material_ui.cpp:276
 "Shader slots" = "Shader-Slots"
-# src/modkit/app/panels/material_ui.cpp:269
+# src/modkit/app/panels/material_ui.cpp:279
 "slot" = "Slot"
-# src/modkit/app/panels/material_ui.cpp:270
+# src/modkit/app/panels/material_ui.cpp:280
 "image" = "Bild"
-# src/modkit/app/panels/material_ui.cpp:288
+# src/modkit/app/panels/material_ui.cpp:298
 "no texture (a constant or an effect)" = "keine Textur (eine Konstante oder ein Effekt)"
-# src/modkit/app/panels/material_ui.cpp:294
+# src/modkit/app/panels/material_ui.cpp:304
 "click to choose another image" = "Klicken, um ein anderes Bild zu wählen"
-# src/modkit/app/panels/material_ui.cpp:317
+# src/modkit/app/panels/material_ui.cpp:327
 "Shader flags" = "Shader-Flags"
-# src/modkit/app/panels/material_ui.cpp:338
+# src/modkit/app/panels/material_ui.cpp:348
 "Reset the whole material" = "Ganzes Material zurücksetzen"
-# src/modkit/app/panels/material_ui.cpp:344
-"exported as a loose copy of the material" = "wird als lose Kopie des Materials exportiert"
+# src/modkit/app/panels/material_ui.cpp:361
+"The mesh of this object cannot be changed by the editor." = "Das Mesh dieses Objekts kann der Editor nicht ändern."
+# src/modkit/app/panels/material_ui.cpp:370
+"scale x, y, z of this object's own mesh" = "Skalierung x, y, z des eigenen Meshes dieses Objekts"
+# src/modkit/app/panels/material_ui.cpp:374
+"Sub-mesh {0}: {1}" = "Teilmesh {0}: {1}"
+# src/modkit/app/panels/material_ui.cpp:377
+"Give it its own material" = "Eigenes Material geben"
+# src/modkit/app/panels/material_ui.cpp:394
+"this object has its own copy of the material" = "Dieses Objekt hat eine eigene Kopie des Materials"
 # src/modkit/app/panels/npc_groups_panel.cpp:51
 "A group changes many NPC and monster templates at once, relative to their shipped values: a pattern on the name (\"^Wolf\"), a template group path (\"Monster/Kapitel 2\") or a list of names." = "Eine Gruppe ändert viele NPC- und Monstervorlagen auf einmal, relativ zu ihren mitgelieferten Werten: ein Muster auf den Namen („^Wolf“), ein Vorlagengruppenpfad („Monster/Kapitel 2“) oder eine Namensliste."
 # src/modkit/app/panels/npc_groups_panel.cpp:65
@@ -1828,81 +1838,89 @@ author = "risen-spass"
 "Copied {0}" = "{0} kopiert"
 # src/modkit/app/panels/world_panel.cpp:956
 "Placed a copy of {0}" = "Kopie von {0} platziert"
-# src/modkit/app/panels/world_panel.cpp:1173
+# src/modkit/app/panels/world_panel.cpp:990
+"Made the look {0}" = "Look {0} erstellt"
+# src/modkit/app/panels/world_panel.cpp:1208
 "Select a placed NPC, a spawned object or a moved entity of the project to align it" = "Wähle einen platzierten NPC, ein gespawntes Objekt oder eine verschobene Entität des Projekts, um sie auszurichten"
-# src/modkit/app/panels/world_panel.cpp:1245
+# src/modkit/app/panels/world_panel.cpp:1280
 "Nothing below {0} to align it with (meshes further than the draw distance are not drawn)" = "Unter {0} ist nichts, woran es sich ausrichten ließe (Meshes jenseits der Zeichenentfernung werden nicht gezeichnet)"
-# src/modkit/app/panels/world_panel.cpp:1251
+# src/modkit/app/panels/world_panel.cpp:1286
 "{0} already rests on the mesh below" = "{0} liegt schon auf dem Mesh darunter"
-# src/modkit/app/panels/world_panel.cpp:1257
+# src/modkit/app/panels/world_panel.cpp:1292
 "Placed {0} with the mesh below (height {1})" = "{0} auf dem Mesh darunter platziert (Höhe {1})"
-# src/modkit/app/panels/world_panel.cpp:1257
+# src/modkit/app/panels/world_panel.cpp:1292
 "Aligned {0} with the mesh below (height {1})" = "{0} am Mesh darunter ausgerichtet (Höhe {1})"
-# src/modkit/app/panels/world_panel.cpp:1262
+# src/modkit/app/panels/world_panel.cpp:1297
 "Align with mesh" = "Am Mesh ausrichten"
-# src/modkit/app/panels/world_panel.cpp:1263
+# src/modkit/app/panels/world_panel.cpp:1298
 "Lets the object down (or up) onto the surface below it: the table under an apple, the ground under a crate. Its lowest point goes onto the highest point of what is below its footprint. Key: End (in the view)." = "Setzt das Objekt auf die Fläche darunter ab (oder hebt es hinauf): den Tisch unter einen Apfel, den Boden unter eine Kiste. Sein tiefster Punkt kommt auf den höchsten Punkt dessen, was unter seiner Grundfläche liegt. Taste: Ende (in der Ansicht)."
-# src/modkit/app/panels/world_panel.cpp:1272
+# src/modkit/app/panels/world_panel.cpp:1307
 "placed NPC of the project (%s)" = "platzierter NPC des Projekts (%s)"
-# src/modkit/app/panels/world_panel.cpp:1274 (+2)
+# src/modkit/app/panels/world_panel.cpp:1309 (+2)
 "position" = "Position"
-# src/modkit/app/panels/world_panel.cpp:1280 (+1)
+# src/modkit/app/panels/world_panel.cpp:1315 (+1)
 "world" = "Welt"
-# src/modkit/app/panels/world_panel.cpp:1282
+# src/modkit/app/panels/world_panel.cpp:1317
 "Edit in NPCs" = "In NPCs bearbeiten"
-# src/modkit/app/panels/world_panel.cpp:1291
-"spawned once per savegame by the mod" = "von der Mod einmal pro Spielstand gespawnt"
-# src/modkit/app/panels/world_panel.cpp:1296 (+1)
-"Amount" = "Menge"
-# src/modkit/app/panels/world_panel.cpp:1307 (+1)
-"yaw, pitch, roll" = "Gieren, Nicken, Rollen"
-# src/modkit/app/panels/world_panel.cpp:1319
-"Remove from the project" = "Aus dem Projekt entfernen"
-# src/modkit/app/panels/world_panel.cpp:1325
-"an entity of the world, moved by the mod on every world.ready" = "eine Entität der Welt, von der Mod bei jedem world.ready verschoben"
 # src/modkit/app/panels/world_panel.cpp:1326
-"id %s" = "Id %s"
-# src/modkit/app/panels/world_panel.cpp:1342
-"Back to its place (drop the move)" = "Zurück an seinen Platz (Verschiebung verwerfen)"
-# src/modkit/app/panels/world_panel.cpp:1362
-"Items this mod adds" = "Gegenstände, die diese Mod hinzufügt"
+"spawned once per savegame by the mod" = "von der Mod einmal pro Spielstand gespawnt"
+# src/modkit/app/panels/world_panel.cpp:1331 (+1)
+"Amount" = "Menge"
+# src/modkit/app/panels/world_panel.cpp:1342 (+1)
+"yaw, pitch, roll" = "Gieren, Nicken, Rollen"
+# src/modkit/app/panels/world_panel.cpp:1349
+"Look of this object" = "Look dieses Objekts"
+# src/modkit/app/panels/world_panel.cpp:1360
+"Remove from the project" = "Aus dem Projekt entfernen"
+# src/modkit/app/panels/world_panel.cpp:1366
+"an entity of the world, moved by the mod on every world.ready" = "eine Entität der Welt, von der Mod bei jedem world.ready verschoben"
 # src/modkit/app/panels/world_panel.cpp:1367
-"Add items to this container" = "Gegenstände zu diesem Behälter hinzufügen"
-# src/modkit/app/panels/world_panel.cpp:1378
-"Put once per savegame into this entity (risen.entity.by_id)." = "Einmal pro Spielstand in diese Entität gelegt (risen.entity.by_id)."
+"id %s" = "Id %s"
 # src/modkit/app/panels/world_panel.cpp:1383
+"Back to its place (drop the move)" = "Zurück an seinen Platz (Verschiebung verwerfen)"
+# src/modkit/app/panels/world_panel.cpp:1403
+"Items this mod adds" = "Gegenstände, die diese Mod hinzufügt"
+# src/modkit/app/panels/world_panel.cpp:1408
+"Add items to this container" = "Gegenstände zu diesem Behälter hinzufügen"
+# src/modkit/app/panels/world_panel.cpp:1419
+"Put once per savegame into this entity (risen.entity.by_id)." = "Einmal pro Spielstand in diese Entität gelegt (risen.entity.by_id)."
+# src/modkit/app/panels/world_panel.cpp:1424
 "Remove these additions" = "Diese Ergänzungen entfernen"
-# src/modkit/app/panels/world_panel.cpp:1394
+# src/modkit/app/panels/world_panel.cpp:1435
 "Change it in the world" = "In der Welt ändern"
-# src/modkit/app/panels/world_panel.cpp:1400
+# src/modkit/app/panels/world_panel.cpp:1441
 "Removed by this mod." = "Von dieser Mod entfernt."
-# src/modkit/app/panels/world_panel.cpp:1402
+# src/modkit/app/panels/world_panel.cpp:1443
 "Keep it" = "Behalten"
-# src/modkit/app/panels/world_panel.cpp:1409
+# src/modkit/app/panels/world_panel.cpp:1450
 "Moved by this mod." = "Von dieser Mod verschoben."
-# src/modkit/app/panels/world_panel.cpp:1411
+# src/modkit/app/panels/world_panel.cpp:1452
 "Edit the move" = "Verschiebung bearbeiten"
-# src/modkit/app/panels/world_panel.cpp:1417
+# src/modkit/app/panels/world_panel.cpp:1458
 "Move or turn it" = "Verschieben oder drehen"
-# src/modkit/app/panels/world_panel.cpp:1433
+# src/modkit/app/panels/world_panel.cpp:1474
 "Drag the gizmo (move / turn) or type the new pose" = "Ziehe das Gizmo (verschieben / drehen) oder tippe die neue Lage ein"
-# src/modkit/app/panels/world_panel.cpp:1436
+# src/modkit/app/panels/world_panel.cpp:1477
 "Remove it from the world" = "Aus der Welt entfernen"
-# src/modkit/app/panels/world_panel.cpp:1440
+# src/modkit/app/panels/world_panel.cpp:1481
 "Place a copy" = "Kopie platzieren"
-# src/modkit/app/panels/world_panel.cpp:1442
+# src/modkit/app/panels/world_panel.cpp:1483
+"Give it its own look" = "Eigenen Look geben"
+# src/modkit/app/panels/world_panel.cpp:1484
+"A copy of this object with its own mesh and materials replaces it: only this object changes, not every object of the same kind." = "Eine Kopie dieses Objekts mit eigenem Mesh und eigenen Materialien ersetzt es: nur dieses Objekt ändert sich, nicht jedes Objekt der gleichen Art."
+# src/modkit/app/panels/world_panel.cpp:1487
 "An NPC: his routine moves him again, and removing him can break quests." = "Ein NPC: sein Tagesablauf bewegt ihn wieder, und sein Entfernen kann Quests zerstören."
-# src/modkit/app/panels/world_panel.cpp:1512
+# src/modkit/app/panels/world_panel.cpp:1557
 "Click an entity in the view, or find one by name." = "Klicke eine Entität in der Ansicht an oder suche eine nach Namen."
-# src/modkit/app/panels/world_panel.cpp:1515
+# src/modkit/app/panels/world_panel.cpp:1560
 "Colours: the kind of the entity's template (see Show). Magenta: the project's placed NPCs, yellow: its spawns; members of a mod layer have the layer's colour (see Mod layers). Drag the thin bar left of this panel to change its width." = "Farben: die Art der Vorlage der Entität (siehe Anzeigen). Magenta: die platzierten NPCs des Projekts, Gelb: seine Spawns; Mitglieder einer Mod-Ebene haben die Farbe der Ebene (siehe Mod-Ebenen). Ziehe die dünne Leiste links von diesem Bereich, um seine Breite zu ändern."
-# src/modkit/app/panels/world_panel.cpp:1521
+# src/modkit/app/panels/world_panel.cpp:1566
 "(NPC)" = "(NPC)"
-# src/modkit/app/panels/world_panel.cpp:1542
+# src/modkit/app/panels/world_panel.cpp:1587
 "Appears" = "Erscheint"
-# src/modkit/app/panels/world_panel.cpp:1545
+# src/modkit/app/panels/world_panel.cpp:1590
 "Copy id" = "Id kopieren"
-# src/modkit/app/panels/world_panel.cpp:1547
+# src/modkit/app/panels/world_panel.cpp:1592
 "Copy position" = "Position kopieren"
 # src/modkit/app/pickers.cpp:70
 "No template with this name in the game data or the project" = "Keine Vorlage mit diesem Namen in den Spieldaten oder im Projekt"
@@ -3045,80 +3063,90 @@ author = "risen-spass"
 # src/modkit/core/validate.cpp:797
 "the description of the item {0} has this id and wins" = "die Beschreibung des Gegenstands {0} hat diese Id und setzt sich durch"
 # src/modkit/core/validate.cpp:805
-"choose the mesh to change" = "Wähle das Mesh, das geändert werden soll"
-# src/modkit/core/validate.cpp:808
-"this mesh is changed twice: only one change per mesh is exported" = "Dieses Mesh wird zweimal geändert: pro Mesh wird nur eine Änderung exportiert"
-# src/modkit/core/validate.cpp:809 (+1)
-"the change does nothing" = "Die Änderung bewirkt nichts"
+"name the look: it becomes the name of a template" = "Benenne den Look: er wird zum Namen einer Vorlage"
+# src/modkit/core/validate.cpp:810
+"the name may only have letters, digits and underscores" = "Der Name darf nur Buchstaben, Ziffern und Unterstriche enthalten"
+# src/modkit/core/validate.cpp:813
+"two looks have this name" = "Zwei Looks haben diesen Namen"
 # src/modkit/core/validate.cpp:814
+"a template of the game has this name" = "Eine Vorlage des Spiels hat diesen Namen"
+# src/modkit/core/validate.cpp:815
+"the base template is not a template of the game" = "Die Basisvorlage ist keine Vorlage des Spiels"
+# src/modkit/core/validate.cpp:826
+"choose the mesh to change" = "Wähle das Mesh, das geändert werden soll"
+# src/modkit/core/validate.cpp:829
+"this mesh is changed twice: only one change per mesh is exported" = "Dieses Mesh wird zweimal geändert: pro Mesh wird nur eine Änderung exportiert"
+# src/modkit/core/validate.cpp:830 (+1)
+"the change does nothing" = "Die Änderung bewirkt nichts"
+# src/modkit/core/validate.cpp:835
 "sub-mesh {0}: no material of the game or the project is called {1}" = "Teilmesh {0}: Kein Material des Spiels oder des Projekts heißt {1}"
-# src/modkit/core/validate.cpp:818
+# src/modkit/core/validate.cpp:839
 "the game has no mesh with this name" = "Das Spiel hat kein Mesh mit diesem Namen"
-# src/modkit/core/validate.cpp:830
+# src/modkit/core/validate.cpp:851
 "choose the material to change" = "Wähle das Material, das geändert werden soll"
-# src/modkit/core/validate.cpp:833
+# src/modkit/core/validate.cpp:854
 "this material is changed twice: only one change per material is exported" = "Dieses Material wird zweimal geändert: pro Material wird nur eine Änderung exportiert"
-# src/modkit/core/validate.cpp:837
-"the game has no material with this name" = "Das Spiel hat kein Material mit diesem Namen"
-# src/modkit/core/validate.cpp:853
-"choose the template to patch" = "wähle die Vorlage, die geändert werden soll"
-# src/modkit/core/validate.cpp:856
-"this template is patched twice: both patches are applied, the later one wins on a shared property" = "diese Vorlage wird doppelt geändert: beide Änderungen werden angewendet, die spätere gewinnt bei einer gemeinsamen Eigenschaft"
 # src/modkit/core/validate.cpp:858
-"no template of the game or the project has this name" = "keine Vorlage des Spiels oder des Projekts hat diesen Namen"
-# src/modkit/core/validate.cpp:859
-"the patch changes nothing" = "die Änderung ändert nichts"
-# src/modkit/core/validate.cpp:867
-"choose the shipped dialogue info to edit" = "wähle die mitgelieferte Dialog-Info, die bearbeitet werden soll"
-# src/modkit/core/validate.cpp:868
-"this info is edited twice: both edits are applied" = "diese Info wird doppelt bearbeitet: beide Änderungen werden angewendet"
-# src/modkit/core/validate.cpp:869
-"an XP reward is either added or changed, not both" = "eine EP-Belohnung wird entweder hinzugefügt oder geändert, nicht beides"
-# src/modkit/core/validate.cpp:870
-"a changed XP reward needs the old and the new amount" = "eine geänderte EP-Belohnung braucht die alte und die neue Menge"
-# src/modkit/core/validate.cpp:872
-"an XP reward must not be negative" = "eine EP-Belohnung darf nicht negativ sein"
-# src/modkit/core/validate.cpp:873
-"the edit changes nothing" = "die Bearbeitung ändert nichts"
-# src/modkit/core/validate.cpp:876
-"property edit: unknown kind '{0}'" = "Eigenschaftsänderung: unbekannte Art „{0}“"
+"the game has no material with this name" = "Das Spiel hat kein Material mit diesem Namen"
+# src/modkit/core/validate.cpp:874
+"choose the template to patch" = "wähle die Vorlage, die geändert werden soll"
 # src/modkit/core/validate.cpp:877
-"a property edit needs the property's name" = "eine Eigenschaftsänderung braucht den Namen der Eigenschaft"
-# src/modkit/core/validate.cpp:878
-"a {0} edit needs the place (1 = the first) of the {1}" = "eine Änderung vom Typ {0} braucht die Stelle (1 = die erste) von {1}"
+"this template is patched twice: both patches are applied, the later one wins on a shared property" = "diese Vorlage wird doppelt geändert: beide Änderungen werden angewendet, die spätere gewinnt bei einer gemeinsamen Eigenschaft"
 # src/modkit/core/validate.cpp:879
-"an added condition needs its class (PlayerKnows, ItemAmount, ...)" = "eine hinzugefügte Bedingung braucht ihre Klasse (PlayerKnows, ItemAmount, ...)"
+"no template of the game or the project has this name" = "keine Vorlage des Spiels oder des Projekts hat diesen Namen"
 # src/modkit/core/validate.cpp:880
-"the edit of {0} has no old value: it is applied only where the value is empty" = "die Änderung von {0} hat keinen alten Wert: sie wird nur angewendet, wo der Wert leer ist"
-# src/modkit/core/validate.cpp:883
-"a refill needs the trader's name" = "ein Nachschub braucht den Namen des Händlers"
-# src/modkit/core/validate.cpp:884
-"refill item '{0}' is no item of the game or the project" = "der Nachschubgegenstand „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
-# src/modkit/core/validate.cpp:885
-"a refill count must not be negative" = "eine Nachschubmenge darf nicht negativ sein"
+"the patch changes nothing" = "die Änderung ändert nichts"
+# src/modkit/core/validate.cpp:888
+"choose the shipped dialogue info to edit" = "wähle die mitgelieferte Dialog-Info, die bearbeitet werden soll"
+# src/modkit/core/validate.cpp:889
+"this info is edited twice: both edits are applied" = "diese Info wird doppelt bearbeitet: beide Änderungen werden angewendet"
+# src/modkit/core/validate.cpp:890
+"an XP reward is either added or changed, not both" = "eine EP-Belohnung wird entweder hinzugefügt oder geändert, nicht beides"
 # src/modkit/core/validate.cpp:891
-"the NPC's entity ID is not xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" = "die Entitäts-ID des NPCs ist nicht xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+"a changed XP reward needs the old and the new amount" = "eine geänderte EP-Belohnung braucht die alte und die neue Menge"
 # src/modkit/core/validate.cpp:893
-"the limit must not be negative" = "die Grenze darf nicht negativ sein"
+"an XP reward must not be negative" = "eine EP-Belohnung darf nicht negativ sein"
 # src/modkit/core/validate.cpp:894
-"no entity with this ID in the loaded world" = "keine Entität mit dieser ID in der geladenen Welt"
+"the edit changes nothing" = "die Bearbeitung ändert nichts"
+# src/modkit/core/validate.cpp:897
+"property edit: unknown kind '{0}'" = "Eigenschaftsänderung: unbekannte Art „{0}“"
+# src/modkit/core/validate.cpp:898
+"a property edit needs the property's name" = "eine Eigenschaftsänderung braucht den Namen der Eigenschaft"
+# src/modkit/core/validate.cpp:899
+"a {0} edit needs the place (1 = the first) of the {1}" = "eine Änderung vom Typ {0} braucht die Stelle (1 = die erste) von {1}"
+# src/modkit/core/validate.cpp:900
+"an added condition needs its class (PlayerKnows, ItemAmount, ...)" = "eine hinzugefügte Bedingung braucht ihre Klasse (PlayerKnows, ItemAmount, ...)"
+# src/modkit/core/validate.cpp:901
+"the edit of {0} has no old value: it is applied only where the value is empty" = "die Änderung von {0} hat keinen alten Wert: sie wird nur angewendet, wo der Wert leer ist"
 # src/modkit/core/validate.cpp:904
+"a refill needs the trader's name" = "ein Nachschub braucht den Namen des Händlers"
+# src/modkit/core/validate.cpp:905
+"refill item '{0}' is no item of the game or the project" = "der Nachschubgegenstand „{0}“ ist kein Gegenstand des Spiels oder des Projekts"
+# src/modkit/core/validate.cpp:906
+"a refill count must not be negative" = "eine Nachschubmenge darf nicht negativ sein"
+# src/modkit/core/validate.cpp:912
+"the NPC's entity ID is not xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" = "die Entitäts-ID des NPCs ist nicht xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# src/modkit/core/validate.cpp:914
+"the limit must not be negative" = "die Grenze darf nicht negativ sein"
+# src/modkit/core/validate.cpp:915
+"no entity with this ID in the loaded world" = "keine Entität mit dieser ID in der geladenen Welt"
+# src/modkit/core/validate.cpp:925
 "two asset files are called {0} (the export puts them into one folder)" = "zwei Ressourcendateien heißen {0} (der Export legt sie in einen Ordner)"
-# src/modkit/core/validate.cpp:907
-"not a resource the engine loads (._xmsh, ._xmat, ._ximg, ._xmac, ._xmot, ._xsnd) and no audio file (.ogg, .wav, .mp3)" = "keine Ressource, die die Engine lädt (._xmsh, ._xmat, ._ximg, ._xmac, ._xmot, ._xsnd), und keine Audiodatei (.ogg, .wav, .mp3)"
-# src/modkit/core/validate.cpp:909
-"replaces the game's file of the same name everywhere it is used" = "ersetzt überall, wo sie verwendet wird, die gleichnamige Datei des Spiels"
-# src/modkit/core/validate.cpp:920
-"becomes {0}, which is also an asset file of the project" = "wird zu {0}, das auch eine Ressourcendatei des Projekts ist"
-# src/modkit/core/validate.cpp:922
-"becomes {0} like {1}" = "wird zu {0} wie {1}"
-# src/modkit/core/validate.cpp:924
-"becomes {0} and replaces the game's texture of that name everywhere it is used" = "wird zu {0} und ersetzt überall, wo sie verwendet wird, die gleichnamige Textur des Spiels"
 # src/modkit/core/validate.cpp:928
+"not a resource the engine loads (._xmsh, ._xmat, ._ximg, ._xmac, ._xmot, ._xsnd) and no audio file (.ogg, .wav, .mp3)" = "keine Ressource, die die Engine lädt (._xmsh, ._xmat, ._ximg, ._xmac, ._xmot, ._xsnd), und keine Audiodatei (.ogg, .wav, .mp3)"
+# src/modkit/core/validate.cpp:930
+"replaces the game's file of the same name everywhere it is used" = "ersetzt überall, wo sie verwendet wird, die gleichnamige Datei des Spiels"
+# src/modkit/core/validate.cpp:941
+"becomes {0}, which is also an asset file of the project" = "wird zu {0}, das auch eine Ressourcendatei des Projekts ist"
+# src/modkit/core/validate.cpp:943
+"becomes {0} like {1}" = "wird zu {0} wie {1}"
+# src/modkit/core/validate.cpp:945
+"becomes {0} and replaces the game's texture of that name everywhere it is used" = "wird zu {0} und ersetzt überall, wo sie verwendet wird, die gleichnamige Textur des Spiels"
+# src/modkit/core/validate.cpp:949
 "the export makes this file for the icon pictures: rename the project's file" = "der Export erzeugt diese Datei für die Symbolbilder: benenne die Datei des Projekts um"
-# src/modkit/core/validate.cpp:957
+# src/modkit/core/validate.cpp:979
 "the mod has no name" = "die Mod hat keinen Namen"
-# src/modkit/core/validate.cpp:958
+# src/modkit/core/validate.cpp:980
 "the mod needs at least one language" = "die Mod braucht mindestens eine Sprache"
 # src/modkit/core/voice.cpp:641
 "the CSV is empty" = "die CSV ist leer"
@@ -3165,3 +3193,4 @@ author = "risen-spass"
 [obsolete]
 "An Option is what the player says; its 'then' pin leads to the lines and commands that follow, its 'choices' pin to sub-options, 'when' takes conditions. A sequence without an End returns to the list of options (an option without sub-options gets an End by itself)." = "Eine Option ist, was der Spieler sagt; ihr Pin „then“ führt zu den folgenden Zeilen und Befehlen, ihr Pin „choices“ zu Unteroptionen, „when“ nimmt Bedingungen auf. Eine Folge ohne End kehrt zur Liste der Optionen zurück (eine Option ohne Unteroptionen bekommt von selbst ein End)."
 "the sequence returns to the start, so the sub-options are never shown" = "die Folge kehrt zum Anfang zurück, daher werden die Unteroptionen nie angezeigt"
+"exported as a loose copy of the material" = "wird als lose Kopie des Materials exportiert"

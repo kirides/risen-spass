@@ -1,0 +1,61 @@
+{
+  "format": "risen-modkit-project",
+  "format_version": 1,
+  "mod": {
+    "id": "modkit_looks",
+    "name": "risen-modkit looks example",
+    "version": "1.0.0",
+    "author": "risen-spass",
+    "description": "One rock of the game with its own mesh (twice as big) and its own material (another diffuse image): an object look, exported (docs/RE.md section 62). Checked live with scripts/looks-probe.ps1.",
+    "languages": [
+      "English"
+    ]
+  },
+  "items": [],
+  "item_groups": [],
+  "recipes": [],
+  "npc_templates": [],
+  "npcs": [],
+  "dialogs": [],
+  "quests": [],
+  "world": {
+    "world": "World",
+    "spawns": [
+      {
+        "uid": "22222222222222222222222222222222",
+        "template": "MKL_BigRock",
+        "position": [
+          -31950.0,
+          620.0,
+          -4500.0
+        ]
+      }
+    ],
+    "containers": [],
+    "removals": [],
+    "moves": []
+  },
+  "assets": [],
+  "looks": [
+    {
+      "uid": "11111111111111111111111111111111",
+      "name": "MKL_BigRock",
+      "base": "Obj_Nat_Stone_Small_Flat_01",
+      "mesh": "Obj_Nat_Stone_Small_Flat_01._xmsh",
+      "scale": [
+        2.0,
+        2.0,
+        2.0
+      ],
+      "materials": {
+        "0": {
+          "material": "Nat_Stone_Objects_02_Diffuse_01._xmat",
+          "slots": {
+            "Diffuse": "ItWpn_SwordBlades_01_Diffuse_01.tga"
+          }
+        }
+      }
+    }
+  ],
+  "editor": {}
+}

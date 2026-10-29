@@ -3,10 +3,12 @@
 // project's `materials` section (core/material.h MaterialEdit) and show in the 3D view at once.
 #pragma once
 
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
 
+#include "core/looks.h"
 #include "core/material.h"
 #include "core/mesh_edit.h"
 
@@ -22,6 +24,8 @@ public:
     void sync(App& app);
     // a material to edit (from outside, e.g. a list of changed materials)
     void select(const std::string& material) { selected_ = material; }
+    // the editor of an object look: scale and the own materials of its sub-meshes
+    void draw_look(App& app, ObjectLook& look);
 
 private:
     struct Original {
@@ -32,7 +36,15 @@ private:
     const Original& original(App& app, const std::string& material);
     const std::vector<std::string>& materials_of(App& app, const std::string& mesh);
     const std::vector<std::string>& images(App& app);
-    void draw_material(App& app, const std::string& material);
+    // where an edited material is stored: the project's changes of shipped materials, or the clone of a look's sub-mesh
+    struct MatTarget {
+        std::function<MaterialEdit*()> find;
+        std::function<MaterialEdit&()> create;
+        std::function<void()> prune;
+        std::function<void()> reset;
+        const char* note = "";
+    };
+    void draw_material(App& app, const std::string& material, const MatTarget& t);
     bool pick_image(App& app, const char* id, std::string* picked);
     bool pick_name(const char* id, const std::vector<std::string>& all, std::string* picked, const char* suffix);
     const std::vector<std::string>& material_names(App& app);
