@@ -797,6 +797,27 @@ void check_extras(Ctx& c) {
             if (!it.description.empty() && low == p2m::lower("ITEMDESC_" + it.name)) c.add(Severity::Warning, A, s.uid, subj, trf("the description of the item {0} has this id and wins", {it.name}));
         }
     }
+    std::map<std::string, int> lseen;
+    for (auto& x : c.p.looks) {
+        const char* A = "Looks";
+        const std::string subj = x.name.empty() ? "(no name)" : x.name;
+        if (x.name.empty()) {
+            c.add(Severity::Error, A, x.uid, subj, tr("name the look: it becomes the name of a template"));
+            continue;
+        }
+        for (char ch : x.name)
+            if (!std::isalnum(static_cast<unsigned char>(ch)) && ch != '_') {
+                c.add(Severity::Error, A, x.uid, subj, tr("the name may only have letters, digits and underscores"));
+                break;
+            }
+        if (++lseen[p2m::lower(x.name)] == 2) c.add(Severity::Error, A, x.uid, subj, tr("two looks have this name"));
+        if (c.g && c.g->tpl(x.name)) c.add(Severity::Error, A, x.uid, subj, tr("a template of the game has this name"));
+        if (x.base.empty() || (c.g && !c.g->tpl(x.base))) c.add(Severity::Error, A, x.uid, subj, tr("the base template is not a template of the game"));
+        if (!c.g) continue;
+        std::map<std::string, std::string> files;
+        std::string why;
+        if (!build_look(*c.g, x, files, why)) c.add(Severity::Error, A, x.uid, subj, why);
+    }
     std::map<std::string, int> meseen;
     for (auto& x : c.p.meshes) {
         const char* A = "Meshes";
@@ -934,6 +955,7 @@ std::vector<Problem> validate(const Project& p, const GameData* game, const Worl
     std::vector<Problem> out;
     Ctx c{p, game, world, out, {}, {}, {}, {}};
     for (auto& s : skill_names(game)) c.skills.insert(s);
+    for (auto& l : p.looks) c.new_templates.insert(p2m::lower(l.name));
     for (auto& i : p.items)
         if (i.mode == Mode::New) c.new_templates.insert(p2m::lower(i.name));
     for (auto& r : p.recipes)

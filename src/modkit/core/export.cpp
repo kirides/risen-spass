@@ -664,7 +664,7 @@ std::map<std::string, std::string> render_mod(const Project& p) {
     if (!m.load_after.empty()) toml += "load_after  = " + toml_list(m.load_after) + "\n";
     if (!m.requires_mods.empty()) toml += "requires    = " + toml_list(m.requires_mods) + "\n";
     // the compiled resources are mounted from assets/ (audio files go to sounds/ and are compiled by the layer when a line uses them)
-    const bool resources = !p.materials.empty() || !p.meshes.empty() || std::any_of(p.assets.begin(), p.assets.end(), [](const AssetFile& a) { return !is_raw_audio(a.file); });
+    const bool resources = !p.materials.empty() || !p.meshes.empty() || !p.looks.empty() || std::any_of(p.assets.begin(), p.assets.end(), [](const AssetFile& a) { return !is_raw_audio(a.file); });
     toml += resources ? "assets      = \"assets\"\n" : "assets      = false\n";
     f["mod.toml"] = toml;
 
@@ -682,6 +682,7 @@ std::map<std::string, std::string> render_mod(const Project& p) {
                     "    world = require(\"data.world\"),\n"
                     "    assets = require(\"data.assets\"),\n" +
                     (p.patches.empty() ? std::string() : std::string("    patches = require(\"data.patches\"),\n")) +
+                    (p.looks.empty() ? std::string() : std::string("    looks = require(\"data.looks\"),\n")) +
                     (p.dialog_edits.empty() ? std::string() : std::string("    dialog_edits = require(\"data.dialog_edits\"),\n")) +
                     (p.layers.empty() ? std::string() : std::string("    layers = require(\"data.layers\"),\n")) +
                     (events ? std::string("    events = require(\"data.events\"),\n") : std::string()) +
@@ -698,6 +699,11 @@ std::map<std::string, std::string> render_mod(const Project& p) {
         json mods = json::array();
         for (auto& l : p.lua_files) mods.push_back(lua_module_name(l.name));
         f["data/lua_files.lua"] = data_file("The project's Lua files (lua/*.lua) in the order main.lua loads them, before the content is installed (risen-modkit's Lua panel).", mods);
+    }
+    if (!p.looks.empty()) {
+        json looks = json::array();
+        for (auto& l : p.looks) looks.push_back(json::object({{"name", l.name}, {"base", l.base}, {"mesh", l.name + ".xmsh"}}));
+        f["data/looks.lua"] = data_file("Object looks: templates made from a shipped object template with their own mesh (assets/<name>._xmsh), see risen-modkit's World view.", looks);
     }
     f["data/assets.lua"] = data_file("Assets: the image lists of icons the runtime registers (risen.assets.load_icons) before the items that use them are made.",
                                      json::object({{"icons", icon_lists(p)}}));
@@ -857,6 +863,20 @@ ExportResult export_mod(const Project& p, const std::string& out_dir, const Expo
             } catch (const std::exception& ex) {
                 r.errors.push_back("material " + e.material + ": " + ex.what());
             }
+        }
+        // object looks: a mesh and the clones of the materials under new names
+        for (const ObjectLook& l : p.looks) {
+            if (!opts.game) {
+                r.errors.push_back("look " + l.name + ": the game data is not loaded");
+                continue;
+            }
+            std::map<std::string, std::string> made;
+            std::string why;
+            if (!build_look(*opts.game, l, made, why)) {
+                r.errors.push_back("look " + l.name + ": " + why);
+                continue;
+            }
+            for (auto& [rel, bytes] : made) put(rel, bytes);
         }
         // changed shipped meshes: decoded, changed, written again under the same name
         for (const MeshEdit& e : p.meshes) {

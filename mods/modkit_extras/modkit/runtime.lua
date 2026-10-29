@@ -13,6 +13,7 @@
 --   patches   free property edits of any template (risen.template.patch), applied like the balance data
 --   dialog_edits  XP rewards and trader refills on shipped dialogue infos (risen.dialog.get / add_command), chapter 1's stock at the start of a new game
 --   world     teaching limits of placed NPCs (risen.npc.set_teach_limit), entities spawned at a position and items put into containers of the world (by entity ID), once per savegame on world.ready
+--   looks     templates made from a shipped object template with their own mesh (risen.template.create, first tick); spawns use them by name
 --   assets    the icon image lists (risen.assets.load_icons) registered on the first tick, before the balance data makes the items that use them
 --
 --   layers    groups of the NPCs, world spawns and container fills above that are switched on and off as a whole (modkit/layers.lua, optional)
@@ -28,7 +29,7 @@
 --
 -- Hand-written Lua (M.extensions): the project's Lua files (lua/*.lua, loaded before the content, hooks before_install(data) / after_install(runtime))
 -- and custom.lua (loaded last); a module that fails is logged and skipped, it never takes the content down.
-local M = { VERSION = 13 }
+local M = { VERSION = 14 }
 
 local unpack = table.unpack or unpack
 local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
@@ -640,6 +641,18 @@ function M.install(data)
             for _, list in ipairs(icons) do
                 local ok, why = risen.assets.load_icons(list)
                 if not ok then risen.log.error(("%s: icon list %s: %s"):format(id, list, tostring(why))) end
+            end
+        end)
+    end
+    -- object looks: templates made from a shipped object template with a mesh of the mod (assets/<name>._xmsh), before anything spawns them
+    if nonempty(data.looks) then
+        local made = false
+        risen.on("tick", function()
+            if made then return end
+            made = true
+            for _, l in ipairs(data.looks) do
+                local t, why = risen.template.create(l.name, l.base, { mesh = l.mesh })
+                if not t then risen.log.error(("%s: look %s: %s"):format(id, l.name, tostring(why))) end
             end
         end)
     end

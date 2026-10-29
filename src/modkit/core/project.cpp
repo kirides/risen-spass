@@ -708,6 +708,29 @@ json to_json(const Project& p) {
         }
         j["materials"] = a;
     }
+    if (!p.looks.empty()) {
+        json a = json::array();
+        for (auto& x : p.looks) {
+            json o = json::object();
+            o["uid"] = x.uid;
+            o["name"] = x.name;
+            o["base"] = x.base;
+            o["mesh"] = x.mesh;
+            if (x.scale != std::array<float, 3>{1, 1, 1}) o["scale"] = json::array({x.scale[0], x.scale[1], x.scale[2]});
+            json ms = json::object();
+            for (auto& [i, m] : x.materials) {
+                json mo = json::object();
+                mo["material"] = m.material;
+                if (!m.slots.empty()) mo["slots"] = m.slots;
+                if (!m.props.empty()) mo["props"] = m.props;
+                ms[std::to_string(i)] = mo;
+            }
+            if (!ms.empty()) o["materials"] = ms;
+            put_str(o, "notes", x.notes);
+            a.push_back(o);
+        }
+        j["looks"] = a;
+    }
     if (!p.meshes.empty()) {
         json a = json::array();
         for (auto& x : p.meshes) {
@@ -1117,6 +1140,32 @@ Project project_from_json(const json& j, std::vector<std::string>* warnings) {
                 else if (k[0] == 'p' && v.is_number_integer()) x.props[name] = v.get<int>();
             }
         }
+        r.get(e, "notes", x.notes);
+        return x;
+    });
+    read_list(j, "looks", p.looks, warnings, [](const Reader& r, const json& e) {
+        ObjectLook x;
+        r.get_uid(e, x.uid);
+        r.get(e, "name", x.name);
+        r.get(e, "base", x.base);
+        r.get(e, "mesh", x.mesh);
+        if (auto it = e.find("scale"); it != e.end() && it->is_array() && it->size() == 3)
+            for (size_t k = 0; k < 3; ++k)
+                if ((*it)[k].is_number()) x.scale[k] = (*it)[k].get<float>();
+        if (auto it = e.find("materials"); it != e.end() && it->is_object())
+            for (auto& [k, v] : it->items()) {
+                if (!v.is_object()) continue;
+                MaterialEdit m;
+                m.uid = new_uid();
+                if (v.contains("material") && v["material"].is_string()) m.material = v["material"].get<std::string>();
+                if (auto s2 = v.find("slots"); s2 != v.end() && s2->is_object())
+                    for (auto& [n, img] : s2->items())
+                        if (img.is_string()) m.slots[n] = img.get<std::string>();
+                if (auto p2 = v.find("props"); p2 != v.end() && p2->is_object())
+                    for (auto& [n, val] : p2->items())
+                        if (val.is_number_integer()) m.props[n] = val.get<int>();
+                x.materials[std::atoi(k.c_str())] = m;
+            }
         r.get(e, "notes", x.notes);
         return x;
     });

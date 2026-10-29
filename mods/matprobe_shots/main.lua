@@ -32,8 +32,22 @@ T.run(function()
         if l > 0.01 then dx, dz = cam.dx / l, cam.dz / l end
     end
     local tpl = T.param("template", "It_1H_Club")
+    local derived = T.param("derive_mesh", "")
+    if derived ~= "" then
+        local t, why = risen.template.create("Spass_Derived", tpl, { mesh = derived })
+        risen.log.info("matprobe: template.create -> " .. tostring(t) .. " " .. tostring(why))
+        if t then tpl = "Spass_Derived" end
+    end
     local club = risen.entity.spawn(tpl, px + dx * T.param("dist", 150), py + 10, pz + dz * T.param("dist", 150))
     T.expect("the club exists", club ~= nil)
+    local set_mesh = T.param("set_mesh", "")
+    if club and set_mesh ~= "" then
+        wait_s(1)
+        local ok, err = club:set_property("eCMesh_PS", "MeshFileName", set_mesh)
+        risen.log.info("matprobe: set_property -> " .. tostring(ok) .. " " .. tostring(err) .. " now " .. tostring(club:get_property("eCMesh_PS", "MeshFileName")))
+        local deps = club:dependencies()
+        risen.log.info("matprobe: dependencies " .. table.concat(deps or {}, ", "))
+    end
     wait_s(2)
     local mname = T.param("material", "ItWpn_SwordMisc_01_Diffuse_01._xmat")
     risen.log.info("matprobe: lookup " .. tostring(risen.vfs.lookup(mname)) .. " / " .. tostring(risen.vfs.lookup_physical(mname)))
