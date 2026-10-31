@@ -135,9 +135,13 @@ Natives may use typed parameters: argument types are checked (`SOL_EXCEPTIONS_SA
   `data/common/templates/**/*.tple`.
 - Loose resource files work (meshes, materials, images, actors; RE.md §26): resources are found by the bare compiled file name (`X._xmsh`) in a name cache that every mounted directory feeds; `risen.assets` / `mod.toml` `assets` mount them, `risen.template.create` checks `mesh`/`icon` names. Entity templates themselves cannot be loose files.
 
+- Network (M24/M25): `risen.http` / `risen.json` (WinHTTP on worker threads, callbacks on the game thread via `httpPump`; `network` in `mod.toml`, the player's switches in `mods.toml` and the mod manager) and the live link (`[link] enabled`, named pipe `risen-spass-<pid>`, `linkPump`; risen-modkit Play reloads over it). **Never open a listening socket** (user rule: players must not see firewall prompts); named pipes and outbound HTTP only. Scenarios `http`, `link`; docs/LUA_API.md "Network access" / "Live link".
+
 ## Tooling gotchas (this machine)
 
 - Windows, files in the working tree are CRLF (`autocrlf`); Python text-mode edits convert line endings, which is fine.
 - In the Bash tool, long multi-line heredocs containing quotes/backslashes can fail or lose backslashes: write scripts with the
   Write tool and run them, or use Edit for files with backslashes.
 - `pefile` needs `max_symbol_exports` for the big DLLs or export names beyond 8192 are lost.
+- Shell-fed Python/C++ text with backslashes is mangled by the Bash tool (`
+` inside a heredoc string becomes a real newline, `\.\pipe` loses backslashes): write such scripts and snippets with the Write tool, or build the characters with `chr(92)`; check the result with `grep -n`.
