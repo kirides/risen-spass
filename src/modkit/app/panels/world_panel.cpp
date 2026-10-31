@@ -125,10 +125,17 @@ public:
             start_load(app, app.settings.world.empty() ? std::string("World") : app.settings.world);
         }
     }
-    bool select(App& app, const std::string& key) override {
+    bool select(App& app, const std::string& key_in) override {
         if (!world_) return false;
+        // "<uid>#<routine point>": a placed NPC with one of his routine points chosen for the gizmo (the NPCs panel's "Place it in the World view")
+        std::string key = key_in, point;
+        if (const size_t hash = key_in.find('#'); hash != std::string::npos) {
+            key = key_in.substr(0, hash);
+            point = key_in.substr(hash + 1);
+        }
         if (project_position(app, key)) {
             proj_sel_ = key;
+            rt_sel_ = point;
             overlay_dirty_ = true;
             const Vec3& p = *project_position(app, key);
             cam_.look_at(to_gl(static_cast<float>(p[0]), static_cast<float>(p[1]) + 100, static_cast<float>(p[2])), 900);
@@ -1948,6 +1955,27 @@ private:
                             overlay_dirty_ = true;
                         }
                         ImGui::PopID();
+                    }
+                    // a day routine: the parts without a place of their own use the work place; add one here, or take one away again
+                    if (n.routine.is_object() && n.routine.contains("work") && !n.routine.contains("at") && !n.routine.contains("patrol")) {
+                        for (const char* k : {"relax", "sleep"}) {
+                            ImGui::PushID(k);
+                            if (n.routine.contains(k)) {
+                                if (ImGui::SmallButton((std::string(tr("Remove")) + " " + tr(k)).c_str())) {
+                                    routine_remove_point(n.routine, k);
+                                    if (rt_sel_ == k) rt_sel_.clear();
+                                    overlay_dirty_ = true;
+                                    ch = true;
+                                }
+                            } else if (ImGui::SmallButton((std::string(tr("Add a place for")) + " " + tr(k)).c_str())) {
+                                const double wx = n.routine["work"].value("dx", 0.0), wy = n.routine["work"].value("dy", 0.0), wz = n.routine["work"].value("dz", 0.0);
+                                routine_add_point(n.routine, k, {wx + 100, wy, wz + 100}, std::string(k) == "sleep" ? "sleep" : "lookat");
+                                rt_sel_ = k;
+                                overlay_dirty_ = true;
+                                ch = true;
+                            }
+                            ImGui::PopID();
+                        }
                     }
                     ui::help(tr("Choose a point to drag it with the gizmo: the NPC's routine points are offsets from where he is made. Green: work, yellow: relax, "
                                 "blue: sleep, cyan: patrol (a loop), orange: one post."));

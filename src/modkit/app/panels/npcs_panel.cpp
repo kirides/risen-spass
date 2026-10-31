@@ -14,6 +14,7 @@
 #include "app/widgets.h"
 #include "core/catalog.h"
 #include "core/i18n.h"
+#include "core/routine.h"
 #include "core/validate.h"
 
 namespace mk {
@@ -67,7 +68,111 @@ bool point_editor(const char* id, json& pt) {
     return ch;
 }
 
-bool routine_editor(json& r) {
+// what an NPC does at a point of this kind (RE.md section 35)
+const char* kind_hint(const std::string& k) {
+    if (k == "guard") return N_("stands with his hands on his hips and looks the way the yaw says");
+    if (k == "lookat") return N_("stands and thinks");
+    if (k == "spectator") return N_("stands with his arms crossed and watches");
+    if (k == "sleep") return N_("lies down and sleeps on the ground");
+    if (k == "dance") return N_("dances");
+    if (k == "stand" || k == "sit" || k == "smalltalk") return N_("hangs around where he is: he does NOT walk to this point (he may sit down)");
+    return "";
+}
+
+// the three fixed parts of a day as a strip: sleep 0-6, work 6-20, relax 20-24 (the clock times are the game's, they cannot be changed); a click picks the part to edit
+void day_strip(const json& r, std::string& sel) {
+    struct Seg {
+        const char* key;
+        const char* label;
+        ImU32 col;
+    };
+    const Seg segs[3] = {{"sleep", N_("sleep"), IM_COL32(90, 130, 235, 255)}, {"work", N_("work"), IM_COL32(100, 210, 80, 255)}, {"relax", N_("relax"), IM_COL32(235, 200, 50, 255)}};
+    const float w = std::max(200.0f, ImGui::GetContentRegionAvail().x - 12), h = 30;
+    const ImVec2 p0 = ImGui::GetCursorScreenPos();
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    for (const Seg& s : segs) {
+        int from = 0, to = 0;
+        routine_slot_hours(s.key, from, to);
+        const float x0 = p0.x + w * static_cast<float>(from) / 24.0f, x1 = p0.x + w * static_cast<float>(to) / 24.0f;
+        ImGui::SetCursorScreenPos(ImVec2(x0, p0.y));
+        ImGui::PushID(s.key);
+        if (ImGui::InvisibleButton("##seg", ImVec2(x1 - x0 - 2, h))) sel = s.key;
+        ImGui::PopID();
+        const bool own = r.is_object() && r.contains(s.key), picked = sel == s.key;
+        ImU32 fill = (s.col & 0x00ffffffu) | ((own ? (picked ? 235u : 150u) : 55u) << 24);
+        dl->AddRectFilled(ImVec2(x0, p0.y), ImVec2(x1 - 2, p0.y + h), fill, 3.0f);
+        if (picked) dl->AddRect(ImVec2(x0, p0.y), ImVec2(x1 - 2, p0.y + h), IM_COL32(255, 255, 255, 255), 3.0f, 0, 2.0f);
+        std::string text = tr(s.label);
+        if (!own && std::string(s.key) != "work") text += " (= " + std::string(tr("work")) + ")";
+        const ImVec2 ts = ImGui::CalcTextSize(text.c_str());
+        if (ts.x < x1 - x0 - 6) dl->AddText(ImVec2((x0 + x1 - ts.x) * 0.5f - 1, p0.y + (h - ts.y) * 0.5f), IM_COL32(255, 255, 255, 255), text.c_str());
+    }
+    for (int hr : {0, 6, 12, 18, 24}) {
+        char b[8];
+        std::snprintf(b, sizeof b, "%d:00", hr);
+        const float x = p0.x + w * static_cast<float>(hr) / 24.0f - (hr == 24 ? ImGui::CalcTextSize(b).x : hr == 0 ? 0.0f : ImGui::CalcTextSize(b).x * 0.5f);
+        dl->AddText(ImVec2(x, p0.y + h + 2), IM_COL32(170, 170, 170, 255), b);
+    }
+    ImGui::SetCursorScreenPos(ImVec2(p0.x, p0.y + h + ImGui::GetTextLineHeight() + 6));
+    ImGui::Dummy(ImVec2(w, 1));
+}
+
+bool day_editor(App& app, PlacedNpc& n) {
+    bool ch = false;
+    json& r = n.routine;
+    static std::string sel = "work";
+    if (sel != "work" && sel != "relax" && sel != "sleep") sel = "work";
+    ImGui::TextDisabled("%s", tr("A day has three parts at fixed hours. Click one to edit its place."));
+    day_strip(r, sel);
+    ImGui::PushID(sel.c_str());
+    const bool own = r.is_object() && r.contains(sel);
+    if (sel != "work") {
+        bool has = own;
+        if (ImGui::Checkbox(tr("He has his own place for this part"), &has)) {
+            if (has) {
+                // starts beside the work place, so a new place is never on top of the first
+                Vec3 d{100, 0, 100};
+                if (r.is_object() && r.contains("work") && r["work"].is_object())
+                    d = {r["work"].value("dx", 0.0) + 100, r["work"].value("dy", 0.0), r["work"].value("dz", 0.0) + 100};
+                routine_add_point(r, sel, d, sel == "sleep" ? "sleep" : "lookat");
+            } else {
+                routine_remove_point(r, sel);
+            }
+            ch = true;
+        }
+        ui::help(tr("Without one he stays at the work place at these hours (the game's own rule)."));
+    }
+    if (r.is_object() && r.contains(sel)) {
+        ch |= point_editor(sel.c_str(), r[sel]);
+        const std::string kind = r[sel].value("kind", std::string("guard"));
+        if (const char* hint = kind_hint(kind); hint && *hint) ImGui::TextDisabled("%s: %s", kind.c_str(), tr(hint));
+        if (!routine_kind_walks(kind)) ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), "%s", tr("This kind makes him hang around where he is: choose guard, lookat, spectator, sleep or dance for a place he walks to."));
+        if (sel != "work" && r.contains("work") && ImGui::SmallButton(tr("Copy the work place"))) {
+            r[sel] = r["work"];
+            ch = true;
+        }
+        if (!n.offset) {
+            ImGui::SameLine();
+            if (ImGui::SmallButton(tr("Place it in the World view"))) {
+                const std::string target = n.uid + "#" + sel;
+                app.defer([&app, target] { app.select_in(kPanelWorld, target); });
+            }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Shows the NPC with his places and moves the chosen one with the gizmo."));
+        }
+    } else if (sel == "work") {
+        if (ImGui::Button(tr("Give him a work place"))) {
+            routine_add_point(r, "work", {200, 0, 0}, "guard");
+            ch = true;
+        }
+    }
+    ImGui::PopID();
+    ui::help(tr("Points are relative to the NPC's home (where he is made). He works from 6:00 to 20:00, relaxes from 20:00 to midnight and sleeps from midnight to 6:00. "
+                "He notices a change of the hour when his current task ends, which can take a minute or two. A place he cannot walk to leaves him standing: choose connected points near his home."));
+    return ch;
+}
+
+bool routine_editor(App& app, PlacedNpc& n) {
+    json& r = n.routine;
     bool ch = false;
     static const char* kModes[] = {N_("none"), N_("one post"), N_("day / evening / night"), N_("patrol")};
     int mode = 0;
@@ -94,17 +199,10 @@ bool routine_editor(json& r) {
         }
         ch = true;
     }
-    ui::help(tr("Points are relative to the NPC's home (where he is made). Humans work 6:00-20:00, relax from 20:00, sleep before 6:00. A post the NPC "
-             "cannot walk to leaves him standing: choose connected points near his home."));
+    if (mode != 2)
+        ui::help(tr("Points are relative to the NPC's home (where he is made). A post the NPC cannot walk to leaves him standing: choose connected points near his home."));
     if (mode == 1) ch |= point_editor("at", r["at"]);
-    if (mode == 2) {
-        for (const char* k : {"work", "relax", "sleep"}) {
-            ImGui::AlignTextToFramePadding();
-            ImGui::Text("%-6s", k);
-            ImGui::SameLine(70);
-            ch |= point_editor(k, r[k]);
-        }
-    }
+    if (mode == 2) ch |= day_editor(app, n);
     if (mode == 3) {
         json& p = r["patrol"];
         json& pts = p["points"];
@@ -457,7 +555,7 @@ private:
         ImGui::TextDisabled("%s", tr("Items he carries; \"equip\" wears / holds the item when he is made."));
         ch |= ui::inventory_list("inv", n.items, app, ui::project_item_names(app.project), true);
         ui::section(tr("Routine"));
-        ch |= routine_editor(n.routine);
+        ch |= routine_editor(app, n);
         ui::section(tr("Behaviours"));
         ch |= ui::behavior_uses("bhv", n.behaviors, app);
         ui::help(tr("Scripts that run on him while he is in the world (Behaviours panel): greet the player, guard a spot, react to a quest of the game, ... "

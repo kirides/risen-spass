@@ -24,6 +24,14 @@ std::vector<RoutinePoint> routine_points(const json& routine);
 bool routine_is_loop(const json& routine);
 // moves the point `key` to the offset `d`; false for an unknown key
 bool routine_set_point(json& routine, const std::string& key, const Vec3& d);
+// a day routine's slots (RE.md section 35): the clock hours the game gives each (humans: sleep before 6:00, work 6:00-20:00, relax from 20:00); false for another key
+bool routine_slot_hours(const std::string& key, int& from, int& to);
+// adds the day-routine slot `key` ("work", "relax", "sleep") at the offset `d`; false when it exists already or `key` is no slot. The routine becomes a day routine if it was none
+bool routine_add_point(json& routine, const std::string& key, const Vec3& d, const std::string& kind);
+// removes relax or sleep (the NPC then uses the work place at those hours: the engine's fallback); the work place and the other kinds of routine cannot be removed this way
+bool routine_remove_point(json& routine, const std::string& key);
+// true when an NPC walks to a point of this kind; false for the kinds whose task is "hang around" (stand, sit, smalltalk): he stays where he is
+bool routine_kind_walks(const std::string& kind);
 // the point's absolute position for an NPC at `home`
 Vec3 routine_world(const Vec3& home, const RoutinePoint& p);
 

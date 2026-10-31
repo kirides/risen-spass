@@ -252,6 +252,9 @@ TEST(routine_points_and_moves) {
     auto pts = mk::routine_points(day);
     CHECK_EQ(pts.size(), size_t(3));
     CHECK_EQ(pts[0].key, std::string("work"));
+    CHECK_EQ(pts[0].label, std::string("work 6-20"));
+    CHECK_EQ(pts[1].label, std::string("relax 20-24"));
+    CHECK_EQ(pts[2].label, std::string("sleep 0-6"));
     CHECK(pts[0].yaw && *pts[0].yaw == 90);
     CHECK_EQ(pts[2].kind, std::string("sleep"));
     CHECK(!mk::routine_is_loop(day));
@@ -269,6 +272,22 @@ TEST(routine_points_and_moves) {
     auto w = mk::routine_world({100, 50, 0}, pp[0]);
     CHECK(w[0] == -200 && w[1] == 50);
     CHECK(mk::routine_points(json()).empty());
+    // the day's slots: add, refuse a second one, remove relax / sleep but never work
+    json d2 = json::parse(R"({"work":{"dx":1,"dy":0,"dz":0}})");
+    CHECK(mk::routine_add_point(d2, "relax", {5, 0, 5}, "lookat"));
+    CHECK(!mk::routine_add_point(d2, "relax", {9, 0, 9}, "lookat"));
+    CHECK(!mk::routine_add_point(d2, "noon", {0, 0, 0}, ""));
+    CHECK_EQ(mk::routine_points(d2).size(), size_t(2));
+    CHECK(mk::routine_remove_point(d2, "relax") && !mk::routine_remove_point(d2, "work") && !mk::routine_remove_point(d2, "sleep"));
+    json empty = json();
+    CHECK(mk::routine_add_point(empty, "work", {0, 0, 0}, "guard") && empty.contains("work"));
+    json pat = json::parse(R"({"patrol":{"points":[{"dx":1,"dy":0,"dz":0}]}})");
+    CHECK(!mk::routine_add_point(pat, "work", {0, 0, 0}, "guard"));  // a patrol has no day parts
+    int from = -1, to = -1;
+    CHECK(mk::routine_slot_hours("sleep", from, to) && from == 0 && to == 6);
+    CHECK(mk::routine_slot_hours("relax", from, to) && from == 20 && to == 24);
+    CHECK(!mk::routine_slot_hours("night", from, to));
+    CHECK(mk::routine_kind_walks("guard") && mk::routine_kind_walks("sleep") && !mk::routine_kind_walks("stand") && !mk::routine_kind_walks("sit") && !mk::routine_kind_walks("smalltalk"));
     json post = json::parse(R"({"at":{"dx":1,"dy":2,"dz":3}})");
     CHECK_EQ(mk::routine_points(post).size(), size_t(1));
 }

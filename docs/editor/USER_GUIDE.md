@@ -121,6 +121,11 @@ Two kinds of objects:
   **inventory** (tick *equip* for what he wears or holds when he is made) and a **routine**: one post, a day / evening / night point, or a patrol;
   points are relative to his home and have a kind (guard, lookat, sleep, ...) and a facing. *Version* replaces the NPC in existing savegames when
   raised; *respawn* brings a dead one back at the next start.
+  **The day routine** is a 24-hour strip of the game's three fixed parts: sleep 0:00-6:00, work 6:00-20:00, relax 20:00-24:00 (the hours are the game's and cannot be
+  changed). Click a part to edit its place: kind (with what he does there), offset from his home, facing. Relax and sleep can share the work place (untick *his own
+  place*: the game's own rule) or have one of their own; *Copy the work place* starts a new one from it. A kind of *stand*, *sit* or *smalltalk* makes him hang around where he
+  is instead of walking to the place (the editor warns). **Place it in the World view** opens the NPC there with that place chosen for the gizmo; in the World view each
+  place is drawn with its hours, can be added or removed, and a patrol is a loop. An NPC notices the change of the hour when his current task ends (a minute or two).
 * **Appears when / Leaves when** (placed NPCs): conditions -- a quest has a status, the player holds items, a game variable or event, a skill, a
   guild, an NPC dead or alive -- all or any of a list. *Appears when* keeps him out of the world until it holds (enemies that ambush the player after
   a quest, a messenger, a new trader), *Leaves when* removes him. The **quest picker** lists your quests and **every quest of the game** (370, with
