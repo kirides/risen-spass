@@ -359,6 +359,7 @@ Click a mod to see its details (id, author, `requires` / `load_after`, what need
 * **Switch off / Switch on** is kept in `<Risen>\bin\spass\mods.toml` for the next starts and takes effect at once (the mod is unloaded / loaded). A mod that others `require` asks first ("switch all off"), a mod whose requirement is off asks to switch that on too. A mod that left NPCs or rules in *this* game (`risen.npc.persistent`, `risen.spawn.when`, saved AI states) asks what to do with them:
   **Switch off and remove its NPCs** (the mod is switched off, then the NPCs it left are removed: `risen.mods.orphans` / `remove_orphans`) or **Switch off only**. Nothing is removed without that answer.
 * **Reload** runs the mod again from its files (good for a mod you edit; "Reloaded ..." or the error in red; a mod that is `failed` can be tried again). What a reload cannot change (quests, dialogue infos, created templates ...) is listed as *Restart required*.
+* **Network access** (only for a mod that declares `network` in its `mod.toml`, 4.24) switches that mod's web access off or on; the **Network: on / OFF** button below the list does it for every mod at once. The choice is kept in `mods.toml` (`network_enabled`, `[network]`) and a refused call tells the mod why (`risen.http.available()`).
 * **Move up / Move down** change the load order, saved in `mods.toml` and applied at the **next start** (the page says so). The dependencies always win: a mod cannot be moved before a mod it `requires` or `load_after`s (the button reads "(blocked)" and a click shows why: *'ext' cannot be loaded before 'base' (requires)*). **Default order** goes back to the automatic order (alphabetical by id, dependencies first).
 The page works without a running game too (at the title screen the menu is behind the console-style "Press START" splash of this copy of the game: in the tests that page is closed first). **ESC** on the page goes back to the main menu; *Continue* returns to the game.
 For a modder: a good `name`, `version`, `author` and `description` in `mod.toml` are what the page shows (and an **Options** button when the mod declares options, 4.23); declare `requires` for a mod that cannot work without another (it is then switched off and on with it) and `load_after` for a soft ordering; `risen.mods.note_restart("text")` adds a line to *Restart required*. The page is the mod `mods/modmanager` (installed by `install.ps1`; switch it off like any mod, but then the tab is
@@ -381,6 +382,39 @@ risen.options.define{
 * **Languages:** write the texts as string ids, `name = "@MY_Mode"`, `description = "@MY_Mode_desc"`, `group = "@MY_group"`, `title = "@MY_title"` (also the labels in `values`), and put them into `strings/all.csv` (English, used for every language) and `strings/German.csv` (and any other `strings/<Language>.csv`; `id;"text"` per line). The page looks the ids up whenever it lists the options, so when the player changes **Settings > Game options > Text language** and presses *Apply*, the options appear in the new language without any code in your mod. Plain texts still work; `"@@..."` is a literal text starting with `@`. See `mods/quickloot/strings` for a complete example. The mod manager itself is localized the same way (`mods/modmanager/strings`) and uses the game's own strings where it can: `risen.loc.get("HUD2_Btn_Apply")` is the game's "Apply" / "Übernehmen" in the active language, a good label for anything of yours that the game already says.
 * `enabled = false` in an option is better than `return` at the top of `main.lua`: the mod stays loaded, so the menu can switch it on again. Check the flag in your handlers.
 
+### 4.24 Ask a web service: update checks, news (`risen.http`, `risen.json`)
+
+```toml
+# mod.toml
+network = ["api.github.com"]        # or `network = true` for any host; without it a mod has no network access
+```
+```lua
+risen.http.get_json("https://api.github.com/repos/you/yourmod/releases/latest", function(data, err, info)
+    if not data then risen.log.warn("update check failed: " .. tostring(err)) return end
+    if data.tag_name ~= "v" .. mod.version then risen.log.info("a new version is out: " .. data.tag_name) end
+end)
+```
+The call returns at once; the callback runs a few frames later on the game thread (use `risen.http.available()` to learn beforehand whether the player allows it). Only outbound
+connections are made, never a listening socket. The player can switch network access off for all mods or for your mod only (**Mods** page, *Network* buttons); handle `nil, reason` and `err`.
+Details, limits and `post_json` / `request`: [LUA_API.md "Network access"](LUA_API.md#network-access).
+
+### 4.25 Talk to an editor or a script: the live link (`risen.link`)
+
+```toml
+# <Risen>\bin\spass\config.toml
+[link]
+enabled = true
+```
+```lua
+risen.link.on("where", function(args)                    -- command "<mod id>.where" over the named pipe
+    local p = risen.entity.player()
+    local x, y, z = p:position()
+    return { x = x, y = y, z = z }
+end)
+risen.link.send("saved", { slot = 1 })                    -- an event "<mod id>.saved" to the connected editor
+```
+The pipe is local to the current Windows user (no socket, no firewall prompt) and off by default. Built in: `hello`, `mods`, `reload`, `subscribe` (log lines), `commands`.
+The mod editor uses it for **Play** (reload with feedback). Protocol and a test client: [LUA_API.md "Live link"](LUA_API.md#live-link).
 ## 5. Configuration
 
 * **Your mod's options:** `config.toml` next to `main.lua`; `local cfg = risen.config{ enabled = true, key = "SecondaryAction", repeat_ms = 80 }` returns the merged table (types are taken from your defaults, problems are logged as `config: [my_mod] ...` and the default is used).

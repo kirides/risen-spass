@@ -17,7 +17,7 @@ engine's lifecycle, and exposes it to Lua with a sandbox per mod.
 **[Modding with risen-modkit](docs/Modding_With_ModKit.md)** is the first tutorial: your first mod in a few steps, then a picture tour of
 everything the editor makes. **risen-modkit** is a cross-platform desktop editor (Windows, Linux, macOS) for items, recipes, NPCs and monsters,
 spells, dialogues, quests, events, layers, world placements, behaviours, strings and voice recording. It exports an ordinary mod folder that the
-layer loads, **Play** starts the game with it (or hot-reloads a running one), and it can import existing mods and `.pNN` archives (via
+layer loads, **Play** starts the game with it (or reloads it in the running game over the **live link**, a named pipe, and shows what the game said), and it can import existing mods and `.pNN` archives (via
 `risen-pack2mod --project`). It only needs a copy of the game's `data` folder, not a running game.
 
 | Read | For |
@@ -27,7 +27,7 @@ layer loads, **Play** starts the game with it (or hot-reloads a running one), an
 | [Chronicle walkthrough](docs/editor/CHRONICLE.md) | a complete four-chapter example mod (`examples/modkit/chronicle.rmk.json`) with a table of which features it covers |
 | [Localization](docs/editor/LOCALIZATION.md) | the editor's UI languages (English embedded, German ships) and how to add one |
 | [Converting archive mods](docs/PACK2MOD.md) | `risen-pack2mod`: turn `.pNN` / `.pak` mods into a layer mod or a modkit project |
-| [Requirements and architecture](docs/editor/REQUIREMENTS.md) | the editor's design, stages E0-E20 and their state |
+| [Requirements and architecture](docs/editor/REQUIREMENTS.md) | the editor's design, its stages and their state |
 
 Download: `risen-spass-tools-windows-x64.zip` of the [nightly release](https://github.com/kirides/risen-spass/releases/tag/nightly) holds `risen-modkit.exe`
 (and `risen-pack2mod.exe`). More example projects are in [`examples/modkit`](examples/modkit).
@@ -70,6 +70,8 @@ Reference: [Lua API](docs/LUA_API.md) · [examples](docs/EXAMPLES.md) · [entity
 | Texts | `risen.loc` overlay and `strings/*.csv` files per mod and language |
 | Mod conversion | **`risen-pack2mod`** turns the `.pNN` / `.pak` archives of a 32-bit-era mod into a mod for this layer: loose assets, only-the-differences Lua data for items, new items, recipes, dialogue rewards and world edits, strings, the combat table, and a report of what it could not convert ([docs/PACK2MOD.md](docs/PACK2MOD.md)); you run it on your own copy, the output is never redistributed |
 | Scripts | define or override the game's native scripts from Lua |
+| Network | `risen.http` / `risen.json`: a mod that declares `network` in its `mod.toml` asks web endpoints (update checks, news, leaderboards) with a callback API that never blocks the game; outbound connections only (no listening socket, no firewall prompt), per-host allow-lists, and the player can switch network access off for all mods or for one in the mod manager ([docs](docs/LUA_API.md#network-access)) |
+| Live link | with `[link] enabled = true` the running game listens on a **named pipe** (this Windows user only; never a socket) for an editor or a script: reload a mod and get the result, list mods, follow the log, call commands your mods register with `risen.link.on` ([docs](docs/LUA_API.md#live-link)) |
 | Mod manager | a **Mods** tab in the game's own ESC menu: every mod with version and state (failures in red with the reason), switch on / off with the dependencies asked and enforced, reload, load order with a default order, a warning before a mod that left NPCs in your game is switched off; built from the game's own widgets ([docs/MODDING_GUIDE.md](docs/MODDING_GUIDE.md) 4.22) |
 | Tooling | editor completion and type checks (LuaLS `types/risen.d.lua`), a test framework that plays your mod in an isolated windowed game and reports in a minute (`risen.test`), virtual file system access, template list ([docs/TEMPLATES.md](docs/TEMPLATES.md)) |
 | Safe | argument types are checked, a wrong call from Lua is an error and never a crash (a fuzz scenario calls every function with 1.6 million wrong arguments on each test run) |
@@ -87,6 +89,10 @@ Build the release zip with `scripts\package.ps1` (it builds the layer, `risen-pa
 The proxy is installed as `bin\sentry.dll` (the original is kept as `sentry_orig.dll`; nothing else in the game folder changes).
 Mods go to `bin\spass\mods\<mod>\` (each with a `mod.toml`), the log is `bin\spass\spass.log`.
 To switch the layer off without uninstalling, create `bin\spass\config.toml` with `enabled = false`.
+
+![The Mods page in the game's ESC menu, with the Network buttons](docs/img/modmanager_network.png)
+
+*The mod manager in the game's menu: state of every mod, switch on/off, reload, load order, options, and the **Network** buttons (all mods / this mod).*
 
 Open `bin\spass\mods` in VS Code with the *Lua* extension for completion and type checks; see [types/README.md](types/README.md).
 

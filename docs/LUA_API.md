@@ -1253,7 +1253,9 @@ risen.options.define{
 `session.start` / `world.ready` they missed), waits for `risen.test.finish`, unloads them, starts a **new game** (so each scenario meets an untouched world) and goes on; `suite_finish` writes one result with the checks named `<scenario>: <check>`.
 Templates and other process-wide edits of earlier scenarios stay (see DEVELOPMENT.md "One-process suites"). `smoke-test.ps1 -Scenario suite` runs four scenarios in one game in ~75 s instead of ~4 minutes.
 
-## Live link — `risen.link`, the named pipe for editors (see `mods/link_test`, `mods/link_target`, `tools/linktest_client.py`)
+## Live link
+
+`risen.link` and the named pipe for editors (see `mods/link_test`, `mods/link_target`, `tools/linktest_client.py`).
 
 A running game can talk to an editor (risen-modkit) or a script in real time. **Named pipe only**: no TCP/UDP socket is ever opened, so the player never sees a firewall prompt, and the pipe is
 reachable by the current Windows user only (protected DACL "owner rights", remote clients rejected, the pipe name is claimed with `FILE_FLAG_FIRST_PIPE_INSTANCE`). It is **off by default**:
@@ -1276,7 +1278,9 @@ The layer writes `<Risen>\bin\spass\link.json` (`{"pipe": "\\\\.\\pipe\\risen-sp
 * Events for mods: `link.connected`, `link.disconnected`. `risen.link.available()` / `risen.link.connected()`.
 * Test client: `python tools/linktest_client.py <bin\spass> <result.json>`; scenario `link` (`test-run.ps1 -LinkClient`), unit test `link_pipe_round_trip_and_reconnect`.
 
-## Network access — `risen.http`, `risen.json` (see `mods/http_test`, `tools/httptest_server.py`)
+## Network access
+
+`risen.http` and `risen.json` (see `mods/http_test`, `tools/httptest_server.py`).
 
 Mods can ask web endpoints (update checks, leaderboards, news) without ever blocking the game. **Outbound connections only**: the layer never listens on a port, so the player never sees a
 "allow this program to host a server" firewall prompt.

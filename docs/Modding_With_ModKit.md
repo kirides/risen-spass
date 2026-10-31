@@ -24,7 +24,8 @@ This is the place to start modding; writing mods by hand in Lua is the [advanced
 5. **Make something**: in **Items** press **+ New item**, pick a base item (for example `It_1H_Sword`), give it a name with your mod's prefix,
    a label and a description, and change the damage or value. The game's own values are shown in brackets.
 6. **Press Play** (F5): the project is checked, exported into `<Risen>\bin\spass\mods\<id>` and Risen starts windowed (**Game > Start with**
-   chooses the main menu, a new game or the last quick save). While the game runs, Play only exports again and the layer reloads the mod.
+   chooses the main menu, a new game or the last quick save). While the game runs, Play only exports again and the game reloads the mod on the spot:
+   over the **live link** (a named pipe between the editor and the game, see [below](#play-and-the-live-link)) the status line tells what the game did.
 7. **Save** the project (Ctrl+S, a `.rmk.json` file) and keep going: recipes, NPCs, dialogues, quests... The pictures below show each editor.
    Problems (a missing name, an unknown template, ...) appear in the **Problems** panel; a click selects the object.
 
@@ -93,6 +94,41 @@ or pay Maren a 200 gold tithe. Whichever objective is done first decides the pat
 Event graphs are game logic without code. A trigger (*On kill*, *On item*, *On chapter*, *On area*, ...) runs conditions and actions.
 *Camp falls* checks the world when the warlord dies, then sets a variable and gives experience.
 
+### NPC routines
+
+![NPC routine](modkit/npc_routine.png)
+
+A placed NPC can stand at a post, patrol, or follow a day routine (sleep, work, relax); the waypoints are offsets from his place and are drawn in
+the World view, where you drag them. The editor knows the world's navigation zones and warns, as here, when a point is too far from walkable
+ground (the NPC would probably not walk there).
+
+### NPC groups
+
+![NPC groups](modkit/npc_groups.png)
+
+Named groups of NPCs (a patrol, a camp, a guild) that quests, behaviours and layers can refer to as one.
+
+### Behaviours
+
+![Behaviours](modkit/behaviours.png)
+
+A behaviour is a small Lua script attached to every NPC of a template (like a component in Unity). The editor reads its description, its handlers
+(`start`, `on_talk`, `on_player_near`) and its parameters from the file, lets you change the defaults, and shows where it is attached.
+
+### Patches
+
+![Patches](modkit/patches.png)
+
+Changes to shipped templates that are not new objects: another value for a shipped item, another property of a monster. Only what you change is
+written to the mod.
+
+### Assets
+
+![Assets](modkit/assets.png)
+
+The loose files of the mod: icons and images, 3D models (OBJ / glTF are converted to the game's mesh format), sounds and recordings. Each shows where
+the mod uses it.
+
 ### Layers
 
 ![Layers](modkit/layers.png)
@@ -107,6 +143,13 @@ when the beacon quest succeeds. The plan on the right shows every layer's member
 The game world in 3D: 48 000 entities in 317 layers, drawn with the game's own meshes and textures. The orange boxes are the members of the
 *AshCamp* layer. NPCs, items and objects are placed and moved here with a gizmo.
 
+### Paint: grass and water
+
+![Paint](modkit/paint.png)
+
+In the World view, **Paint grass** and **Paint water** (next to Select and Place) change the landscape: the brush adds or removes grass and plants
+around a point, a water polygon becomes a pool with the game's water material. Both are stored in the project and exported with the mod.
+
 ### Browser
 
 ![Browser](modkit/browser.png)
@@ -120,6 +163,21 @@ change it, place it or patch it.
 
 Every text of the mod and the game in one table: speaker, source, the text in each language and whether a recording exists. Lines can be exported
 as recording sheets for voice actors, and finished recordings are imported in a batch (converted with ffmpeg).
+
+### Problems and the game's errors
+
+![Problems](modkit/problems.png)
+
+Everything the editor finds wrong before Play is listed here with a click-through to the object; while a game runs, the warnings and errors the
+game logs for your mod appear under *From the game*, linked to the object they name.
+
+### Play and the live link
+
+Play starts the game with **`[link] enabled = true`** in the layer's `config.toml`. That opens a **named pipe** (`\\.\pipe\risen-spass-<pid>`, no network
+socket, so Windows never asks about a firewall, and only your Windows user can open it). With the game running, **Play** exports the mod and asks the
+game, over the pipe, to reload exactly that mod: the status line reports what happened (*"chronicle_example reloaded in the running game over the live
+link (68 handlers removed, 68 added)"*, or the reason a script could not load again). Without a link (an older game, or started by hand) Play falls
+back to the file watcher. The same pipe is open to your own tools: [LUA_API.md "Live link"](LUA_API.md#live-link).
 
 ### Command palette
 

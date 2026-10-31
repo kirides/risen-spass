@@ -31,6 +31,13 @@ $shots = [ordered]@{
     'palette'      = @($chronicle, '--palette', 'tide')
     'wizard'       = @($showcase, '--wizard', 'weapon')
     'lua'          = @($extensions, '--panel', 'Lua', '--select', 'tweaks')
+    'npc_routine'  = @($chronicle, '--panel', 'NPCs', '--select', 'MKC_Ash_Raider_2')
+    'npc_groups'   = @($chronicle, '--panel', 'NPC groups')
+    'behaviours'   = @($chronicle, '--panel', 'Behaviours', '--select', 'chronicler')
+    'patches'      = @($chronicle, '--panel', 'Patches')
+    'assets'       = @($chronicle, '--panel', 'Assets')
+    'paint'        = @($chronicle, '--panel', 'World', '--camera', '-35080,1500,-6646,0,-40', '--frames', '500')
+    'problems'     = @($chronicle, '--panel', 'Problems')
     'german'       = @($chronicle, '--panel', 'Items', '--select', 'MKC_Tide_Potion', '--lang', 'de')
 }
 foreach ($name in $shots.Keys) {

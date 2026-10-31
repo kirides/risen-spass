@@ -534,8 +534,11 @@ Set the **game folder** (the Risen folder with `bin\Risen.exe` and the mod layer
 * The project is validated (errors stop Play), exported into `<game folder>\bin\spass\mods\<id>` and Risen starts windowed (the setting *Windowed*
   sets `FullScreen="false"` in `data\ini\ConfigLocal.xml`; the first time a backup `ConfigLocal.xml.modkit-backup` is kept). The editor turns on the layer's
   file watcher (`[mods] watch = true` in `bin\spass\config.toml`) and, for "new game" / "quick save", adds the tiny helper mod `modkit_autostart`.
-* While that game is running, **Play** only exports again: the layer reloads the mod from the changed files, no restart (the status line says so).
-  A game that was started without the watcher has to be restarted.
+* While that game is running, **Play** only exports again and the mod is reloaded without a restart. With the **live link** (Play starts the game with
+  `[link] enabled = true`, a named pipe `\\.\pipe\risen-spass-<pid>` that only your Windows user can open; `bin\spass\link.json` names it) the editor sends
+  `reload` for exactly this mod and the status line shows the game's answer: how many handlers were removed and added, or why the mod could not be loaded
+  again (the error of the script). Without a reachable link the layer's file watcher reloads the changed files, as before. A game that was started with
+  neither has to be restarted. The pipe is also what other tools can use ([LUA_API.md "Live link"](../LUA_API.md)).
 * The editor reads `bin\spass\spass.log` while a game folder is set. Warnings and errors that carry `[<mod id>]` or name something of the project
   (an item, NPC, quest, a dialogue option's generated name, a `MK_<quest>_<action>` script, ...) appear in the **Problems** panel under *From the game*;
   a click selects the object. They never block the export. **Game > Forget the game's errors** clears the list, **Game > Open the game's log** opens the file.
