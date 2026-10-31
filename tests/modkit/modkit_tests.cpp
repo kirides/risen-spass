@@ -14,6 +14,7 @@
 #include <sstream>
 #include <set>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "common/sound_file.h"

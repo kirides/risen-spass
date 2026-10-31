@@ -80,3 +80,96 @@ TEST(play_config_helpers) {
     CHECK(autostart_mod_files(PlayStart::NewGame)[1].second.find("new_game") != std::string::npos);
     CHECK(!play_plan("").problem.empty() && !play_plan("Z:\\no\\such\\folder").problem.empty());
 }
+
+// ---- the live link (core/link_client.h): config helper and the client against a fake game on a named pipe ----------------------------
+
+#include "core/link_client.h"
+
+TEST(config_with_link_sets_the_pipe_on) {
+    CHECK_EQ(config_with_link(""), std::string("[link]\nenabled = true\n"));
+    CHECK_EQ(config_with_link("log_level = \"info\"\n"), std::string("log_level = \"info\"\n\n[link]\nenabled = true\n"));
+    const std::string off = "[mods]\nwatch = true\n[link]\nenabled = false\nname = \"x\"\n[test]\nenabled = true\n";
+    const std::string on = config_with_link(off);
+    CHECK(on.find("[link]\nenabled = true\nname = \"x\"\n[test]\nenabled = true\n") != std::string::npos);
+    CHECK_EQ(config_with_link(on), on);  // idempotent
+    CHECK(on.find("enabled = false") == std::string::npos);
+}
+
+#ifdef _WIN32
+#include <windows.h>
+#undef near  // windows.h macros that would break the later test files
+#undef far
+
+namespace {
+// A fake game: one named pipe instance answering `reload` like the layer does, after pushing a log event.
+struct FakeGame {
+    std::string path;
+    std::thread thread;
+    bool fail_reload = false;
+    FakeGame(const std::string& name, bool fail) : path("\\\\.\\pipe\\" + name), fail_reload(fail) {
+        HANDLE pipe = CreateNamedPipeA(path.c_str(), PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS, 1, 65536, 65536, 0, nullptr);
+        thread = std::thread([this, pipe] {
+            if (ConnectNamedPipe(pipe, nullptr) || GetLastError() == ERROR_PIPE_CONNECTED) {
+                char buf[65536];
+                DWORD n = 0;
+                while (ReadFile(pipe, buf, sizeof buf, &n, nullptr)) {
+                    const nlohmann::json req = nlohmann::json::parse(std::string(buf, n), nullptr, false);
+                    auto send = [&](const nlohmann::json& j) {
+                        const std::string t = j.dump();
+                        DWORD w = 0;
+                        WriteFile(pipe, t.data(), static_cast<DWORD>(t.size()), &w, nullptr);
+                    };
+                    send({{"event", "log"}, {"data", {{"level", "info"}, {"text", "hello from the game"}}}});
+                    if (req.value("cmd", "") == "reload") {
+                        nlohmann::json action = {{"id", req["args"]["mod"]}, {"action", fail_reload ? "failed" : "reloaded"}, {"handlers_removed", 3}, {"handlers_added", 4}};
+                        if (fail_reload) action["error"] = "main.lua:7: boom";
+                        send({{"id", req["id"]}, {"ok", !fail_reload}, {"result", {{"reports", nlohmann::json::array({{{"actions", nlohmann::json::array({action})}}})}}}});
+                    } else {
+                        send({{"id", req["id"]}, {"ok", false}, {"error", "unknown command"}});
+                    }
+                }
+            }
+            DisconnectNamedPipe(pipe);
+            CloseHandle(pipe);
+        });
+    }
+    ~FakeGame() {
+        if (thread.joinable()) thread.join();
+    }
+};
+}  // namespace
+
+TEST(link_client_reload_against_a_fake_game) {
+    const std::string name = "mk-test-link-" + std::to_string(GetCurrentProcessId());
+    {
+        FakeGame game(name, false);
+        LinkClient c;
+        std::string err;
+        CHECK(c.connect_pipe(game.path, err));
+        if (!err.empty()) std::printf("  link client: %s\n", err.c_str());
+        const LinkReply r = c.request("reload", {{"mod", "my_mod"}});
+        CHECK(r.ok && r.result["reports"][0]["actions"][0]["action"] == "reloaded");
+        const auto events = c.take_events();
+        CHECK(events.size() == 1 && events[0]["event"] == "log" && events[0]["data"]["text"] == "hello from the game");
+        const LinkReply bad = c.request("nope");
+        CHECK(!bad.ok && bad.error == "unknown command");
+        c.close();
+    }
+    // link_reload through link.json of a game folder
+    const std::string name2 = name + "-b";
+    for (const bool fail : {false, true}) {
+        FakeGame game(name2, fail);
+        const fs::path dir = temp_dir(fail ? "link_fail" : "link_ok");
+        write_text(dir / "bin" / "spass" / "link.json", nlohmann::json{{"pipe", game.path}, {"pid", 1}, {"protocol", 1}}.dump());
+        const LinkReload lr = link_reload(u8str(dir), "my_mod");
+        CHECK(lr.reachable);
+        if (lr.message.find(fail ? "boom" : "reloaded") == std::string::npos) std::printf("  link_reload said: %s\n", lr.message.c_str());
+        CHECK_EQ(lr.ok, !fail);
+        CHECK(fail ? lr.message.find("boom") != std::string::npos : lr.message.find("reloaded") != std::string::npos);
+    }
+    // no link.json: not reachable (the caller falls back to the file watcher)
+    CHECK(!link_reload(u8str(temp_dir("link_none")), "my_mod").reachable);
+    LinkClient closed;
+    CHECK(!closed.request("hello").ok);
+}
+#endif

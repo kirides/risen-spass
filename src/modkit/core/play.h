@@ -12,6 +12,7 @@ enum class PlayStart { Menu, NewGame, QuickLoad };
 struct PlayOptions {
     std::string game_dir;  // the Risen root (contains bin\Risen.exe)
     PlayStart start = PlayStart::NewGame;
+    std::string mod_id;          // the exported mod: with the live link on, the running game reloads exactly this mod and reports the result
     bool force_windowed = true;  // data\ini\ConfigLocal.xml: FullScreen="false" (a backup is kept next to it)
 };
 
@@ -39,6 +40,7 @@ inline constexpr const char* kAutostartModId = "modkit_autostart";
 struct PlayResult {
     bool ok = false;
     bool reloaded = false;  // the game was running: the layer reloads the mod from the exported files
+    bool linked = false;    // ... over the live link (named pipe): `ok` and `message` are what the game said about the reload
     std::string message;
 };
 

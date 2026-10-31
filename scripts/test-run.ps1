@@ -105,7 +105,9 @@ param(
     # start tools\httptest_server.py on a free loopback port for the run and pass it as the scenario parameter http_port (scenario `http`)
     [switch]$HttpServer,
     # switch the live link on ([link] enabled) and start tools\linktest_client.py against the game's named pipe; its result file is the scenario parameter result_file (scenario `link`)
-    [switch]$LinkClient
+    [switch]$LinkClient,
+    # only switch the live link on ([link] enabled): an editor (risen-modkit Play) can connect to the running game
+    [switch]$Link
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -293,12 +295,10 @@ try {
     if ($RaceProbe) { $cfg += 'race_probe = true' }
     if ($TraceFile) { $cfg += 'trace_file = true' }
     if (-not $AllowFocus) { $cfg += 'background = true' }
+    if ($LinkClient -or $Link) { $cfg += '[link]', 'enabled = true' }  # before [test]: every [table] header below ends it
     if ($WaitForResult) {
         $deadline = if ($DeadlineSeconds -ge 0) { $DeadlineSeconds } else { [math]::Max($Seconds - 10, 10) }
         $cfg += '[test]', 'enabled = true', "deadline_s = $deadline", "scenario = `"$Scenario`""
-        if ($LinkClient) {
-            $cfg += '[link]', 'enabled = true'
-        }
         if ($HttpServer) {
             $probe = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0); $probe.Start(); $httpPort = $probe.LocalEndpoint.Port; $probe.Stop()
             $script:HttpProc = Start-Process python -ArgumentList '-I', (Join-Path $repo 'tools\httptest_server.py'), $httpPort -PassThru -WindowStyle Hidden

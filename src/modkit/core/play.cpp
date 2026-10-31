@@ -1,5 +1,6 @@
 #include "core/play.h"
 #include "core/i18n.h"
+#include "core/link_client.h"
 
 #include <iterator>
 #include <regex>
@@ -130,6 +131,16 @@ PlayResult play_game(const PlayOptions& o) {
     const fs::path spass = bin / "spass";
     try {
         if (game_running(o.game_dir)) {
+            if (!o.mod_id.empty()) {
+                const LinkReload lr = link_reload(o.game_dir, o.mod_id);  // the live link: an immediate, checked reload (named pipe, only when the game was started with [link] enabled)
+                if (lr.reachable) {
+                    r.ok = lr.ok;
+                    r.reloaded = lr.ok;
+                    r.linked = true;
+                    r.message = lr.message;
+                    return r;
+                }
+            }
             std::string cfg;
             try {
                 cfg = read_text(spass / "config.toml");
@@ -147,7 +158,7 @@ PlayResult play_game(const PlayOptions& o) {
             cfg = read_text(spass / "config.toml");
         } catch (...) {
         }
-        write_text_if_changed(spass / "config.toml", config_with_watch(cfg));
+        write_text_if_changed(spass / "config.toml", config_with_link(config_with_watch(cfg)));  // hot reload by file watcher, and the live link (named pipe) for checked reloads
         // the helper mod that starts the game
         const fs::path auto_dir = spass / "mods" / kAutostartModId;
         if (o.start == PlayStart::Menu) {

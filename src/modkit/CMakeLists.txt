@@ -61,6 +61,7 @@ add_library(modkit_core STATIC
     core/package.cpp
     core/pack2project.cpp
     core/paths.cpp
+    core/link_client.cpp
     core/play.cpp
     core/process.cpp
     core/project.cpp

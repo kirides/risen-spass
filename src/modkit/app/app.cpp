@@ -365,6 +365,7 @@ void App::play() {
     po.game_dir = settings.game_dir;
     po.start = static_cast<PlayStart>(std::clamp(settings.play_start, 0, 2));
     po.force_windowed = settings.play_windowed;
+    po.mod_id = project.mod.id;
     const PlayResult pr = play_game(po);
     log_info("play: " + std::to_string(r.written.size()) + " files written; " + pr.message);
     status(pr.ok ? pr.message : trf("Play: {0}", {pr.message}));
