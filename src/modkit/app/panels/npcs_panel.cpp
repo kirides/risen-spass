@@ -14,6 +14,7 @@
 #include "app/widgets.h"
 #include "core/catalog.h"
 #include "core/i18n.h"
+#include "core/navzones.h"
 #include "core/routine.h"
 #include "core/validate.h"
 
@@ -117,6 +118,27 @@ void day_strip(const json& r, std::string& sel) {
     ImGui::Dummy(ImVec2(w, 1));
 }
 
+// the places of his routine against the walkable ground of the world (core/navzones.h): a place outside it is one he will not walk to
+void ground_report(App& app, const PlacedNpc& n) {
+    if (n.offset || n.routine.is_null() || routine_points(n.routine).empty()) return;
+    if (!app.world || world_of(app.project, n.world) != app.world->name) return;
+    if (!app.navmap) {
+        ImGui::TextDisabled("%s", tr("Open the World view once to check these places against the walkable ground."));
+        return;
+    }
+    bool any = false;
+    for (const RoutinePoint& p : routine_points(n.routine)) {
+        if (!routine_kind_walks(p.kind.empty() ? std::string("guard") : p.kind)) continue;  // he does not walk to a place of these kinds
+        const Vec3 w = routine_world(n.position, p);
+        const double d = app.navmap->distance_to_ground(w[0], w[1], w[2]);
+        if (d == 0) continue;
+        any = true;
+        if (d < 0) ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), tr("%s: no walkable ground near this place: he will probably stay where he is."), p.label.c_str());
+        else ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), tr("%s: %.0f units from walkable ground: he will probably not walk there."), p.label.c_str(), d);
+    }
+    if (!any) ImGui::TextDisabled("%s", tr("All places are on walkable ground."));
+}
+
 bool day_editor(App& app, PlacedNpc& n) {
     bool ch = false;
     json& r = n.routine;
@@ -203,6 +225,7 @@ bool routine_editor(App& app, PlacedNpc& n) {
         ui::help(tr("Points are relative to the NPC's home (where he is made). A post the NPC cannot walk to leaves him standing: choose connected points near his home."));
     if (mode == 1) ch |= point_editor("at", r["at"]);
     if (mode == 2) ch |= day_editor(app, n);
+    if (mode != 0) ground_report(app, n);
     if (mode == 3) {
         json& p = r["patrol"];
         json& pts = p["points"];

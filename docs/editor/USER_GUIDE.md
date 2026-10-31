@@ -126,6 +126,9 @@ Two kinds of objects:
   place*: the game's own rule) or have one of their own; *Copy the work place* starts a new one from it. A kind of *stand*, *sit* or *smalltalk* makes him hang around where he
   is instead of walking to the place (the editor warns). **Place it in the World view** opens the NPC there with that place chosen for the gizmo; in the World view each
   place is drawn with its hours, can be added or removed, and a patrol is a loop. An NPC notices the change of the hour when his current task ends (a minute or two).
+  **Walkable ground:** once the world is loaded (it loads in the background, a few seconds) the editor checks every place against the navigation zones of the game: a place off
+  the ground is listed under the routine ("12xx units from walkable ground: he will probably not walk there") and labelled in red in the World view, where *Walkable ground* (Draw) outlines the
+  zones. It is a close guide, not a guarantee: the game also cuts out obstacles.
 * **Appears when / Leaves when** (placed NPCs): conditions -- a quest has a status, the player holds items, a game variable or event, a skill, a
   guild, an NPC dead or alive -- all or any of a list. *Appears when* keeps him out of the world until it holds (enemies that ambush the player after
   a quest, a messenger, a new trader), *Leaves when* removes him. The **quest picker** lists your quests and **every quest of the game** (370, with

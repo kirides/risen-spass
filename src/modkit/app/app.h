@@ -25,6 +25,8 @@ struct GLFWwindow;
 
 namespace mk {
 
+class NavMap;  // core/navzones.h
+
 namespace gfx {
 class ResourceCache;
 }
@@ -103,6 +105,7 @@ public:
     std::vector<TemplateAction> template_actions;
     // the loaded game world (the World panel loads it; placement and the pickers of NPC names use it)
     std::shared_ptr<const World> world;
+    std::shared_ptr<const NavMap> navmap;  // the walkable ground of `world` (core/navzones.h): the World panel builds it in the background, null until then
     // starts loading the world in the background when nothing has (the pickers of NPC names and entity IDs need it without the World panel having been opened);
     // `world` is set when it is done. No effect while a load runs or the world is there.
     void request_world();

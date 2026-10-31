@@ -31,6 +31,7 @@
 #include "core/catalog.h"
 #include "core/i18n.h"
 #include "core/layers.h"
+#include "core/navzones.h"
 #include "core/routine.h"
 #include "core/skin.h"
 #include "core/speedtree.h"
@@ -113,7 +114,7 @@ const std::vector<TplKind>& place_kinds() {
 class WorldPanel : public Panel {
 public:
     const char* title() const override { return kPanelWorld; }
-    bool busy() const override { return loading_.valid() || (res_ && res_->pending() > 0); }
+    bool busy() const override { return loading_.valid() || nav_loading_.valid() || (res_ && res_->pending() > 0); }
 
     void on_project_changed(App& app) override {
         overlay_dirty_ = true;
@@ -154,6 +155,7 @@ public:
 
     void draw(App& app) override {
         poll_loader(app);
+        poll_nav(app);  // also while the tab is hidden: the NPCs panel checks routine places against it
         if (!ImGui::Begin(ui::panel_label(title()).c_str(), &open)) {
             ImGui::End();
             return;
@@ -211,7 +213,16 @@ private:
         if (!loading_.valid() || loading_.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
         world_ = loading_.get();
         app.world = world_;
+        app.navmap.reset();
+        nav_batch_.clear();
+        nav_batch_.upload();
         if (!world_) return;
+        if (app.game) {
+            // the walkable ground: about five seconds of reading zone shapes, not on the UI thread
+            std::shared_ptr<const GameData> g = app.game;
+            std::shared_ptr<const World> w = world_;
+            nav_loading_ = std::async(std::launch::async, [g, w]() -> std::shared_ptr<NavMap> { return build_navmap(*g, *w); });
+        }
         res_ = app.resources();
         mesh_names_.assign(world_->entities.size(), std::string());
         for (size_t i = 0; i < world_->entities.size(); ++i)
@@ -631,6 +642,9 @@ private:
                  "there at first. They are marked in the layer list and the inspector says what switches them on (docs/RE.md section 55)."));
         ImGui::SeparatorText(tr("Draw"));
         ch |= ImGui::Checkbox(tr("Meshes and textures"), &draw_meshes_);
+        ImGui::Checkbox(tr("Walkable ground"), &show_nav_);
+        ui::help(tr("The navigation zones of the world (cyan outlines): where NPCs can walk. A routine place outside them is a place the NPC will not walk to. The editor reads the zone shapes; the game also cuts out obstacles, so this is a close guide, not a guarantee."));
+        if (show_nav_ && nav_loading_.valid()) ImGui::TextDisabled("%s", tr("Reading the zones..."));
         ImGui::SetNextItemWidth(-FLT_MIN);
         ImGui::SliderFloat("##dist", &draw_distance_, 2000, 40000, tr("mesh distance %.0f"));
         ch |= ImGui::Checkbox(tr("Boxes of entities with a mesh"), &boxes_for_meshes_);
@@ -1057,6 +1071,7 @@ private:
         glClearColor(0.10f, 0.11f, 0.13f, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         const glm::mat4 vp = cam_.proj(aspect) * cam_.view();
+        poll_nav(app);
         anim_update(app);
         if (draw_meshes_ && res_) draw_meshes(vp);
         if (draw_meshes_ && res_) draw_project_meshes(app, vp);
@@ -1066,6 +1081,7 @@ private:
         if (dropped) drop_at(app, *dropped, cu, cv, w, h, vp);
         glDisable(GL_DEPTH_TEST);
         overlay_.draw(vp);
+        if (show_nav_) nav_batch_.draw(vp);
         rt_.unbind();
         ImGui::GetWindowDrawList()->AddImage(static_cast<ImTextureID>(static_cast<intptr_t>(rt_.texture())), origin, ImVec2(origin.x + w, origin.y + h),
                                              ImVec2(0, 1), ImVec2(1, 0));
@@ -1418,6 +1434,21 @@ private:
         boxes_dirty_ = overlay_dirty_ = true;
     }
 
+    // the walkable ground, once its background build is done: published to the app and drawn as outlines
+    void poll_nav(App& app) {
+        if (!nav_loading_.valid() || nav_loading_.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+        std::shared_ptr<NavMap> map = nav_loading_.get();
+        if (!map) return;
+        nav_batch_.clear();
+        for (const NavZone& z : map->zones)
+            for (size_t i = 0, j = z.poly.size() - 1; i < z.poly.size(); j = i++)
+                nav_batch_.line(to_gl(static_cast<float>(z.poly[j][0]), static_cast<float>(z.y + 8), static_cast<float>(z.poly[j][1])),
+                                to_gl(static_cast<float>(z.poly[i][0]), static_cast<float>(z.y + 8), static_cast<float>(z.poly[i][1])), IM_COL32(60, 220, 230, 200));
+        nav_batch_.upload();
+        app.navmap = map;
+        log_info("walkable ground: " + std::to_string(map->zones.size()) + " navigation zones");
+    }
+
     // ---- animation ------------------------------------------------------------------------------------------------------------------------------
 
     // the selected thing's actor: its mesh name and a key for the thing ("e:<index>" a world entity, "n:<uid>" a placed NPC); false when it has no actor
@@ -1695,7 +1726,10 @@ private:
             const float sx = origin.x + (c.x / c.w * 0.5f + 0.5f) * w, sy = origin.y + (1 - (c.y / c.w * 0.5f + 0.5f)) * h;
             std::string text = p.label;
             if (!p.kind.empty()) text += " (" + p.kind + ")";
-            ImGui::GetWindowDrawList()->AddText(ImVec2(sx - 4, sy), p.key == rt_sel_ ? IM_COL32(255, 255, 255, 255) : routine_point_colour(p.key), text.c_str());
+            // a place off the walkable ground (core/navzones.h) is one he will not walk to
+            const bool off = app.navmap && routine_kind_walks(p.kind.empty() ? std::string("guard") : p.kind) && !app.navmap->on_ground(wp[0], wp[1], wp[2]);
+            if (off) text += std::string(" - ") + tr("not on walkable ground");
+            ImGui::GetWindowDrawList()->AddText(ImVec2(sx - 4, sy), off ? IM_COL32(255, 120, 90, 255) : p.key == rt_sel_ ? IM_COL32(255, 255, 255, 255) : routine_point_colour(p.key), text.c_str());
         }
     }
 
@@ -2348,6 +2382,9 @@ private:
     std::string anim_uid_;
     float anim_time_ = 0, anim_speed_ = 1;
     bool anim_play_ = true;
+    std::future<std::shared_ptr<NavMap>> nav_loading_;
+    gfx::LineBatch nav_batch_;
+    bool show_nav_ = false;
     std::string rt_sel_;    // the routine point of the selected placed NPC the gizmo moves ("" = the NPC; core/routine.h keys)
     glm::mat4 gizmo_{1.0f};
     bool gizmo_active_ = false, gizmo_over_ = false, view_active_ = false;

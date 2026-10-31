@@ -415,6 +415,7 @@ TEST(gamedata_real_archives) {
 #include "extras_tests.inc"
 #include "chronicle_tests.inc"
 #include "package_tests.inc"
+#include "navzones_tests.inc"
 #include "voice_tests.inc"
 #include "i18n_tests.inc"
 
