@@ -143,5 +143,4 @@ Natives may use typed parameters: argument types are checked (`SOL_EXCEPTIONS_SA
 - In the Bash tool, long multi-line heredocs containing quotes/backslashes can fail or lose backslashes: write scripts with the
   Write tool and run them, or use Edit for files with backslashes.
 - `pefile` needs `max_symbol_exports` for the big DLLs or export names beyond 8192 are lost.
-- Shell-fed Python/C++ text with backslashes is mangled by the Bash tool (`
-` inside a heredoc string becomes a real newline, `\.\pipe` loses backslashes): write such scripts and snippets with the Write tool, or build the characters with `chr(92)`; check the result with `grep -n`.
+- Text with backslash escapes that goes through the Bash tool (a heredoc into Python, `sed`, `cat >>`) is mangled: a backslash-n inside a string becomes a real newline and the backslashes of a pipe path are halved. Write such scripts and C++ snippets with the Write tool (or Edit), or build the character with `chr(92)`, and check the result with `grep -n`.
