@@ -17,7 +17,7 @@ void MeshPreview::draw(App& app, const std::string& mesh, ImVec2 size) {
     ImDrawList* dl = ImGui::GetWindowDrawList();
     dl->AddRectFilled(origin, ImVec2(origin.x + size.x, origin.y + size.y), IM_COL32(26, 28, 33, 255), 4);
     if (!res || mesh.empty()) return;
-    const std::string name = compiled_name(p2m::bare_name(mesh));
+    const std::string name = mesh.rfind("spt:", 0) == 0 ? mesh : compiled_name(p2m::bare_name(mesh));  // "spt:<tree>": a SpeedTree stand-in
     const gfx::GpuMesh* m = res->mesh(name);
     res->update(3.0);
     if (!m) {

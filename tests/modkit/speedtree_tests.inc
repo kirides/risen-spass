@@ -42,6 +42,14 @@ TEST(speedtrees_match_the_game) {
             for (uint32_t v = 0; v < m.vertex_count; ++v)
                 inside = inside && f[v * 8 + 1] >= -1.0f && f[v * 8 + 1] <= info.box_max[1] * 1.02f + 1.0f;
             if (inside) ++ok;
+            else {
+                float ymin = 1e30f, ymax = -1e30f;
+                for (uint32_t v = 0; v < m.vertex_count; ++v) {
+                    ymin = std::min(ymin, f[v * 8 + 1]);
+                    ymax = std::max(ymax, f[v * 8 + 1]);
+                }
+                std::printf("    %s: %u vertices, y %.1f..%.1f, box top %.1f\n", tree.c_str(), m.vertex_count, ymin, ymax, info.box_max[1]);
+            }
             for (auto& s : m.submeshes) {
                 ++textures;
                 if (!s.texture.empty() && g->exists(s.texture + "._ximg")) ++textures_found;

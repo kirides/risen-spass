@@ -14,6 +14,7 @@
 #include "app/panels/panels.h"
 #include "app/pickers.h"
 #include "app/render/mesh_preview.h"
+#include "core/speedtree.h"
 #include "app/widgets.h"
 #include "core/i18n.h"
 
@@ -288,7 +289,13 @@ private:
         }
         const std::string desc = g.text("ITEMDESC_" + t->name);
         if (!desc.empty() && desc != "-") ImGui::TextWrapped("%s", desc.c_str());
-        if (!t->mesh.empty()) preview_.draw(app, t->mesh, ImVec2(std::min(ImGui::GetContentRegionAvail().x, 300.0f), 160));
+        std::string preview_mesh = t->mesh;
+        if (preview_mesh.empty() && t->has_set("eCSpeedTree_PS"))  // a tree: the editor's stand-in (core/speedtree.h)
+            if (const p2m::Val* v = t->get("eCSpeedTree_PS.ResourceFilePath"); v && v->is_str()) {
+                const std::string f = speedtree_file(v->s);
+                if (!f.empty()) preview_mesh = "spt:" + f.substr(0, f.size() - 6);
+            }
+        if (!preview_mesh.empty()) preview_.draw(app, preview_mesh, ImVec2(std::min(ImGui::GetContentRegionAvail().x, 300.0f), t->has_set("eCSpeedTree_PS") ? 260.0f : 160.0f));
         // actions of the editors
         bool first = true;
         for (auto& a : app.template_actions) {
