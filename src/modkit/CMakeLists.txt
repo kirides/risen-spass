@@ -53,6 +53,7 @@ add_library(modkit_core STATIC
     core/imagelist.cpp
     core/import.cpp
     core/layers.cpp
+    core/routine.cpp
     core/log.cpp
     core/pack2project.cpp
     core/paths.cpp

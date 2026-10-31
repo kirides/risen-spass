@@ -37,6 +37,7 @@
 #include "core/paths.h"
 #include "core/project.h"
 #include "core/quest.h"
+#include "core/routine.h"
 #include "core/validate.h"
 #include "core/voice.h"
 #include "core/world.h"
@@ -244,6 +245,32 @@ TEST(uids_are_unique) {
     for (int i = 0; i < 1000; ++i) seen[new_uid()]++;
     CHECK_EQ(seen.size(), size_t(1000));
     CHECK_EQ(new_uid().size(), size_t(32));
+}
+
+TEST(routine_points_and_moves) {
+    json day = json::parse(R"({"work":{"dx":200,"dy":0,"dz":0,"kind":"guard","yaw":90},"relax":{"dx":0,"dy":0,"dz":200},"sleep":{"dx":-150,"dy":0,"dz":150,"kind":"sleep"}})");
+    auto pts = mk::routine_points(day);
+    CHECK_EQ(pts.size(), size_t(3));
+    CHECK_EQ(pts[0].key, std::string("work"));
+    CHECK(pts[0].yaw && *pts[0].yaw == 90);
+    CHECK_EQ(pts[2].kind, std::string("sleep"));
+    CHECK(!mk::routine_is_loop(day));
+    CHECK(mk::routine_set_point(day, "relax", {5, 6, 7}));
+    CHECK_EQ(day["relax"]["dz"].get<double>(), 7.0);
+    CHECK(!mk::routine_set_point(day, "p0", {1, 1, 1}));
+    json patrol = json::parse(R"({"patrol":{"points":[{"dx":-300,"dy":0,"dz":0},{"dx":300,"dy":0,"dz":0}],"name":"x"}})");
+    auto pp = mk::routine_points(patrol);
+    CHECK_EQ(pp.size(), size_t(2));
+    CHECK_EQ(pp[1].key, std::string("p1"));
+    CHECK(mk::routine_is_loop(patrol));
+    CHECK(mk::routine_set_point(patrol, "p1", {10, 0, 20}));
+    CHECK_EQ(patrol["patrol"]["points"][1]["dz"].get<double>(), 20.0);
+    CHECK(!mk::routine_set_point(patrol, "p9", {0, 0, 0}));
+    auto w = mk::routine_world({100, 50, 0}, pp[0]);
+    CHECK(w[0] == -200 && w[1] == 50);
+    CHECK(mk::routine_points(json()).empty());
+    json post = json::parse(R"({"at":{"dx":1,"dy":2,"dz":3}})");
+    CHECK_EQ(mk::routine_points(post).size(), size_t(1));
 }
 
 TEST(history_undo_redo) {

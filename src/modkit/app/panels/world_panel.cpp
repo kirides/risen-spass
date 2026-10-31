@@ -31,6 +31,7 @@
 #include "core/catalog.h"
 #include "core/i18n.h"
 #include "core/layers.h"
+#include "core/routine.h"
 #include "app/widgets.h"
 #include "core/log.h"
 
@@ -864,6 +865,34 @@ private:
             overlay_.line(p + glm::vec3(0, 25, 0), p + glm::vec3(std::sin(yaw) * 80, 25, -std::cos(yaw) * 80), c);
             if (L && !L->enabled) overlay_.cross(p + glm::vec3(0, 80, 0), 30, c);
         }
+        // the selected placed NPC's routine (RE.md section 35): its points as crosses with a stalk to the ground, joined in the order he visits them
+        // (a patrol is a loop), the point being edited bright
+        for (auto& n : app.project.npcs) {
+            if (n.uid != proj_sel_ || n.offset || !here(app, n.world)) continue;
+            const auto pts = routine_points(n.routine);
+            const bool loop = routine_is_loop(n.routine) && pts.size() > 2;
+            glm::vec3 prev(0), first(0);
+            const glm::vec3 home = to_gl(static_cast<float>(n.position[0]), static_cast<float>(n.position[1]), static_cast<float>(n.position[2]));
+            for (size_t i = 0; i < pts.size(); ++i) {
+                const Vec3 w = routine_world(n.position, pts[i]);
+                const glm::vec3 p = to_gl(static_cast<float>(w[0]), static_cast<float>(w[1]), static_cast<float>(w[2]));
+                const ImU32 c = pts[i].key == rt_sel_ ? IM_COL32(255, 255, 255, 255) : routine_point_colour(pts[i].key);
+                overlay_.cross(p + glm::vec3(0, 10, 0), 35, c);
+                overlay_.line(p, p + glm::vec3(0, 90, 0), c);
+                if (pts[i].yaw) {
+                    const float yaw = glm::radians(static_cast<float>(*pts[i].yaw));
+                    overlay_.line(p + glm::vec3(0, 60, 0), p + glm::vec3(std::sin(yaw) * 90, 60, -std::cos(yaw) * 90), c);
+                }
+                if (i == 0) {
+                    first = p;
+                    overlay_.line(home + glm::vec3(0, 5, 0), p + glm::vec3(0, 5, 0), IM_COL32(150, 150, 150, 255));  // home -> first point
+                } else {
+                    overlay_.line(prev + glm::vec3(0, 5, 0), p + glm::vec3(0, 5, 0), c);
+                }
+                prev = p;
+            }
+            if (loop) overlay_.line(prev + glm::vec3(0, 5, 0), first + glm::vec3(0, 5, 0), routine_point_colour("p0"));
+        }
         // containers a mod layer fills: the world entity outlined in the layer's colour
         for (auto& ce : app.project.world.containers) {
             const LayerDef* L = layer_of_container(app.project, ce.uid);
@@ -1357,8 +1386,80 @@ private:
         boxes_dirty_ = overlay_dirty_ = true;
     }
 
+    static ImU32 routine_point_colour(const std::string& key) {
+        if (key == "work") return IM_COL32(110, 230, 90, 255);
+        if (key == "relax") return IM_COL32(250, 220, 60, 255);
+        if (key == "sleep") return IM_COL32(110, 150, 255, 255);
+        if (key == "at") return IM_COL32(255, 160, 40, 255);
+        return IM_COL32(0, 230, 230, 255);  // patrol
+    }
+
+    // the placed NPC being shown (the selected one), nullptr when none or when it has no world position
+    PlacedNpc* routine_npc(App& app) {
+        if (proj_sel_.empty()) return nullptr;
+        for (auto& n : app.project.npcs)
+            if (n.uid == proj_sel_ && !n.offset) return &n;
+        return nullptr;
+    }
+
+    // the gizmo moves the routine point `rt_sel_` of the selected NPC; one drag = one undo step. False when no point is selected (the normal gizmo runs).
+    bool draw_routine_gizmo(App& app, const ImVec2& origin, int w, int h, float aspect) {
+        PlacedNpc* n = routine_npc(app);
+        if (!n || rt_sel_.empty()) return false;
+        RoutinePoint pt;
+        bool found = false;
+        for (auto& p : routine_points(n->routine))
+            if (p.key == rt_sel_) {
+                pt = p;
+                found = true;
+            }
+        if (!found) {
+            rt_sel_.clear();
+            return false;
+        }
+        const Vec3 wp = routine_world(n->position, pt);
+        ImGuizmo::SetOrthographic(false);
+        ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
+        ImGuizmo::SetRect(origin.x, origin.y, static_cast<float>(w), static_cast<float>(h));
+        if (!gizmo_active_) gizmo_ = glm::translate(glm::mat4(1), to_gl(static_cast<float>(wp[0]), static_cast<float>(wp[1]), static_cast<float>(wp[2])));
+        ImGuizmo::Manipulate(glm::value_ptr(cam_.view()), glm::value_ptr(cam_.proj(aspect)), ImGuizmo::TRANSLATE, ImGuizmo::WORLD, glm::value_ptr(gizmo_));
+        gizmo_over_ = ImGuizmo::IsOver() || ImGuizmo::IsUsing();
+        const bool using_now = ImGuizmo::IsUsing();
+        const ImGuiID gid = ImGui::GetID("##gizmo");
+        if (using_now) ImGui::SetActiveID(gid, ImGui::GetCurrentWindow());
+        else if (ImGui::GetActiveID() == gid) ImGui::ClearActiveID();
+        if (using_now) {
+            gizmo_active_ = true;
+            overlay_dirty_ = true;
+            const glm::vec3 g = gfx::from_gl(glm::vec3(gizmo_[3]));
+            routine_set_point(n->routine, rt_sel_, {std::round(g.x * 10 - n->position[0] * 10) / 10, std::round(g.y * 10 - n->position[1] * 10) / 10, std::round(g.z * 10 - n->position[2] * 10) / 10});
+        } else if (gizmo_active_) {
+            gizmo_active_ = false;
+            app.touch();
+        }
+        return true;
+    }
+
+    // the points' names next to them in the view
+    void draw_routine_labels(App& app, const ImVec2& origin, int w, int h, float aspect) {
+        PlacedNpc* n = routine_npc(app);
+        if (!n) return;
+        const glm::mat4 vp = cam_.proj(aspect) * cam_.view();
+        for (auto& p : routine_points(n->routine)) {
+            const Vec3 wp = routine_world(n->position, p);
+            const glm::vec4 c = vp * glm::vec4(to_gl(static_cast<float>(wp[0]), static_cast<float>(wp[1]) + 110, static_cast<float>(wp[2])), 1);
+            if (c.w <= 0) continue;
+            const float sx = origin.x + (c.x / c.w * 0.5f + 0.5f) * w, sy = origin.y + (1 - (c.y / c.w * 0.5f + 0.5f)) * h;
+            std::string text = p.label;
+            if (!p.kind.empty()) text += " (" + p.kind + ")";
+            ImGui::GetWindowDrawList()->AddText(ImVec2(sx - 4, sy), p.key == rt_sel_ ? IM_COL32(255, 255, 255, 255) : routine_point_colour(p.key), text.c_str());
+        }
+    }
+
     void draw_gizmo(App& app, const ImVec2& origin, int w, int h, float aspect) {
         gizmo_over_ = false;
+        draw_routine_labels(app, origin, w, h, aspect);
+        if (draw_routine_gizmo(app, origin, w, h, aspect)) return;
         Vec3* pos = proj_sel_.empty() ? nullptr : project_position(app, proj_sel_);
         if (!pos) return;
         ImGuizmo::SetOrthographic(false);
@@ -1594,6 +1695,27 @@ private:
             if (ImGui::Button(tr("Edit in NPCs"))) {
                 const std::string uid = n.uid;
                 app.defer([&app, uid] { app.select_in(kPanelNpcs, uid); });
+            }
+            if (!n.offset) {
+                const auto pts = routine_points(n.routine);
+                if (!pts.empty()) {
+                    ImGui::SeparatorText(tr("Routine points"));
+                    if (ImGui::RadioButton(tr("move the NPC"), rt_sel_.empty())) {
+                        rt_sel_.clear();
+                        overlay_dirty_ = true;
+                    }
+                    for (auto& p : pts) {
+                        ImGui::PushID(p.key.c_str());
+                        std::string label = p.label + (p.kind.empty() ? std::string() : " (" + p.kind + ")");
+                        if (ImGui::RadioButton(label.c_str(), rt_sel_ == p.key)) {
+                            rt_sel_ = p.key;
+                            overlay_dirty_ = true;
+                        }
+                        ImGui::PopID();
+                    }
+                    ui::help(tr("Choose a point to drag it with the gizmo: the NPC's routine points are offsets from where he is made. Green: work, yellow: relax, "
+                                "blue: sleep, cyan: patrol (a loop), orange: one post."));
+                }
             }
         }
         std::string remove;
@@ -1951,6 +2073,7 @@ private:
     std::string place_npc_, place_template_ = "Peasant_1_01", place_item_ = "It_Apple";
     int place_amount_ = 1;
     std::string proj_sel_;  // the selected project object (placed NPC or spawn uid)
+    std::string rt_sel_;    // the routine point of the selected placed NPC the gizmo moves ("" = the NPC; core/routine.h keys)
     glm::mat4 gizmo_{1.0f};
     bool gizmo_active_ = false, gizmo_over_ = false, view_active_ = false;
     gfx::RenderTarget settle_rt_;
