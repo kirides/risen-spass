@@ -12,6 +12,7 @@ load_after  = ["other_mod"]    # ordering only
 requires    = ["base_mod"]     # hard dependency (mod is skipped if missing)
 api_version = 1                # Lua API generation the mod was written for; a mod asking for a newer one is skipped with an error (risen.api_version)
 data_overlay = false           # experimental: mount the mod directory into the virtual file system at startup (docs/RE.md §17)
+network      = false           # true or a host list: the mod may make outbound HTTP(S) requests (see "Network access")
 assets       = "assets"        # directory of loose meshes/textures/... mounted at startup (false = none; see "New meshes, textures and icons")
 # [retire]                      # content older versions made and this one does not (the same lists as risen.retire: npcs, quests, game_vars, items, save_keys; see "Updating and removing content")
 ```
@@ -1169,7 +1170,7 @@ risen.mods.get(id)  risen.mods.unload(id, { cascade = true })  risen.mods.load(i
 risen.mods.disable(id, { cascade = true })  risen.mods.enable(id, { cascade = true })   -- kept in <Risen>\bin\spass\mods.toml; "now" (default) also unloads / loads
 risen.mods.order()  risen.mods.check_order(ids)  risen.mods.set_order(ids)  risen.mods.config()        -- custom load order: nobody before what it requires / loads after
 ```
-`ModEntry` (`list` / `get`): `id name version author description dir folder state loaded failed kind reason enabled load_order requires load_after needed_by api_version reloadable reload_note load_count restart_required data`;
+`ModEntry` (`list` / `get`): `id name version author description dir folder state loaded failed kind reason enabled network (declared, hosts, user_allowed, allowed) load_order requires load_after needed_by api_version reloadable reload_note load_count restart_required data`;
 `state` is `loaded | failed | skipped | disabled | unloaded` (`kind`: `load_error`, `manifest`, `missing_dependency`, `dependency_unavailable`, `cycle`, `duplicate`, `disabled`). `data` says what the mod left in the current savegame data
 (`present`, `saved_version`, `npcs`, `spawn_rules`, `ai_states`, `routines`, `keys`): a manager shows it before a mod is switched off or updated. The player's choices live in `<Risen>\bin\spass\mods.toml` (absent = the automatic order, everything on):
 ```toml
@@ -1251,6 +1252,34 @@ risen.options.define{
 `scripts/test-run.ps1 -Disable a,b` writes those mods as switched off into `mods.toml`; the driver mod `mods/testsuite` (parameter `suite=name:modA+modB,name2:modC`) waits for a running game, then per scenario: `risen.test.reset(name)`, `risen.mods.load` of the scenario's mods (they are told the
 `session.start` / `world.ready` they missed), waits for `risen.test.finish`, unloads them, starts a **new game** (so each scenario meets an untouched world) and goes on; `suite_finish` writes one result with the checks named `<scenario>: <check>`.
 Templates and other process-wide edits of earlier scenarios stay (see DEVELOPMENT.md "One-process suites"). `smoke-test.ps1 -Scenario suite` runs four scenarios in one game in ~75 s instead of ~4 minutes.
+
+## Network access — `risen.http`, `risen.json` (see `mods/http_test`, `tools/httptest_server.py`)
+
+Mods can ask web endpoints (update checks, leaderboards, news) without ever blocking the game. **Outbound connections only**: the layer never listens on a port, so the player never sees a
+"allow this program to host a server" firewall prompt.
+
+```toml
+# mod.toml
+network = true                                   # the mod may use risen.http (default: no network)
+network = ["api.github.com", "*.example.com"]    # or: only these hosts ("*.x" = any subdomain of x); redirects to other hosts are refused
+```
+
+```lua
+risen.http.get_json("https://api.example.com/latest", { headers = { Authorization = "Bearer " .. token }, timeout = 10 },
+    function(data, err, info)
+        if not data then risen.log.warn("update check failed: " .. err) return end   -- err: "HTTP 404", "timed out", "invalid JSON: ...", "host name not found", ...
+        if data.version ~= mod.version then ... end
+    end)
+risen.http.get_text(url, cb)                   -- cb(text, err, info)
+risen.http.post_json(url, { score = 12 }, cb)  -- cb(table | true, err, info); true = empty answer (204)
+risen.http.request({ url = url, method = "PUT", body = "...", as = "text" }, cb)
+```
+
+* The call returns an **id** at once (or `nil, reason` when it is refused before it starts); the **callback runs later on the game thread** (a following frame), so it may use every `risen.*` function. `err` is `nil` on success. `info = { status, url, ms, redirects, headers (lower-case names), body (error answers) }`.
+* Requests run on up to four background threads (WinHTTP, synchronous per thread). Redirects are followed (5 at most; never from https to http; `Authorization` is dropped when the host changes). Limits: answers up to 8 MB (`max_bytes` up to 32 MB), bodies up to 4 MB, 16 requests in flight per mod, `timeout` 1-120 s (default 15). Cookies and Windows logon credentials are never sent. The user agent is `risen-spass/<version> (<mod id>)`.
+* Every request is logged (`http: [mod] GET host/path`, never the query string). A mod reload cancels the callbacks of its running requests (`risen.http.cancel(id)` does it for one).
+* **The player is in control**: Mod manager (ESC > Mods) has a *Network: on / OFF* button for all mods and a *Network access* button per mod (only for mods that declare `network`). The choices live in `mods.toml` (`network_enabled = false`, `[network] some_mod = false`; also `risen.mods.network()` / `risen.mods.set_network(enabled [, mod_id])`). A refused call returns `nil, reason` (`risen.http.available()` tells the mod beforehand and why).
+* `risen.json.decode(text) -> value | nil, reason`, `risen.json.encode(value [, pretty]) -> text | nil, reason`. JSON objects/arrays become tables; `null` inside an object leaves the key out, inside an array it is `risen.json.null`; a table with keys 1..n (also an empty one) encodes as an array.
 
 ## risen.vfs / risen.debug — development aids
 ```lua

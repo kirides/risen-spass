@@ -113,6 +113,8 @@ public:
     ReloadReport setEnabled(const std::string& id, bool enabled, bool cascade, bool applyNow);
     // The custom order (empty = automatic). Returns "" or why it was refused.
     std::string setOrder(const std::vector<std::string>& order);
+    // Network access switches of the player (mods.toml): all mods (id empty) or one mod. Saved at once. Returns "" or why it failed.
+    std::string setNetworkAllowed(const std::string& id, bool allowed);
     std::vector<std::string> loadOrder();      // ids of the loaded mods in load order
     std::vector<std::string> plannedOrder(bool useCustom);  // the order the next start would use (useCustom = false: the automatic order)
     UserConfig userConfig();

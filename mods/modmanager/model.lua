@@ -130,6 +130,21 @@ local TEXT = {
     hint_text = "Free text: change it in config.toml.",
     hint_custom = "The current value is not in the list.",
     hint_restart = "Applies at the next start of the game.",
+    network_all_on = "Network: on",
+    network_all_off = "Network: OFF",
+    network_mod_on = "Network access: allowed",
+    network_mod_off = "Network access: OFF",
+    network_mod_none = "Network access: not used",
+    network_uses = "Uses the network.",
+    network_uses_hosts = "Uses the network (%s).",
+    network_blocked_all = "Network access is switched off for all mods.",
+    network_blocked_mod = "Network access is switched off for this mod.",
+    network_none_msg = "%s does not use the network.",
+    network_all_off_msg = "Network access switched off for all mods.",
+    network_all_on_msg = "Network access switched on for all mods.",
+    network_mod_off_msg = "Network access switched off for %s.",
+    network_mod_on_msg = "Network access switched on for %s.",
+    network_failed = "Could not change the network setting: %s",
 }
 M.TEXT = TEXT
 
@@ -858,11 +873,67 @@ function M:option_defaults_all()
     return true
 end
 
----Runs an action by name: "toggle", "reload", "up", "down", "reset"; "options" opens the options of the selected mod. In the options view the buttons mean: next value
+---Is network access switched on for the mods in general (the player's global switch in mods.toml)?
+function M:network_all_enabled()
+    local net = self.host.mods.network and safe(self.host.mods.network)
+    return type(net) ~= "table" or net.enabled ~= false
+end
+
+---Switch network access off or on for every mod (the "Network" button below the list).
+function M:toggle_network_all()
+    self.prompt = nil
+    if not self.host.mods.set_network then
+        return false
+    end
+    local want = not self:network_all_enabled()
+    local ok, why = safe(self.host.mods.set_network, want)
+    if not ok then
+        self:_say(self:_t("network_failed", tostring(why)), "error")
+        return false
+    end
+    self:_say(self:_t(want and "network_all_on_msg" or "network_all_off_msg"), "info")
+    self:refresh()
+    return true
+end
+
+---Switch network access off or on for the selected mod (only a mod that declares `network` in its mod.toml has it).
+function M:toggle_network()
+    local e = self:selected_entry()
+    if not e then
+        return false
+    end
+    self.prompt = nil
+    local net = e.network
+    if type(net) ~= "table" or not net.declared then
+        self:_say(self:_t("network_none_msg", e.name ~= "" and e.name or e.id), "info")
+        return false
+    end
+    if not self:network_all_enabled() then
+        self:_say(self:_t("network_blocked_all"), "warn")
+        return false
+    end
+    local want = not net.user_allowed
+    local ok, why = safe(self.host.mods.set_network, want, e.id)
+    if not ok then
+        self:_say(self:_t("network_failed", tostring(why)), "error")
+        return false
+    end
+    self:_say(self:_t(want and "network_mod_on_msg" or "network_mod_off_msg", e.name ~= "" and e.name or e.id), "info")
+    self:refresh()
+    return true
+end
+
+---Runs an action by name: "toggle", "reload", "up", "down", "reset"; "options" opens the options of the selected mod; "network" / "netall" switch network access of the selected mod / of all mods. In the options view the buttons mean: next value
 ---(toggle), previous value (reload), this option's default (up), every default (down), back to the mods (reset).
 function M:press(action)
     if action == "options" then
         return self:open_options()
+    end
+    if action == "netall" then
+        return self:toggle_network_all()
+    end
+    if action == "network" and self.view ~= "options" then
+        return self:toggle_network()
     end
     if self.view == "options" then
         if action == "toggle" then
@@ -968,6 +1039,15 @@ function M:detail(e)
     end
     if #(e.needed_by or {}) > 0 then
         add(self:_t("needed_by", join(e.needed_by)))
+    end
+    local net = e.network
+    if type(net) == "table" and net.declared then
+        local hosts = net.hosts or {}
+        if not net.user_allowed then
+            add(self:_t(self:network_all_enabled() and "network_blocked_mod" or "network_blocked_all"), "warn")
+        else
+            add(#hosts > 0 and self:_t("network_uses_hosts", join(hosts)) or self:_t("network_uses"))
+        end
     end
     if e.reload_note and e.reload_note ~= "" then
         add(self:_t("reload_note", e.reload_note))
@@ -1096,6 +1176,8 @@ function M:_options_snapshot()
         down = { label = self:_t("opt_all_defaults"), enabled = changed > 0 },
         reset = { label = self:_t("opt_back"), enabled = true },
         options = { label = self:_t("options_button_none"), enabled = false },
+        network = { label = self:_t("network_mod_none"), enabled = false },
+        netall = { label = self:_t("network_all_on"), enabled = false },
     }
     return snap
 end
@@ -1165,7 +1247,12 @@ function M:snapshot()
             down = { label = self:_t(down_ok == false and "move_down_blocked" or "move_down"), enabled = down_ok ~= nil, why = down_why, blocked = down_ok == false },
             reset = { label = self:_t("default_order"), enabled = #self.custom_order > 0 or self.order_changed },
             options = { label = self:_t("options_button_none"), enabled = false },
+            network = { label = self:_t("network_mod_none"), enabled = false },
         }
+        local net = e.network
+        if type(net) == "table" and net.declared then
+            snap.buttons.network = { label = self:_t(net.user_allowed and "network_mod_on" or "network_mod_off"), enabled = true }
+        end
         local n = self:option_count(e.id)
         if n > 0 then
             snap.buttons.options = { label = self:_t("options_button_none") .. (" (%d)"):format(n), enabled = true }
@@ -1180,8 +1267,10 @@ function M:snapshot()
             down = { label = self:_t("move_down"), enabled = false },
             reset = { label = self:_t("default_order"), enabled = false },
             options = { label = self:_t("options_button_none"), enabled = false },
+            network = { label = self:_t("network_mod_none"), enabled = false },
         }
     end
+    snap.buttons.netall = { label = self:_t(self:network_all_enabled() and "network_all_on" or "network_all_off"), enabled = self.host.mods.set_network ~= nil }
     snap.prev_label = self:_t("prev")
     snap.next_label = self:_t("next")
     return snap

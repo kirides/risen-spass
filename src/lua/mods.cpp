@@ -71,6 +71,26 @@ std::optional<ModInfo> readManifest(const std::filesystem::path& modDir, std::st
             m.dir = modDir;
             return std::nullopt;
         }
+        if (const auto* nv = t["network"].as_boolean()) {
+            m.network = nv->get();
+        } else if (const auto* na = t["network"].as_array()) {
+            for (const auto& el : *na) {
+                if (auto h = el.value<std::string>(); h && !h->empty()) {
+                    std::string host = *h;
+                    for (char& c : host) {
+                        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                    }
+                    m.networkHosts.push_back(host);
+                } else {
+                    error = "'network' must be true, false or a list of host names";
+                    return std::nullopt;
+                }
+            }
+            m.network = !m.networkHosts.empty();
+        } else if (t.contains("network")) {
+            error = "'network' must be true, false or a list of host names";
+            return std::nullopt;
+        }
         if (const toml::table* retire = t["retire"].as_table()) {
             for (const auto& [key, value] : *retire) {
                 if (const auto* arr = value.as_array()) {
@@ -152,6 +172,23 @@ UserConfig loadUserConfig(const std::filesystem::path& file, std::vector<std::st
                 }
             }
         }
+        if (const auto* nv = t["network_enabled"].as_boolean()) {
+            cfg.networkEnabled = nv->get();
+        } else if (t.contains("network_enabled")) {
+            problems.push_back("network_enabled must be true or false");
+        }
+        if (const toml::table* nt = t["network"].as_table()) {
+            for (const auto& [key, value] : *nt) {
+                const std::string id(key.str());
+                if (auto b = value.value<bool>(); b && validId(id)) {
+                    cfg.networkMods[id] = *b;
+                } else {
+                    problems.push_back("network." + id + " must be true or false");
+                }
+            }
+        } else if (t.contains("network")) {
+            problems.push_back("network must be a table of mod ids (some_mod = false)");
+        }
         if (const toml::table* en = t["enabled"].as_table()) {
             for (const auto& [key, value] : *en) {
                 const std::string id(key.str());
@@ -172,6 +209,9 @@ UserConfig loadUserConfig(const std::filesystem::path& file, std::vector<std::st
 std::string serializeUserConfig(const UserConfig& cfg) {
     std::ostringstream out;
     out << "# risen-spass: choices of the player outside the mods (written by risen.mods.enable / disable / set_order, safe to edit by hand)\n";
+    if (!cfg.networkEnabled) {
+        out << "network_enabled = false\n";
+    }
     if (!cfg.order.empty()) {
         out << "order = [";
         for (std::size_t i = 0; i < cfg.order.size(); ++i) {
@@ -182,6 +222,12 @@ std::string serializeUserConfig(const UserConfig& cfg) {
     if (!cfg.enabled.empty()) {
         out << "\n[enabled]\n";
         for (const auto& [id, on] : cfg.enabled) {
+            out << id << " = " << (on ? "true" : "false") << "\n";
+        }
+    }
+    if (!cfg.networkMods.empty()) {
+        out << "\n[network]\n";
+        for (const auto& [id, on] : cfg.networkMods) {
             out << id << " = " << (on ? "true" : "false") << "\n";
         }
     }

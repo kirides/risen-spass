@@ -18,6 +18,7 @@ local EXCLUDED = {
     ["risen.world.quick_load"] = "loads a savegame (the setup uses it once itself)",
     ["risen.world.quick_save"] = "writes a savegame (the setup uses it once itself)",
     ["risen.world.auto_save"] = "writes a savegame",
+    ["risen.mods.set_network"] = "valid arguments switch network access off for every mod and write mods.toml (the scenario http covers it)",
     ["risen.off"] = "a number is a handler id: it would unhook the layer's own handlers (checked with non-number arguments only, below)",
     ["risen.assets.clear"] = "deletes the mod's generated files",
     ["risen.gui.open"] = "a valid page number opens a menu page: the world pauses and the run would stall (checked with types that cannot be a page, below)",

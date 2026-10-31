@@ -26,6 +26,8 @@ inline constexpr int kApiVersion = 1;
 //   data_overlay = false              # experimental: mount the mod directory into the virtual file system at startup
 //   assets      = "assets"            # directory of loose resource files (meshes, materials, images ...) mounted at startup;
 //                                     # false = none (docs/LUA_API.md "New meshes, textures and icons")
+//   network     = true            # optional: the mod may make outbound HTTP(S) requests (risen.http); default false
+//                                     # network = ["api.github.com", "*.example.com"] allows only those hosts
 //   retire      = { npcs = [...], quests = [...], ... }   # content older versions of the mod made that is cleaned up
 //                                     # (the same table as risen.retire, docs/LUA_API.md "Updating and removing content")
 struct ModInfo {
@@ -39,6 +41,8 @@ struct ModInfo {
     std::vector<std::string> requires_;
     bool dataOverlay = false;
     std::string assets = "assets";  // directory (relative to the mod directory) of loose resource files; empty = none
+    bool network = false;                    // `network` in mod.toml: may use risen.http
+    std::vector<std::string> networkHosts;   // the host allow-list (empty = any host while `network` is true)
     int apiVersion = 1;
     std::filesystem::path dir;
     std::map<std::string, std::vector<std::string>> retire;  // the `retire` table of mod.toml: kind ("npcs", "quests", ...) -> names
@@ -59,18 +63,27 @@ std::vector<ModInfo> discoverMods(const std::filesystem::path& root, std::vector
 
 // The user's choices outside the mods (<spass>/mods.toml): which mods are switched off and an optional load order.
 //
+//   network_enabled = false           # optional: no mod gets network access (default true)
 //   order = ["base", "extras"]        # optional: wanted load order (constraints of requires / load_after always win)
 //   [enabled]
 //   some_mod = false                  # false = not loaded; absent or true = loaded
+//   [network]
+//   some_mod = false                  # false = this mod gets no network access
 struct UserConfig {
     std::map<std::string, bool> enabled;
     std::vector<std::string> order;
+    bool networkEnabled = true;                // `network_enabled = false` at the top level: the player switched all network access off
+    std::map<std::string, bool> networkMods;   // [network] some_mod = false: network access off for that mod
 
     bool isEnabled(const std::string& id) const {
         const auto it = enabled.find(id);
         return it == enabled.end() || it->second;
     }
-    bool empty() const { return enabled.empty() && order.empty(); }
+    bool networkAllowedFor(const std::string& id) const {
+        const auto it = networkMods.find(id);
+        return networkEnabled && (it == networkMods.end() || it->second);
+    }
+    bool empty() const { return enabled.empty() && order.empty() && networkEnabled && networkMods.empty(); }
 };
 
 // Reads the file (a missing file is an empty configuration; a damaged one is an empty configuration plus a problem text).

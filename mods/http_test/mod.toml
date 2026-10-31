@@ -1,0 +1,7 @@
+id          = "http_test"
+name        = "HTTP test"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Scenario `http` (scripts/test-run.ps1 -HttpServer): risen.http and risen.json against tools/httptest_server.py on loopback."
+main        = "main.lua"
+network     = true

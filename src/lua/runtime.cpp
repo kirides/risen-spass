@@ -1161,6 +1161,32 @@ std::string Runtime::setOrder(const std::vector<std::string>& order) {
     return {};
 }
 
+std::string Runtime::setNetworkAllowed(const std::string& id, bool allowed) {
+    std::lock_guard lock(mutex_);
+    if (!state_) {
+        return "the Lua runtime is not running";
+    }
+    UserConfig cfg = userConfig_;
+    if (id.empty()) {
+        cfg.networkEnabled = allowed;
+    } else {
+        if (!findRecord(id)) {
+            return "unknown mod '" + id + "'";
+        }
+        if (allowed) {
+            cfg.networkMods.erase(id);
+        } else {
+            cfg.networkMods[id] = false;
+        }
+    }
+    std::string error;
+    if (!userConfigFile_.empty() && !saveUserConfig(userConfigFile_, cfg, error)) {
+        return "cannot write mods.toml: " + error;
+    }
+    userConfig_ = cfg;
+    return {};
+}
+
 // ---- pending requests and the watcher -------------------------------------------------------------------------------------------------------
 
 void Runtime::setWatch(bool on, double intervalSeconds) {

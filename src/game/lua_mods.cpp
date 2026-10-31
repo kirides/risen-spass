@@ -224,6 +224,15 @@ sol::table viewToLua(sol::state_view L, const ModView& v) {
     if (!v.reloadNote.empty()) {
         t["reload_note"] = v.reloadNote;
     }
+    {
+        const lua::UserConfig cfg = Runtime::instance().userConfig();
+        sol::table net = L.create_table();
+        net["declared"] = m.network;
+        net["hosts"] = stringList(L, m.networkHosts);
+        net["allowed"] = m.network && cfg.networkAllowedFor(m.id);
+        net["user_allowed"] = cfg.networkAllowedFor(m.id);
+        t["network"] = net;
+    }
     t["load_count"] = v.loadCount;
     t["restart_required"] = stringList(L, v.restartNotes);
     {
@@ -456,6 +465,34 @@ void bindMods(sol::state_view state, sol::table risen) {
         t["order"] = stringList(L, cfg.order);
         t["problems"] = stringList(L, rt.configProblems());
         return t;
+    });
+    // risen.mods.network() -> { enabled = bool, mods = { id = false } }: the player's network switches (mods.toml); a mod missing from `mods` is not switched off
+    mods.set_function("network", [](sol::this_state ts) {
+        sol::state_view L(ts);
+        const lua::UserConfig cfg = Runtime::instance().userConfig();
+        sol::table t = L.create_table();
+        t["enabled"] = cfg.networkEnabled;
+        sol::table off = L.create_table();
+        for (const auto& [id, on] : cfg.networkMods) {
+            off[id] = on;
+        }
+        t["mods"] = off;
+        return t;
+    });
+    // risen.mods.set_network(enabled [, mod_id]) -> true | nil, reason: switch network access off / on for every mod, or (with an id) for one mod; saved in mods.toml
+    mods.set_function("set_network", [](sol::this_state ts, sol::object enabled, sol::object idArgument) -> Two {
+        sol::state_view L(ts);
+        if (enabled.get_type() != sol::type::boolean) {
+            return failResult(L, "set_network: the first argument must be true or false");
+        }
+        std::string id;
+        if (idArgument.valid() && idArgument.get_type() != sol::type::lua_nil && !idArg(idArgument, id)) {
+            return failResult(L, "set_network: the mod id must be a string");
+        }
+        if (const std::string why = Runtime::instance().setNetworkAllowed(id, enabled.as<bool>()); !why.empty()) {
+            return failResult(L, why);
+        }
+        return okResult(L, sol::make_object(L, true));
     });
     // risen.mods.last_report(id) -> report | nil: what the latest reload / unload / load of the mod did
     mods.set_function("last_report", [](sol::this_state ts, sol::object idArgument) -> sol::object {

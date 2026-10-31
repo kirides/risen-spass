@@ -1,0 +1,6 @@
+id          = "http_test_off"
+name        = "HTTP test: no network"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Fixture of the scenario `http`: a mod without a `network` entry, so risen.http refuses its requests."
+main        = "main.lua"

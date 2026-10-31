@@ -53,6 +53,7 @@ load_after  = ["other_mod"]    # ordering only
 requires    = ["base_mod"]     # hard dependency (the mod is skipped, with an error, if it is missing)
 api_version = 1                # a mod asking for a newer API generation than the layer has is skipped with an error
 assets      = "assets"         # directory mounted at startup (false = none)
+network     = false            # true or ["host", "*.domain"]: the mod may make HTTP(S) requests (risen.http, docs/LUA_API.md "Network access"); the player can switch it off in the mod manager
 ```
 
 * **Load order.** Mods load in dependency order (`requires` and `load_after`), otherwise by `id`. A mod that creates templates (`new_items`, `new_npcs`) should load *before* mods that use them (`load_after`). A dependency cycle is dropped with an error.

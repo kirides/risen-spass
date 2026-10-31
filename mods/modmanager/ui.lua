@@ -28,7 +28,7 @@ local COLOR = {
 }
 
 -- ids of the controls on the page (the engine's keyboard focus walks IDUp / IDDown / IDLeft / IDRight)
-local ID = { row = 101, prev = 120, next = 121, toggle = 130, reload = 131, up = 132, down = 133, reset = 134, options = 135, yes = 140, alt = 141, no = 142 }
+local ID = { row = 101, prev = 120, next = 121, toggle = 130, reload = 131, up = 132, down = 133, reset = 134, options = 135, network = 136, netall = 137, yes = 140, alt = 141, no = 142 }
 
 local ROW = { x = 312, y = 170, w = 396, h = 23, step = 26 }
 local DETAIL = { x = 735, w = 325 }
@@ -104,7 +104,7 @@ function UI:_define_scripts()
     for i = 1, #self.rows_wanted do
         define("Spass_ModMgr_Row" .. i, function() c.on_row(i) end)
     end
-    for _, a in ipairs({ "toggle", "reload", "up", "down", "reset", "options" }) do
+    for _, a in ipairs({ "toggle", "reload", "up", "down", "reset", "options", "network", "netall" }) do
         define("Spass_ModMgr_" .. a, function() c.on_action(a) end)
     end
     for i = 1, OPT.rows do
@@ -237,8 +237,10 @@ function UI:_build()
     make("spass_note", src.label, { x = ROW.x, y = 584, w = ROW.w, h = 42, text = "", props = { TextAlign = "eETextAlign_Left_Top", Singleline = "False", Font = "fnt_small", FontColorNormal = COLOR.warn } })
 
     make("spass_dtitle", src.label, { x = DETAIL.x, y = 168, w = DETAIL.w, h = 28, text = "", props = { TextAlign = "eETextAlign_Left_Middle", Font = "fnt_large" } })
-    make("spass_detail", src.label, { x = DETAIL.x, y = 200, w = DETAIL.w, h = 225, text = "", props = { TextAlign = "eETextAlign_Left_Top", Singleline = "False", Font = "fnt_small" } })
+    make("spass_detail", src.label, { x = DETAIL.x, y = 200, w = DETAIL.w, h = 190, text = "", props = { TextAlign = "eETextAlign_Left_Top", Singleline = "False", Font = "fnt_small" } })
     make("spass_prompt", src.label, { x = DETAIL.x, y = 200, w = DETAIL.w, h = 225, text = "", props = { TextAlign = "eETextAlign_Left_Top", Singleline = "False" } })
+    button("spass_network", DETAIL.x, 396, DETAIL.w, 28, "Network access", "Spass_ModMgr_network", ID.network)
+    button("spass_netall", ROW.x, 456, ROW.w, 26, "Network", "Spass_ModMgr_netall", ID.netall)
     button("spass_toggle", DETAIL.x, 432, DETAIL.w, 28, "Switch off", "Spass_ModMgr_toggle", ID.toggle)
     button("spass_reload", DETAIL.x, 464, DETAIL.w, 28, "Reload", "Spass_ModMgr_reload", ID.reload)
     button("spass_up", DETAIL.x, 496, 160, 28, "Move up", "Spass_ModMgr_up", ID.up)
@@ -528,6 +530,8 @@ function UI:render(snap)
     end
     W.spass_dtitle:set_visible(not options)
     W.spass_options:set_visible(not in_prompt and not options)
+    W.spass_network:set_visible(not in_prompt and not options)
+    W.spass_netall:set_visible(not in_prompt and not options)
     for _, n in ipairs({ "spass_prompt", "spass_yes", "spass_no" }) do
         W[n]:set_visible(in_prompt)
     end
@@ -545,7 +549,7 @@ function UI:render(snap)
         end
         set_text(W.spass_detail, table.concat(lines, "\n"))
         local b = snap.buttons
-        for _, n in ipairs({ "toggle", "reload", "up", "down", "reset", "options" }) do
+        for _, n in ipairs({ "toggle", "reload", "up", "down", "reset", "options", "network", "netall" }) do
             local w, spec = W["spass_" .. n], b[n]
             set_text(w, spec.label)
             w:set_disabled(not spec.enabled)

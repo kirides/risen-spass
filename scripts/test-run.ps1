@@ -101,7 +101,9 @@ param(
     [switch]$AllowFocus,
     # the executable in bin to start (run-windowed.ps1 -Exe): a renamed copy of Risen.exe escapes per-executable driver
     # profiles; created from bin\Risen.exe when missing
-    [string]$Exe = 'Risen.exe'
+    [string]$Exe = 'Risen.exe',
+    # start tools\httptest_server.py on a free loopback port for the run and pass it as the scenario parameter http_port (scenario `http`)
+    [switch]$HttpServer
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -292,6 +294,12 @@ try {
     if ($WaitForResult) {
         $deadline = if ($DeadlineSeconds -ge 0) { $DeadlineSeconds } else { [math]::Max($Seconds - 10, 10) }
         $cfg += '[test]', 'enabled = true', "deadline_s = $deadline", "scenario = `"$Scenario`""
+        if ($HttpServer) {
+            $probe = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0); $probe.Start(); $httpPort = $probe.LocalEndpoint.Port; $probe.Stop()
+            $script:HttpProc = Start-Process python -ArgumentList '-I', (Join-Path $repo 'tools\httptest_server.py'), $httpPort -PassThru -WindowStyle Hidden
+            $Param = @($Param) + "http_port=$httpPort"
+            Write-Host "http test server on 127.0.0.1:$httpPort"
+        }
         if ($Param.Count -gt 0) {
             $cfg += '[test.params]'
             foreach ($kv in $Param) { $k, $v = $kv -split '=', 2; $cfg += ("{0} = `"{1}`"" -f $k.Trim(), $v) }
@@ -411,6 +419,7 @@ try {
     }
 }
 finally {
+    if ($script:HttpProc) { Stop-Process -Id $script:HttpProc.Id -Force -ErrorAction SilentlyContinue }
     if (-not $KeepRunning) { Stop-Risen }
 }
 exit $exitCode

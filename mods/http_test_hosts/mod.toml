@@ -1,0 +1,7 @@
+id          = "http_test_hosts"
+name        = "HTTP test: host list"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Fixture of the scenario `http`: network = [\"example.org\", \"*.example.net\"], so a request to 127.0.0.1 is refused."
+main        = "main.lua"
+network     = ["example.org", "*.example.net"]

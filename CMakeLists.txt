@@ -59,6 +59,7 @@ if(SPASS_BUILD_LAYER)
     find_package(spdlog CONFIG REQUIRED)
     find_package(minhook CONFIG REQUIRED)
     find_package(tomlplusplus CONFIG REQUIRED)
+    find_package(nlohmann_json CONFIG REQUIRED)
 endif()
 find_package(sol2 CONFIG REQUIRED)
 
@@ -90,6 +91,7 @@ add_library(spass_core STATIC
     src/bootstrap.cpp
     src/config.cpp
     src/common/crash.cpp
+    src/common/http.cpp
     src/common/log.cpp
     src/common/paths.cpp
     src/common/test_run.cpp
@@ -140,6 +142,7 @@ add_library(spass_core STATIC
     src/game/lua_save.cpp
     src/game/lua_template.cpp
     src/game/lua_test.cpp
+    src/game/lua_http.cpp
     src/game/lua_vfs.cpp
     src/game/lua_voice.cpp
     src/game/properties.cpp
@@ -158,7 +161,7 @@ target_compile_definitions(spass_core PUBLIC
     SOL_LUAJIT=1 SOL_ALL_SAFETIES_ON=1 SOL_EXCEPTIONS_SAFE_PROPAGATION=0
     SPASS_VERSION="${PROJECT_VERSION}")
 target_link_libraries(spass_core PUBLIC
-    spdlog::spdlog minhook::minhook sol2::sol2 tomlplusplus::tomlplusplus luajit::luajit)
+    spdlog::spdlog minhook::minhook sol2::sol2 tomlplusplus::tomlplusplus nlohmann_json::nlohmann_json luajit::luajit winhttp)
 if(MSVC)
     target_compile_options(spass_core PUBLIC /W4 /permissive- /utf-8 /Zc:__cplusplus /EHsc /FS)
 endif()

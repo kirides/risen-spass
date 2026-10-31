@@ -2,9 +2,11 @@
 // require). Build target `spass_tests`; run with `ctest` or directly. A tiny self-contained runner, no framework.
 
 #include <windows.h>
+#include <winsock2.h>
 #include <dbghelp.h>
 
 #include <algorithm>
+#include <atomic>
 #include <array>
 #include <map>
 #include <regex>
@@ -27,6 +29,7 @@
 
 #include "common/asset_names.h"
 #include "common/crash.h"
+#include "common/http.h"
 #include "common/input_names.h"
 #include "common/pose.h"
 #include "common/sound_file.h"
@@ -41,6 +44,7 @@
 #include "game/loc_files.h"
 #include "game/migrate_lua.h"
 #include "game/lua_config.h"
+#include "game/lua_http.h"
 #include "game/lua_options.h"
 #include "game/lua_test.h"
 #include "game/lua_entity.h"
@@ -56,6 +60,7 @@
 #include "pack2mod/tple.h"
 
 #pragma comment(lib, "dbghelp.lib")
+#pragma comment(lib, "ws2_32.lib")
 
 namespace fs = std::filesystem;
 
@@ -593,4 +598,278 @@ TEST(pose_angles_round_trip) {
     Matrix bad = m;
     bad[3] = std::nanf("");
     CHECK(!sane(bad) && sane(m));
+}
+
+// ---- network access (risen.http, risen.json) ---------------------------------------------------------------------------------------
+
+TEST(manifest_network_key_and_player_switches) {
+    TempDir dir;
+    dir.write("a/mod.toml", "id = \"a\"\nnetwork = true\n");
+    dir.write("b/mod.toml", "id = \"b\"\nnetwork = [\"API.Example.com\", \"*.cdn.test\"]\n");
+    dir.write("c/mod.toml", "id = \"c\"\n");
+    dir.write("d/mod.toml", "id = \"d\"\nnetwork = 3\n");
+    std::string err;
+    auto a = spass::lua::readManifest(dir.path / "a", err);
+    auto b = spass::lua::readManifest(dir.path / "b", err);
+    auto c = spass::lua::readManifest(dir.path / "c", err);
+    CHECK(a && a->network && a->networkHosts.empty());
+    CHECK(b && b->network && b->networkHosts.size() == 2 && b->networkHosts[0] == "api.example.com");
+    CHECK(c && !c->network);
+    CHECK(!spass::lua::readManifest(dir.path / "d", err) && err.find("network") != std::string::npos);
+
+    spass::lua::UserConfig cfg;
+    CHECK(cfg.networkAllowedFor("a") && cfg.empty());
+    cfg.networkMods["a"] = false;
+    CHECK(!cfg.networkAllowedFor("a") && cfg.networkAllowedFor("b") && !cfg.empty());
+    cfg.networkEnabled = false;
+    cfg.enabled["x"] = false;
+    const fs::path file = dir.path / "mods.toml";
+    std::string error;
+    CHECK(spass::lua::saveUserConfig(file, cfg, error));
+    std::vector<std::string> problems;
+    const auto back = spass::lua::loadUserConfig(file, problems);
+    CHECK(problems.empty() && !back.networkEnabled && back.networkMods.count("a") && !back.networkMods.at("a") && !back.isEnabled("x"));
+    CHECK(!back.networkAllowedFor("b"));
+}
+
+TEST(http_url_helpers) {
+    using namespace spass::http;
+    Url u;
+    std::string e;
+    CHECK(parseUrl("https://Example.COM/a/b?x=1#frag", u, e) && u.https && u.host == "example.com" && u.port == 443 && u.path == "/a/b?x=1");
+    CHECK(parseUrl("http://127.0.0.1:8080", u, e) && !u.https && u.port == 8080 && u.path == "/");
+    CHECK(parseUrl("http://h?q=1", u, e) && u.path == "/?q=1");
+    CHECK(!parseUrl("ftp://x/", u, e));
+    CHECK(!parseUrl("https://user:pw@host/", u, e));
+    CHECK(!parseUrl("https://host:99999/", u, e));
+    CHECK(!parseUrl("https://ho st/", u, e));
+    CHECK(!parseUrl("https:///path", u, e));
+    CHECK(hostAllowed("a.com", {}));
+    CHECK(hostAllowed("API.a.com", {"api.a.com"}) && !hostAllowed("evil-api.a.com", {"api.a.com"}));
+    CHECK(hostAllowed("x.a.com", {"*.a.com"}) && !hostAllowed("a.com", {"*.a.com"}) && !hostAllowed("xa.com", {"*.a.com"}));
+    Url base;
+    parseUrl("https://h.test/dir/file?q=1", base, e);
+    CHECK(resolveLocation(base, "/abs") == "https://h.test/abs");
+    CHECK(resolveLocation(base, "rel") == "https://h.test/dir/rel");
+    CHECK(resolveLocation(base, "//o.test/x") == "https://o.test/x");
+    CHECK(resolveLocation(base, "http://o.test/x") == "http://o.test/x");
+}
+
+TEST(json_decode_encode_round_trip) {
+    sol::state lua;
+    std::string err;
+    auto v = spass::game::jsonDecode(lua, R"({"a":1,"b":[1,null,"x"],"c":{"d":true,"e":null},"f":1.5})", err);
+    CHECK(v.has_value());
+    sol::table t = v->as<sol::table>();
+    CHECK(t.get<double>("a") == 1 && t.get<double>("f") == 1.5);
+    sol::table b = t["b"];
+    CHECK(b.size() == 3 && b.get<std::string>(3) == "x" && b[2].get_type() == sol::type::lightuserdata);
+    sol::table c = t["c"];
+    CHECK(c.get<bool>("d") && !c["e"].valid());
+    CHECK(!spass::game::jsonDecode(lua, "{bad", err).has_value() && !err.empty());
+    // encode: arrays, objects, empty table, escaping
+    lua["v"] = lua.create_table_with("name", "a\"b", "list", lua.create_table_with(1, 10, 2, 20), "empty", lua.create_table());
+    sol::object vo = lua["v"];
+    auto text = spass::game::jsonEncode(vo, false, err);
+    CHECK(text && *text == R"({"empty":[],"list":[10,20],"name":"a\"b"})");
+    lua.script("cyc = {} cyc.self = cyc");
+    sol::object cyc = lua["cyc"];
+    CHECK(!spass::game::jsonEncode(cyc, false, err).has_value() && err.find("deeper") != std::string::npos);
+    lua.script("fn = function() end");
+    sol::object fn = lua["fn"];
+    CHECK(!spass::game::jsonEncode(fn, false, err).has_value());
+    lua.script("nan = 0/0");
+    sol::object nan = lua["nan"];
+    CHECK(!spass::game::jsonEncode(nan, false, err).has_value());
+}
+
+namespace {
+
+// A tiny HTTP server on 127.0.0.1 (loopback only: no firewall prompt), one connection at a time.
+struct LoopbackServer {
+    SOCKET listener = INVALID_SOCKET;
+    int port = 0;
+    std::thread thread;
+    std::atomic<bool> stop{false};
+
+    LoopbackServer() {
+        WSADATA wsa;
+        WSAStartup(MAKEWORD(2, 2), &wsa);
+        listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+        addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        addr.sin_port = 0;
+        bind(listener, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+        int len = sizeof(addr);
+        getsockname(listener, reinterpret_cast<sockaddr*>(&addr), &len);
+        port = ntohs(addr.sin_port);
+        listen(listener, 8);
+        thread = std::thread([this] { run(); });
+    }
+    ~LoopbackServer() {
+        stop = true;
+        SOCKET s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+        addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        addr.sin_port = htons(static_cast<u_short>(port));
+        connect(s, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+        closesocket(s);
+        thread.join();
+        closesocket(listener);
+        WSACleanup();
+    }
+    std::string url(const std::string& path, const char* host = "127.0.0.1") const { return "http://" + std::string(host) + ":" + std::to_string(port) + path; }
+
+    static void sendAll(SOCKET c, const std::string& data) {
+        std::size_t off = 0;
+        while (off < data.size()) {
+            const int n = send(c, data.data() + static_cast<int>(off), static_cast<int>(data.size() - off), 0);
+            if (n <= 0) return;
+            off += static_cast<std::size_t>(n);
+        }
+    }
+    static std::string reply(int status, const std::string& body, const std::string& extra = {}) {
+        return "HTTP/1.1 " + std::to_string(status) + " X\r\nConnection: close\r\nContent-Length: " + std::to_string(body.size()) + "\r\n" + extra + "\r\n" + body;
+    }
+    void run() {
+        while (!stop) {
+            SOCKET c = accept(listener, nullptr, nullptr);
+            if (c == INVALID_SOCKET || stop) {
+                if (c != INVALID_SOCKET) closesocket(c);
+                continue;
+            }
+            std::string req;
+            char buf[4096];
+            std::size_t headEnd = std::string::npos;
+            while (headEnd == std::string::npos) {
+                const int n = recv(c, buf, sizeof(buf), 0);
+                if (n <= 0) break;
+                req.append(buf, static_cast<std::size_t>(n));
+                headEnd = req.find("\r\n\r\n");
+            }
+            if (headEnd != std::string::npos) {
+                std::string lower = req;
+                for (char& ch : lower) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+                const std::size_t cl = lower.find("content-length:");
+                const std::size_t want = cl == std::string::npos ? 0 : static_cast<std::size_t>(std::atoi(lower.c_str() + cl + 15));
+                while (req.size() < headEnd + 4 + want) {
+                    const int n = recv(c, buf, sizeof(buf), 0);
+                    if (n <= 0) break;
+                    req.append(buf, static_cast<std::size_t>(n));
+                }
+                const std::size_t sp1 = req.find(' ');
+                const std::string path = req.substr(sp1 + 1, req.find(' ', sp1 + 1) - sp1 - 1);
+                if (path == "/text") sendAll(c, reply(200, "hello"));
+                else if (path == "/json") sendAll(c, reply(200, R"({"a":1,"b":[1,2]})", "Content-Type: application/json\r\n"));
+                else if (path == "/echo") sendAll(c, reply(200, req));
+                else if (path == "/redir") sendAll(c, reply(302, "", "Location: /text\r\n"));
+                else if (path == "/redir-host") sendAll(c, reply(302, "", "Location: http://localhost:" + std::to_string(port) + "/echo\r\n"));
+                else if (path == "/loop") sendAll(c, reply(302, "", "Location: /loop\r\n"));
+                else if (path == "/404") sendAll(c, reply(404, "nope"));
+                else if (path == "/big") sendAll(c, reply(200, std::string(200000, 'x')));
+                else if (path == "/slow") { Sleep(4000); sendAll(c, reply(200, "late")); }
+                else sendAll(c, reply(200, "other"));
+            }
+            shutdown(c, SD_SEND);
+            closesocket(c);
+        }
+    }
+};
+
+spass::http::Response fetch(const spass::http::Request& r) { return spass::http::perform(r); }
+
+}  // namespace
+
+TEST(http_client_against_a_loopback_server) {
+    LoopbackServer srv;
+    using namespace spass::http;
+    Request r;
+    r.url = srv.url("/text");
+    Response a = fetch(r);
+    CHECK(a.ok && a.status == 200 && a.body == "hello");
+
+    r.url = srv.url("/json");
+    a = fetch(r);
+    CHECK(a.ok && a.body == R"({"a":1,"b":[1,2]})" && a.header("content-type") == "application/json");
+
+    r.url = srv.url("/404");
+    a = fetch(r);
+    CHECK(a.ok && a.status == 404 && a.body == "nope");
+
+    // POST body, custom headers, user agent
+    r.method = "POST";
+    r.url = srv.url("/echo");
+    r.body = "payload";
+    r.headers = {{"Authorization", "Bearer t"}, {"X-Test", "1"}};
+    r.userAgent = "ua-test";
+    a = fetch(r);
+    CHECK(a.ok && a.body.find("POST /echo") == 0 && a.body.find("payload") != std::string::npos);
+    CHECK(a.body.find("Authorization: Bearer t") != std::string::npos && a.body.find("X-Test: 1") != std::string::npos && a.body.find("ua-test") != std::string::npos);
+
+    // a redirect to another host drops Authorization; 302 turns POST into GET
+    r.url = srv.url("/redir-host");
+    r.method = "GET";
+    r.body.clear();
+    a = fetch(r);
+    CHECK(a.ok && a.redirects == 1 && a.body.find("GET /echo") == 0 && a.body.find("X-Test: 1") != std::string::npos && a.body.find("Authorization") == std::string::npos);
+    r.url = srv.url("/redir");
+    a = fetch(r);
+    CHECK(a.ok && a.body == "hello" && a.redirects == 1);
+    r.url = srv.url("/loop");
+    a = fetch(r);
+    CHECK(!a.ok && a.error.find("redirect") != std::string::npos);
+
+    // host allow-list: a redirect to a host that is not listed is refused, so is the first hop
+    r.url = srv.url("/redir-host");
+    r.allowedHosts = {"127.0.0.1"};
+    a = fetch(r);
+    CHECK(!a.ok && a.error.find("not allowed") != std::string::npos);
+    r.url = srv.url("/text", "localhost");
+    a = fetch(r);
+    CHECK(!a.ok && a.error.find("not allowed") != std::string::npos);
+    r.allowedHosts.clear();
+
+    // size limit and bad input
+    r.url = srv.url("/big");
+    r.maxBytes = 1000;
+    a = fetch(r);
+    CHECK(!a.ok && a.error.find("larger") != std::string::npos);
+    r.maxBytes = 1u << 20;
+    a = fetch(r);
+    CHECK(a.ok && a.body.size() == 200000);
+    r.headers = {{"Bad Name", "x"}};
+    CHECK(!fetch(r).ok);
+    r.headers = {{"X", "a\r\nInjected: 1"}};
+    CHECK(!fetch(r).ok);
+    r.headers.clear();
+
+    // asynchronous use: submit, then poll
+    r.url = srv.url("/text");
+    const std::uint64_t id1 = submit(r);
+    const std::uint64_t id2 = submit(r);
+    std::vector<Completed> done;
+    for (int i = 0; i < 100 && done.size() < 2; ++i) {
+        poll(done);
+        Sleep(50);
+    }
+    CHECK(done.size() == 2 && done[0].id != done[1].id && (done[0].id == id1 || done[0].id == id2) && done[0].response.body == "hello");
+    CHECK(inFlight() == 0);
+
+    // timeout (last: the server is busy while it sleeps)
+    r.url = srv.url("/slow");
+    r.timeoutMs = 500;
+    const auto t0 = std::chrono::steady_clock::now();
+    a = fetch(r);
+    CHECK(!a.ok && a.error.find("timed out") != std::string::npos);
+    CHECK(std::chrono::steady_clock::now() - t0 < std::chrono::seconds(3));
+}
+
+TEST(http_connection_failure_is_an_error_not_a_crash) {
+    spass::http::Request r;
+    r.url = "http://127.0.0.1:1/";  // nothing listens
+    r.timeoutMs = 1000;
+    const auto a = spass::http::perform(r);
+    CHECK(!a.ok && !a.error.empty());
 }

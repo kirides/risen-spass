@@ -227,6 +227,11 @@ scenario `scene` (`mods/scene_test`, 35 checks, ~150 s): the same spot twice, th
 `test-run.ps1 -KeepModsToml`, the phase attribute `KeepModsToml` of `smoke-test.ps1`), `menu` (the main menu without a game: the phase attribute `NoAutostart`). The fixture mods fail and skip on purpose: the driver calls `risen.test.reset("modmanager")` first so that the errors the layer logged while loading them do not count towards "no errors logged".
 The logic of the page is a plain Lua module (`mods/modmanager/model.lua`) with unit tests against a fake `risen.mods` (`tests/modmanager_tests.inc`, 34 checks): navigation, paging, details, refusals with the host's reason, cascades, the data question, a failing host.
 
+## Network tests (`risen.http`)
+`src/common/http.*` (WinHTTP client, worker threads) and the Lua side `src/game/lua_http.cpp` (`risen.http`, `risen.json`). Unit tests (`spass_tests`: `http_*`, `json_*`, `manifest_network_*`) run the client against a loopback server inside the test.
+Scenario `http` (`smoke-test.ps1 -Scenario http`) uses `test-run.ps1 -HttpServer`: it starts `tools/httptest_server.py` on a free 127.0.0.1 port and passes it as `-Param http_port=N`; mods `http_test` (network), `http_test_off` (none), `http_test_hosts` (host list).
+`hardening` excludes `risen.mods.set_network` (valid arguments switch the network off). Known: the full `hardening` run crashes in an engine worker thread (`Engine.dll+0x3927ee`, while fuzzing `Entity.*`) with and without the network code (checked on 2026-11-01 against the unmodified baseline); `-Param "only=http;json;mods"` passes.
+
 ## Hardening: natives must not run metamethods
 A native that is handed a hostile table must read it with raw iteration only. `sol::table::size()` / `lua_len` runs `__len`; an error raised there is thrown through the native's C++ frame and, in the hardening run, corrupted a registry reference that the harness held (the symptom came much later and somewhere else: "attempt to call a number value" in a `wait_ticks`
 callback). If a hardening run fails like that, `-Param "only=risen%.[a-l];risen%.mods"` style subsets plus `#v` (verbose) find the call (RE.md §41).

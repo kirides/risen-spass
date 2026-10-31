@@ -3999,6 +3999,94 @@ function locApi.load_file(path, language) end
 function locApi.trace(on) end
 
 ---------------------------------------------------------------------------------------------------------------------
+-- Network access: risen.json, risen.http
+---------------------------------------------------------------------------------------------------------------------
+
+---JSON for Lua tables. Objects and arrays become tables (arrays are 1-based sequences), a JSON `null` inside an object leaves the key out, inside an array it becomes `risen.json.null`.
+---@class RisenJsonApi
+---@field null lightuserdata Stands for a JSON `null` in arrays (so the array keeps its length); encodes back to `null`.
+local jsonApi = {}
+---Parses JSON text.
+---@param text string
+---@return any|nil value
+---@return string|nil reason `nil, reason` for invalid JSON or nesting deeper than 64 levels.
+function jsonApi.decode(text) end
+---Makes JSON text. A table with the keys 1..n (also an empty one) is an array, any other table an object (number keys become strings). Functions, userdata, NaN/infinity and cycles are refused.
+---@param value any
+---@param pretty? boolean Indent with two spaces.
+---@return string|nil text
+---@return string|nil reason
+function jsonApi.encode(value, pretty) end
+
+---What a request callback gets as its third argument.
+---@class HttpInfo
+---@field status integer HTTP status; 0 when no response arrived.
+---@field url string The final URL (after redirects).
+---@field ms number How long the request took.
+---@field redirects integer
+---@field headers table<string, string> Response headers, names in lower case (repeated ones joined with ", ").
+---@field body? string The body (up to 64 KB) of an error status or of an answer that was not valid JSON.
+
+---@class HttpOptions
+---@field headers? table<string, string|number> Request headers, e.g. `{ Authorization = "Bearer ..." }`.
+---@field body? string Raw request body.
+---@field json? any A value sent as JSON (sets `Content-Type: application/json`); ignored when `body` is set.
+---@field timeout? number Seconds per phase, 1..120, default 15 (the whole transfer may take twice as long).
+---@field max_bytes? integer Largest accepted answer, 1024..33554432, default 8 MB.
+
+---@class HttpRequestOptions : HttpOptions
+---@field url string
+---@field method? "GET"|"POST"|"PUT"|"PATCH"|"DELETE"|"HEAD" Default `"GET"`.
+---@field as? "text"|"json" How the answer is delivered to the callback, default `"text"`.
+
+---Outbound HTTP(S) requests, off the game thread. The mod must declare `network = true` (or `network = {"host", "*.domain"}`) in its `mod.toml`, and the player can switch network access off
+---for all mods or for one (mod manager, `risen.mods.set_network`). Only client connections are made, never a listening socket. Calls return an id, or `nil, reason` when the request
+---is refused before it starts (no permission, bad URL/options, host not in the mod's list, too many requests (16 per mod)). The callback runs later, on the game thread, as
+---`callback(result, err, info)`: `result` is the text or the decoded JSON (`nil` on failure), `err` is `nil` or a reason (`"HTTP 404"`, `"timed out"`, `"invalid JSON: ..."`, ...), `info` is an `HttpInfo`.
+---Redirects are followed (5 at most; never from https to http, `Authorization` is dropped when the host changes). A mod reload cancels its running requests' callbacks.
+---@class RisenHttpApi
+local httpApi = {}
+---May this mod make requests right now?
+---@return boolean ok
+---@return string|nil reason Why not.
+function httpApi.available() end
+---GET, answer as text.
+---@param url string
+---@param opts? HttpOptions
+---@param callback fun(text: string|nil, err: string|nil, info: HttpInfo)
+---@return integer|nil id
+---@return string|nil reason
+---@overload fun(url: string, callback: fun(text: string|nil, err: string|nil, info: HttpInfo)): integer|nil, string|nil
+function httpApi.get_text(url, opts, callback) end
+---GET, answer parsed as JSON into a table.
+---@param url string
+---@param opts? HttpOptions
+---@param callback fun(data: any|nil, err: string|nil, info: HttpInfo)
+---@return integer|nil id
+---@return string|nil reason
+---@overload fun(url: string, callback: fun(data: any|nil, err: string|nil, info: HttpInfo)): integer|nil, string|nil
+function httpApi.get_json(url, opts, callback) end
+---POST `data` as JSON; the answer is parsed as JSON (`true` when the answer is empty, e.g. 204).
+---@param url string
+---@param data any
+---@param opts? HttpOptions
+---@param callback fun(data: any|nil, err: string|nil, info: HttpInfo)
+---@return integer|nil id
+---@return string|nil reason
+---@overload fun(url: string, data: any, callback: fun(data: any|nil, err: string|nil, info: HttpInfo)): integer|nil, string|nil
+function httpApi.post_json(url, data, opts, callback) end
+---The general form (any method, `body` or `json`, `as = "json"`).
+---@param opts HttpRequestOptions
+---@param callback fun(result: any|nil, err: string|nil, info: HttpInfo)
+---@return integer|nil id
+---@return string|nil reason
+function httpApi.request(opts, callback) end
+---Stops the callback from being called (the request itself may still finish). False for an unknown id or one of another mod.
+---@param id integer
+---@return boolean
+function httpApi.cancel(id) end
+
+---------------------------------------------------------------------------------------------------------------------
 -- Persistence, file system, debugging, engine info
 ---------------------------------------------------------------------------------------------------------------------
 
@@ -4758,6 +4846,7 @@ function traceApi.channels() end
 ---@field reason? string
 ---@field enabled boolean False when `mods.toml` switches the mod off.
 ---@field load_order? integer Position in the load order (loaded mods only).
+---@field network ModNetwork The mod's `network` entry in `mod.toml` and what the player allowed.
 ---@field requires string[]
 ---@field load_after string[]
 ---@field needed_by string[] The mods that require this one, directly or through others.
@@ -4796,6 +4885,18 @@ function traceApi.channels() end
 ---@field planned string[] The order the next start would use (the custom order of `mods.toml` where it is possible).
 ---@field automatic string[] The order without a custom one (alphabetical by id, constrained by `requires` / `load_after`).
 ---@field custom string[] The custom order of `mods.toml` (empty = automatic).
+
+---Network access of a mod (`risen.mods.list()` entries).
+---@class ModNetwork
+---@field declared boolean `network` is set in `mod.toml`.
+---@field hosts string[] The host allow-list of `network = ["host", "*.domain"]` (empty = any host).
+---@field user_allowed boolean The player has not switched network access off (all mods, or this one).
+---@field allowed boolean `declared` and `user_allowed`: the mod can make requests.
+
+---The player's network switches (`risen.mods.network()`).
+---@class ModsNetwork
+---@field enabled boolean False when the player switched network access off for every mod.
+---@field mods table<string, boolean> Mods the player switched off (false) individually.
 
 ---@class ModsConfig
 ---@field path string Path of `<Risen>/bin/spass/mods.toml`.
@@ -4874,6 +4975,17 @@ function modsApi.set_order(ids) end
 ---The player's choices from `mods.toml`.
 ---@return ModsConfig
 function modsApi.config() end
+
+---The player's network switches (`mods.toml`, the "Network" entry of the mod manager).
+---@return ModsNetwork
+function modsApi.network() end
+
+---Switches network access off or on for every mod, or with `mod_id` for one mod; kept in `mods.toml`, takes effect at once (a running request still finishes, later calls fail with `nil, reason`).
+---@param enabled boolean
+---@param mod_id? string
+---@return true|nil ok
+---@return string|nil reason
+function modsApi.set_network(enabled, mod_id) end
 
 ---The report of the latest reload / unload / load that touched the mod (also one that ran at the start of a frame after a queued request).
 ---@param id string
@@ -5153,6 +5265,8 @@ function behaviorApi.failures() end
 ---@field random RisenRandomApi
 ---@field loc RisenLocApi
 ---@field save RisenSaveApi
+---@field json RisenJsonApi
+---@field http RisenHttpApi
 ---@field vfs RisenVfsApi
 ---@field options RisenOptionsApi
 ---@field assets RisenAssetsApi
