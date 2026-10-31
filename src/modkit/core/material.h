@@ -60,6 +60,17 @@ struct MaterialEdit {
     std::string notes;
 };
 
+// How a material is drawn (docs/RE.md section 69): the shader's `BlendMode` (eEShaderMaterialBlendMode as the shipped materials use it: 0 normal, 1 masked = alpha
+// test against `MaskReference`, 2 additive: a black background adds nothing (cobwebs, waterfalls, glows), 7 alpha blended (water shores, runes), 8 invisible) and its
+// `MaskReference` (0..255). A shader with `TradeAlphaAsSolid` is drawn as a solid whatever its blend mode says (the ground and rock materials are "blend mode 2" with
+// that flag set and are opaque; the cobwebs have the mode without it): `blend` is then 0.
+struct MaterialShading {
+    int blend = 0;
+    int mask = 0;
+};
+// never throws: a file that cannot be read gives the normal, opaque shading
+MaterialShading material_shading(const p2m::Bytes& file);
+
 struct Material {
     std::string header;  // the 0x28 bytes; the three sizes at 12, 16 and 20 are rewritten by write()
     std::vector<MatObject> objects;

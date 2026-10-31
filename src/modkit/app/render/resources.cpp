@@ -1,6 +1,7 @@
 #include "app/render/resources.h"
 
 #include "core/actor.h"
+#include "core/material.h"
 #include "core/speedtree.h"
 
 #include <algorithm>
@@ -195,11 +196,21 @@ void ResourceCache::worker() {
                 }
                 for (auto& s : d.mesh->submeshes) {
                     std::string tex;
+                    int blend = 1, mask = 90;
                     try {
-                        if (!s.texture.empty()) tex = s.texture + "._ximg";  // an actor names its texture itself
-                        else if (!s.material.empty() && exists(s.material)) tex = material_texture(read(s.material));
+                        if (!s.texture.empty()) {
+                            tex = s.texture + "._ximg";  // an actor names its texture itself
+                        } else if (!s.material.empty() && exists(s.material)) {
+                            const p2m::Bytes mat = read(s.material);
+                            tex = material_texture(mat);
+                            const MaterialShading sh = material_shading(mat);
+                            blend = sh.blend;
+                            mask = sh.mask > 0 ? sh.mask : 90;
+                        }
                     } catch (...) {
                     }
+                    d.blends.push_back(blend);
+                    d.masks.push_back(mask);
                     d.textures.push_back(tex);
                     d.materials.push_back(p2m::lower(s.material));
                 }
@@ -268,7 +279,8 @@ void ResourceCache::upload_mesh(Done& d) {
     g->index32 = m.index32;
     for (size_t i = 0; i < m.submeshes.size(); ++i) {
         const SubMesh& s = m.submeshes[i];
-        g->subs.push_back({i < d.textures.size() ? d.textures[i] : std::string(), i < d.materials.size() ? d.materials[i] : std::string(), s.first_index, s.index_count});
+        g->subs.push_back({i < d.textures.size() ? d.textures[i] : std::string(), i < d.materials.size() ? d.materials[i] : std::string(), s.first_index, s.index_count,
+                           i < d.blends.size() ? d.blends[i] : 1, i < d.masks.size() ? d.masks[i] : 90});
         g->triangles += s.index_count / 3;
     }
     g->box_min = {m.box_min[0], m.box_min[1], m.box_min[2]};

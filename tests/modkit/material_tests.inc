@@ -181,3 +181,22 @@ TEST(material_edit_adds_a_texture_to_an_empty_slot) {
     bad.slots["Nope"] = "x.tga";
     CHECK(!mk::apply_material_edit(n, bad, why));
 }
+
+TEST(material_shading_matches_the_game) {
+    CHECK_EQ(material_shading("not a material").blend, 0);  // never throws: the opaque default
+    auto g = game_data();
+    if (!g) {
+        std::printf("  (skipped: no --data)\n");
+        return;
+    }
+    auto shade = [&](const char* name) { return material_shading(g->read(name)); };
+    CHECK_EQ(shade("ItWpn_SwordMisc_01_Diffuse_01._xmat").blend, 0);                  // a sword: normal
+    CHECK_EQ(shade("Nat_Obj_SpiderWebs_01_Diffuse_01._xmat").blend, 2);               // cobwebs: additive (black adds nothing)
+    CHECK_EQ(shade("Special_Water_Fall_01_Diffuse_01._xmat").blend, 2);               // waterfalls too
+    const MaterialShading leaves = shade("ST_Composite_01__Diffuse_LeafMeshes._xmat");  // trees: masked with the material's own reference
+    std::printf("  leaf material: blend %d mask %d\n", leaves.blend, leaves.mask);
+    CHECK(leaves.blend == 1 && leaves.mask > 0 && leaves.mask < 255);
+    CHECK_EQ(shade("Nat_Stone_Rock_01_Diffuse_07._xmat").blend, 0);                   // rocks and ground: "blend mode 2" with TradeAlphaAsSolid: solid
+    CHECK_EQ(shade("Nat_Ground_Soil_01_Diffuse_01._xmat").blend, 0);
+    CHECK_EQ(shade("Special_Water_Shore_01_Diffuse_01._xmat").blend, 7);             // water shores: alpha blended
+}

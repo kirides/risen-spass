@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 #include <array>
+#include <vector>
 
 #include "app/render/gl_util.h"
 #include "app/render/resources.h"
@@ -32,6 +33,22 @@ public:
     static uint32_t id_of(const unsigned char rgba[4]);
 
 private:
+    // how a sub-mesh is shaded: 0 opaque (alpha ignored), 1 masked (alpha test), 2 additive (unlit, black adds nothing), 3 alpha blended; -1 invisible
+    static int shade_mode(int blend);
+    void draw_sub(const GpuMesh& mesh, const GpuMesh::Sub& s, int mode, ResourceCache& res);
+    // additive and blended sub-meshes wait until everything solid is drawn (end()): they do not write depth, so a solid mesh drawn later would paint over them
+    struct Deferred {
+        const GpuMesh* mesh;
+        size_t sub;
+        int mode;
+        glm::mat4 model;
+        glm::vec4 tint;
+        ResourceCache* res;
+    };
+    std::vector<Deferred> deferred_;
+    glm::mat4 vp_{1.0f};
+    glm::vec3 light_{0, -1, 0};
+    bool ids_ = false;
     Program prog_;
     bool built_ = false;
 };

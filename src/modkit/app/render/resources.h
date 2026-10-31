@@ -28,6 +28,8 @@ struct GpuMesh {
         std::string texture;   // compiled image name ("" = none)
         std::string material;  // the sub-mesh's material, lower case ("x._xmat"; "" = none): the editor may show another diffuse image for it
         uint32_t first = 0, count = 0;
+        int blend = 1;  // eEShaderMaterialBlendMode (core/material.h MaterialShading); 1 = masked: what a mesh without a material (actors, trees) gets
+        int mask = 90;  // the alpha test reference, 0..255
     };
     std::vector<Sub> subs;
     glm::vec3 box_min{0}, box_max{0};  // local, game coordinates
@@ -71,6 +73,7 @@ private:
         std::unique_ptr<MeshData> mesh;
         std::vector<std::string> textures;  // per sub-mesh
         std::vector<std::string> materials;  // per sub-mesh, lower case
+        std::vector<int> blends, masks;      // per sub-mesh: the material's blend mode and mask reference
         std::unique_ptr<ImageData> image;
         std::string error;
     };

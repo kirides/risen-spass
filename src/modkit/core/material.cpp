@@ -458,4 +458,32 @@ bool apply_material_edit(Material& m, const MaterialEdit& e, std::string& error)
     return true;
 }
 
+MaterialShading material_shading(const p2m::Bytes& file) {
+    MaterialShading r;
+    try {
+        Material m = Material::parse(file);
+        for (MatObject& o : m.objects) {  // the shader object: eCShaderDefault, or another shader class (the tree materials have their own)
+            int32_t v = 0;
+            if (!o.get_int("BlendMode", &v)) continue;
+            r.blend = v;
+            if (const MatProp* p = o.find("MaskReference"); p && !p->payload.empty()) r.mask = static_cast<uint8_t>(p->payload[0]);
+            if (r.blend >= 2 && o.get_bool("TradeAlphaAsSolid", false)) r.blend = 0;  // drawn as a solid whatever the mode says (ground, rocks)
+            return r;
+        }
+    } catch (const std::exception&) {
+    }
+    // a material the strict grammar does not cover (some tree materials): the two values are found by their names, `BlendMode` + type + 0x1e, size, enum payload
+    // (u16 0xc9, u32 value) and `MaskReference` + type + 0x1e, size 1, the char
+    try {
+        if (const size_t i = file.find("BlendMode"); i != std::string::npos)
+            if (const size_t j = file.find(std::string("\xc9\x00", 2), i + 10); j != std::string::npos && j + 6 <= file.size()) r.blend = static_cast<int>(p2m::rd32(file, j + 2));
+        if (const size_t k = file.find("MaskReference"); k != std::string::npos)
+            if (const size_t j = file.find(std::string("\x1e\x00", 2), k + 14); j != std::string::npos && j + 7 <= file.size()) r.mask = static_cast<uint8_t>(file[j + 6]);
+        if (const size_t t = file.find("TradeAlphaAsSolid"); t != std::string::npos && r.blend >= 2)
+            if (const size_t j = file.find(std::string("\x1e\x00", 2), t + 18); j != std::string::npos && j + 7 <= file.size() && file[j + 6] != 0) r.blend = 0;
+    } catch (const std::exception&) {
+    }
+    return r;
+}
+
 }  // namespace mk
