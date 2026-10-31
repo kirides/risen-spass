@@ -30,6 +30,7 @@
 #include "common/asset_names.h"
 #include "common/crash.h"
 #include "common/http.h"
+#include "common/link.h"
 #include "common/input_names.h"
 #include "common/pose.h"
 #include "common/sound_file.h"
@@ -872,4 +873,86 @@ TEST(http_connection_failure_is_an_error_not_a_crash) {
     r.timeoutMs = 1000;
     const auto a = spass::http::perform(r);
     CHECK(!a.ok && !a.error.empty());
+}
+
+// ---- the live link transport (named pipe) -------------------------------------------------------------------------------------------
+
+namespace {
+
+HANDLE openLinkClient(const std::string& path) {
+    HANDLE h = INVALID_HANDLE_VALUE;
+    for (int i = 0; i < 50 && h == INVALID_HANDLE_VALUE; ++i) {
+        h = CreateFileA(path.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+        if (h == INVALID_HANDLE_VALUE) Sleep(40);
+    }
+    if (h != INVALID_HANDLE_VALUE) {
+        DWORD mode = PIPE_READMODE_MESSAGE;
+        SetNamedPipeHandleState(h, &mode, nullptr, nullptr);
+    }
+    return h;
+}
+
+bool pollLink(spass::link::Inbox& in, int wantMessages, int wantConnects, int wantDisconnects) {
+    for (int i = 0; i < 100; ++i) {
+        spass::link::poll(in);
+        if (static_cast<int>(in.messages.size()) >= wantMessages && in.connects >= wantConnects && in.disconnects >= wantDisconnects) return true;
+        Sleep(30);
+    }
+    return false;
+}
+
+}  // namespace
+
+TEST(link_pipe_round_trip_and_reconnect) {
+    std::string err;
+    CHECK(!spass::link::start("bad name", err) && !err.empty());
+    CHECK(spass::link::start("spass-unit-" + std::to_string(GetCurrentProcessId()), err));
+    const std::string path = spass::link::pipePath();
+    CHECK(path.rfind("\\\\.\\pipe\\spass-unit-", 0) == 0);
+    CHECK(!spass::link::send("nobody listens"));  // no client: dropped
+
+    HANDLE c = openLinkClient(path);
+    CHECK(c != INVALID_HANDLE_VALUE);
+    DWORD n = 0;
+    const std::string hello = R"({"cmd":"hello"})";
+    CHECK(WriteFile(c, hello.data(), static_cast<DWORD>(hello.size()), &n, nullptr));
+    spass::link::Inbox in;
+    CHECK(pollLink(in, 1, 1, 0));
+    CHECK(in.messages.size() == 1 && in.messages[0] == hello && spass::link::connected());
+
+    // the reply, and a message bigger than the pipe's buffers in both directions
+    CHECK(spass::link::send("reply-1"));
+    std::vector<char> buf(400000);
+    CHECK(ReadFile(c, buf.data(), static_cast<DWORD>(buf.size()), &n, nullptr) && std::string(buf.data(), n) == "reply-1");
+    const std::string big(300000, 'x');
+    CHECK(spass::link::send(big));
+    std::string got;
+    for (int i = 0; i < 20 && got.size() < big.size(); ++i) {
+        CHECK(ReadFile(c, buf.data(), 65536, &n, nullptr) || GetLastError() == ERROR_MORE_DATA);
+        got.append(buf.data(), n);
+        if (GetLastError() != ERROR_MORE_DATA) break;
+    }
+    CHECK(got == big);
+    CHECK(WriteFile(c, big.data(), static_cast<DWORD>(big.size()), &n, nullptr));
+    in = {};
+    CHECK(pollLink(in, 1, 0, 0) && in.messages[0] == big);
+
+    // a second client is refused while the first one is connected
+    HANDLE second = CreateFileA(path.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+    CHECK(second == INVALID_HANDLE_VALUE);
+
+    CloseHandle(c);
+    in = {};
+    CHECK(pollLink(in, 0, 0, 1) && !spass::link::connected());
+
+    // reconnect
+    c = openLinkClient(path);
+    CHECK(c != INVALID_HANDLE_VALUE);
+    in = {};
+    CHECK(pollLink(in, 0, 1, 0) && spass::link::connected());
+    CloseHandle(c);
+    in = {};
+    CHECK(pollLink(in, 0, 0, 1));
+    spass::link::stop();
+    CHECK(!spass::link::running() && !spass::link::connected());
 }

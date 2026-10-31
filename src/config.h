@@ -31,6 +31,9 @@ namespace spass {
 //   [mods]
 //   watch     = false       # development: a changed .lua / .toml / .csv file of a loaded mod reloads that mod (risen.mods.reload; docs/LUA_API.md "Hot reload")
 //   watch_interval = 1.0    # seconds between two looks at the files
+//   [link]                  # the live link: a named pipe for an editor (docs/LUA_API.md "Live link"); no network socket is ever opened
+//   enabled   = false       # true: listen on \\.\pipe\risen-spass-<pid> (current user only) and describe it in <spass>\link.json
+//   name      = ""          # pipe name instead of risen-spass-<pid>
 //   [test]                  # live verification (risen.test): scripts/test-run.ps1 -WaitForResult sets these
 //   enabled   = false       # finish() writes <bin>/spass/test-result.json and ends the process, the deadline applies
 //   deadline_s = 0          # > 0: the run is reported as FAIL "timeout" (with the unfinished checks) after this many seconds
@@ -54,6 +57,8 @@ struct Config {
     bool background = false;
     bool modsWatch = false;
     double modsWatchInterval = 1.0;
+    bool linkEnabled = false;
+    std::string linkName;
     bool testEnabled = false;
     double testDeadline = 0;
     std::string testScenario;

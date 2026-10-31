@@ -1,0 +1,6 @@
+id          = "link_target"
+name        = "Link test target"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Fixture of the scenario `link`: registers commands over the live link and is reloaded by the client."
+main        = "main.lua"

@@ -1,0 +1,6 @@
+id          = "link_test"
+name        = "Link test"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Scenario `link` (scripts/test-run.ps1 -LinkClient): commands and events over the live link, checked by tools/linktest_client.py."
+main        = "main.lua"

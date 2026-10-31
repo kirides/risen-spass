@@ -87,6 +87,9 @@ for fn in re.findall(r'save\.set_function\("(\w+)"', (root / 'src/game/lua_save.
 # per-mod risen.http (lua_http.cpp: `http.set_function` on the mod's own table)
 for fn in re.findall(r'\bhttp\.set_function\("(\w+)"', (root / 'src/game/lua_http.cpp').read_text(encoding='utf-8')):
     bound[f'http.{fn}'] = 'src/game/lua_http.cpp'
+# per-mod risen.link (lua_link.cpp: `linkApi.set_function` on the mod's own table)
+for fn in re.findall(r'\blinkApi\.set_function\("(\w+)"', (root / 'src/game/lua_link.cpp').read_text(encoding='utf-8')):
+    bound[f'link.{fn}'] = 'src/game/lua_link.cpp'
 # per-mod risen.assets (write/remove/clear/mount on the mod's own table `own`) and the Lua helpers of lua_assets.cpp (`function A.<name>(`)
 assets_src = (root / 'src/game/lua_assets.cpp').read_text(encoding='utf-8')
 for fn in re.findall(r'own\.set_function\("(\w+)"', assets_src) + re.findall(r'^function A\.(\w+)\(', assets_src, flags=re.M):

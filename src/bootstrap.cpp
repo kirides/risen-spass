@@ -16,6 +16,7 @@
 #include "game/folder_redirect.h"
 #include "game/hooks.h"
 #include "game/instance_mutex.h"
+#include "game/lua_link.h"
 #include "game/lua_test.h"
 #include "game/symbols.h"
 #include "hook/hook_manager.h"
@@ -121,6 +122,7 @@ void onProcessDetach() {
         game::test::shutdown();
         game::aiShutdown();
         game::combatShutdown();
+        game::linkShutdown();
         lua::Runtime::instance().stop();
         hooks::shutdown();
     }
@@ -134,6 +136,7 @@ void onGameReady() {
         game::test::startWatchdog();
         auto& rt = lua::Runtime::instance();
         rt.start(paths::modsDir(), g_config.unsafeLua, paths::dataDir() / "mods.toml");
+        game::linkInit(g_config.linkEnabled, g_config.linkName, g_config.instance);
         if (g_config.modsWatch) {
             rt.setWatch(true, g_config.modsWatchInterval);
             spdlog::info("mods: watching the mod files for changes (config.toml [mods] watch)");

@@ -103,7 +103,9 @@ param(
     # profiles; created from bin\Risen.exe when missing
     [string]$Exe = 'Risen.exe',
     # start tools\httptest_server.py on a free loopback port for the run and pass it as the scenario parameter http_port (scenario `http`)
-    [switch]$HttpServer
+    [switch]$HttpServer,
+    # switch the live link on ([link] enabled) and start tools\linktest_client.py against the game's named pipe; its result file is the scenario parameter result_file (scenario `link`)
+    [switch]$LinkClient
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -294,11 +296,21 @@ try {
     if ($WaitForResult) {
         $deadline = if ($DeadlineSeconds -ge 0) { $DeadlineSeconds } else { [math]::Max($Seconds - 10, 10) }
         $cfg += '[test]', 'enabled = true', "deadline_s = $deadline", "scenario = `"$Scenario`""
+        if ($LinkClient) {
+            $cfg += '[link]', 'enabled = true'
+        }
         if ($HttpServer) {
             $probe = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0); $probe.Start(); $httpPort = $probe.LocalEndpoint.Port; $probe.Stop()
             $script:HttpProc = Start-Process python -ArgumentList '-I', (Join-Path $repo 'tools\httptest_server.py'), $httpPort -PassThru -WindowStyle Hidden
             $Param = @($Param) + "http_port=$httpPort"
             Write-Host "http test server on 127.0.0.1:$httpPort"
+        }
+        if ($LinkClient) {
+            $linkResult = Join-Path $bin 'spass\link-client-result.json'
+            Remove-Item $linkResult, (Join-Path $bin 'spass\link.json') -Force -ErrorAction SilentlyContinue
+            $script:LinkProc = Start-Process python -ArgumentList '-I', (Join-Path $repo 'tools\linktest_client.py'), (Join-Path $bin 'spass'), $linkResult -PassThru -WindowStyle Hidden
+            $Param = @($Param) + ("result_file=" + $linkResult.Replace([string][char]92, '/'))
+            Write-Host 'link test client started'
         }
         if ($Param.Count -gt 0) {
             $cfg += '[test.params]'
@@ -419,6 +431,7 @@ try {
     }
 }
 finally {
+    if ($script:LinkProc) { Stop-Process -Id $script:LinkProc.Id -Force -ErrorAction SilentlyContinue }
     if ($script:HttpProc) { Stop-Process -Id $script:HttpProc.Id -Force -ErrorAction SilentlyContinue }
     if (-not $KeepRunning) { Stop-Risen }
 }

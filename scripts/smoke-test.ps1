@@ -73,7 +73,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'behaviors', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'ex_action_camera', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'capture', 'scene', 'modmanager', 'options', 'http', 'modkit', 'modkit_ext', 'evlive', 'extras', 'modkit_voice', 'chronicle', 'meshprobe', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'behaviors', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'ex_action_camera', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'capture', 'scene', 'modmanager', 'options', 'http', 'link', 'modkit', 'modkit_ext', 'evlive', 'extras', 'modkit_voice', 'chronicle', 'meshprobe', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -324,6 +324,11 @@ $scenarios = [ordered]@{
                            Phases = @(
                                @{ Name = ''; Param = @(); Start = 'new'; Keep = $false; Limit = 240; HttpServer = $true }
                            ) }
+    # the live link (named pipe editor <-> game): tools\linktest_client.py calls the built-in commands and the commands of link_target, reloads it, follows the log
+    link              = @{ Est = 90; Title = 'live link (named pipe: hello, mods, reload, subscribe, mod commands and events, connect / disconnect)'; Kind = 'result'; Mods = @('link_test', 'link_target'); Limit = 240
+                           Phases = @(
+                               @{ Name = ''; Param = @(); Start = 'new'; Keep = $false; Limit = 240; LinkClient = $true; Unsafe = $true }
+                           ) }
     options           = @{ Est = 150; Title = 'options menu (mod manager: the options of a mod, live changes, the stored choices, restart)'; Kind = 'result'; Mods = @('modmanager', 'quickloot', 'opt_driver'); Limit = 300
                            Phases = @(
                                @{ Name = 'main'; Param = @('phase=main'); Start = 'new'; Keep = $false; Limit = 300; Unsafe = $true }
@@ -497,6 +502,7 @@ foreach ($name in $selected) {
             if ($ph.KeepModsToml) { $testArgs.KeepModsToml = $true }
             if ($ph.NoAutostart) { $testArgs.NoAutostart = $true }
             if ($ph.HttpServer) { $testArgs.HttpServer = $true }
+            if ($ph.LinkClient) { $testArgs.LinkClient = $true }
             if ($s.Disable) { $testArgs.Disable = $s.Disable }
             if ($ph.CopyInto) { $testArgs.CopyInto = "$($ph.CopyInto[0])=$(Join-Path (Split-Path -Parent $here) $ph.CopyInto[1])" }
         }

@@ -8,6 +8,7 @@
 #include "game/loc_overlay.h"
 #include "game/lua_config.h"
 #include "game/lua_http.h"
+#include "game/lua_link.h"
 #include "game/lua_options.h"
 #include "game/lua_input.h"
 #include "game/lua_save.h"
@@ -186,6 +187,7 @@ void registerBindings() {
     rt.addBinding(bindCombat);  // after the script bridge: risen.combat.on_damage (M14)
     rt.addBinding(bindMods);    // risen.mods (M15)
     rt.addBinding(bindJson);    // risen.json
+    rt.addModBinding(bindLinkModApi);  // risen.link: commands for / events to a connected editor
     rt.addModBinding(bindHttpModApi);  // risen.http: per mod, gated by `network` in mod.toml and the player's switches
     bindSave();
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installMigrateModApi(lua, api, mod); installRetireModApi(lua, api, mod); });  // after bindSave: risen.migrate, risen.retire (M15); the persistent NPCs are bound later but only asked at run time
@@ -203,6 +205,7 @@ void registerBindings() {
     rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { combatReleaseOwner(mod, released); });
     rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { optionsReleaseOwner(mod, released); });
     rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { httpReleaseOwner(mod, released); });
+    rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { linkReleaseOwner(mod, released); });
 }
 
 }  // namespace spass::game

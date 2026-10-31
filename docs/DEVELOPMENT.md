@@ -232,6 +232,10 @@ The logic of the page is a plain Lua module (`mods/modmanager/model.lua`) with u
 Scenario `http` (`smoke-test.ps1 -Scenario http`) uses `test-run.ps1 -HttpServer`: it starts `tools/httptest_server.py` on a free 127.0.0.1 port and passes it as `-Param http_port=N`; mods `http_test` (network), `http_test_off` (none), `http_test_hosts` (host list).
 `hardening` excludes `risen.mods.set_network` (valid arguments switch the network off). Known: the full `hardening` run crashes in an engine worker thread (`Engine.dll+0x3927ee`, while fuzzing `Entity.*`) with and without the network code (checked on 2026-11-01 against the unmodified baseline); `-Param "only=http;json;mods"` passes.
 
+## Live link tests (`risen.link`)
+`src/common/link.*` (the named-pipe transport: overlapped I/O on one thread, one client, 4 MB messages) and `src/game/lua_link.cpp` (protocol, built-in commands, `risen.link`). The unit test `link_pipe_round_trip_and_reconnect` talks to the pipe from the test process.
+Scenario `link` (`smoke-test.ps1 -Scenario link`) uses `test-run.ps1 -LinkClient`: `[link] enabled = true` in the test config and `tools/linktest_client.py` as the editor (it needs the sandbox off for reading its result file: `-Unsafe`). Client pitfall (not a layer bug): a blocking read on a synchronous pipe handle blocks writes of other threads, so a client either uses overlapped I/O or polls with `PeekNamedPipe`; the message-mode `ReadFile` returns `ERROR_MORE_DATA` for a message bigger than the buffer.
+
 ## Hardening: natives must not run metamethods
 A native that is handed a hostile table must read it with raw iteration only. `sol::table::size()` / `lua_len` runs `__len`; an error raised there is thrown through the native's C++ frame and, in the hardening run, corrupted a registry reference that the harness held (the symptom came much later and somewhere else: "attempt to call a number value" in a `wait_ticks`
 callback). If a hardening run fails like that, `-Param "only=risen%.[a-l];risen%.mods"` style subsets plus `#v` (verbose) find the call (RE.md §41).

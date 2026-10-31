@@ -4087,6 +4087,34 @@ function httpApi.request(opts, callback) end
 function httpApi.cancel(id) end
 
 ---------------------------------------------------------------------------------------------------------------------
+-- Live link (editor <-> running game over a named pipe)
+---------------------------------------------------------------------------------------------------------------------
+
+---The live link: with `[link] enabled = true` in `config.toml` the layer listens on a **named pipe** (`\\.\pipe\risen-spass-<pid>`, described by `<Risen>\bin\spass\link.json`), readable by the
+---current user only; no network socket is opened, so there is never a firewall prompt. An editor sends JSON requests `{"id":1,"cmd":"reload","args":{"mod":"my_mod"}}` and gets
+---`{"id":1,"ok":true,"result":...}` / `{"id":1,"ok":false,"error":"..."}`; events are pushed as `{"event":"log","data":{...}}`. Built-in commands: `hello`, `ping`, `mods`, `reload` (`mod` = id or `"all"`),
+---`subscribe` (`log` = off|trace|debug|info|warn|error), `commands`. A mod adds its own with `on`; they run on the game thread, between frames. Events `link.connected` / `link.disconnected` tell mods about the editor.
+---@class RisenLinkApi
+local linkApi = {}
+---Is the live link switched on (`[link] enabled`)?
+---@return boolean
+function linkApi.available() end
+---Is an editor connected right now?
+---@return boolean
+function linkApi.connected() end
+---Registers the command `<mod id>.<command>` (name: a-z 0-9 _ . , at most 40 characters). The handler gets the request's `args` (a table) and returns a result (anything `risen.json.encode` takes) or `nil, reason`; an error becomes the reply's `error`. Replaces an earlier handler of the same name; removed when the mod is reloaded.
+---@param command string
+---@param handler fun(args: table): any|nil, string|nil
+---@return true|nil ok
+---@return string|nil reason
+function linkApi.on(command, handler) end
+---Pushes the event `<mod id>.<event>` with `data` to the connected editor. False when none is connected or the data cannot be encoded.
+---@param event string
+---@param data? any
+---@return boolean sent
+function linkApi.send(event, data) end
+
+---------------------------------------------------------------------------------------------------------------------
 -- Persistence, file system, debugging, engine info
 ---------------------------------------------------------------------------------------------------------------------
 
@@ -5267,6 +5295,7 @@ function behaviorApi.failures() end
 ---@field save RisenSaveApi
 ---@field json RisenJsonApi
 ---@field http RisenHttpApi
+---@field link RisenLinkApi
 ---@field vfs RisenVfsApi
 ---@field options RisenOptionsApi
 ---@field assets RisenAssetsApi
@@ -5302,6 +5331,8 @@ local risen_ = {}
 ---@param priority? integer
 ---@return EventHandle
 ---@overload fun(event: "mods.loaded", handler: fun(), priority?: integer): EventHandle
+---@overload fun(event: "link.connected", handler: fun(), priority?: integer): EventHandle
+---@overload fun(event: "link.disconnected", handler: fun(), priority?: integer): EventHandle
 ---@overload fun(event: "tick", handler: fun(), priority?: integer): EventHandle
 ---@overload fun(event: "shutdown", handler: fun(), priority?: integer): EventHandle
 ---@overload fun(event: "mods.migrate", handler: fun(from_version: string, to_version: string), priority?: integer): EventHandle

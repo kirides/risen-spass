@@ -92,6 +92,7 @@ add_library(spass_core STATIC
     src/config.cpp
     src/common/crash.cpp
     src/common/http.cpp
+    src/common/link.cpp
     src/common/log.cpp
     src/common/paths.cpp
     src/common/test_run.cpp
@@ -143,6 +144,7 @@ add_library(spass_core STATIC
     src/game/lua_template.cpp
     src/game/lua_test.cpp
     src/game/lua_http.cpp
+    src/game/lua_link.cpp
     src/game/lua_vfs.cpp
     src/game/lua_voice.cpp
     src/game/properties.cpp

@@ -29,6 +29,8 @@ Config loadConfig(const std::filesystem::path& file) {
         cfg.background = t["debug"]["background"].value_or(cfg.background);
         cfg.modsWatch = t["mods"]["watch"].value_or(cfg.modsWatch);
         cfg.modsWatchInterval = t["mods"]["watch_interval"].value_or(cfg.modsWatchInterval);
+        cfg.linkEnabled = t["link"]["enabled"].value_or(cfg.linkEnabled);
+        cfg.linkName = t["link"]["name"].value_or(cfg.linkName);
         cfg.testEnabled = t["test"]["enabled"].value_or(cfg.testEnabled);
         cfg.testDeadline = t["test"]["deadline_s"].value_or(cfg.testDeadline);
         cfg.testScenario = t["test"]["scenario"].value_or(cfg.testScenario);

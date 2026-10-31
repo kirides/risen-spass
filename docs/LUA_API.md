@@ -1253,6 +1253,29 @@ risen.options.define{
 `session.start` / `world.ready` they missed), waits for `risen.test.finish`, unloads them, starts a **new game** (so each scenario meets an untouched world) and goes on; `suite_finish` writes one result with the checks named `<scenario>: <check>`.
 Templates and other process-wide edits of earlier scenarios stay (see DEVELOPMENT.md "One-process suites"). `smoke-test.ps1 -Scenario suite` runs four scenarios in one game in ~75 s instead of ~4 minutes.
 
+## Live link — `risen.link`, the named pipe for editors (see `mods/link_test`, `mods/link_target`, `tools/linktest_client.py`)
+
+A running game can talk to an editor (risen-modkit) or a script in real time. **Named pipe only**: no TCP/UDP socket is ever opened, so the player never sees a firewall prompt, and the pipe is
+reachable by the current Windows user only (protected DACL "owner rights", remote clients rejected, the pipe name is claimed with `FILE_FLAG_FIRST_PIPE_INSTANCE`). It is **off by default**:
+
+```toml
+# <Risen>\bin\spass\config.toml
+[link]
+enabled = true            # listen on \\.\pipe\risen-spass-<pid>
+name    = ""              # optional fixed pipe name instead of risen-spass-<pid>
+```
+
+The layer writes `<Risen>\bin\spass\link.json` (`{"pipe": "\\\\.\\pipe\\risen-spass-1234", "pid": 1234, "protocol": 1, "layer": "...", "instance": ""}`) while it listens, so a client finds the pipe from the game folder.
+
+* **Protocol 1.** One JSON object per pipe message (open the pipe in message read mode: `PIPE_READMODE_MESSAGE`; at most 4 MB). One client at a time (the next one connects after the first left; a client that stops reading for 5 s is dropped).
+  Request `{"id": 7, "cmd": "reload", "args": {"mod": "my_mod"}}`, reply `{"id": 7, "ok": true, "result": {...}}` or `{"id": 7, "ok": false, "error": "reason"}`; events are pushed without id: `{"event": "log", "data": {"level": "warn", "text": "..."}}`.
+* Requests are executed **on the game thread between frames** (so a command may use every `risen.*` function); the game never waits for the client.
+* **Built-in commands:** `hello` (protocol, layer version, pid, pipe, session/world mode, mod count), `ping`, `mods` (every mod with state, enabled, network, reloadable; the load order), `reload {mod = id | "all"}` (hot reload, the reply carries the per-mod actions: reloaded/failed, handlers removed/added, `restart_required`),
+  `subscribe {log = "off|trace|debug|info|warn|error"}` (the game's log lines at or above the level are pushed as `log` events until the client leaves; this is how an editor shows the game's errors), `commands`.
+* **Commands of a mod:** `risen.link.on("inspect", function(args) return { ... } end)` registers `<mod id>.inspect`; the handler returns a result (anything `risen.json.encode` takes) or `nil, "reason"` (an error replies `ok = false`). `risen.link.send("changed", data)` pushes the event `<mod id>.changed`. Both are removed with the mod on a hot reload. There is deliberately no built-in "run this Lua code" command: a mod that wants one writes it (and decides who may call it).
+* Events for mods: `link.connected`, `link.disconnected`. `risen.link.available()` / `risen.link.connected()`.
+* Test client: `python tools/linktest_client.py <bin\spass> <result.json>`; scenario `link` (`test-run.ps1 -LinkClient`), unit test `link_pipe_round_trip_and_reconnect`.
+
 ## Network access — `risen.http`, `risen.json` (see `mods/http_test`, `tools/httptest_server.py`)
 
 Mods can ask web endpoints (update checks, leaderboards, news) without ever blocking the game. **Outbound connections only**: the layer never listens on a port, so the player never sees a

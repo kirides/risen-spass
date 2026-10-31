@@ -10,6 +10,7 @@
 #include "game/event_bus.h"
 #include "game/events.h"
 #include "game/lua_http.h"
+#include "game/lua_link.h"
 #include "game/lua_input.h"
 #include "game/lua_test.h"
 #include "game/vfs_mount.h"
@@ -64,6 +65,7 @@ void detourSessionProcess(void* self) {
     engineGuardsFrame(self);
     lua::Runtime::instance().processPending();  // queued mod reloads, the development file watcher
     httpPump();  // finished risen.http requests: their callbacks
+    linkPump();  // commands of a connected editor (the live link)
     test::onTick();  // risen.test: pending wait_for/sleep, heartbeat, first-tick mark
     onInputFrame();  // risen.input: the key states of this frame
     bus::flush();    // the gameplay events queued during this frame (inventory.*, npc.killed, ...)
@@ -89,6 +91,7 @@ void detourAppRender(void* self, bool flag) {
         if (menu || timeFrozen()) {
             rt.processPending();
             httpPump();
+            linkPump();
             test::onTick();
         }
     }
