@@ -1,6 +1,7 @@
 #include "app/render/resources.h"
 
 #include "core/actor.h"
+#include "core/speedtree.h"
 
 #include <algorithm>
 #include <chrono>
@@ -185,6 +186,10 @@ void ResourceCache::worker() {
                         }
                     if (parts.empty()) throw p2m::Error("no part of the character has a mesh");
                     d.mesh = std::make_unique<MeshData>(merge_meshes(parts));
+                } else if (lowered.rfind("spt:", 0) == 0) {
+                    // a SpeedTree: the stand-in built from its boundary box and textures (core/speedtree.h)
+                    const std::string tree = job.name.substr(4);
+                    d.mesh = std::make_unique<MeshData>(speedtree_proxy(read(tree + "._xspt"), tree));
                 } else {
                     d.mesh = std::make_unique<MeshData>(p2m::ends_with(lowered, "._xmac") ? decode_actor(read(job.name)) : decode_mesh(read(job.name)));
                 }

@@ -55,6 +55,7 @@ add_library(modkit_core STATIC
     core/layers.cpp
     core/routine.cpp
     core/skin.cpp
+    core/speedtree.cpp
     core/log.cpp
     core/pack2project.cpp
     core/paths.cpp

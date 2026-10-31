@@ -33,6 +33,7 @@
 #include "core/layers.h"
 #include "core/routine.h"
 #include "core/skin.h"
+#include "core/speedtree.h"
 #include "app/render/anim_mesh.h"
 #include "app/widgets.h"
 #include "core/log.h"
@@ -220,6 +221,26 @@ private:
                     const TemplateInfo* t = app.game->tpl(e.template_name);
                     const std::vector<std::string> parts = t ? actor_parts(*app.game, *t) : std::vector<std::string>();
                     it = by_template.emplace(e.template_name, parts.empty() ? std::string() : compose_name(parts)).first;
+                }
+                mesh_names_[i] = it->second;
+            }
+        }
+        // trees, bushes and water plants (SpeedTree) are drawn as stand-ins built from their boundary box and textures
+        if (app.game) {
+            std::map<std::string, std::string> tree_of;
+            for (size_t i = 0; i < world_->entities.size(); ++i) {
+                const WorldEntity& e = world_->entities[i];
+                if (!mesh_names_[i].empty() || e.template_name.empty()) continue;
+                auto it = tree_of.find(e.template_name);
+                if (it == tree_of.end()) {
+                    std::string stand_in;
+                    const TemplateInfo* t = app.game->tpl(e.template_name);
+                    if (t && t->has_set("eCSpeedTree_PS"))
+                        if (const p2m::Val* v = t->get("eCSpeedTree_PS.ResourceFilePath"); v && v->is_str()) {
+                            const std::string f = speedtree_file(v->s);
+                            if (!f.empty() && app.game->exists(f)) stand_in = "spt:" + f.substr(0, f.size() - 6);
+                        }
+                    it = tree_of.emplace(e.template_name, stand_in).first;
                 }
                 mesh_names_[i] = it->second;
             }
@@ -607,7 +628,7 @@ private:
         ImGui::SliderFloat("##dist", &draw_distance_, 2000, 40000, tr("mesh distance %.0f"));
         ch |= ImGui::Checkbox(tr("Boxes of entities with a mesh"), &boxes_for_meshes_);
         ch |= ImGui::Checkbox(tr("Boxes of objects without a mesh"), &boxes_plain_objects_);
-        ui::help(tr("Mostly the vegetation (SpeedTree), lights and helpers: the editor has no meshes for them."));
+        ui::help(tr("Mostly lights and helpers: the editor has no meshes for them. Trees and bushes (SpeedTree) are drawn as simple stand-ins of their size, not as the game grows them."));
         if (res_) ImGui::TextDisabled(tr("%zu meshes loaded, %zu waiting%s"), res_->loaded_meshes(), res_->pending(), res_->s3tc() ? "" : tr(", CPU textures"));
         draw_mod_layers(app);
         ImGui::SeparatorText(tr("Layers"));

@@ -383,6 +383,7 @@ TEST(gamedata_real_archives) {
 #include "model_import_tests.inc"
 #include "actor_tests.inc"
 #include "motion_tests.inc"
+#include "speedtree_tests.inc"
 #include "sectors_tests.inc"
 #include "genome_tests.inc"
 #include "material_tests.inc"
