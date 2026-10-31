@@ -23,3 +23,16 @@ __pycache__/
 # generated Risen Extended Mod conversion (derived from a third-party mod: never commit or redistribute)
 /mods/risen_extended/
 /mods/extproj/
+src/pakview/PakView/obj
+src/pakview/Risen.Pak/bin
+src/pakview/Risen.Pak/obj
+src/pakview/Risen.Pak.Tests/bin
+src/pakview/Risen.Pak.Tests/obj
+
+# PakView (C# / .NET) build output
+/src/pakview/**/bin/
+/src/pakview/**/obj/
+
+# Visual Studio migration leftovers
+/src/pakview/Backup/
+/src/pakview/UpgradeLog*.htm

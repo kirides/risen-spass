@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:PakView.ViewModels"
+             xmlns:views="clr-namespace:PakView.Views"
+             x:Class="PakView.Views.PreviewView"
+             x:DataType="vm:PreviewViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="TextBox.mono">
+      <Setter Property="IsReadOnly" Value="True" />
+      <Setter Property="AcceptsReturn" Value="True" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace" />
+    </Style>
+    <Style Selector="TabItem">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Padding" Value="10,4" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel>
+    <DockPanel DockPanel.Dock="Top">
+      <CheckBox DockPanel.Dock="Right" Content="Fit to window" Margin="8,0"
+                IsVisible="{Binding Picture, Converter={x:Static ObjectConverters.IsNotNull}}"
+                IsChecked="{Binding Picture.Fit}" />
+      <TextBlock Margin="8,4" Text="{Binding Caption}" TextTrimming="CharacterEllipsis" />
+    </DockPanel>
+
+    <TabControl>
+      <TabItem Header="Preview">
+        <!-- what is shown depends on the type of Content: one template each -->
+        <ContentControl Content="{Binding Content}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+          <ContentControl.DataTemplates>
+            <DataTemplate DataType="vm:MessageContent" x:DataType="vm:MessageContent">
+              <TextBlock Margin="12" Text="{Binding Text}" TextWrapping="Wrap" Opacity="0.7" />
+            </DataTemplate>
+            <DataTemplate DataType="vm:TextContent" x:DataType="vm:TextContent">
+              <TextBox Classes="mono" Text="{Binding Text, Mode=OneWay}" />
+            </DataTemplate>
+            <DataTemplate DataType="vm:ImageContent" x:DataType="vm:ImageContent">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Bottom" Margin="8,2" Text="{Binding Description}" Opacity="0.7" />
+                <ScrollViewer Background="Transparent"
+                              HorizontalScrollBarVisibility="{Binding Fit, Converter={x:Static views:Converters.FitToScrollBars}}"
+                              VerticalScrollBarVisibility="{Binding Fit, Converter={x:Static views:Converters.FitToScrollBars}}">
+                  <Image Source="{Binding Picture}" Stretch="{Binding Fit, Converter={x:Static views:Converters.FitToStretch}}"
+                         RenderOptions.BitmapInterpolationMode="MediumQuality" />
+                </ScrollViewer>
+              </DockPanel>
+            </DataTemplate>
+            <DataTemplate DataType="vm:SoundContent" x:DataType="vm:SoundContent">
+              <views:SoundContentView />
+            </DataTemplate>
+            <DataTemplate DataType="vm:PropsContent" x:DataType="vm:PropsContent">
+              <views:PropsContentView />
+            </DataTemplate>
+            <DataTemplate DataType="vm:TableContent" x:DataType="vm:TableContent">
+              <views:TableContentView />
+            </DataTemplate>
+          </ContentControl.DataTemplates>
+        </ContentControl>
+      </TabItem>
+      <TabItem Header="Hex">
+        <TextBox Classes="mono" Text="{Binding Hex, Mode=OneWay}" />
+      </TabItem>
+      <TabItem Header="Info">
+        <TextBox Classes="mono" Text="{Binding Info, Mode=OneWay}" />
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</UserControl>

@@ -1,0 +1,160 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:PakView.ViewModels"
+        xmlns:m="clr-namespace:PakView.Models"
+        xmlns:views="clr-namespace:PakView.Views"
+        x:Class="PakView.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="{Binding Title}" Width="1360" Height="820" MinWidth="800" MinHeight="500"
+        DragDrop.AllowDrop="True">
+
+  <Window.Resources>
+    <!-- the entries of the "Extract as" submenu come from the view model; each carries its own command -->
+    <ControlTheme x:Key="ExtractAsItemTheme" TargetType="MenuItem" x:DataType="vm:ExtractAsOption"
+                  BasedOn="{StaticResource {x:Type MenuItem}}">
+      <Setter Property="Header" Value="{Binding Label}" />
+      <Setter Property="Command" Value="{Binding Command}" />
+      <Setter Property="CommandParameter" Value="{Binding Format}" />
+    </ControlTheme>
+  </Window.Resources>
+
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+O" Command="{Binding OpenCommand}" />
+    <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
+    <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveAsCommand}" />
+    <KeyBinding Gesture="Ctrl+E" Command="{Binding ExtractCommand}" />
+  </Window.KeyBindings>
+
+  <DockPanel>
+    <Menu DockPanel.Dock="Top">
+      <MenuItem Header="_File">
+        <MenuItem Header="_New archive" Command="{Binding NewArchiveCommand}" />
+        <MenuItem Header="_Open..." Command="{Binding OpenCommand}" InputGesture="Ctrl+O" />
+        <MenuItem Header="_Save" Command="{Binding SaveCommand}" InputGesture="Ctrl+S" />
+        <MenuItem Header="Save _as..." Command="{Binding SaveAsCommand}" InputGesture="Ctrl+Shift+S" />
+        <MenuItem Header="_Discard changes (reload)" Command="{Binding DiscardCommand}" />
+        <MenuItem Header="_Close archive" Command="{Binding CloseArchiveCommand}" />
+        <Separator />
+        <MenuItem Header="E_xit" Command="{Binding ExitCommand}" />
+      </MenuItem>
+      <MenuItem Header="_Edit">
+        <MenuItem Header="_Add files..." Command="{Binding AddFilesCommand}" InputGesture="Insert" />
+        <MenuItem Header="Add _folder..." Command="{Binding AddFolderCommand}" />
+        <MenuItem Header="New fo_lder..." Command="{Binding NewFolderCommand}" />
+        <MenuItem Header="Re_place with file..." Command="{Binding ReplaceCommand}" />
+        <MenuItem Header="_Rename..." Command="{Binding RenameCommand}" InputGesture="F2" />
+        <MenuItem Header="_Delete" Command="{Binding DeleteCommand}" InputGesture="Delete" />
+        <Separator />
+        <MenuItem Header="_Extract selected..." Command="{Binding ExtractCommand}" InputGesture="Ctrl+E" />
+        <MenuItem Header="Extract a_ll..." Command="{Binding ExtractAllCommand}" />
+        <!-- one format: a plain item; several: a submenu; none: neither is shown -->
+        <MenuItem Header="{Binding ExtractAsHeader}" Command="{Binding ExtractAsCommand}" CommandParameter="{Binding SingleExtractFormat}"
+                  IsVisible="{Binding SingleExtractFormat, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <MenuItem Header="{Binding ExtractAsHeader}" ItemsSource="{Binding ExtractAsOptions}" ItemContainerTheme="{StaticResource ExtractAsItemTheme}"
+                  IsVisible="{Binding ExtractAsOptions, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <MenuItem Header="Edit with e_xternal program" Command="{Binding EditExternallyCommand}" />
+        <MenuItem Header="Copy _path" Command="{Binding CopyPathCommand}" />
+        <Separator />
+        <MenuItem Header="Select a_ll" Command="{Binding SelectAllCommand}" InputGesture="Ctrl+A" />
+      </MenuItem>
+      <MenuItem Header="_Tools">
+        <MenuItem Header="_Verify archive (read every member)" Command="{Binding VerifyCommand}" />
+        <Separator />
+        <MenuItem Header="_Compress new files when it helps" ToggleType="CheckBox" IsChecked="{Binding CompressNewFiles}" />
+        <MenuItem Header="Keep a _.bak of the old archive when saving" ToggleType="CheckBox" IsChecked="{Binding KeepBackup}" />
+      </MenuItem>
+      <MenuItem Header="_Help">
+        <MenuItem Header="_About" Command="{Binding AboutCommand}" />
+      </MenuItem>
+    </Menu>
+
+    <Border DockPanel.Dock="Top" Padding="6,4" BorderThickness="0,0,0,1" BorderBrush="#40808080">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="4">
+          <Button Content="Open" Command="{Binding OpenCommand}" />
+          <Button Content="Save" Command="{Binding SaveCommand}" />
+          <Button Content="Add" Command="{Binding AddFilesCommand}" />
+          <Button Content="Extract" Command="{Binding ExtractCommand}" />
+          <Button Content="Delete" Command="{Binding DeleteCommand}" />
+          <Button Content="&#9664;" Command="{Binding BackCommand}" ToolTip.Tip="Back (Alt+Left, mouse button 4)" />
+          <Button Content="&#9654;" Command="{Binding ForwardCommand}" ToolTip.Tip="Forward (Alt+Right, mouse button 5)" />
+          <Button Content="Up" Command="{Binding UpCommand}" ToolTip.Tip="Parent folder (Alt+Up, Backspace)" />
+        </StackPanel>
+        <TextBox Name="FilterBox" DockPanel.Dock="Right" Width="240" Margin="8,0,0,0"
+                 Text="{Binding FilterText}" PlaceholderText="Search names (* and ? allowed)" />
+        <TextBox IsReadOnly="True" Margin="8,0,0,0" Text="{Binding PathText}" />
+      </DockPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Bottom" Padding="8,3" BorderThickness="0,1,0,0" BorderBrush="#40808080">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8">
+          <ProgressBar Width="180" Minimum="0" Maximum="1" Value="{Binding BusyProgress}"
+                       IsIndeterminate="{Binding BusyIndeterminate}" IsVisible="{Binding IsBusy}" />
+          <Button Content="Cancel" Padding="8,0" Command="{Binding CancelCommand}" IsVisible="{Binding CanCancel}" />
+          <TextBlock VerticalAlignment="Center" Text="{Binding PendingText}" />
+        </StackPanel>
+        <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Status}" />
+      </DockPanel>
+    </Border>
+
+    <Grid ColumnDefinitions="230,4,*,4,480" IsEnabled="{Binding !IsBusy}">
+      <TreeView Name="Tree" Grid.Column="0" ItemsSource="{Binding TreeRoots}" SelectedItem="{Binding SelectedDir, Mode=TwoWay}">
+        <TreeView.ItemTemplate>
+          <TreeDataTemplate DataType="m:DirItem" x:DataType="m:DirItem" ItemsSource="{Binding Children}">
+            <TextBlock Text="{Binding Name}" />
+          </TreeDataTemplate>
+        </TreeView.ItemTemplate>
+        <TreeView.Styles>
+          <Style Selector="TreeViewItem" x:DataType="m:DirItem">
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+          </Style>
+        </TreeView.Styles>
+      </TreeView>
+      <GridSplitter Grid.Column="1" Background="#30808080" ResizeDirection="Columns" />
+
+      <DataGrid Name="FileGrid" Grid.Column="2" ItemsSource="{Binding List.Items}"
+                AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended"
+                CanUserSortColumns="True" CanUserResizeColumns="True" CanUserReorderColumns="True"
+                GridLinesVisibility="None" HeadersVisibility="Column">
+        <DataGrid.ContextMenu>
+          <ContextMenu>
+            <MenuItem Header="Open with external program" Command="{Binding EditExternallyCommand}" />
+            <MenuItem Header="Extract..." Command="{Binding ExtractCommand}" />
+            <MenuItem Header="{Binding ExtractAsHeader}" Command="{Binding ExtractAsCommand}" CommandParameter="{Binding SingleExtractFormat}"
+                      IsVisible="{Binding SingleExtractFormat, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <MenuItem Header="{Binding ExtractAsHeader}" ItemsSource="{Binding ExtractAsOptions}" ItemContainerTheme="{StaticResource ExtractAsItemTheme}"
+                      IsVisible="{Binding ExtractAsOptions, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <MenuItem Header="Replace with file..." Command="{Binding ReplaceCommand}" />
+            <MenuItem Header="Rename..." Command="{Binding RenameCommand}" />
+            <MenuItem Header="Delete" Command="{Binding DeleteCommand}" />
+            <Separator />
+            <MenuItem Header="Copy path" Command="{Binding CopyPathCommand}" />
+            <MenuItem Header="Add files..." Command="{Binding AddFilesCommand}" />
+            <MenuItem Header="New folder..." Command="{Binding NewFolderCommand}" />
+          </ContextMenu>
+        </DataGrid.ContextMenu>
+        <DataGrid.Columns>
+          <DataGridTemplateColumn Header="" Width="34">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="m:EntryRow">
+                <TextBlock Text="{Binding Icon}" Foreground="{Binding IconBrush}" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn x:DataType="m:EntryRow" Header="Name" Binding="{Binding Name}" Width="*" MinWidth="240" />
+          <DataGridTextColumn x:DataType="m:EntryRow" Header="Size" Binding="{Binding SizeText}" Width="100" />
+          <DataGridTextColumn x:DataType="m:EntryRow" Header="Packed" Binding="{Binding PackedText}" Width="100" />
+          <DataGridTextColumn x:DataType="m:EntryRow" Header="%" Binding="{Binding RatioText}" Width="52" />
+          <DataGridTextColumn x:DataType="m:EntryRow" Header="Modified" Binding="{Binding ModifiedText}" Width="150" />
+          <DataGridTextColumn x:DataType="m:EntryRow" Header="Type" Binding="{Binding TypeText}" Width="120" />
+          <DataGridTextColumn x:DataType="m:EntryRow" Header="Status" Binding="{Binding StatusText}" Width="110" />
+          <DataGridTextColumn x:DataType="m:EntryRow" Header="Folder" Binding="{Binding Folder}" Width="200" IsVisible="False" />
+        </DataGrid.Columns>
+      </DataGrid>
+      <GridSplitter Grid.Column="3" Background="#30808080" ResizeDirection="Columns" />
+
+      <views:PreviewView Grid.Column="4" DataContext="{Binding Preview}" />
+    </Grid>
+  </DockPanel>
+</Window>

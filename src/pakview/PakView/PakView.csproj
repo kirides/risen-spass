@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>PakView</AssemblyName>
+    <!-- Native AOT: dotnet publish -c Release -r win-x64 (see docs/PAKVIEW.md). -->
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <!-- the remaining IL warnings come from inside Avalonia.Controls.DataGrid (auto columns, path sorting), which we do not use: one line per assembly -->
+    <TrimmerSingleWarn>true</TrimmerSingleWarn>
+    <StripSymbols>false</StripSymbols>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <RootNamespace>PakView</RootNamespace>
+    <!-- NAudio WinMM is Windows only; SoundView checks OperatingSystem.IsWindows() before creating a device. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="NAudio.WinMM" Version="3.3.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Risen.Pak\Risen.Pak.csproj" />
+  </ItemGroup>
+</Project>

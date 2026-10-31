@@ -1,0 +1,20 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="PakView.App"
+             RequestedThemeVariant="Dark">
+  <Application.Styles>
+    <FluentTheme>
+      <FluentTheme.Palettes>
+        <!-- Soft charcoal instead of the default near-black; the other shades are derived from RegionColor. -->
+        <ColorPaletteResources x:Key="Dark"
+                               RegionColor="#262A33"
+                               Accent="#5C9DE8"
+                               ErrorText="#E06C75" />
+      </FluentTheme.Palettes>
+    </FluentTheme>
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
+    <Style Selector="DataGridColumnHeader">
+      <Setter Property="Background" Value="#2D323D" />
+    </Style>
+  </Application.Styles>
+</Application>

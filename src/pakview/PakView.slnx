@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Risen.Pak/Risen.Pak.csproj" />
+  <Project Path="PakView/PakView.csproj" />
+  <Project Path="Risen.Pak.Tests/Risen.Pak.Tests.csproj" />
+</Solution>

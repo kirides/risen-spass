@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:PakView.ViewModels"
+             xmlns:views="clr-namespace:PakView.Views"
+             x:Class="PakView.Views.SoundContentView"
+             x:DataType="vm:SoundContent">
+  <StackPanel>
+    <TextBlock Margin="8,6" Text="{Binding Facts}" Opacity="0.85" />
+    <views:WaveformControl Height="130" Margin="8,4" Peaks="{Binding Peaks}" Fraction="{Binding Fraction}" SeekCommand="{Binding SeekCommand}" />
+    <StackPanel Orientation="Horizontal" Spacing="8" Margin="8,2">
+      <Button MinWidth="70" Content="{Binding PlayLabel}" Command="{Binding PlayPauseCommand}" />
+      <Button MinWidth="60" Content="Stop" Command="{Binding StopCommand}" />
+      <TextBlock VerticalAlignment="Center" Text="{Binding TimeText}" FontFamily="Cascadia Mono,Consolas,monospace" />
+    </StackPanel>
+    <StackPanel Orientation="Horizontal" Spacing="10" Margin="8,2">
+      <TextBlock VerticalAlignment="Center" Text="Volume" Opacity="0.7" />
+      <Slider Width="110" Minimum="0" Maximum="1" VerticalAlignment="Center" Value="{Binding Volume}" />
+      <CheckBox VerticalAlignment="Center" Content="Play on select" IsChecked="{Binding AutoPlay}" />
+    </StackPanel>
+    <TextBlock Margin="8,8" TextWrapping="Wrap" Opacity="0.7" Text="{Binding Unavailable}"
+               IsVisible="{Binding Unavailable, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+  </StackPanel>
+</UserControl>

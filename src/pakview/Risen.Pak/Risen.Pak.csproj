@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Risen.Pak</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NLayer" Version="3.0.0" />
+  </ItemGroup>
+</Project>

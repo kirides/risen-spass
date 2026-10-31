@@ -4,6 +4,7 @@ on:
   push:
   pull_request:
   # Nightly release (tag "nightly"): risen-spass.zip (layer + Mod Manager + quick loot) and risen-spass-tools-windows-x64.zip
+  # (pack2mod, the editor, PakView/ = the Native AOT archive browser)
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
@@ -16,7 +17,7 @@ concurrency:
 env:
   LUALS_VERSION: '3.19.2'   # pinned: a new LuaLS release may add diagnostics; keep in step with the local one
 
-# Jobs: gate -> (lua | layer | modkit, in parallel) -> release (nightly only).
+# Jobs: gate -> (lua | layer | modkit | pakview, in parallel) -> tools (the tools zip: modkit + pakview) -> release (nightly only).
 # The two Windows jobs build with a compiler cache (.github/actions/windows-build): after the first run only the files
 # whose source or headers changed are compiled.
 jobs:
@@ -135,17 +136,74 @@ jobs:
       - name: Unit tests of risen-modkit
         run: build-ninja\src\modkit\RelWithDebInfo\modkit_tests.exe
 
-      # risen-spass-tools-windows-x64.zip: risen-pack2mod.exe, risen-modkit.exe, lang/ (the editor's language files)
-      - name: Package
+      # first half of the tools zip: risen-pack2mod.exe, risen-modkit.exe, lang/ (the editor's language files); the `tools` job zips it
+      - name: Stage the tools
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $tools = New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\tools"
+          $tools = New-Item -ItemType Directory -Force dist\tools
           Copy-Item build-ninja\RelWithDebInfo\risen-pack2mod.exe, build-ninja\src\modkit\RelWithDebInfo\risen-modkit.exe $tools
           Copy-Item build-ninja\src\modkit\RelWithDebInfo\lang -Destination $tools -Recurse
-          New-Item -ItemType Directory -Force dist | Out-Null
-          Compress-Archive -Path "$tools\*" -DestinationPath dist\risen-spass-tools-windows-x64.zip -Force
-          Get-ChildItem dist | Format-Table Name, Length
+          Get-ChildItem dist\tools | Format-Table Name, Length
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tools-modkit
+          path: dist/tools
+
+  # PakView (src/pakview, docs/PAKVIEW.md): the .NET unit tests and the Native AOT build for win-x64
+  pakview:
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/cache@v6
+        with:
+          path: ~\.nuget\packages
+          key: nuget-pakview-${{ hashFiles('src/pakview/**/*.csproj', 'src/pakview/Directory.Build.props') }}
+          restore-keys: nuget-pakview-
+      - name: Unit tests (no game needed; the tests that read real game archives skip themselves)
+        run: dotnet test src/pakview/Risen.Pak.Tests -c Release --nologo
+      # the script adds vswhere to PATH (the native linker needs it), publishes with PublishAot and strips the .pdb files
+      - name: Publish PakView (Native AOT, win-x64)
+        shell: pwsh
+        run: ./scripts/pakview-publish.ps1 -Output dist/stage/PakView
+      - name: The executable exists and is a real native build
+        shell: pwsh
+        run: |
+          $exe = Get-Item dist/stage/PakView/PakView.exe
+          if ($exe.Length -lt 10MB) { throw "PakView.exe is only $($exe.Length) bytes" }
+          # a managed (non-AOT) build would have PakView.dll next to the exe
+          if (Test-Path dist/stage/PakView/PakView.dll) { throw 'PakView.dll next to the exe: this is not a Native AOT publish' }
+          Get-ChildItem dist/stage/PakView | Format-Table Name, Length
+      # the artifact root is dist/stage, so the files end up under PakView/ in the zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: tools-pakview
+          path: dist/stage
+
+  # risen-spass-tools-windows-x64.zip: what the editor and PakView jobs staged, merged into one zip
+  #   risen-pack2mod.exe, risen-modkit.exe, lang/, PakView/PakView.exe (+ its native libraries)
+  tools:
+    needs: [gate, modkit, pakview]
+    if: needs.gate.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: tools-*
+          merge-multiple: true
+          path: tools
+      - name: Zip
+        run: |
+          find tools -maxdepth 2 | sort
+          test -f tools/risen-modkit.exe && test -f tools/risen-pack2mod.exe && test -f tools/PakView/PakView.exe
+          mkdir -p dist
+          (cd tools && zip -qr ../dist/risen-spass-tools-windows-x64.zip .)
+          unzip -l dist/risen-spass-tools-windows-x64.zip | tail -25
       - name: Upload risen-spass-tools-windows-x64.zip
         uses: actions/upload-artifact@v7
         with:
@@ -155,7 +213,7 @@ jobs:
   # Publishes only when the builds, the unit tests and the Lua checks all passed. The release is recreated so the
   # "nightly" tag moves to this commit.
   release:
-    needs: [gate, lua, layer, modkit]
+    needs: [gate, lua, layer, tools]
     if: needs.gate.outputs.release == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -181,6 +239,6 @@ jobs:
           notes="Automated build of ${GITHUB_SHA} ($(date -u '+%Y-%m-%d %H:%M') UTC).
 
           - **risen-spass.zip**: sentry.dll + mods/modmanager + mods/quickloot (first rename the game's <Risen>\\bin\\sentry.dll to sentry_orig.dll, then copy sentry.dll to <Risen>\\bin and the mods to <Risen>\\bin\\spass\\mods)
-          - **risen-spass-tools-windows-x64.zip**: risen-pack2mod.exe, risen-modkit.exe"
+          - **risen-spass-tools-windows-x64.zip**: risen-pack2mod.exe, risen-modkit.exe, PakView/PakView.exe (browse, preview and edit .pak/.pNN archives; Native AOT, no .NET needed)"
           gh release create nightly nightly/risen-spass.zip nightly/risen-spass-tools-windows-x64.zip \
               --target "$GITHUB_SHA" --prerelease --title "Nightly (${GITHUB_SHA::7})" --notes "$notes"

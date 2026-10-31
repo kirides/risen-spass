@@ -1,0 +1,9 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:PakView.ViewModels"
+             x:Class="PakView.Views.TableContentView"
+             x:DataType="vm:TableContent">
+  <!-- the columns depend on the file, so the code-behind adds them -->
+  <DataGrid Name="Grid" ItemsSource="{Binding Rows.Items}" AutoGenerateColumns="False" IsReadOnly="True"
+            CanUserResizeColumns="True" CanUserSortColumns="True" GridLinesVisibility="All" HeadersVisibility="Column" />
+</UserControl>

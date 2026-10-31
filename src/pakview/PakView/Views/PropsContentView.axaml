@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:PakView.ViewModels"
+             xmlns:f="clr-namespace:Risen.Pak.Formats;assembly=Risen.Pak"
+             x:Class="PakView.Views.PropsContentView"
+             x:DataType="vm:PropsContent">
+  <DockPanel>
+    <TextBlock DockPanel.Dock="Top" Margin="8,4" Text="{Binding Notes}" TextWrapping="Wrap" Opacity="0.8" />
+    <TextBox DockPanel.Dock="Top" Margin="6,2" Text="{Binding Filter}" PlaceholderText="Filter properties..." />
+    <DataGrid Name="Grid" ItemsSource="{Binding Rows.Items}" AutoGenerateColumns="False" IsReadOnly="True"
+              CanUserResizeColumns="True" CanUserSortColumns="True" GridLinesVisibility="Horizontal" HeadersVisibility="Column">
+      <DataGrid.Columns>
+        <DataGridTextColumn x:DataType="f:PropRow" Header="Property" Binding="{Binding Name}" Width="170" />
+        <DataGridTextColumn x:DataType="f:PropRow" Header="Value" Binding="{Binding Value}" Width="*" MinWidth="170" />
+        <DataGridTextColumn x:DataType="f:PropRow" Header="Set" Binding="{Binding Group}" Width="120" />
+        <DataGridTextColumn x:DataType="f:PropRow" Header="Type" Binding="{Binding Type}" Width="130" />
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>
