@@ -3,11 +3,13 @@
 // stored in model space, so the meshes can be drawn as they are.
 #pragma once
 
+#include <functional>
 #include <string>
 #include <vector>
 
 #include "core/gamedata.h"
 #include "core/mesh.h"
+#include "core/skin.h"
 
 namespace mk {
 
@@ -20,10 +22,15 @@ struct ActorInfo {
 
 // The visible meshes of the actor as one MeshData in the editor's own vertex layout (position, normal, UV: 32 bytes; offsets 0, 12, 24); one sub-mesh per
 // material; `SubMesh::texture` names the diffuse image ("X" of "X._ximg"). Collision meshes are left out. Throws p2m::Error for a file that is no actor.
-MeshData decode_actor(const p2m::Bytes& file, ActorInfo* info = nullptr);
+// `skin` (optional): the skeleton and the bones of every vertex (same order as the MeshData's vertices) for core/skin.h; empty for an actor without nodes.
+MeshData decode_actor(const p2m::Bytes& file, ActorInfo* info = nullptr, ActorSkin* skin = nullptr);
 
 // One MeshData of several (a human is its armour actor plus its head actor, all in the skeleton's model space): vertices and indices joined, sub-meshes kept.
 MeshData merge_meshes(const std::vector<MeshData>& parts);
+
+// A character's actors (as `actor_parts` names them) decoded and joined as one mesh with the skin of all parts; `read` gives a file by its compiled name. Parts that do not
+// decode (a skeleton without a mesh) are left out. Throws p2m::Error when none has a mesh.
+MeshData decode_character(const std::vector<std::string>& actors, const std::function<p2m::Bytes(const std::string&)>& read, ActorSkin* skin = nullptr);
 
 // The actors that make up a character as compiled names ("X._xmac"): the template's own actor (skeletons without a mesh included: the caller skips what does not
 // decode), then one body part and one head from the equipped items (`worn`, then stacks with an equipment slot, then the rest of the inventory): items of

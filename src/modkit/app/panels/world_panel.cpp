@@ -32,6 +32,8 @@
 #include "core/i18n.h"
 #include "core/layers.h"
 #include "core/routine.h"
+#include "core/skin.h"
+#include "app/render/anim_mesh.h"
 #include "app/widgets.h"
 #include "core/log.h"
 
@@ -1027,8 +1029,10 @@ private:
         glClearColor(0.10f, 0.11f, 0.13f, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         const glm::mat4 vp = cam_.proj(aspect) * cam_.view();
+        anim_update(app);
         if (draw_meshes_ && res_) draw_meshes(vp);
         if (draw_meshes_ && res_) draw_project_meshes(app, vp);
+        if (draw_meshes_ && res_) draw_animated(app, vp);
         boxes_.draw(vp);
         if (clicked) place_at(app, cu, cv, w, h, vp);
         if (dropped) drop_at(app, *dropped, cu, cv, w, h, vp);
@@ -1059,7 +1063,7 @@ private:
         }
         size_t failed_before = failed_seen_;
         for (size_t i = 0; i < world_->entities.size(); ++i) {
-            if (mesh_names_[i].empty() || i == skip) continue;
+            if (mesh_names_[i].empty() || i == skip || (!ids && i == anim_entity_)) continue;
             const WorldEntity& e = world_->entities[i];
             if (!layer_on_[e.layer] || !kinds_[static_cast<int>(e.kind)]) continue;
             const int edit = i < edit_state_.size() ? edit_state_[i] : 0;
@@ -1386,6 +1390,217 @@ private:
         boxes_dirty_ = overlay_dirty_ = true;
     }
 
+    // ---- animation ------------------------------------------------------------------------------------------------------------------------------
+
+    // the selected thing's actor: its mesh name and a key for the thing ("e:<index>" a world entity, "n:<uid>" a placed NPC); false when it has no actor
+    bool selected_actor(App& app, std::string& mesh, std::string& target) {
+        if (!world_ || !app.game) return false;
+        if (!proj_sel_.empty() && project_position(app, proj_sel_)) {
+            for (auto& n : app.project.npcs)
+                if (n.uid == proj_sel_ && !n.offset) {
+                    mesh = npc_mesh(app, n.template_name);
+                    target = "n:" + n.uid;
+                    return !mesh.empty();
+                }
+            return false;
+        }
+        if (selected_ < mesh_names_.size() && !mesh_names_[selected_].empty()) {
+            const std::string& m = mesh_names_[selected_];
+            if (is_composed(m) || p2m::ends_with(p2m::lower(m), "._xmac")) {
+                mesh = m;
+                target = "e:" + std::to_string(selected_);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void anim_stop() {
+        anim_target_.clear();
+        anim_entity_ = SIZE_MAX;
+        anim_uid_.clear();
+        anim_motion_.reset();
+        anim_motion_name_.clear();
+        anim_time_ = 0;
+        anim_.clear();
+    }
+
+    // the motions that fit an actor: the family's folder of the animations archive (Monster/Animations/<Wolf>, Humans/Animations), else all of them
+    void build_motion_list(App& app, const std::string& mesh) {
+        anim_list_.clear();
+        anim_list_for_ = mesh;
+        const std::string first = is_composed(mesh) ? composed_parts(mesh).front() : mesh;
+        std::vector<std::string> tok;
+        {
+            std::string cur;
+            for (char c : first) {
+                if (c == '_' || c == '.') {
+                    tok.push_back(cur);
+                    cur.clear();
+                    if (c == '.') break;
+                } else {
+                    cur += c;
+                }
+            }
+        }
+        std::string folder = "_emfx36/Humans/Animations/";
+        if (tok.size() >= 2 && tok[1] != "Hero") folder = "_emfx36/Monster/Animations/" + tok[1] + "/";
+        for (auto& a : app.game->assets("_xmot"))
+            if (p2m::lower(a.path).rfind(p2m::lower(folder), 0) == 0) anim_list_.push_back(&a);
+        if (anim_list_.empty())
+            for (auto& a : app.game->assets("_xmot"))
+                if (a.path.rfind("_emfx36/", 0) == 0) anim_list_.push_back(&a);
+    }
+
+    // "Wolf_Stand_None_None_P0_Move_Walk_N_Fwd_00_%_00_P0_60._xmot" -> "Stand/None/None: Move_Walk_N_Fwd_00"
+    static std::string motion_label(const std::string& name) {
+        std::string n = name.substr(0, name.find("._xmot"));
+        if (const size_t pc = n.find("_%_"); pc != std::string::npos) n.resize(pc);
+        std::vector<std::string> tok;
+        std::string cur;
+        for (char c : n) {
+            if (c == '_') {
+                tok.push_back(cur);
+                cur.clear();
+            } else {
+                cur += c;
+            }
+        }
+        tok.push_back(cur);
+        if (tok.size() < 6) return n;
+        std::string rest;
+        for (size_t i = 5; i < tok.size(); ++i) rest += (rest.empty() ? "" : "_") + tok[i];
+        std::string head = tok[1];
+        if (tok[2] != "None" || tok[3] != "None") head += "/" + tok[2] + "/" + tok[3];
+        return head + ": " + rest;
+    }
+
+    void anim_start(App& app, const std::string& mesh, const std::string& target) {
+        anim_stop();
+        anim_error_.clear();
+        if (!app.game) return;
+        const std::vector<std::string> actors = is_composed(mesh) ? composed_parts(mesh) : std::vector<std::string>{mesh};
+        std::string err;
+        const GameData* g = app.game.get();
+        if (!anim_.load(mesh, actors, [g](const std::string& name) { return g->read(name); }, err)) {
+            anim_error_ = err;
+            return;
+        }
+        anim_target_ = target;
+        if (target[0] == 'e') anim_entity_ = static_cast<size_t>(std::stoull(target.substr(2)));
+        else anim_uid_ = target.substr(2);
+        if (anim_list_for_ != mesh) build_motion_list(app, mesh);
+        anim_play_ = true;
+    }
+
+    void anim_pick(App& app, const AssetEntry& a) {
+        anim_error_.clear();
+        try {
+            auto m = std::make_shared<Motion>(decode_motion(app.game->read(a.name)));
+            if (anim_.matching_bones(*m) == 0) {
+                anim_error_ = tr("This motion is made for another skeleton.");
+                return;
+            }
+            anim_motion_ = std::move(m);
+            anim_motion_name_ = a.name;
+            anim_time_ = 0;
+        } catch (const std::exception& e) {
+            anim_error_ = e.what();
+        }
+    }
+
+    // once a frame: stops when the selection moved on, advances the time and skins
+    void anim_update(App& app) {
+        if (anim_target_.empty()) return;
+        std::string mesh, target;
+        if (!selected_actor(app, mesh, target) || target != anim_target_ || mesh != anim_.key()) {
+            anim_stop();
+            return;
+        }
+        if (anim_play_ && anim_motion_) anim_time_ += ImGui::GetIO().DeltaTime * anim_speed_;
+        anim_.pose(anim_motion_.get(), anim_time_);
+    }
+
+    void draw_animated(App& app, const glm::mat4& vp) {
+        if (anim_target_.empty() || !anim_.ready()) return;
+        glm::mat4 model(1.0f);
+        if (anim_entity_ != SIZE_MAX && anim_entity_ < world_->entities.size()) {
+            const int edit = anim_entity_ < edit_state_.size() ? edit_state_[anim_entity_] : 0;
+            model = gfx::entity_model(edit == 2 ? moved_matrix_.at(anim_entity_).data() : world_->entities[anim_entity_].matrix.data());
+        } else {
+            bool found = false;
+            for (auto& n : app.project.npcs)
+                if (n.uid == anim_uid_) {
+                    const spass::pose::Matrix pm = spass::pose::compose(static_cast<float>(n.position[0]), static_cast<float>(n.position[1]), static_cast<float>(n.position[2]),
+                                                                        {static_cast<float>(n.yaw.value_or(0.0)), 0.0f, 0.0f});
+                    model = gfx::entity_model(pm.data());
+                    found = true;
+                }
+            if (!found) return;
+        }
+        mesh_r_.begin(vp, glm::vec3(0.35f, -1.0f, 0.25f));
+        mesh_r_.draw(anim_.mesh(), model, *res_, glm::vec4(1.4f, 1.3f, 0.9f, 1));
+        mesh_r_.end();
+    }
+
+    // the inspector's Animation section for the selected actor
+    void draw_animation(App& app) {
+        std::string mesh, target;
+        if (!selected_actor(app, mesh, target)) return;
+        ImGui::SeparatorText(tr("Animation"));
+        if (anim_target_ != target) {
+            if (ImGui::Button(tr("Animate this actor"))) anim_start(app, mesh, target);
+            ui::help(tr("Poses the actor with the game's own motions (walk, sit, fight, sleep...) in the view: pick one from the list, scrub or play it. Nothing is saved: it only shows what the NPC can do."));
+            if (!anim_error_.empty()) ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "%s", anim_error_.c_str());
+            return;
+        }
+        if (ImGui::Button(anim_play_ ? tr("Pause") : tr("Play"))) anim_play_ = !anim_play_;
+        ImGui::SameLine();
+        if (ImGui::Button(tr("Bind pose"))) {
+            anim_motion_.reset();
+            anim_motion_name_.clear();
+            anim_time_ = 0;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(tr("Stop"))) {
+            anim_stop();
+            return;
+        }
+        ImGui::SetNextItemWidth(120);
+        ImGui::SliderFloat(tr("speed"), &anim_speed_, 0.1f, 2.0f, "%.2f");
+        if (anim_motion_) {
+            float t = std::fmod(anim_time_, std::max(anim_motion_->duration, 0.001f));
+            if (t < 0) t += anim_motion_->duration;
+            ImGui::SetNextItemWidth(-90);
+            if (ImGui::SliderFloat("##animtime", &t, 0.0f, anim_motion_->duration, "%.2f s")) {
+                anim_time_ = t;
+                anim_play_ = false;
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("/ %.2f s", anim_motion_->duration);
+            ImGui::TextWrapped("%s", motion_label(anim_motion_name_).c_str());
+        }
+        if (!anim_error_.empty()) ImGui::TextColored(ImVec4(1, 0.5f, 0.4f, 1), "%s", anim_error_.c_str());
+        ImGui::SetNextItemWidth(-1);
+        ImGui::InputTextWithHint("##animfilter", tr("filter the motions"), &anim_filter_);
+        const std::string f = p2m::lower(anim_filter_);
+        std::vector<const AssetEntry*> shown;
+        for (const AssetEntry* a : anim_list_)
+            if (f.empty() || p2m::lower(a->name).find(f) != std::string::npos) shown.push_back(a);
+        if (ImGui::BeginListBox("##animlist", ImVec2(-1, 220))) {
+            ImGuiListClipper clip;
+            clip.Begin(static_cast<int>(shown.size()));
+            while (clip.Step())
+                for (int i = clip.DisplayStart; i < clip.DisplayEnd; ++i) {
+                    const AssetEntry& a = *shown[static_cast<size_t>(i)];
+                    if (ImGui::Selectable(motion_label(a.name).c_str(), a.name == anim_motion_name_)) anim_pick(app, a);
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", a.name.c_str());
+                }
+            ImGui::EndListBox();
+        }
+        ImGui::TextDisabled(tr("%zu motions"), shown.size());
+    }
+
     static ImU32 routine_point_colour(const std::string& key) {
         if (key == "work") return IM_COL32(110, 230, 90, 255);
         if (key == "relax") return IM_COL32(250, 220, 60, 255);
@@ -1540,7 +1755,7 @@ private:
     void draw_project_meshes(App& app, const glm::mat4& vp, const std::string& skip = {}) {
         mesh_r_.begin(vp, glm::vec3(0.35f, -1.0f, 0.25f));
         for (auto& n : app.project.npcs) {
-            if (n.uid == skip || n.offset || !here(app, n.world)) continue;  // the skipped one is the object being aligned: it must not count as the surface under itself
+            if (n.uid == skip || n.uid == anim_uid_ || n.offset || !here(app, n.world)) continue;  // the skipped one is the object being aligned: it must not count as the surface under itself
             if (const LayerDef* L = layer_of_npc(app.project, n.name); L && mod_layer_hidden_.count(L->name)) continue;
             const std::string mesh = npc_mesh(app, n.template_name);
             if (mesh.empty()) continue;
@@ -1704,11 +1919,11 @@ private:
                         rt_sel_.clear();
                         overlay_dirty_ = true;
                     }
-                    for (auto& p : pts) {
-                        ImGui::PushID(p.key.c_str());
-                        std::string label = p.label + (p.kind.empty() ? std::string() : " (" + p.kind + ")");
-                        if (ImGui::RadioButton(label.c_str(), rt_sel_ == p.key)) {
-                            rt_sel_ = p.key;
+                    for (auto& rp : pts) {
+                        ImGui::PushID(rp.key.c_str());
+                        std::string label = rp.label + (rp.kind.empty() ? std::string() : " (" + rp.kind + ")");
+                        if (ImGui::RadioButton(label.c_str(), rt_sel_ == rp.key)) {
+                            rt_sel_ = rp.key;
                             overlay_dirty_ = true;
                         }
                         ImGui::PopID();
@@ -1950,6 +2165,7 @@ private:
     void draw_inspector(App& app) {
         if (!proj_sel_.empty() && project_position(app, proj_sel_)) {
             draw_project_inspector(app);
+            draw_animation(app);
             return;
         }
         if (selected_ >= world_->entities.size()) {
@@ -2002,6 +2218,7 @@ private:
         if (selected_ < mesh_names_.size() && !mesh_names_[selected_].empty()) {
             materials_.draw(app, mesh_names_[selected_]);
         }
+        draw_animation(app);
         if (props_for_ != selected_) {
             props_ = entity_properties(*app.game, *world_, e);
             inv_ = e.inventory ? entity_inventory(*app.game, *world_, e) : std::vector<std::pair<std::string, int>>{};
@@ -2073,6 +2290,15 @@ private:
     std::string place_npc_, place_template_ = "Peasant_1_01", place_item_ = "It_Apple";
     int place_amount_ = 1;
     std::string proj_sel_;  // the selected project object (placed NPC or spawn uid)
+    // ---- animation of the selected actor (core/skin.h, RE.md section 65)
+    gfx::AnimMesh anim_;
+    std::shared_ptr<Motion> anim_motion_;
+    std::string anim_motion_name_, anim_target_ /* "e:<index>" / "n:<uid>", "" = none */, anim_filter_, anim_error_, anim_list_for_;
+    std::vector<const AssetEntry*> anim_list_;
+    size_t anim_entity_ = SIZE_MAX;  // the world entity / placed NPC the animated mesh stands in for (its static mesh is not drawn)
+    std::string anim_uid_;
+    float anim_time_ = 0, anim_speed_ = 1;
+    bool anim_play_ = true;
     std::string rt_sel_;    // the routine point of the selected placed NPC the gizmo moves ("" = the NPC; core/routine.h keys)
     glm::mat4 gizmo_{1.0f};
     bool gizmo_active_ = false, gizmo_over_ = false, view_active_ = false;

@@ -54,6 +54,7 @@ add_library(modkit_core STATIC
     core/import.cpp
     core/layers.cpp
     core/routine.cpp
+    core/skin.cpp
     core/log.cpp
     core/pack2project.cpp
     core/paths.cpp
@@ -145,6 +146,7 @@ add_executable(risen-modkit
     app/render/gl_util.cpp
     app/render/mesh_preview.cpp
     app/render/mesh_renderer.cpp
+    app/render/anim_mesh.cpp
     app/render/resources.cpp
 )
 target_include_directories(risen-modkit PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" ${STB_INCLUDE_DIRS} ${MINIAUDIO_INCLUDE_DIRS})

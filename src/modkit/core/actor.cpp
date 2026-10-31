@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "core/catalog.h"
+#include "core/skin.h"
 
 namespace mk {
 
@@ -37,7 +38,7 @@ struct Cur {
 
 }  // namespace
 
-MeshData decode_actor(const Bytes& file, ActorInfo* info) {
+MeshData decode_actor(const Bytes& file, ActorInfo* info, ActorSkin* skin_out) {
     if (file.size() < 0x40 || file.compare(0, 8, "GR01MA02") != 0) throw Error("not a GR01/MA02 actor");
     const size_t xac = file.find("XAC ");
     if (xac == std::string::npos || xac + 8 > file.size()) throw Error("no EMotion FX actor inside");
@@ -52,10 +53,26 @@ MeshData decode_actor(const Bytes& file, ActorInfo* info) {
         };
         std::vector<Sub> subs;
         uint32_t vertex_count = 0;
+        uint32_t node = 0, orig_count = 0;                 // the mesh's node, the number of original vertices
+        std::vector<uint32_t> orig;                        // per vertex: its original vertex (layer type 5)
+        std::vector<std::pair<float, uint16_t>> infl;      // the skinning influences: weight, node
+        std::vector<std::pair<uint32_t, uint32_t>> table;  // per original vertex: first influence, count
     };
     std::vector<Part> parts;
+    int last_part = -1;  // the visible part the latest mesh chunk made (-1: a collision mesh), the skinning chunk that follows belongs to it
+    Skeleton skel;
     const bool be = file.at(xac + 6) != 0;  // "XAC ", version 1.0, then the endian byte
     auto rd = [&](size_t at) { return be ? swap32(p2m::rd32(file, at)) : p2m::rd32(file, at); };
+    auto rdfl = [&](size_t at) {
+        const uint32_t u = rd(at);
+        float f;
+        std::memcpy(&f, &u, 4);
+        return f;
+    };
+    auto rd16 = [&](size_t at) {
+        const uint16_t v = p2m::rd16(file, at);
+        return be ? static_cast<uint16_t>((v >> 8) | (v << 8)) : v;
+    };
     size_t p = xac + 8;
     bool lods_started = false;
     while (p + 12 <= file.size() && !lods_started) {
@@ -78,11 +95,21 @@ MeshData decode_actor(const Bytes& file, ActorInfo* info) {
                 c.u32();  // root nodes
                 if (n <= 4096)
                     for (uint32_t i = 0; i < n; ++i) {
+                        // rotation (4 floats), scale rotation (4), position (3), scale (3), three -1.0, two 0xffffffff, then the parent index at +76
+                        Xform x;
+                        for (size_t k = 0; k < 4; ++k) x.rot[k] = rdfl(c.p + k * 4);
+                        for (size_t k = 0; k < 3; ++k) x.pos[k] = rdfl(c.p + 32 + k * 4);
+                        for (size_t k = 0; k < 3; ++k) x.scale[k] = rdfl(c.p + 44 + k * 4);
+                        const uint32_t par = rd(c.p + 76);
                         c.p += 156;
                         ai.nodes.push_back(c.str());
+                        skel.names.push_back(ai.nodes.back());
+                        skel.parent.push_back(par < n ? static_cast<int>(par) : -1);
+                        skel.bind.push_back(x);
                     }
             } catch (const Error&) {
                 ai.nodes.clear();
+                skel = Skeleton{};
             }
         } else if (id == kStdMaterial) {
             // 4 colours (64 bytes), four floats, then double sided, wireframe, transparency type and the number of layers, then the name; the layers follow
@@ -104,8 +131,7 @@ MeshData decode_actor(const Bytes& file, ActorInfo* info) {
             next = lp;
         } else if (id == kMesh) {
             const uint32_t node = c.u32();
-            (void)node;
-            c.u32();  // original vertex count
+            const uint32_t orig_count = c.u32();  // original vertex count
             const uint32_t total_verts = c.u32();
             c.u32();  // total indices
             const uint32_t nsubs = c.u32(), nlayers = c.u32();
@@ -114,6 +140,8 @@ MeshData decode_actor(const Bytes& file, ActorInfo* info) {
             if (total_verts > 2000000 || nsubs > 1024 || nlayers > 32) throw Error("implausible mesh");
             Part part;
             part.vertex_count = total_verts;
+            part.node = node;
+            part.orig_count = orig_count;
             for (uint32_t L = 0; L < nlayers; ++L) {
                 const uint32_t type = c.u32(), attr = c.u32();
                 c.p += 4;  // enable deformations, is scale, 2 pad bytes
@@ -133,6 +161,10 @@ MeshData decode_actor(const Bytes& file, ActorInfo* info) {
                 if (type == 0 && attr == 12) floats(part.pos, 3);        // positions
                 else if (type == 1 && attr == 12) floats(part.nrm, 3);   // normals
                 else if (type == 3 && attr == 8 && part.uv.empty()) floats(part.uv, 2);  // the first UV set
+                else if (type == 5 && attr == 4) {  // the original vertex number of each vertex (the skinning is per original vertex)
+                    part.orig.resize(total_verts);
+                    for (uint32_t v = 0; v < total_verts; ++v) part.orig[v] = rd(c.p + static_cast<size_t>(v) * 4);
+                }
                 c.p += bytes;
             }
             for (uint32_t s = 0; s < nsubs; ++s) {
@@ -148,10 +180,27 @@ MeshData decode_actor(const Bytes& file, ActorInfo* info) {
                 c.p += static_cast<size_t>(ni) * 4 + static_cast<size_t>(nb) * 4;
                 part.subs.push_back(std::move(sub));
             }
+            last_part = -1;
             if (collision) ++ai.collision_meshes;
             else if (!part.pos.empty()) {
                 ++ai.meshes;
                 parts.push_back(std::move(part));
+                last_part = static_cast<int>(parts.size()) - 1;
+            }
+        } else if (id == 2 && last_part >= 0) {  // SKINNINGINFO v3: node, bone count, influence count, collision flag; the influences; a (start, count) per original vertex
+            Part& part = parts[static_cast<size_t>(last_part)];
+            try {
+                c.u32();
+                c.u32();
+                const uint32_t total = c.u32();
+                c.p += 4;
+                if (total > 4000000 || c.p + static_cast<size_t>(total) * 8 + static_cast<size_t>(part.orig_count) * 8 > p + 12 + size) throw Error("the skinning runs past its chunk");
+                for (uint32_t i = 0; i < total; ++i) part.infl.emplace_back(rdfl(c.p + static_cast<size_t>(i) * 8), rd16(c.p + static_cast<size_t>(i) * 8 + 4));
+                c.p += static_cast<size_t>(total) * 8;
+                for (uint32_t i = 0; i < part.orig_count; ++i) part.table.emplace_back(rd(c.p + static_cast<size_t>(i) * 8), rd(c.p + static_cast<size_t>(i) * 8 + 4));
+            } catch (const Error&) {
+                part.infl.clear();
+                part.table.clear();
             }
         } else if (id == 8) {  // the levels of detail follow: everything after this is a lower level
             lods_started = true;
@@ -176,8 +225,40 @@ MeshData decode_actor(const Bytes& file, ActorInfo* info) {
         std::vector<uint32_t> idx;
     };
     std::vector<Draw> draws;
+    ActorSkin skin;
+    if (skin_out && !skel.empty()) skin.skeleton = skel;
     for (const Part& part : parts) {
         const bool has_n = part.nrm.size() == part.pos.size(), has_uv = part.uv.size() == part.vertex_count * 2;
+        if (skin_out && !skel.empty())
+            for (uint32_t v = 0; v < part.vertex_count; ++v) {
+                // the (up to) four strongest influences of the vertex's original vertex; no skinning data: the mesh's own node carries it rigidly
+                std::array<uint16_t, 4> b{};
+                std::array<float, 4> w{};
+                const uint32_t o = v < part.orig.size() ? part.orig[v] : v;
+                if (o < part.table.size()) {
+                    const auto [first, count] = part.table[o];
+                    for (uint32_t k = 0; k < count && first + k < part.infl.size(); ++k) {
+                        const auto& in = part.infl[first + k];
+                        if (in.second >= skel.names.size() || in.first <= 0) continue;
+                        size_t slot = 4;
+                        for (size_t j = 0; j < 4; ++j)
+                            if (w[j] < in.first && (slot == 4 || w[j] < w[slot])) slot = j;
+                        if (slot < 4) {
+                            b[slot] = in.second;
+                            w[slot] = in.first;
+                        }
+                    }
+                }
+                float sum = w[0] + w[1] + w[2] + w[3];
+                if (sum <= 0) {
+                    b[0] = static_cast<uint16_t>(std::min<size_t>(part.node, skel.names.size() - 1));
+                    w[0] = 1;
+                    sum = 1;
+                }
+                for (float& x : w) x /= sum;
+                skin.bone.push_back(b);
+                skin.weight.push_back(w);
+            }
         for (uint32_t v = 0; v < part.vertex_count; ++v) {
             float rec[8] = {part.pos[v * 3], part.pos[v * 3 + 1], part.pos[v * 3 + 2], 0, 1, 0, 0, 0};
             if (has_n) std::memcpy(rec + 3, &part.nrm[v * 3], 12);
@@ -214,6 +295,7 @@ MeshData decode_actor(const Bytes& file, ActorInfo* info) {
         if (mat < ai.diffuse_textures.size()) s.texture = ai.diffuse_textures[mat];
         m.submeshes.push_back(std::move(s));
     }
+    if (skin_out) *skin_out = std::move(skin);
     m.vertex_count = vbase;
     m.index_count = first_index;
     m.vertices = std::move(verts);
@@ -260,6 +342,23 @@ MeshData merge_meshes(const std::vector<MeshData>& parts) {
         m.box_max[k] = hi[k];
     }
     return m;
+}
+
+MeshData decode_character(const std::vector<std::string>& actors, const std::function<Bytes(const std::string&)>& read, ActorSkin* skin) {
+    std::vector<MeshData> parts;
+    std::vector<ActorSkin> skins;
+    for (const std::string& a : actors) {
+        try {
+            ActorSkin sk;
+            MeshData m = decode_actor(read(a), nullptr, &sk);
+            parts.push_back(std::move(m));
+            skins.push_back(std::move(sk));
+        } catch (const std::exception&) {  // a skeleton or a head that does not decode is left out
+        }
+    }
+    if (parts.empty()) throw Error("no part of the character has a mesh");
+    if (skin) *skin = parts.size() == 1 ? std::move(skins[0]) : merge_skins(skins);
+    return parts.size() == 1 ? std::move(parts[0]) : merge_meshes(parts);
 }
 
 std::vector<std::string> actor_parts(const GameData& g, const TemplateInfo& t) {
