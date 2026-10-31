@@ -136,7 +136,7 @@ jobs:
       - name: Unit tests of risen-modkit
         run: build-ninja\src\modkit\RelWithDebInfo\modkit_tests.exe
 
-      # first half of the tools zip: risen-pack2mod.exe, risen-modkit.exe, lang/ (the editor's language files); the `tools` job zips it
+      # first half of the tools zip: risen-pack2mod.exe, risen-modkit.exe, lang/ (the editor's language files), examples/ (the example projects) and QUICKSTART.md; the `tools` job zips it
       - name: Stage the tools
         shell: pwsh
         run: |
@@ -144,6 +144,8 @@ jobs:
           $tools = New-Item -ItemType Directory -Force dist\tools
           Copy-Item build-ninja\RelWithDebInfo\risen-pack2mod.exe, build-ninja\src\modkit\RelWithDebInfo\risen-modkit.exe $tools
           Copy-Item build-ninja\src\modkit\RelWithDebInfo\lang -Destination $tools -Recurse
+          Copy-Item examples\modkit -Destination (Join-Path $tools examples) -Recurse
+          Copy-Item docs\editor\QUICKSTART.md $tools
           Get-ChildItem dist\tools | Format-Table Name, Length
       - uses: actions/upload-artifact@v7
         with:
@@ -186,7 +188,7 @@ jobs:
           path: dist/stage
 
   # risen-spass-tools-windows-x64.zip: what the editor and PakView jobs staged, merged into one zip
-  #   risen-pack2mod.exe, risen-modkit.exe, lang/, PakView/PakView.exe (+ its native libraries)
+  #   risen-pack2mod.exe, risen-modkit.exe, lang/, examples/, QUICKSTART.md, PakView/PakView.exe (+ its native libraries)
   tools:
     needs: [gate, modkit, pakview]
     if: needs.gate.outputs.build == 'true'
@@ -201,6 +203,7 @@ jobs:
         run: |
           find tools -maxdepth 2 | sort
           test -f tools/risen-modkit.exe && test -f tools/risen-pack2mod.exe && test -f tools/PakView/PakView.exe
+          test -f tools/QUICKSTART.md && test -f tools/examples/showcase.rmk.json && test -f tools/examples/chronicle.rmk.json && test -f tools/lang/de.toml
           mkdir -p dist
           (cd tools && zip -qr ../dist/risen-spass-tools-windows-x64.zip .)
           unzip -l dist/risen-spass-tools-windows-x64.zip | tail -25
@@ -239,6 +242,6 @@ jobs:
           notes="Automated build of ${GITHUB_SHA} ($(date -u '+%Y-%m-%d %H:%M') UTC).
 
           - **risen-spass.zip**: sentry.dll + mods/modmanager + mods/quickloot (first rename the game's <Risen>\\bin\\sentry.dll to sentry_orig.dll, then copy sentry.dll to <Risen>\\bin and the mods to <Risen>\\bin\\spass\\mods)
-          - **risen-spass-tools-windows-x64.zip**: risen-pack2mod.exe, risen-modkit.exe, PakView/PakView.exe (browse, preview and edit .pak/.pNN archives; Native AOT, no .NET needed)"
+          - **risen-spass-tools-windows-x64.zip**: risen-modkit.exe (the mod editor) with the example projects (examples/) and QUICKSTART.md, risen-pack2mod.exe, PakView/PakView.exe (browse, preview and edit .pak/.pNN archives; Native AOT, no .NET needed)"
           gh release create nightly nightly/risen-spass.zip nightly/risen-spass-tools-windows-x64.zip \
               --target "$GITHUB_SHA" --prerelease --title "Nightly (${GITHUB_SHA::7})" --notes "$notes"
