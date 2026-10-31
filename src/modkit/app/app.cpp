@@ -27,6 +27,7 @@
 #include "core/import.h"
 #include "core/log.h"
 #include "core/paths.h"
+#include "core/package.h"
 #include "core/play.h"
 
 namespace mk {
@@ -388,6 +389,99 @@ std::vector<std::string> App::panel_titles() const {
     return v;
 }
 
+void App::check_installed_conflicts() {
+    package_conflicts_.clear();
+    package_conflicts_note_.clear();
+    std::string mods_dir;
+    if (!settings.game_dir.empty()) mods_dir = play_plan(settings.game_dir).mods_dir;
+    if (mods_dir.empty() || !fs::is_directory(u8(mods_dir))) mods_dir = settings.export_dir;
+    if (mods_dir.empty() || !fs::is_directory(u8(mods_dir))) {
+        package_conflicts_note_ = tr("No mods folder known: set the game folder (Settings) to compare with the installed mods.");
+        return;
+    }
+    size_t compared = 0, skipped = 0;
+    for (const InstalledMod& m : read_installed_mods(mods_dir, project.mod.id)) {
+        if (!m.has_project) {
+            ++skipped;
+            continue;
+        }
+        ++compared;
+        for (const Conflict& c : find_conflicts(project, m.project))
+            package_conflicts_.push_back({trf("{0}: {1} {2}: {3}", {m.id, c.kind, c.name, c.detail}), c.error});
+    }
+    package_conflicts_note_ = trf("Compared with {0} installed mods made with the editor ({1} others cannot be compared) in {2}", {std::to_string(compared), std::to_string(skipped), mods_dir});
+}
+
+void App::draw_package_modal() {
+    if (package_open_) {
+        ImGui::OpenPopup(tr("Package for sharing"));
+        package_open_ = false;
+        package_report_.clear();
+        if (package_path_.empty() || u8str(u8(package_path_).stem()) != project.mod.id + "-" + project.mod.version) {
+            const std::string dir = settings.export_dir.empty() ? std::string() : settings.export_dir;
+            package_path_ = dir.empty() ? project.mod.id + "-" + project.mod.version + ".zip" : u8str(u8(dir) / u8(project.mod.id + "-" + project.mod.version + ".zip"));
+        }
+        check_installed_conflicts();
+    }
+    ImGui::SetNextWindowSize(ImVec2(760, 0), ImGuiCond_Appearing);
+    if (!ImGui::BeginPopupModal(tr("Package for sharing"), nullptr)) return;
+    ImGui::TextWrapped("%s", tr("The mod as one zip file for other players: they unpack it into <Risen>\\bin\\spass\\mods and start the game. The zip holds the mod folder (named after its id), an INSTALL.txt and the editor project, so the mod can be opened again."));
+    ImGui::Text("%s %s %s", project.mod.name.c_str(), project.mod.version.c_str(), project.mod.author.empty() ? "" : (std::string(tr("by")) + " " + project.mod.author).c_str());
+    ImGui::SetNextItemWidth(-90);
+    ImGui::InputText("##zip", &package_path_);
+    ImGui::SameLine();
+    if (ImGui::Button(tr("Browse"))) {
+        const std::string f = dialog_save_file("Zip", "zip", settings.export_dir, project.mod.id + "-" + project.mod.version + ".zip");
+        if (!f.empty()) package_path_ = f;
+    }
+    problems_time_ = -1;
+    refresh_problems();
+    const size_t errors = error_count(problems_);
+    if (errors) ImGui::TextColored(ImVec4(1, 0.45f, 0.4f, 1), tr("%zu errors: see the Problems panel. The package is refused until they are fixed."), errors);
+    else if (!problems_.empty()) ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), tr("%zu warnings (see Problems)"), problems_.size());
+    if (!project.mod.requires_mods.empty()) {
+        std::string req;
+        for (auto& r : project.mod.requires_mods) req += (req.empty() ? "" : ", ") + r;
+        ImGui::TextWrapped(tr("Requires: %s (players need these mods too; INSTALL.txt says so)"), req.c_str());
+    }
+    ImGui::SeparatorText(tr("Conflicts with installed mods"));
+    if (ImGui::SmallButton(tr("Check again"))) check_installed_conflicts();
+    ImGui::SameLine();
+    ImGui::TextDisabled("%s", package_conflicts_note_.c_str());
+    if (package_conflicts_.empty()) ImGui::TextUnformatted(tr("Nothing found that another installed mod also creates or changes."));
+    ImGui::BeginChild("##conflicts", ImVec2(0, package_conflicts_.empty() ? 0 : 110), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY);
+    for (auto& c : package_conflicts_)
+        {
+        ImGui::PushStyleColor(ImGuiCol_Text, c.error ? ImVec4(1, 0.45f, 0.4f, 1) : ImVec4(1, 0.8f, 0.35f, 1));
+        ImGui::TextWrapped("%s", c.text.c_str());
+        ImGui::PopStyleColor();
+    }
+    ImGui::EndChild();
+    ImGui::BeginDisabled(errors > 0 || package_path_.empty());
+    if (ImGui::Button(tr("Create package"), ImVec2(160, 0))) {
+        ExportOptions o;
+        o.project_dir = project_path.empty() ? std::string() : u8str(u8(project_path).parent_path());
+        o.game_data_dir = settings.data_dir;
+        o.game = game.get();
+        const PackageResult r = build_package(project, o, package_path_);
+        package_report_.clear();
+        for (auto& e : r.errors) package_report_.push_back(trf("error: {0}", {e}));
+        for (auto& w : r.warnings) package_report_.push_back(trf("warning: {0}", {w}));
+        if (r.ok) {
+            package_report_.insert(package_report_.begin(), trf("{0} files, {1} bytes: {2}", {std::to_string(r.files), std::to_string(r.bytes), package_path_}));
+            status(trf("Package written: {0}", {package_path_}));
+        } else {
+            status(trf("Package failed: {0}", {r.errors.empty() ? std::string("?") : r.errors.front()}));
+        }
+        for (auto& l : package_report_) log_info("package: " + l);
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button(tr("Close"), ImVec2(120, 0))) ImGui::CloseCurrentPopup();
+    for (auto& l : package_report_) ImGui::TextWrapped("%s", l.c_str());
+    ImGui::EndPopup();
+}
+
 void App::draw_export_modal() {
     if (export_open_) {
         ImGui::OpenPopup(tr("Export mod"));
@@ -630,6 +724,7 @@ void App::draw_menu() {
         if (ImGui::MenuItem(tr("Save as..."), "Ctrl+Shift+S")) save_project(true);
         ImGui::Separator();
         if (ImGui::MenuItem(tr("Export mod..."), "Ctrl+E")) request_export();
+        if (ImGui::MenuItem(tr("Package for sharing..."))) request_package();
         if (ImGui::BeginMenu(tr("Import mod"))) {
             if (ImGui::MenuItem(tr("From its project (modkit/project.json)..."))) {
                 const std::string d = dialog_pick_folder(settings.export_dir);
@@ -901,6 +996,7 @@ void App::draw_frame() {
     draw_status_bar();
     draw_modals();
     draw_export_modal();
+    draw_package_modal();
 }
 
 int App::run() {

@@ -546,6 +546,19 @@ Command line: `risen-modkit project.rmk.json --game-dir <Risen folder> --play`.
 Start the game: the layer loads the mod like any other (it is listed in the Mods tab of the ESC menu). With `[mods] watch = true` in the layer's
 `config.toml`, a re-export while the game runs reloads the mod (texts and numbers of items; new templates need a restart).
 
+## Package for sharing
+
+**File > Package for sharing...** makes one zip file of the mod for other players (`<id>-<version>.zip`): the exported mod below a folder named after its id, an `INSTALL.txt`
+(version, author, the mods it `requires`, how to install and remove it) and the editor project (`modkit\project.json`, so the mod can be opened again with **File > Import mod**).
+Players unpack it into `<Risen>\bin\spass\mods` and start the game; nothing else is needed. The package is refused while the Problems panel has errors or when the mod id is no folder name
+(letters, digits, `_`, `-`, starting with a letter); a missing author, description or version number is a warning. The zip is the same for the same project (fixed time stamps).
+
+The dialog also compares the mod with the mods that are already installed (the game folder of Settings, else the export folder): every installed mod that was made with the editor has its project
+inside, so the editor can list what both mods **create** (an error: only one of them can work: two items, NPCs, quests of the same name) or **change** (a warning: the one that loads later wins where they set the same value, a
+mod that creates a thing must load first: `load_after`). Mods written by hand are listed as not comparable.
+
+Command line: `risen-modkit project.rmk.json --package FILE.zip [--data DIR]` and `risen-modkit project.rmk.json --check-mods <mods folder>` (exit code 1 when two mods create the same thing).
+
 ## Import
 
 **File > Import mod** opens an exported mod as a new project (save it to keep it):
@@ -598,6 +611,7 @@ restores their saved state only into objects that exist).
 risen-modkit [project.rmk.json] [--data DIR]                       open the editor
 --lang CODE                                                        the UI language for this run (en, de, ...), see LOCALIZATION.md
 risen-modkit project.rmk.json --export DIR [--data DIR]            validate and export without a window (exit code 0 = exported)
+risen-modkit project.rmk.json --package FILE.zip [--data DIR]      the mod as one zip for other players; --check-mods MODSDIR lists the conflicts with installed mods
 risen-modkit ... --screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch] [--click x,y ...]
                     [--drag x1,y1,x2,y2 ...] [--collapse-side]     render (after the given clicks and drags, in order), save a PNG, exit (tests);
                                                                    --collapse-side folds the left column first (scripts/modkit-doc-shots.ps1)

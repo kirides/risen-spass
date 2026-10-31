@@ -141,6 +141,7 @@ public:
     // Play: export into <game folder>'s bin\spass\mods, then start the game windowed or let a running one hot-reload the mod
     void play();
     void request_export() { export_open_ = true; }
+    void request_package() { package_open_ = true; }
     void open_palette();                  // Ctrl+P
     void open_wizard(WizardKind kind);    // the Wizards menu
     std::vector<std::string> panel_titles() const;  // every panel, for the command palette
@@ -161,6 +162,8 @@ private:
     void draw_status_bar();
     void draw_modals();
     void draw_export_modal();
+    void draw_package_modal();
+    void check_installed_conflicts();
     void refresh_problems();
     void poll_game_log();
     bool any_busy() const;
@@ -202,6 +205,15 @@ private:
     std::vector<Problem> game_problems_;
     double game_log_time_ = -1;
     bool game_problems_dirty_ = false;
+    bool package_open_ = false;
+    std::string package_path_;
+    std::vector<std::string> package_report_;
+    struct ConflictLine {
+        std::string text;
+        bool error = false;
+    };
+    std::vector<ConflictLine> package_conflicts_;
+    std::string package_conflicts_note_;
     bool export_open_ = false;
     std::string export_dir_;
     std::vector<std::string> export_report_;

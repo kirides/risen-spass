@@ -57,6 +57,7 @@ std::vector<CommandPalette::Entry> CommandPalette::collect(App& app) {
     // commands
     add(N_("Command"), tr("Play"), tr("export and start the game (F5)"), [](App& a) { a.play(); });
     add(N_("Command"), tr("Export mod..."), tr("write the mod into a folder (Ctrl+E)"), [](App& a) { a.request_export(); });
+    add(N_("Command"), tr("Package for sharing..."), tr("the mod as one zip file for other players, with a check against the installed mods"), [](App& a) { a.request_package(); });
     add(N_("Command"), tr("Save project"), "(Ctrl+S)", [](App& a) { a.save_project(false); });
     add(N_("Command"), tr("New project"), "(Ctrl+N)", [](App& a) { a.new_project(); });
     add(N_("Command"), tr("Open project..."), "(Ctrl+O)", [](App& a) { a.request_open(); });

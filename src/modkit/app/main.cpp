@@ -1,6 +1,7 @@
 // risen-modkit: the mod editor of the Risen modding layer (docs/editor/REQUIREMENTS.md).
 //   risen-modkit [project.rmk.json] [--data DIR] [--game-dir DIR [--play]] [--screenshot FILE [--frames N] [--panel TITLE] [--select NAME] [--size WxH]]
 //   risen-modkit project.rmk.json --export DIR [--data DIR]     validate and export without a window (exit code 0 = exported)
+//   risen-modkit project.rmk.json --package FILE.zip / --check-mods MODSDIR   the mod as one zip for other players / the conflicts with installed mods (core/package.h)
 //   risen-modkit project.rmk.json --voice-export DIR / --voice-import DIR   the voice recording workflow without a window (core/voice.h)
 #include <algorithm>
 #include <cstdio>
@@ -14,6 +15,7 @@
 #include "core/import.h"
 #include "core/log.h"
 #include "core/model_import.h"
+#include "core/package.h"
 #include "core/paths.h"
 #include "core/validate.h"
 #include "core/voice.h"
@@ -23,6 +25,8 @@ namespace {
 constexpr const char* kUsage =
     "risen-modkit [project.rmk.json] [--data DIR] [--screenshot FILE [--frames N] [--panel TITLE] [--lang CODE] [--select NAME] [--size WxH] [--camera x,y,z,yaw,pitch] [--collapse-side] [--click x,y] [--drag x1,y1,x2,y2]]\n"
     "risen-modkit project.rmk.json --export DIR [--data DIR]\n"
+    "risen-modkit project.rmk.json --package FILE.zip [--data DIR]\n"
+    "risen-modkit project.rmk.json --check-mods MODSDIR\n"
     "risen-modkit --import MODDIR --save project.rmk.json [--from-data]\n"
     "risen-modkit project.rmk.json --voice-export DIR [--language L]... [--missing] [--all-text] [--with-game] [--no-scripts] [--data DIR]\n"
     "risen-modkit project.rmk.json --voice-import DIR [--csv FILE] [--language L] [--normalize] [--convert-all] [--stereo] [--ffmpeg PATH] [--dry-run]\n"
@@ -70,6 +74,79 @@ int export_headless(const mk::AppOptions& opts, const std::string& out_dir) {
     for (auto& w : r.removed) log_info("removed: " + w);
     log_info(std::to_string(r.written.size()) + " written, " + std::to_string(r.unchanged.size()) + " unchanged, " + std::to_string(r.removed.size()) + " removed");
     return r.ok ? 0 : 1;
+}
+
+// --package FILE.zip: validate, export and zip the mod below <id>/ (exit code 0 = written)
+int package_headless(const mk::AppOptions& opts, const std::string& zip_path) {
+    using namespace mk;
+    if (opts.project.empty()) {
+        std::fprintf(stderr, "--package needs a project file\n");
+        return 2;
+    }
+    Project p;
+    try {
+        std::vector<std::string> warnings;
+        p = load_project_file(opts.project, &warnings);
+        for (auto& w : warnings) log_warn(w);
+    } catch (const std::exception& e) {
+        log_error(e.what());
+        return 1;
+    }
+    Settings settings = Settings::load();
+    const std::string data_dir = !opts.data_dir.empty() ? opts.data_dir : settings.data_dir;
+    std::shared_ptr<GameData> game;
+    if (!data_dir.empty()) {
+        try {
+            game = GameData::load(data_dir);
+        } catch (const std::exception& e) {
+            log_warn(std::string("game data not loaded, validating the project alone: ") + e.what());
+        }
+    }
+    const auto problems = validate(p, game.get());
+    for (auto& pr : problems) (pr.severity == Severity::Error ? log_error : log_warn)(pr.area + " " + pr.subject + ": " + pr.message);
+    if (error_count(problems)) {
+        log_error("package refused: " + std::to_string(error_count(problems)) + " errors");
+        return 1;
+    }
+    ExportOptions o;
+    o.project_dir = u8str(u8(opts.project).parent_path());
+    o.game_data_dir = data_dir;
+    o.game = game.get();
+    const PackageResult r = build_package(p, o, zip_path);
+    for (auto& w : r.warnings) log_warn(w);
+    for (auto& e : r.errors) log_error(e);
+    if (r.ok) log_info(std::to_string(r.files) + " files, " + std::to_string(r.bytes) + " bytes: " + zip_path);
+    return r.ok ? 0 : 1;
+}
+
+// --check-mods MODSDIR: what this project creates or changes that an installed mod does too (exit code 1 when two mods create the same thing)
+int check_mods_headless(const mk::AppOptions& opts, const std::string& mods_dir) {
+    using namespace mk;
+    if (opts.project.empty()) {
+        std::fprintf(stderr, "--check-mods needs a project file\n");
+        return 2;
+    }
+    Project p;
+    try {
+        p = load_project_file(opts.project);
+    } catch (const std::exception& e) {
+        log_error(e.what());
+        return 1;
+    }
+    bool error = false;
+    for (const InstalledMod& m : read_installed_mods(mods_dir, p.mod.id)) {
+        if (!m.has_project) {
+            log_info(m.id + ": not made with the editor" + (m.problem.empty() ? std::string() : " (" + m.problem + ")") + ", not compared");
+            continue;
+        }
+        const auto cs = find_conflicts(p, m.project);
+        log_info(m.id + ": " + (cs.empty() ? std::string("no conflicts") : std::to_string(cs.size()) + " conflicts"));
+        for (auto& c : cs) {
+            (c.error ? log_error : log_warn)("  " + c.kind + " " + c.name + ": " + c.detail);
+            error = error || c.error;
+        }
+    }
+    return error ? 1 : 0;
 }
 
 struct VoiceCli {
@@ -241,7 +318,7 @@ int import_headless(const std::string& dir, const std::string& save, bool prefer
 
 int main(int argc, char** argv) {
     mk::AppOptions opts;
-    std::string export_dir, import_dir, save_path, convert_in, convert_out;
+    std::string export_dir, import_dir, save_path, convert_in, convert_out, package_path, check_mods_dir;
     mk::ModelOptions model_opt;
     bool from_data = false;
     VoiceCli voice;
@@ -283,6 +360,8 @@ int main(int argc, char** argv) {
             opts.clicks.push_back(in);
         }
         else if (a == "--export") export_dir = next("a directory");
+        else if (a == "--package") package_path = next("a .zip file name");
+        else if (a == "--check-mods") check_mods_dir = next("the mods folder");
         else if (a == "--convert-model") convert_in = next("a .obj, .gltf or .glb file");
         else if (a == "--out") convert_out = next("a file name");
         else if (a == "--material") model_opt.material = next("a game material (X._xmat)");
@@ -333,6 +412,8 @@ int main(int argc, char** argv) {
     if (!voice.export_dir.empty()) return voice_export_headless(opts, voice);
     if (!voice.import_dir.empty()) return voice_import_headless(opts, voice);
     if (!export_dir.empty()) return export_headless(opts, export_dir);
+    if (!package_path.empty()) return package_headless(opts, package_path);
+    if (!check_mods_dir.empty()) return check_mods_headless(opts, check_mods_dir);
     if (!import_dir.empty()) {
         if (save_path.empty()) {
             std::fprintf(stderr, "--import needs --save FILE\n");
