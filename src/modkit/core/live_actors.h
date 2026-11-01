@@ -32,6 +32,7 @@ public:
     bool has_data() const { return last_sample_ > 0; }
     const LiveActor* player() const;
     const LiveActor* find(const std::string& id) const;
+    const LiveActor* find_name(const std::string& name) const;  // by the entity's unique name (a placed NPC of the project); nullptr when none is there
 
     static constexpr float kSnapDistance = 600.0f;
 

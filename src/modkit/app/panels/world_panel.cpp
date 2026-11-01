@@ -1769,6 +1769,28 @@ private:
         } else {
             ImGui::TextDisabled(tr("%zu in the game"), live_mirror_.actors().size());
         }
+        if (!live_note_.empty()) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1, 0.6f, 0.4f, 1), "%s", live_note_.c_str());
+        }
+    }
+
+    // E35b: a placed NPC moved or turned with the gizmo is put at the same place in the running game, if it is there (found by its name): the mirror then shows
+    // the game's own answer. Several times a second while dragging (a request with the same tag replaces the one still waiting), once more when the drag ends.
+    void push_live_move(App& app, bool force) {
+        if (!live_here() || proj_sel_.empty()) return;
+        const double now = ImGui::GetTime();
+        if (!force && now - live_move_t_ < 0.1) return;
+        for (const PlacedNpc& n : app.project.npcs) {
+            if (n.uid != proj_sel_ || n.offset) continue;
+            const LiveActor* a = live_mirror_.find_name(n.name);
+            if (!a || a->player) return;
+            live_move_t_ = now;
+            const Vec3* rot = project_rotation(app, n.uid);
+            app.link().request("live:move:" + a->id, "edit.move",
+                               {{"id", a->id}, {"x", n.position[0]}, {"y", n.position[1]}, {"z", n.position[2]}, {"yaw", rot ? (*rot)[0] : a->tyaw}}, 1500);
+            return;
+        }
     }
 
     // once per frame: ask the game, take the answers, glide
@@ -1786,8 +1808,10 @@ private:
             return;
         }
         const double now = ImGui::GetTime();
-        for (LinkWorker::Result& r : link.take_live())
+        for (LinkWorker::Result& r : link.take_live()) {
             if (r.tag == "live:actors" && r.reply.ok) live_mirror_.apply(r.reply.result, now);
+            else if (r.tag.rfind("live:move", 0) == 0) live_note_ = r.reply.ok ? std::string() : r.reply.error;
+        }
         if (now - live_ask_ >= 0.2) {
             live_ask_ = now;
             link.request("live:actors", "inspect.actors", {{"radius", 8000}, {"limit", 150}}, 1500);
@@ -1882,7 +1906,9 @@ private:
                 const glm::vec3 g = gfx::from_gl(glm::vec3(gizmo_[3]));
                 *pos = {std::round(g.x * 10) / 10, std::round(g.y * 10) / 10, std::round(g.z * 10) / 10};
             }
+            push_live_move(app, false);
         } else if (gizmo_active_) {
+            push_live_move(app, true);
             gizmo_active_ = false;  // one drag = one undo step: the model was written while dragging, the step is taken now
             app.touch();
         }
@@ -1930,7 +1956,8 @@ private:
     void draw_project_meshes(App& app, const glm::mat4& vp, const std::string& skip = {}) {
         mesh_r_.begin(vp, glm::vec3(0.35f, -1.0f, 0.25f));
         for (auto& n : app.project.npcs) {
-            if (n.uid == skip || n.uid == anim_uid_ || n.offset || !here(app, n.world)) continue;  // the skipped one is the object being aligned: it must not count as the surface under itself
+            if (n.uid == skip || n.uid == anim_uid_ || n.offset || !here(app, n.world)) continue;
+            if (live_here() && live_mirror_.find_name(n.name)) continue;  // the running game shows him itself (draw_live)  // the skipped one is the object being aligned: it must not count as the surface under itself
             if (const LayerDef* L = layer_of_npc(app.project, n.name); L && mod_layer_hidden_.count(L->name)) continue;
             const std::string mesh = npc_mesh(app, n.template_name);
             if (mesh.empty()) continue;
@@ -2498,7 +2525,8 @@ private:
     // ---- Live (stage E35)
     bool live_ = false, live_follow_ = false, live_followed_ = false;
     LiveMirror live_mirror_;
-    double live_ask_ = 0;
+    double live_ask_ = 0, live_move_t_ = 0;
+    std::string live_note_;  // the game's refusal of the last move, shown next to the controls
     unsigned long long live_connects_ = 0;
     glm::vec3 live_last_player_{0.0f};
     std::map<std::string, std::string> live_mesh_;  // template -> its actor mesh ("" = none), a cache

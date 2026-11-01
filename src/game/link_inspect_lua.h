@@ -1,8 +1,9 @@
 #pragma once
 
 // The read-only inspection commands of the live link ("inspect.state", "inspect.nearby", "inspect.entity", "inspect.props", "inspect.inventory",
-// "inspect.quests", "inspect.gamevars"): the editor's Live panel asks for them. Run with the shared `risen` table as the chunk argument; every
-// function takes the request's `args` table and returns a JSON-able result or `nil, reason`. Nothing here changes the game.
+// "inspect.quests", "inspect.gamevars", "inspect.actors"): the editor's Live panel asks for them. Run with the shared `risen` table as the chunk argument; every
+// function takes the request's `args` table and returns a JSON-able result or `nil, reason`. The `inspect.*` ones change nothing in the game; the few
+// write commands of the editor live in `M.edit` ("edit.move").
 
 namespace spass::game {
 
@@ -123,6 +124,31 @@ function M.actors(args)
         end
     end
     return { world = prim(try(risen.world.name)), time = prim(try(risen.world.time)), actors = out }
+end
+
+-- ---- the editor's write commands ("edit.*", stage E35b): kept apart from the read-only ones above, narrow on purpose --------------------------------------
+M.edit = {}
+
+local function finite(v, limit)
+    return type(v) == "number" and v == v and v > -limit and v < limit
+end
+
+-- edit.move { id, x, y, z, yaw? }: puts an NPC or monster of the running game at a new place (a teleport like `Entity:set_pose`; what the editor's gizmo does to a
+-- placed NPC is shown in the game at once). Never the player; the game keeps no record of it (a load brings the saved place back).
+function M.edit.move(args)
+    local e = type(args.id) == "string" and try(risen.entity.by_id, args.id) or nil
+    if not e then return nil, "no such entity" end
+    if try(e.is_player, e) == true then return nil, "the player cannot be moved from the editor" end
+    if try(e.is_npc, e) ~= true then return nil, "only NPCs and monsters can be moved" end
+    if not (finite(args.x, 1e6) and finite(args.y, 1e6) and finite(args.z, 1e6)) then return nil, "x, y and z must be numbers" end
+    local spec = { x = args.x, y = args.y, z = args.z }
+    if args.yaw ~= nil then
+        if not finite(args.yaw, 1e6) then return nil, "yaw must be a number" end
+        spec.yaw = args.yaw
+    end
+    local ok, reason = e:set_pose(spec)
+    if not ok then return nil, reason or "the engine refused the move" end
+    return { id = args.id }
 end
 
 -- one entity: the summary and which property sets it has

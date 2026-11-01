@@ -37,6 +37,7 @@ TEST(live_mirror_glides_between_samples_and_snaps_on_a_jump) {
     CHECK(m.apply(live_sample(0, 0), 1.0));
     CHECK(m.has_data() && m.world() == "World" && m.actors().size() == 2);
     CHECK(m.player() && m.player()->id == "P" && m.find("W1") && !m.find("nope"));
+    CHECK(m.find_name("Wolf_1") && m.find_name("Wolf_1")->id == "W1" && !m.find_name("Wolf_2") && !m.find_name(""));
     // a new place a little away: the shown position starts at the old one and approaches
     CHECK(m.apply(live_sample(100, 0), 1.2));
     const mk::LiveActor* p = m.player();

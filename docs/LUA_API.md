@@ -1279,6 +1279,7 @@ The layer writes `<Risen>\bin\spass\link.json` (`{"pipe": "\\\\.\\pipe\\risen-sp
   `inspect.state` (world, chapter, time, the player), `inspect.nearby {radius, limit}` (NPCs around the player, nearest first), `inspect.actors {radius, limit}` (the player and the NPCs around with id, template, position and yaw only: the editor's World view polls it several times a second to mirror the game), `inspect.entity {id | name}` (summary, which property sets it has),
   `inspect.props {id | name, set}` (every property of a set with its current value as text), `inspect.inventory {id | name}`, `inspect.quests {names}`, `inspect.gamevars {names}`.
   Engine texts (Windows-1252) are sent as UTF-8.
+* **Write commands** (built in, `edit.*`, used by the editor's World view; deliberately few): `edit.move {id, x, y, z, yaw?}` puts an NPC or monster of the running game at a new place (a teleport like `Entity:set_pose`; the player is refused, and so is anything that is not an NPC). The game does not keep it: a load brings the saved place back.
 * Events for mods: `link.connected`, `link.disconnected`. `risen.link.available()` / `risen.link.connected()`.
 * Test client: `python tools/linktest_client.py <bin\spass> <result.json>`; scenario `link` (`test-run.ps1 -LinkClient`), unit test `link_pipe_round_trip_and_reconnect`.
 

@@ -92,4 +92,11 @@ const LiveActor* LiveMirror::find(const std::string& id) const {
     return nullptr;
 }
 
+const LiveActor* LiveMirror::find_name(const std::string& name) const {
+    if (name.empty()) return nullptr;
+    for (const LiveActor& a : actors_)
+        if (a.name == name) return &a;
+    return nullptr;
+}
+
 }  // namespace mk

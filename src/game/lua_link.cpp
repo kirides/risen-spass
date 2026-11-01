@@ -262,7 +262,7 @@ json handle(const json& msg) {
         return j;
     }
     if (cmd == "commands") {
-        json list = json::array({"hello", "ping", "mods", "reload", "subscribe", "commands", "inspect.state", "inspect.nearby", "inspect.actors", "inspect.entity", "inspect.props", "inspect.inventory", "inspect.quests", "inspect.gamevars"});
+        json list = json::array({"hello", "ping", "mods", "reload", "subscribe", "commands", "inspect.state", "inspect.nearby", "inspect.actors", "inspect.entity", "inspect.props", "inspect.inventory", "inspect.quests", "inspect.gamevars", "edit.move"});
         std::lock_guard lock(g_mutex);
         for (const auto& [name, mod] : g_handlers) list.push_back(name);
         json j = reply(id, true);
@@ -277,6 +277,19 @@ json handle(const json& msg) {
         sol::table tbl = inspectTable(L);
         sol::object fnObj = tbl[cmd.substr(8)];
         if (fnObj.get_type() != sol::type::function) {
+            return fail(id, "unknown command '" + cmd.substr(0, 60) + "'");
+        }
+        return runLua(id, L, fnObj, args, cmd, "link");
+    }
+
+    // the editor's write commands (link_inspect_lua.h `M.edit`)
+    if (cmd.rfind("edit.", 0) == 0) {
+        auto lock = rt.lock();
+        sol::state_view L = rt.lua();
+        sol::table tbl = inspectTable(L);
+        sol::object editObj = tbl["edit"];
+        sol::object fnObj = editObj.is<sol::table>() ? editObj.as<sol::table>()[cmd.substr(5)] : sol::object();
+        if (!fnObj.valid() || fnObj.get_type() != sol::type::function) {
             return fail(id, "unknown command '" + cmd.substr(0, 60) + "'");
         }
         return runLua(id, L, fnObj, args, cmd, "link");
