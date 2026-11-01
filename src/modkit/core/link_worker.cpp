@@ -61,6 +61,13 @@ std::vector<LinkWorker::Result> LinkWorker::take_live() {
     return out;
 }
 
+std::vector<LinkWorker::Result> LinkWorker::take_app() {
+    std::lock_guard<std::mutex> lock(m_);
+    std::vector<Result> out;
+    out.swap(app_results_);
+    return out;
+}
+
 std::vector<LinkWorker::LogLine> LinkWorker::take_log() {
     std::lock_guard<std::mutex> lock(m_);
     std::vector<LogLine> out;
@@ -179,7 +186,10 @@ void LinkWorker::loop() {
             r.cmd = p.cmd;
             r.reply = client.request(p.cmd, p.args, p.timeout_ms);
             std::lock_guard<std::mutex> lock(m_);
-            if (r.tag.rfind("live:", 0) == 0) {  // the World view's mirror: its own queue, the Live panel does not take these
+            if (r.tag.rfind("app:", 0) == 0) {
+                app_results_.push_back(std::move(r));
+                if (app_results_.size() > 50) app_results_.erase(app_results_.begin(), app_results_.begin() + 25);
+            } else if (r.tag.rfind("live:", 0) == 0) {  // the World view's mirror: its own queue, the Live panel does not take these
                 live_results_.push_back(std::move(r));
                 if (live_results_.size() > 50) live_results_.erase(live_results_.begin(), live_results_.begin() + 25);
             } else {

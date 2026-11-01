@@ -17,6 +17,7 @@
 #include "core/gamelog.h"
 #include "core/link_worker.h"
 #include "core/history.h"
+#include "core/live_edit.h"
 #include "core/project.h"
 #include "core/settings.h"
 #include "core/validate.h"
@@ -61,6 +62,7 @@ struct AppOptions {
 };
 
 class App;
+struct PlayPlan;  // core/play.h
 
 // an action the Browser offers for a game template ("New item based on this", "Edit this item"); registered by the editor panels
 struct TemplateAction {
@@ -146,6 +148,9 @@ public:
     const std::vector<Problem>& game_problems() const { return game_problems_; }
     // Play: export into <game folder>'s bin\spass\mods, then start the game windowed or let a running one hot-reload the mod
     void play();
+    // Live edit (stage E35c): while the game runs and the live link is up, every change of the project is exported and the mod reloaded in the running game
+    // (a short pause after the last edit); the numbers of items, NPCs, spells... then show in the world that is already running. Never starts a game.
+    bool live_edit = false;
     void request_export() { export_open_ = true; }
     void request_package() { package_open_ = true; }
     void open_palette();                  // Ctrl+P
@@ -172,6 +177,8 @@ private:
     void check_installed_conflicts();
     void refresh_problems();
     void poll_game_log();
+    bool export_to_game(const PlayPlan& plan);  // the project into <game>\bin\spass\mods\<id>; false (and a status line) when it fails
+    void live_edit_tick();
     bool any_busy() const;
     void setup_default_layout(unsigned int dockspace_id);
     void apply_ui_scale();
@@ -204,6 +211,8 @@ private:
     const gfx::ResourceCache* assets_res_ = nullptr;
     const GameData* resources_game_ = nullptr;
     double problems_time_ = -1;
+    LiveEditGate live_gate_;      // core/live_edit.h
+    bool live_busy_ = false;      // a reload request is on its way
     std::unique_ptr<CommandPalette> palette_;
     std::unique_ptr<WizardUi> wizards_;
     LogTail game_log_;

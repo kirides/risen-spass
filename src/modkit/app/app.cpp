@@ -338,6 +338,53 @@ void App::poll_game_log() {
     }
 }
 
+bool App::export_to_game(const PlayPlan& plan) {
+    ExportOptions o;
+    o.project_dir = project_path.empty() ? std::string() : u8str(u8(project_path).parent_path());
+    o.game_data_dir = settings.data_dir;
+    o.game = game.get();
+    const ExportResult r = export_mod(project, u8str(u8(plan.mods_dir) / u8(project.mod.id)), o);
+    for (auto& e : r.errors) log_error("play: export: " + e);
+    if (!r.ok) {
+        status(trf("Export failed: {0}", {r.errors.front()}));
+        return false;
+    }
+    log_info("play: " + std::to_string(r.written.size()) + " files written");
+    return true;
+}
+
+// Live edit: a short pause after the last change of the project it is exported and the running game reloads the mod over the live link (the layer's
+// worker connection, which the game allows only once: Play's own client would be turned away). Never starts a game, never when the project has errors.
+void App::live_edit_tick() {
+    for (LinkWorker::Result& r : link_.take_app()) {
+        if (r.tag != "app:reload") continue;
+        live_busy_ = false;
+        if (r.reply.ok) {
+            status(trf("Live: {0} reloaded in the running game", {project.mod.id}));
+        } else {
+            const std::string why = r.reply.error.empty() ? std::string(tr("The game did not answer over the live link.")) : r.reply.error;
+            status(trf("Live edit: {0}", {why}));
+            log_error("live edit: " + why);
+        }
+    }
+    if (live_edit) link_.set_game_dir(settings.game_dir);  // the worker looks for the game once it has a folder
+    if (!live_gate_.step(live_edit, link_.status().connected, live_busy_, history.revision(), glfwGetTime())) return;
+    const PlayPlan plan = play_plan(settings.game_dir);
+    if (!plan.problem.empty()) {
+        status(plan.problem);
+        return;
+    }
+    problems_time_ = -1;
+    refresh_problems();
+    if (const size_t errors = error_count(problems_)) {
+        status(trf("Live edit paused: {0} errors in the project (Problems panel)", {std::to_string(errors)}));
+        return;
+    }
+    if (!export_to_game(plan)) return;
+    live_busy_ = true;
+    link_.request("app:reload", "reload", {{"mod", project.mod.id}}, 15000);
+}
+
 void App::play() {
     const PlayPlan plan = play_plan(settings.game_dir);
     if (!plan.problem.empty()) {
@@ -352,23 +399,14 @@ void App::play() {
         focus_panel(kPanelProblems);
         return;
     }
-    ExportOptions o;
-    o.project_dir = project_path.empty() ? std::string() : u8str(u8(project_path).parent_path());
-    o.game_data_dir = settings.data_dir;
-    o.game = game.get();
-    const ExportResult r = export_mod(project, u8str(u8(plan.mods_dir) / u8(project.mod.id)), o);
-    for (auto& e : r.errors) log_error("play: export: " + e);
-    if (!r.ok) {
-        status(trf("Export failed: {0}", {r.errors.front()}));
-        return;
-    }
+    if (!export_to_game(plan)) return;
     PlayOptions po;
     po.game_dir = settings.game_dir;
     po.start = static_cast<PlayStart>(std::clamp(settings.play_start, 0, 2));
     po.force_windowed = settings.play_windowed;
     po.mod_id = project.mod.id;
     const PlayResult pr = play_game(po);
-    log_info("play: " + std::to_string(r.written.size()) + " files written; " + pr.message);
+    log_info("play: " + pr.message);
     status(pr.ok ? pr.message : trf("Play: {0}", {pr.message}));
     // a new run starts a new log: what the last one said is stale
     if (pr.ok && !pr.reloaded) {
@@ -767,6 +805,9 @@ void App::draw_menu() {
     }
     if (ImGui::BeginMenu(tr("Game"))) {
         if (ImGui::MenuItem(tr("Play: export and start / reload"), "F5")) play();
+        ImGui::MenuItem(tr("Live edit: send changes to the running game"), nullptr, &live_edit);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", tr("While a game started by Play runs, every change you make is exported and the mod reloaded in it after a short pause, so the new numbers show in the running world. Never starts a game; paused while the project has errors."));
         if (ImGui::BeginMenu(tr("Start with"))) {
             if (ImGui::MenuItem(tr("Main menu"), nullptr, settings.play_start == 0)) { settings.play_start = 0; save_settings(); }
             if (ImGui::MenuItem(tr("A new game"), nullptr, settings.play_start == 1)) { settings.play_start = 1; save_settings(); }
@@ -955,6 +996,7 @@ void App::draw_frame() {
     if (!wizards_) wizards_ = std::make_unique<WizardUi>();
     refresh_problems();
     poll_game_log();
+    live_edit_tick();
     ui::set_icon_source(resources(), game.get(), &project);
     // textures the worker finished go to the GPU here, every frame: icons are drawn by every panel, not only by those with a 3D view
     if (gfx::ResourceCache* res = resources()) res->update(2.0);

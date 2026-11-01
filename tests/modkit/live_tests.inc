@@ -1,5 +1,6 @@
 // Stage E35: the live mirror (core/live_actors.*)
 #include "core/live_actors.h"
+#include "core/live_edit.h"
 
 namespace {
 
@@ -63,4 +64,31 @@ TEST(live_mirror_glides_between_samples_and_snaps_on_a_jump) {
     CHECK(m.actors().size() == 1 && !m.find("W1"));
     m.clear();
     CHECK(m.actors().empty() && !m.has_data() && m.world().empty());
+}
+
+TEST(live_edit_gate_waits_for_quiet_and_for_a_game) {
+    mk::LiveEditGate g;
+    // nothing connected: edits are not sent, and not remembered either
+    CHECK(!g.step(true, false, false, 1, 10.0));
+    CHECK(!g.step(true, false, false, 2, 20.0) && !g.pending());
+    // a game is there, nothing changed
+    CHECK(!g.step(true, true, false, 2, 21.0) && !g.pending());
+    // a change: sent after the pause, once
+    CHECK(!g.step(true, true, false, 3, 22.0) && g.pending());
+    CHECK(!g.step(true, true, false, 3, 22.5));
+    CHECK(g.step(true, true, false, 3, 22.9));
+    CHECK(!g.step(true, true, false, 3, 23.5) && !g.pending());
+    // a burst of changes: one send, after the last one
+    CHECK(!g.step(true, true, false, 4, 30.0));
+    CHECK(!g.step(true, true, false, 5, 30.5));
+    CHECK(!g.step(true, true, false, 6, 31.0));
+    CHECK(!g.step(true, true, false, 6, 31.5));
+    CHECK(g.step(true, true, false, 6, 31.9));
+    // a reload still on its way holds the next one back until it is done
+    CHECK(!g.step(true, true, false, 7, 40.0));
+    CHECK(!g.step(true, true, true, 7, 41.0) && g.pending());
+    CHECK(g.step(true, true, false, 7, 41.1));
+    // switched off: forgotten
+    CHECK(!g.step(true, true, false, 8, 50.0) && g.pending());
+    CHECK(!g.step(false, true, false, 8, 51.0) && !g.pending());
 }

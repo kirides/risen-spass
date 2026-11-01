@@ -49,6 +49,8 @@ public:
     std::vector<Result> take_results();
     // Results of requests whose tag starts with "live:" (the World view's mirror of the running game): kept apart so the Live panel's take_results() never swallows them.
     std::vector<Result> take_live();
+    // Results of requests whose tag starts with "app:" (the application's own, e.g. the live edit's reload).
+    std::vector<Result> take_app();
 
     // The game's log lines (while a level is subscribed) and the other pushed events.
     struct LogLine {
@@ -77,7 +79,7 @@ private:
     bool dir_changed_ = false;
     Status status_;
     std::deque<Pending> queue_;
-    std::vector<Result> results_, live_results_;
+    std::vector<Result> results_, live_results_, app_results_;
     std::vector<LogLine> log_;
     std::vector<nlohmann::json> events_;
     std::string log_level_ = "off";
