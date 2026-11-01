@@ -15,6 +15,7 @@ struct LiveActor {
     float x = 0, y = 0, z = 0, yaw = 0;      // shown (game units; yaw in degrees as `Entity:pose`)
     float tx = 0, ty = 0, tz = 0, tyaw = 0;  // the last sample
     float speed = 0;                         // horizontal units per second between the last two samples
+    float speed_avg = 0;                     // the same, smoothed over a few samples (what picks the motion to play)
 };
 
 class LiveMirror {

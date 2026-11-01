@@ -568,6 +568,19 @@ says so (Play starts it that way).
 
 Everything is read-only except *Reload*. The panel asks the game from a background thread, so a busy or paused game never freezes the editor.
 
+### Live in the World view
+
+In the **World** panel the checkbox **Live** shows the running game inside the 3D view (the game must be connected as above): the player and the NPCs around
+them are drawn with their own meshes at the place and heading the game reports, five times a second and glided in between, with their names over them.
+
+* **follow the player**: the camera moves with the player; you can still turn it and fly it.
+* **animate**: the nearest 16 actors play a standing, walking or running motion of their own family. The game does not report which animation it plays, so the
+  editor picks the cycle from how fast the actor moves between two samples (walk 150, run 400, sprint 625 units a second for humans) and plays it at the rate
+  that fits the speed. What the game plays for other reasons (sitting, sleeping, fighting, talking) is not shown: those actors stand or walk in the picture.
+* **Move**: select a placed NPC of the project and drag its gizmo: if it is in the running game it is moved and turned there at once, and the picture shows the
+  game's own answer. Only NPCs and monsters, never the player; a load brings the saved place back.
+* **Game > Live edit** sends every change of the project to the game (see Play above).
+
 ## Export
 
 **File > Export mod...** writes the mod into a folder, normally `<Risen>\bin\spass\mods\<mod id>`. The export

@@ -51,6 +51,7 @@ bool LiveMirror::apply(const nlohmann::json& result, double now) {
                 n.z = old->z;
                 n.yaw = old->yaw;
                 if (dt > 0.001) n.speed = static_cast<float>(std::hypot(n.tx - old->tx, n.tz - old->tz) / dt);
+                n.speed_avg = old->speed_avg * 0.5f + n.speed * 0.5f;
             }
         }
     }

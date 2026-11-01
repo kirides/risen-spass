@@ -33,6 +33,7 @@
 #include "core/layers.h"
 #include "core/link_worker.h"
 #include "core/live_actors.h"
+#include "core/live_motion.h"
 #include "core/navzones.h"
 #include "core/routine.h"
 #include "core/skin.h"
@@ -1498,8 +1499,13 @@ private:
 
     // the motions that fit an actor: the family's folder of the animations archive (Monster/Animations/<Wolf>, Humans/Animations), else all of them
     void build_motion_list(App& app, const std::string& mesh) {
-        anim_list_.clear();
         anim_list_for_ = mesh;
+        anim_list_ = motion_assets_for(app, mesh);
+    }
+
+    // the motion files that fit an actor: its family's folder (humans share the Hero skeleton), else every skeletal motion
+    static std::vector<const AssetEntry*> motion_assets_for(App& app, const std::string& mesh) {
+        std::vector<const AssetEntry*> list;
         const std::string first = is_composed(mesh) ? composed_parts(mesh).front() : mesh;
         std::vector<std::string> tok;
         {
@@ -1517,10 +1523,11 @@ private:
         std::string folder = "_emfx36/Humans/Animations/";
         if (tok.size() >= 2 && tok[1] != "Hero") folder = "_emfx36/Monster/Animations/" + tok[1] + "/";
         for (auto& a : app.game->assets("_xmot"))
-            if (p2m::lower(a.path).rfind(p2m::lower(folder), 0) == 0) anim_list_.push_back(&a);
-        if (anim_list_.empty())
+            if (p2m::lower(a.path).rfind(p2m::lower(folder), 0) == 0) list.push_back(&a);
+        if (list.empty())
             for (auto& a : app.game->assets("_xmot"))
-                if (a.path.rfind("_emfx36/", 0) == 0) anim_list_.push_back(&a);
+                if (a.path.rfind("_emfx36/", 0) == 0) list.push_back(&a);
+        return list;
     }
 
     // "Wolf_Stand_None_None_P0_Move_Walk_N_Fwd_00_%_00_P0_60._xmot" -> "Stand/None/None: Move_Walk_N_Fwd_00"
@@ -1759,6 +1766,10 @@ private:
         ImGui::SameLine();
         ImGui::Checkbox(tr("follow the player"), &live_follow_);
         ImGui::SameLine();
+        ImGui::Checkbox(tr("animate"), &live_animate_);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", tr("Play a standing, walking or running motion on the nearest actors, chosen by how fast the game moves them (the game does not report its animation)."));
+        ImGui::SameLine();
         const LinkWorker::Status st = app.link().status();
         if (!st.connected) {
             ImGui::TextDisabled("%s", tr("no game connected"));
@@ -1833,21 +1844,105 @@ private:
 
     bool live_here() const { return live_ && world_ && live_mirror_.has_data() && live_mirror_.world() == world_->name; }
 
+    // an actor's mesh name by its template (npc_mesh reads the template table: asked once per template)
+    const std::string& live_mesh_of(App& app, const std::string& tpl) {
+        auto it = live_mesh_.find(tpl);
+        if (it == live_mesh_.end()) it = live_mesh_.emplace(tpl, npc_mesh(app, tpl)).first;
+        return it->second;
+    }
+
+    // ---- E35d: the nearest live actors play a motion chosen by their speed (core/live_motion.h); the others stay in their bind pose
+    struct LiveSlot {
+        std::unique_ptr<gfx::AnimMesh> mesh;
+        std::shared_ptr<Motion> motion;
+        std::string motion_name;
+        float time = 0;
+        bool moving = false, failed = false;
+    };
+
+    // a motion decoded once; null when unreadable
+    std::shared_ptr<Motion> live_motion(App& app, const std::string& name) {
+        auto it = live_motions_.find(name);
+        if (it != live_motions_.end()) return it->second;
+        std::shared_ptr<Motion> m;
+        try {
+            m = std::make_shared<Motion>(decode_motion(app.game->read(name)));
+        } catch (const std::exception&) {
+        }
+        return live_motions_.emplace(name, m).first->second;
+    }
+
+    void live_animate(App& app) {
+        if (!live_animate_ || !live_here() || !res_) {
+            live_slots_.clear();
+            return;
+        }
+        const float dt = ImGui::GetIO().DeltaTime;
+        const glm::vec3 cam = gfx::from_gl(cam_.pos);
+        std::vector<std::pair<float, const LiveActor*>> near;
+        for (const LiveActor& a : live_mirror_.actors()) {
+            if (a.dead || live_mesh_of(app, a.tpl).empty()) continue;
+            const float d2 = (a.x - cam.x) * (a.x - cam.x) + (a.y - cam.y) * (a.y - cam.y) + (a.z - cam.z) * (a.z - cam.z);
+            if (d2 < 4500.0f * 4500.0f) near.push_back({d2, &a});
+        }
+        std::sort(near.begin(), near.end(), [](const auto& l, const auto& r) { return l.first < r.first; });
+        if (near.size() > 16) near.resize(16);  // every pose skins on the CPU
+        std::set<std::string> keep;
+        int budget = 1;  // one new actor per frame: decoding its parts is the expensive step
+        for (const auto& [d2, ap] : near) {
+            const LiveActor& a = *ap;
+            keep.insert(a.id);
+            LiveSlot& s = live_slots_[a.id];
+            if (s.failed) continue;
+            const std::string& mesh = live_mesh_of(app, a.tpl);
+            if (!s.mesh) {
+                if (budget <= 0) continue;
+                --budget;
+                s.mesh = std::make_unique<gfx::AnimMesh>();
+                std::string err;
+                const GameData* g = app.game.get();
+                const std::vector<std::string> parts = is_composed(mesh) ? composed_parts(mesh) : std::vector<std::string>{mesh};
+                if (!s.mesh->load(mesh, parts, [g](const std::string& n) { return g->read(n); }, err)) {
+                    s.mesh.reset();
+                    s.failed = true;
+                    continue;
+                }
+            }
+            auto fam = live_family_.find(mesh);
+            if (fam == live_family_.end()) {
+                std::vector<std::string> names;
+                for (const AssetEntry* e : motion_assets_for(app, mesh)) names.push_back(e->name);
+                fam = live_family_.emplace(mesh, std::move(names)).first;
+            }
+            const MotionChoice c = choose_motion(fam->second, a.speed_avg, s.moving);
+            s.moving = c.moving;
+            if (c.name != s.motion_name) {
+                s.motion_name = c.name;
+                s.motion = c.name.empty() ? nullptr : live_motion(app, c.name);
+                if (s.motion && s.mesh->matching_bones(*s.motion) == 0) s.motion.reset();  // a motion for another skeleton
+            }
+            s.time += dt * c.rate;
+            s.mesh->pose(s.motion.get(), s.time);
+        }
+        for (auto it = live_slots_.begin(); it != live_slots_.end();) it = keep.count(it->first) ? std::next(it) : live_slots_.erase(it);
+    }
+
     void draw_live(App& app, const glm::mat4& vp) {
         if (!live_here()) return;
+        live_animate(app);
         mesh_r_.begin(vp, glm::vec3(0.35f, -1.0f, 0.25f));
         for (const LiveActor& a : live_mirror_.actors()) {
-            auto it = live_mesh_.find(a.tpl);
-            if (it == live_mesh_.end()) {
-                // the NPC mesh table is read as for a placed NPC (npc_mesh); asked only once per template
-                const std::string mesh = npc_mesh(app, a.tpl);
-                it = live_mesh_.emplace(a.tpl, mesh).first;
-            }
-            if (it->second.empty()) continue;
-            const gfx::GpuMesh* m = res_->mesh(it->second);
-            if (!m) continue;
+            const std::string& name = live_mesh_of(app, a.tpl);
+            if (name.empty()) continue;
+            const glm::vec4 tint = a.dead ? glm::vec4(0.55f, 0.55f, 0.55f, 1) : a.player ? glm::vec4(1.25f, 1.2f, 0.9f, 1) : glm::vec4(1);
             const spass::pose::Matrix pm = spass::pose::compose(a.x, a.y, a.z, {a.yaw, 0.0f, 0.0f});
-            mesh_r_.draw(*m, gfx::entity_model(pm.data()), *res_, a.dead ? glm::vec4(0.55f, 0.55f, 0.55f, 1) : a.player ? glm::vec4(1.25f, 1.2f, 0.9f, 1) : glm::vec4(1));
+            const auto slot = live_slots_.find(a.id);
+            if (slot != live_slots_.end() && slot->second.mesh && slot->second.mesh->ready()) {
+                mesh_r_.draw(slot->second.mesh->mesh(), gfx::entity_model(pm.data()), *res_, tint);
+                continue;
+            }
+            const gfx::GpuMesh* m = res_->mesh(name);
+            if (m) mesh_r_.draw(*m, gfx::entity_model(pm.data()), *res_, tint);
         }
         mesh_r_.end();
     }
@@ -2530,6 +2625,10 @@ private:
     unsigned long long live_connects_ = 0;
     glm::vec3 live_last_player_{0.0f};
     std::map<std::string, std::string> live_mesh_;  // template -> its actor mesh ("" = none), a cache
+    bool live_animate_ = true;
+    std::map<std::string, LiveSlot> live_slots_;                           // actor id -> its skinned mesh and motion
+    std::map<std::string, std::shared_ptr<Motion>> live_motions_;          // motion file -> decoded (null = unreadable)
+    std::map<std::string, std::vector<std::string>> live_family_;          // actor mesh -> the motion file names that fit it
     std::future<std::shared_ptr<NavMap>> nav_loading_;
     gfx::LineBatch nav_batch_;
     bool show_nav_ = false;

@@ -1,6 +1,7 @@
 // Stage E35: the live mirror (core/live_actors.*)
 #include "core/live_actors.h"
 #include "core/live_edit.h"
+#include "core/live_motion.h"
 
 namespace {
 
@@ -91,4 +92,37 @@ TEST(live_edit_gate_waits_for_quiet_and_for_a_game) {
     // switched off: forgotten
     CHECK(!g.step(true, true, false, 8, 50.0) && g.pending());
     CHECK(!g.step(false, true, false, 8, 51.0) && !g.pending());
+}
+
+TEST(live_motion_is_chosen_by_speed) {
+    const std::vector<std::string> hero = {
+        "Hero_Stand_None_None_P0_Move_Walk_N_Fwd_00_%_00_P0_150._xmot",   "Hero_Stand_None_None_P0_Move_Stand_N_Fwd_00_%_00_P0_0._xmot",
+        "Hero_Stand_None_None_P0_Move_Sprint_N_Fwd_00_%_00_P0_625._xmot", "Hero_Stand_None_None_P0_Move_Run_N_Fwd_00_%_00_P0_400._xmot",
+        "Hero_Stand_None_None_P0_Move_Walk_N_Left_00_%_00_P0_150._xmot",  "Hero_Stand_None_None_P0_Move_Begin_N_Fwd_00_%_00_P0_400._xmot",
+        "Hero_Stand_Sword_None_P0_Move_Walk_N_Fwd_00_%_00_P0_150._xmot",  "Hero_Stand_None_None_P0_Roar_Begin_N_Fwd_00_%_00_P0_0._xmot"};
+    CHECK(mk::motion_cycle_speed(hero[0]) == 150 && mk::motion_cycle_speed(hero[1]) == 0 && mk::motion_cycle_speed("nothing") == 0);
+    // standing
+    mk::MotionChoice c = mk::choose_motion(hero, 0, false);
+    CHECK(c.name == hero[1] && !c.moving);
+    // walking at the pace the cycle was made for: the forward cycle without a weapon, not the sideways one nor the sword one
+    c = mk::choose_motion(hero, 150, false);
+    CHECK(c.name == hero[0] && c.moving && std::fabs(c.rate - 1.0f) < 1e-4f);
+    c = mk::choose_motion(hero, 75, false);
+    CHECK(c.name == hero[0] && std::fabs(c.rate - 0.5f) < 1e-4f);
+    // running, sprinting, and the rate stays in a sane range
+    CHECK(mk::choose_motion(hero, 380, true).name == hero[3]);
+    CHECK(mk::choose_motion(hero, 700, true).name == hero[2]);
+    c = mk::choose_motion(hero, 5000, true);
+    CHECK(c.name == hero[2] && c.rate == 1.8f);
+    // hysteresis: 20 units/s starts nothing, but keeps a walk going
+    CHECK(!mk::choose_motion(hero, 20, false).moving);
+    CHECK(mk::choose_motion(hero, 20, true).moving);
+    CHECK(!mk::choose_motion(hero, 8, true).moving);
+    // a family without move cycles stands in its bind pose; without a stand motion too
+    CHECK(mk::choose_motion({}, 200, false).name.empty());
+    CHECK(mk::choose_motion({hero[7]}, 0, false).name.empty());
+    // the wolf walks at 60 and runs at 350
+    const std::vector<std::string> wolf = {"Wolf_Stand_None_None_P0_Move_Walk_N_Fwd_00_%_00_P0_60._xmot", "Wolf_Stand_None_None_P0_Move_Run_N_Fwd_00_%_00_P0_350._xmot"};
+    CHECK(mk::choose_motion(wolf, 70, false).name == wolf[0]);
+    CHECK(mk::choose_motion(wolf, 300, false).name == wolf[1]);
 }
