@@ -139,6 +139,8 @@ Natives may use typed parameters: argument types are checked (`SOL_EXCEPTIONS_SA
 
 ## Tooling gotchas (this machine)
 
+- Two short skills sum these up: **`process-launcher`** (`.claude/skills/process-launcher/SKILL.md`: start the game only through `test-run.ps1`, kill only by path never by image name, `-Mods a,b` through `-Command`, wait on a fresh signal not a stale log) and **`safe-text-editing`** (`.claude/skills/safe-text-editing/SKILL.md`: Write/Edit instead of shell text, patch scripts as files, CRLF handling). Read them before launching or killing a process and before any heredoc / `python -c` / `sed` edit.
+
 - Windows, files in the working tree are CRLF (`autocrlf`); Python text-mode edits convert line endings, which is fine.
 - In the Bash tool, long multi-line heredocs containing quotes/backslashes can fail or lose backslashes: write scripts with the
   Write tool and run them, or use Edit for files with backslashes.
