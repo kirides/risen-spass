@@ -545,6 +545,24 @@ Set the **game folder** (the Risen folder with `bin\Risen.exe` and the mod layer
 
 Command line: `risen-modkit project.rmk.json --game-dir <Risen folder> --play`.
 
+## Live: the running game
+
+**Window > Live** (a tab next to the editors) is connected to a running game over the live link (see Play above): no button to press, it finds `bin\spass\link.json` of the
+game folder, connects, and connects again when the game is started anew. If the game was started without `[link] enabled = true` in `bin\spass\config.toml` the panel
+says so (Play starts it that way).
+
+* **Game**: world, chapter and time; the player's health (green), mana (blue) and position (*Copy position*); the NPCs and monsters within a radius (slider)
+  sorted by distance. Select one: name, template, id, level, guild, group, AI state, position, then *Inventory* and one tree node per engine property set
+  (`gCNPC_PS`, `gCInventory_PS`, `gCSkills_PS`, ...) with the current value of every property; *Filter properties* narrows them. An NPC that belongs to this project
+  is marked with a dot, and *Open in the project* selects it in its panel. The values refresh every second or two while the node is open.
+* **Quests and variables**: every quest of the project with "known to the game", running and the engine's status; a click selects it in the Quests panel.
+  *Watch* adds game variables (the names your dialogues and events set) and shows their values live.
+* **Mods**: what the game loaded (state, version, network access), *Reload* per mod or *Reload all* with the game's answer.
+* **Game log**: the game's own log lines from the level you choose (off, error, warn, info, debug), filterable; a warning or error that names an object of the project
+  has a *show* button.
+
+Everything is read-only except *Reload*. The panel asks the game from a background thread, so a busy or paused game never freezes the editor.
+
 ## Export
 
 **File > Export mod...** writes the mod into a folder, normally `<Risen>\bin\spass\mods\<mod id>`. The export

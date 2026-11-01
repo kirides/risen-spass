@@ -8,183 +8,183 @@ english_name = "German"
 author = "risen-spass"
 
 [strings]
-# src/modkit/app/app.cpp:181
+# src/modkit/app/app.cpp:182
 "Game data: {0} templates from {1} archives" = "Spieldaten: {0} Vorlagen aus {1} Archiven"
-# src/modkit/app/app.cpp:184
+# src/modkit/app/app.cpp:185
 "Cannot read the game data: {0}" = "Die Spieldaten können nicht gelesen werden: {0}"
-# src/modkit/app/app.cpp:254
+# src/modkit/app/app.cpp:255
 "{0} is neither an asset file of the project nor a sound of the game" = "{0} ist weder eine Ressourcendatei des Projekts noch ein Klang des Spiels"
-# src/modkit/app/app.cpp:279
+# src/modkit/app/app.cpp:280
 "playing {0} ({1}, {2} s)" = "spiele {0} ab ({1}, {2} s)"
-# src/modkit/app/app.cpp:282
+# src/modkit/app/app.cpp:283
 "cannot play {0}: {1}" = "{0} kann nicht abgespielt werden: {1}"
-# src/modkit/app/app.cpp:350
+# src/modkit/app/app.cpp:351
 "{0} errors in the project: fix them first (Problems panel)" = "{0} Fehler im Projekt: bitte zuerst beheben (Bereich Probleme)"
-# src/modkit/app/app.cpp:361 (+1)
+# src/modkit/app/app.cpp:362 (+1)
 "Export failed: {0}" = "Export fehlgeschlagen: {0}"
-# src/modkit/app/app.cpp:371
+# src/modkit/app/app.cpp:372
 "Play: {0}" = "Spielen: {0}"
-# src/modkit/app/app.cpp:400
+# src/modkit/app/app.cpp:401
 "No mods folder known: set the game folder (Settings) to compare with the installed mods." = "Kein Mod-Ordner bekannt: Spielordner in den Einstellungen setzen, um mit den installierten Mods zu vergleichen."
-# src/modkit/app/app.cpp:413
+# src/modkit/app/app.cpp:414
 "Compared with {0} installed mods made with the editor ({1} others cannot be compared) in {2}" = "Verglichen mit {0} installierten Mods aus dem Editor ({1} andere lassen sich nicht vergleichen) in {2}"
-# src/modkit/app/app.cpp:418 (+1)
+# src/modkit/app/app.cpp:419 (+1)
 "Package for sharing" = "Paket zum Weitergeben"
-# src/modkit/app/app.cpp:429
-"The mod as one zip file for other players: they unpack it into <Risen>\\bin\\spass\\mods and start the game. The zip holds the mod folder (named after its id), an INSTALL.txt and the editor project, so the mod can be opened again." = "Die Mod als eine Zip-Datei für andere Spieler: Sie entpacken sie nach <Risen>\\bin\\spass\\mods und starten das Spiel. Die Zip-Datei enthält den Mod-Ordner (nach der Id benannt), eine INSTALL.txt und das Editor-Projekt, damit die Mod wieder geöffnet werden kann."
 # src/modkit/app/app.cpp:430
+"The mod as one zip file for other players: they unpack it into <Risen>\\bin\\spass\\mods and start the game. The zip holds the mod folder (named after its id), an INSTALL.txt and the editor project, so the mod can be opened again." = "Die Mod als eine Zip-Datei für andere Spieler: Sie entpacken sie nach <Risen>\\bin\\spass\\mods und starten das Spiel. Die Zip-Datei enthält den Mod-Ordner (nach der Id benannt), eine INSTALL.txt und das Editor-Projekt, damit die Mod wieder geöffnet werden kann."
+# src/modkit/app/app.cpp:431
 "by" = "von"
-# src/modkit/app/app.cpp:434 (+8)
+# src/modkit/app/app.cpp:435 (+8)
 "Browse" = "Durchsuchen"
-# src/modkit/app/app.cpp:441
+# src/modkit/app/app.cpp:442
 "%zu errors: see the Problems panel. The package is refused until they are fixed." = "%zu Fehler: siehe Problems-Panel. Das Paket wird abgelehnt, bis sie behoben sind."
-# src/modkit/app/app.cpp:442 (+1)
+# src/modkit/app/app.cpp:443 (+1)
 "%zu warnings (see Problems)" = "%zu Warnungen (siehe Probleme)"
-# src/modkit/app/app.cpp:446
+# src/modkit/app/app.cpp:447
 "Requires: %s (players need these mods too; INSTALL.txt says so)" = "Benötigt: %s (Spieler brauchen diese Mods auch; die INSTALL.txt sagt es)"
-# src/modkit/app/app.cpp:448
-"Conflicts with installed mods" = "Konflikte mit installierten Mods"
 # src/modkit/app/app.cpp:449
+"Conflicts with installed mods" = "Konflikte mit installierten Mods"
+# src/modkit/app/app.cpp:450
 "Check again" = "Erneut prüfen"
-# src/modkit/app/app.cpp:452
+# src/modkit/app/app.cpp:453
 "Nothing found that another installed mod also creates or changes." = "Nichts gefunden, was eine andere installierte Mod ebenfalls anlegt oder ändert."
-# src/modkit/app/app.cpp:462
+# src/modkit/app/app.cpp:463
 "Create package" = "Paket erstellen"
-# src/modkit/app/app.cpp:469 (+3)
+# src/modkit/app/app.cpp:470 (+3)
 "error: {0}" = "Fehler: {0}"
-# src/modkit/app/app.cpp:470
+# src/modkit/app/app.cpp:471
 "warning: {0}" = "Warnung: {0}"
-# src/modkit/app/app.cpp:472
-"{0} files, {1} bytes: {2}" = "{0} Dateien, {1} Bytes: {2}"
 # src/modkit/app/app.cpp:473
+"{0} files, {1} bytes: {2}" = "{0} Dateien, {1} Bytes: {2}"
+# src/modkit/app/app.cpp:474
 "Package written: {0}" = "Paket geschrieben: {0}"
-# src/modkit/app/app.cpp:475
+# src/modkit/app/app.cpp:476
 "Package failed: {0}" = "Paket fehlgeschlagen: {0}"
-# src/modkit/app/app.cpp:481 (+5)
+# src/modkit/app/app.cpp:482 (+5)
 "Close" = "Schließen"
-# src/modkit/app/app.cpp:488 (+1)
+# src/modkit/app/app.cpp:489 (+1)
 "Export mod" = "Mod exportieren"
-# src/modkit/app/app.cpp:496
+# src/modkit/app/app.cpp:497
 "The mod is written into this folder (normally <Risen>\\bin\\spass\\mods\\<id>). The export only writes into an empty folder or one it wrote before." = "Die Mod wird in diesen Ordner geschrieben (normalerweise <Risen>\\bin\\spass\\mods\\<id>). Der Export schreibt nur in einen leeren Ordner oder in einen, in den er schon einmal geschrieben hat."
-# src/modkit/app/app.cpp:507
+# src/modkit/app/app.cpp:508
 "%zu errors: see the Problems panel. The export is refused until they are fixed." = "%zu Fehler: siehe Bereich Probleme. Der Export wird abgelehnt, bis sie behoben sind."
-# src/modkit/app/app.cpp:510 (+2)
+# src/modkit/app/app.cpp:511 (+2)
 "Export" = "Exportieren"
-# src/modkit/app/app.cpp:518
-"written: {0}" = "geschrieben: {0}"
 # src/modkit/app/app.cpp:519
+"written: {0}" = "geschrieben: {0}"
+# src/modkit/app/app.cpp:520
 "removed: {0}" = "entfernt: {0}"
-# src/modkit/app/app.cpp:521
-"{0} files written, {1} unchanged" = "{0} Dateien geschrieben, {1} unverändert"
 # src/modkit/app/app.cpp:522
+"{0} files written, {1} unchanged" = "{0} Dateien geschrieben, {1} unverändert"
+# src/modkit/app/app.cpp:523
 "Exported to {0}" = "Exportiert nach {0}"
-# src/modkit/app/app.cpp:552 (+2)
+# src/modkit/app/app.cpp:553 (+2)
 "New project" = "Neues Projekt"
-# src/modkit/app/app.cpp:573
+# src/modkit/app/app.cpp:574
 "Opened {0}" = "{0} geöffnet"
-# src/modkit/app/app.cpp:576
+# src/modkit/app/app.cpp:577
 "Cannot open the project: {0}" = "Das Projekt kann nicht geöffnet werden: {0}"
-# src/modkit/app/app.cpp:592
+# src/modkit/app/app.cpp:593
 "Import failed: {0}" = "Import fehlgeschlagen: {0}"
-# src/modkit/app/app.cpp:600
-"Read the project the mod was exported from (modkit/project.json)." = "Das Projekt wurde gelesen, aus dem die Mod exportiert wurde (modkit/project.json)."
 # src/modkit/app/app.cpp:601
+"Read the project the mod was exported from (modkit/project.json)." = "Das Projekt wurde gelesen, aus dem die Mod exportiert wurde (modkit/project.json)."
+# src/modkit/app/app.cpp:602
 "Rebuilt the project from the mod's data files (the graphs were laid out anew)." = "Das Projekt wurde aus den Datendateien der Mod neu aufgebaut (die Graphen wurden neu angeordnet)."
-# src/modkit/app/app.cpp:603
+# src/modkit/app/app.cpp:604
 "Imported {0}: save the project to keep it" = "{0} importiert: Projekt speichern, um es zu behalten"
-# src/modkit/app/app.cpp:642
+# src/modkit/app/app.cpp:643
 "Saved {0}" = "{0} gespeichert"
-# src/modkit/app/app.cpp:646
+# src/modkit/app/app.cpp:647
 "Cannot save: {0}" = "Speichern nicht möglich: {0}"
-# src/modkit/app/app.cpp:652
+# src/modkit/app/app.cpp:653
 "(unsaved project)" = "(ungespeichertes Projekt)"
-# src/modkit/app/app.cpp:715 (+2)
+# src/modkit/app/app.cpp:716 (+2)
 "File" = "Datei"
-# src/modkit/app/app.cpp:717 (+1)
+# src/modkit/app/app.cpp:718 (+1)
 "Open project..." = "Projekt öffnen..."
-# src/modkit/app/app.cpp:718
+# src/modkit/app/app.cpp:719
 "Open recent" = "Zuletzt geöffnet"
-# src/modkit/app/app.cpp:724 (+1)
+# src/modkit/app/app.cpp:725 (+1)
 "Save" = "Speichern"
-# src/modkit/app/app.cpp:725
+# src/modkit/app/app.cpp:726
 "Save as..." = "Speichern unter..."
-# src/modkit/app/app.cpp:727 (+1)
-"Export mod..." = "Mod exportieren..."
 # src/modkit/app/app.cpp:728 (+1)
+"Export mod..." = "Mod exportieren..."
+# src/modkit/app/app.cpp:729 (+1)
 "Package for sharing..." = "Paket zum Weitergeben ..."
-# src/modkit/app/app.cpp:729
-"Import mod" = "Mod importieren"
 # src/modkit/app/app.cpp:730
+"Import mod" = "Mod importieren"
+# src/modkit/app/app.cpp:731
 "From its project (modkit/project.json)..." = "Aus ihrem Projekt (modkit/project.json)..."
-# src/modkit/app/app.cpp:734
+# src/modkit/app/app.cpp:735
 "From its data files (after hand edits)..." = "Aus ihren Datendateien (nach Handarbeit)..."
-# src/modkit/app/app.cpp:741
+# src/modkit/app/app.cpp:742
 "Quit" = "Beenden"
-# src/modkit/app/app.cpp:744 (+1)
+# src/modkit/app/app.cpp:745 (+1)
 "Edit" = "Bearbeiten"
-# src/modkit/app/app.cpp:745
-"Undo" = "Rückgängig"
 # src/modkit/app/app.cpp:746
+"Undo" = "Rückgängig"
+# src/modkit/app/app.cpp:747
 "Redo" = "Wiederholen"
-# src/modkit/app/app.cpp:748
+# src/modkit/app/app.cpp:749
 "Command palette..." = "Befehlspalette..."
-# src/modkit/app/app.cpp:751
-"Wizards" = "Assistenten"
 # src/modkit/app/app.cpp:752
-"Fetch quest..." = "Hol-Quest..."
+"Wizards" = "Assistenten"
 # src/modkit/app/app.cpp:753
-"New weapon with a recipe..." = "Neue Waffe mit Rezept..."
+"Fetch quest..." = "Hol-Quest..."
 # src/modkit/app/app.cpp:754
+"New weapon with a recipe..." = "Neue Waffe mit Rezept..."
+# src/modkit/app/app.cpp:755
 "Trader with stock..." = "Händler mit Sortiment..."
-# src/modkit/app/app.cpp:757
+# src/modkit/app/app.cpp:758
 "Window" = "Fenster"
-# src/modkit/app/app.cpp:760
-"Collapse the side panels" = "Seitenleiste einklappen"
 # src/modkit/app/app.cpp:761
+"Collapse the side panels" = "Seitenleiste einklappen"
+# src/modkit/app/app.cpp:762
 "Reset layout" = "Layout zurücksetzen"
-# src/modkit/app/app.cpp:767 (+1)
+# src/modkit/app/app.cpp:768 (+2)
 "Game" = "Spiel"
-# src/modkit/app/app.cpp:768
+# src/modkit/app/app.cpp:769
 "Play: export and start / reload" = "Spielen: exportieren und starten / neu laden"
-# src/modkit/app/app.cpp:769 (+1)
+# src/modkit/app/app.cpp:770 (+1)
 "Start with" = "Starten mit"
-# src/modkit/app/app.cpp:770
+# src/modkit/app/app.cpp:771
 "Main menu" = "Hauptmenü"
-# src/modkit/app/app.cpp:771 (+1)
-"A new game" = "Neues Spiel"
 # src/modkit/app/app.cpp:772 (+1)
+"A new game" = "Neues Spiel"
+# src/modkit/app/app.cpp:773 (+1)
 "The last quick save" = "Letzter Schnellspielstand"
-# src/modkit/app/app.cpp:775
+# src/modkit/app/app.cpp:776
 "Open the game's log" = "Protokoll des Spiels öffnen"
-# src/modkit/app/app.cpp:779
+# src/modkit/app/app.cpp:780
 "Forget the game's errors" = "Fehler des Spiels vergessen"
-# src/modkit/app/app.cpp:788
+# src/modkit/app/app.cpp:789
 "  Play  " = "  Spielen"
-# src/modkit/app/app.cpp:790
+# src/modkit/app/app.cpp:791
 "Export the mod into the game folder and start Risen (F5).\nA running game with hot reload picks the new files up." = "Exportiert die Mod in den Spielordner und startet Risen (F5).\nEin laufendes Spiel mit Hot Reload übernimmt die neuen Dateien."
-# src/modkit/app/app.cpp:794 (+1)
+# src/modkit/app/app.cpp:795 (+1)
 "Expand the side panels (Ctrl+B)" = "Seitenleiste ausklappen (Strg+B)"
-# src/modkit/app/app.cpp:794
+# src/modkit/app/app.cpp:795
 "Collapse the side panels into vertical tabs (Ctrl+B)" = "Seitenleiste zu senkrechten Reitern einklappen (Strg+B)"
-# src/modkit/app/app.cpp:809
+# src/modkit/app/app.cpp:810
 "loading {0}" = "lade {0}"
-# src/modkit/app/app.cpp:811
+# src/modkit/app/app.cpp:812
 "%s (%zu templates)" = "%s (%zu Vorlagen)"
-# src/modkit/app/app.cpp:813
+# src/modkit/app/app.cpp:814
 "No game data directory (Settings)" = "Kein Spieldatenverzeichnis (Einstellungen)"
-# src/modkit/app/app.cpp:813
+# src/modkit/app/app.cpp:814
 "Game data not loaded" = "Spieldaten nicht geladen"
-# src/modkit/app/app.cpp:871
+# src/modkit/app/app.cpp:872
 "No panel is docked at the left edge" = "Am linken Rand ist kein Fenster angedockt"
-# src/modkit/app/app.cpp:912 (+1)
+# src/modkit/app/app.cpp:913 (+1)
 "Unsaved changes" = "Ungespeicherte Änderungen"
-# src/modkit/app/app.cpp:916 (+2)
+# src/modkit/app/app.cpp:917 (+2)
 "Import" = "Importieren"
-# src/modkit/app/app.cpp:926
+# src/modkit/app/app.cpp:927
 "The project has unsaved changes." = "Das Projekt hat ungespeicherte Änderungen."
-# src/modkit/app/app.cpp:933
+# src/modkit/app/app.cpp:934
 "Discard" = "Verwerfen"
-# src/modkit/app/app.cpp:940 (+4)
+# src/modkit/app/app.cpp:941 (+4)
 "Cancel" = "Abbrechen"
 # src/modkit/app/dragdrop.cpp:45 (+2)
 "placed NPC" = "platzierter NPC"
@@ -208,11 +208,11 @@ author = "risen-spass"
 "Kind" = "Art"
 # src/modkit/app/editor_util.cpp:235
 "player (empty), npc or a unique name" = "Spieler (leer), npc oder ein eindeutiger Name"
-# src/modkit/app/editor_util.cpp:238 (+10)
+# src/modkit/app/editor_util.cpp:238 (+11)
 "Quest" = "Quest"
 # src/modkit/app/editor_util.cpp:242
 "A quest of this mod or ANY quest of the game (the list shows the game's 370 quests with their titles). The condition holds while the quest has the status (Success: it was solved)." = "Eine Quest dieser Mod oder JEDE Quest des Spiels (die Liste zeigt die 370 Quests des Spiels mit ihren Titeln). Die Bedingung gilt, solange die Quest den Status hat (Erfolg: sie wurde gelöst)."
-# src/modkit/app/editor_util.cpp:244 (+4)
+# src/modkit/app/editor_util.cpp:244 (+5)
 "Status" = "Status"
 # src/modkit/app/editor_util.cpp:247 (+11)
 "Item" = "Gegenstand"
@@ -220,11 +220,11 @@ author = "risen-spass"
 "Count" = "Anzahl"
 # src/modkit/app/editor_util.cpp:256
 "Holder" = "Besitzer"
-# src/modkit/app/editor_util.cpp:258 (+6)
+# src/modkit/app/editor_util.cpp:258 (+7)
 "Variable" = "Variable"
 # src/modkit/app/editor_util.cpp:260
 "Compare a value" = "Wert vergleichen"
-# src/modkit/app/editor_util.cpp:270 (+8)
+# src/modkit/app/editor_util.cpp:270 (+10)
 "Value" = "Wert"
 # src/modkit/app/editor_util.cpp:274 (+1)
 "Compare" = "Vergleich"
@@ -362,7 +362,7 @@ author = "risen-spass"
 "Import 3D model..." = "3D-Modell importieren..."
 # src/modkit/app/panels/assets_panel.cpp:82
 "A model of your own (Wavefront OBJ, glTF, GLB) becomes a compiled mesh (._xmsh) in the project's assets folder. Pick the game materials it uses." = "Ein eigenes Modell (Wavefront OBJ, glTF, GLB) wird zu einem kompilierten Mesh (._xmsh) im Ressourcenordner des Projekts. Wähle die Spielmaterialien, die es verwendet."
-# src/modkit/app/panels/assets_panel.cpp:84
+# src/modkit/app/panels/assets_panel.cpp:84 (+1)
 "Reload" = "Neu laden"
 # src/modkit/app/panels/assets_panel.cpp:88
 "Reads the files again (after you changed them outside the editor)." = "Liest die Dateien erneut (nachdem du sie außerhalb des Editors geändert hast)."
@@ -372,7 +372,7 @@ author = "risen-spass"
 "Save the project first to store the files relative to the project folder." = "Speichere zuerst das Projekt, damit die Dateien relativ zum Projektordner abgelegt werden."
 # src/modkit/app/panels/assets_panel.cpp:99
 "Size" = "Größe"
-# src/modkit/app/panels/assets_panel.cpp:100
+# src/modkit/app/panels/assets_panel.cpp:100 (+2)
 "State" = "Zustand"
 # src/modkit/app/panels/assets_panel.cpp:118
 "%.1f KB" = "%.1f KB"
@@ -470,7 +470,7 @@ author = "risen-spass"
 "Cannot write the script: {0}" = "Das Skript kann nicht geschrieben werden: {0}"
 # src/modkit/app/panels/behaviors_panel.cpp:117 (+1)
 "Created {0} and opened it in your editor" = "{0} erstellt und in deinem Editor geöffnet"
-# src/modkit/app/panels/behaviors_panel.cpp:145 (+11)
+# src/modkit/app/panels/behaviors_panel.cpp:145 (+12)
 "Name" = "Name"
 # src/modkit/app/panels/behaviors_panel.cpp:161 (+1)
 "Open in your editor" = "In deinem Editor öffnen"
@@ -550,9 +550,9 @@ author = "risen-spass"
 "Properties of the base (the mod's changes are in its editor)" = "Eigenschaften der Basis (die Änderungen der Mod stehen in ihrem Editor)"
 # src/modkit/app/panels/browser_panel.cpp:348
 "filter properties" = "Eigenschaften filtern"
-# src/modkit/app/panels/browser_panel.cpp:350
+# src/modkit/app/panels/browser_panel.cpp:350 (+1)
 "Property" = "Eigenschaft"
-# src/modkit/app/panels/browser_panel.cpp:352 (+2)
+# src/modkit/app/panels/browser_panel.cpp:352 (+3)
 "Type" = "Typ"
 # src/modkit/app/panels/conversation_panel.cpp:47
 "There is no dialogue in the project yet (Dialogues panel)." = "Im Projekt gibt es noch keinen Dialog (Bereich Dialoge)."
@@ -588,7 +588,7 @@ author = "risen-spass"
 "Change the world, or pin a condition to yes / no; the options update at once." = "Ändere die Welt oder lege eine Bedingung auf ja / nein fest; die Optionen aktualisieren sich sofort."
 # src/modkit/app/panels/conversation_panel.cpp:202
 "(not started)" = "(nicht begonnen)"
-# src/modkit/app/panels/conversation_panel.cpp:202
+# src/modkit/app/panels/conversation_panel.cpp:202 (+1)
 "Running" = "Läuft"
 # src/modkit/app/panels/conversation_panel.cpp:202
 "Success" = "Erfolg"
@@ -714,7 +714,7 @@ author = "risen-spass"
 "+ Patch" = "+ Änderung"
 # src/modkit/app/panels/extras_panels.cpp:75
 "A patch writes properties of any template of the game (or of the project): the range of a light, the flight of a projectile, an NPC's voice... It is applied on the first tick and again with the live entities on every session start, like the balance data." = "Eine Änderung schreibt Eigenschaften einer beliebigen Vorlage des Spiels (oder des Projekts): die Reichweite eines Lichts, den Flug eines Geschosses, die Stimme eines NPCs... Sie wird beim ersten Tick angewendet und bei jedem Sitzungsbeginn erneut auf die lebenden Entitäten, wie die Balancedaten."
-# src/modkit/app/panels/extras_panels.cpp:100 (+3)
+# src/modkit/app/panels/extras_panels.cpp:100 (+4)
 "Template" = "Vorlage"
 # src/modkit/app/panels/extras_panels.cpp:103 (+1)
 "Properties" = "Eigenschaften"
@@ -962,8 +962,96 @@ author = "risen-spass"
 "in no layer" = "in keiner Ebene"
 # src/modkit/app/panels/layers_panel.cpp:317
 "x %.0f  z %.0f" = "x %.0f  z %.0f"
-# src/modkit/app/panels/log_panel.cpp:25
+# src/modkit/app/panels/live_panel.cpp:63
+"Connected to the game (process %d, layer %s)" = "Mit dem Spiel verbunden (Prozess %d, Layer %s)"
+# src/modkit/app/panels/live_panel.cpp:65
+"Not connected" = "Nicht verbunden"
+# src/modkit/app/panels/live_panel.cpp:66
+"looking for a running game ..." = "suche ein laufendes Spiel ..."
+# src/modkit/app/panels/live_panel.cpp:68
+"The game opens a named pipe for the editor when its config.toml has [link] enabled = true. Play starts the game that way; for a game you started yourself add the two lines and restart it. Only your Windows user can use the pipe, and no network socket is opened." = "Das Spiel öffnet eine benannte Pipe für den Editor, wenn seine config.toml [link] enabled = true enthält. Play startet das Spiel so; bei einem selbst gestarteten Spiel die beiden Zeilen eintragen und es neu starten. Nur dein Windows-Benutzer kann die Pipe nutzen, es wird kein Netzwerk-Socket geöffnet."
+# src/modkit/app/panels/live_panel.cpp:85
+"Quests and variables" = "Quests und Variablen"
+# src/modkit/app/panels/live_panel.cpp:89
+"Mods" = "Mods"
+# src/modkit/app/panels/live_panel.cpp:93
+"Game log" = "Spiel-Log"
+# src/modkit/app/panels/live_panel.cpp:146
+"Reloaded." = "Neu geladen."
+# src/modkit/app/panels/live_panel.cpp:146
+"The game did not answer." = "Das Spiel hat nicht geantwortet."
+# src/modkit/app/panels/live_panel.cpp:172 (+1)
+"waiting for the game ..." = "warte auf das Spiel ..."
+# src/modkit/app/panels/live_panel.cpp:176
+"No game is running yet (the main menu or loading). Start a new game or load a savegame." = "Es läuft noch kein Spiel (Hauptmenü oder Ladebildschirm). Starte ein neues Spiel oder lade einen Spielstand."
+# src/modkit/app/panels/live_panel.cpp:181
+"World %s, chapter %d, time %02d:%02d" = "Welt %s, Kapitel %d, Uhrzeit %02d:%02d"
+# src/modkit/app/panels/live_panel.cpp:183
+"Player: level %d, position %.0f %.0f %.0f" = "Spieler: Stufe %d, Position %.0f %.0f %.0f"
+# src/modkit/app/panels/live_panel.cpp:185 (+1)
+"Copy position" = "Position kopieren"
+# src/modkit/app/panels/live_panel.cpp:194 (+1)
+"Radius" = "Radius"
+# src/modkit/app/panels/live_panel.cpp:197
+"%zu around you" = "%zu in deiner Nähe"
+# src/modkit/app/panels/live_panel.cpp:203
+"Lv" = "St."
+# src/modkit/app/panels/live_panel.cpp:204
+"HP" = "LP"
+# src/modkit/app/panels/live_panel.cpp:205
+"Distance" = "Abstand"
+# src/modkit/app/panels/live_panel.cpp:207 (+4)
+"Mod" = "Mod"
+# src/modkit/app/panels/live_panel.cpp:284
+"Open in the project" = "Im Projekt öffnen"
+# src/modkit/app/panels/live_panel.cpp:289
+"Level %d, guild %d, group '%s', state %s%s" = "Stufe %d, Gilde %d, Gruppe '%s', Zustand %s%s"
+# src/modkit/app/panels/live_panel.cpp:290
+" (dead)" = " (tot)"
+# src/modkit/app/panels/live_panel.cpp:291
+"Position %.0f %.0f %.0f, distance %.0f" = "Position %.0f %.0f %.0f, Abstand %.0f"
+# src/modkit/app/panels/live_panel.cpp:292 (+2)
+"Inventory" = "Inventar"
+# src/modkit/app/panels/live_panel.cpp:295
+"%d stacks, gold %d" = "%d Stapel, Gold %d"
+# src/modkit/app/panels/live_panel.cpp:300
+"Filter properties" = "Eigenschaften filtern"
+# src/modkit/app/panels/live_panel.cpp:340
+"Quests of this project" = "Quests dieses Projekts"
+# src/modkit/app/panels/live_panel.cpp:342
+"The project has no quests." = "Das Projekt hat keine Quests."
+# src/modkit/app/panels/live_panel.cpp:347
+"Known to the game" = "Dem Spiel bekannt"
+# src/modkit/app/panels/live_panel.cpp:364 (+1)
+"yes" = "ja"
+# src/modkit/app/panels/live_panel.cpp:364
+"no" = "nein"
+# src/modkit/app/panels/live_panel.cpp:366
+"running" = "läuft"
+# src/modkit/app/panels/live_panel.cpp:374
+"Game variables" = "Spielvariablen"
+# src/modkit/app/panels/live_panel.cpp:376
+"variable name, Enter adds it" = "Variablenname, Enter fügt ihn hinzu"
+# src/modkit/app/panels/live_panel.cpp:378
+"Watch" = "Beobachten"
+# src/modkit/app/panels/live_panel.cpp:398
+"not set" = "nicht gesetzt"
+# src/modkit/app/panels/live_panel.cpp:412
+"Add the names of the variables your dialogues and events set (SetGameEvent, game variable conditions)." = "Trage die Namen der Variablen ein, die deine Dialoge und Ereignisse setzen (SetGameEvent, Bedingungen auf Spielvariablen)."
+# src/modkit/app/panels/live_panel.cpp:419
+"Reload all" = "Alle neu laden"
+# src/modkit/app/panels/live_panel.cpp:427 (+2)
+"Version" = "Version"
+# src/modkit/app/panels/live_panel.cpp:429
+"Network" = "Netzwerk"
+# src/modkit/app/panels/live_panel.cpp:458 (+3)
+"Level" = "Stufe"
+# src/modkit/app/panels/live_panel.cpp:460 (+1)
 "Clear" = "Leeren"
+# src/modkit/app/panels/live_panel.cpp:462
+"Filter" = "Filter"
+# src/modkit/app/panels/live_panel.cpp:478
+"show" = "zeigen"
 # src/modkit/app/panels/log_panel.cpp:27
 "Debug" = "Debug"
 # src/modkit/app/panels/lua_panel.cpp:44
@@ -1216,8 +1304,6 @@ author = "risen-spass"
 "CHANGE OF A SHIPPED NPC OR MONSTER: new spawns follow at once, the ones in the world are rewritten at the session start" = "ÄNDERUNG EINES MITGELIEFERTEN NPCS ODER MONSTERS: neue Spawns folgen sofort, die in der Welt werden beim Sitzungsbeginn umgeschrieben"
 # src/modkit/app/panels/npcs_panel.cpp:446 (+2)
 "Hit points" = "Lebenspunkte"
-# src/modkit/app/panels/npcs_panel.cpp:448 (+2)
-"Level" = "Stufe"
 # src/modkit/app/panels/npcs_panel.cpp:450
 "Experience for a kill" = "Erfahrung für einen Kill"
 # src/modkit/app/panels/npcs_panel.cpp:451
@@ -1276,8 +1362,6 @@ author = "risen-spass"
 "Peaceful" = "Friedlich"
 # src/modkit/app/panels/npcs_panel.cpp:573
 "A citizen unless a guild is given: pirates, guards and monsters leave him alone (a shopkeeper, a quest giver)." = "Ein Bürger, sofern keine Gilde angegeben ist: Piraten, Wachen und Monster lassen ihn in Ruhe (ein Ladenbesitzer, ein Questgeber)."
-# src/modkit/app/panels/npcs_panel.cpp:577 (+1)
-"Inventory" = "Inventar"
 # src/modkit/app/panels/npcs_panel.cpp:578
 "Items he carries; \"equip\" wears / holds the item when he is made." = "Gegenstände, die er trägt; „anlegen“ trägt / hält den Gegenstand, wenn er erzeugt wird."
 # src/modkit/app/panels/npcs_panel.cpp:582 (+1)
@@ -1298,40 +1382,38 @@ author = "risen-spass"
 "Lifetime" = "Lebensdauer"
 # src/modkit/app/panels/npcs_panel.cpp:594
 "Respawn when dead (at the next start or load)" = "Wiederbeleben, wenn tot (beim nächsten Start oder Laden)"
-# src/modkit/app/panels/npcs_panel.cpp:596 (+1)
-"Version" = "Version"
 # src/modkit/app/panels/npcs_panel.cpp:597
 "Raise it to replace the NPC saved in existing savegames by one made from this declaration." = "Erhöhen, um den in vorhandenen Spielständen gespeicherten NPC durch einen nach dieser Deklaration erzeugten zu ersetzen."
-# src/modkit/app/panels/panels.h:35 (+2)
-"Mod" = "Mod"
-# src/modkit/app/panels/panels.h:36
+# src/modkit/app/panels/panels.h:37
 "Log" = "Protokoll"
-# src/modkit/app/panels/panels.h:38
+# src/modkit/app/panels/panels.h:39
 "Browser" = "Browser"
-# src/modkit/app/panels/panels.h:42
-"Dialogues" = "Dialoge"
 # src/modkit/app/panels/panels.h:43
-"Quests" = "Quests"
+"Dialogues" = "Dialoge"
 # src/modkit/app/panels/panels.h:44
+"Quests" = "Quests"
+# src/modkit/app/panels/panels.h:45
 "Events" = "Ereignisse"
-# src/modkit/app/panels/panels.h:45 (+1)
+# src/modkit/app/panels/panels.h:46 (+1)
 "Layers" = "Ebenen"
-# src/modkit/app/panels/panels.h:48
+# src/modkit/app/panels/panels.h:49
 "Assets" = "Ressourcen"
-# src/modkit/app/panels/panels.h:50
-"Lua" = "Lua"
 # src/modkit/app/panels/panels.h:51
-"Conversation" = "Gespräch"
+"Lua" = "Lua"
 # src/modkit/app/panels/panels.h:52
-"Spells" = "Zauber"
+"Conversation" = "Gespräch"
 # src/modkit/app/panels/panels.h:53
-"NPC groups" = "NPC-Gruppen"
+"Spells" = "Zauber"
 # src/modkit/app/panels/panels.h:54
-"Patches" = "Änderungen"
+"NPC groups" = "NPC-Gruppen"
 # src/modkit/app/panels/panels.h:55
-"Strings" = "Texte"
+"Patches" = "Änderungen"
 # src/modkit/app/panels/panels.h:56
+"Strings" = "Texte"
+# src/modkit/app/panels/panels.h:57
 "Shipped dialogues" = "Mitgelieferte Dialoge"
+# src/modkit/app/panels/panels.h:58
+"Live" = "Live"
 # src/modkit/app/panels/problems_panel.cpp:28
 "No problems." = "Keine Probleme."
 # src/modkit/app/panels/problems_panel.cpp:28
@@ -1636,8 +1718,6 @@ author = "risen-spass"
 "Speed" = "Geschwindigkeit"
 # src/modkit/app/panels/spells_panel.cpp:343
 "Speed factor" = "Geschwindigkeitsfaktor"
-# src/modkit/app/panels/spells_panel.cpp:344
-"Radius" = "Radius"
 # src/modkit/app/panels/spells_panel.cpp:345
 "Radius factor" = "Radiusfaktor"
 # src/modkit/app/panels/spells_panel.cpp:347
@@ -2084,8 +2164,6 @@ author = "risen-spass"
 "Appears" = "Erscheint"
 # src/modkit/app/panels/world_panel.cpp:2288
 "Copy id" = "Id kopieren"
-# src/modkit/app/panels/world_panel.cpp:2290
-"Copy position" = "Position kopieren"
 # src/modkit/app/pickers.cpp:70
 "No template with this name in the game data or the project" = "Keine Vorlage mit diesem Namen in den Spieldaten oder im Projekt"
 # src/modkit/app/pickers.cpp:86

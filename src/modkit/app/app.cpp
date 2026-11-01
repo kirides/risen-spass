@@ -123,6 +123,7 @@ App::App(AppOptions opts) : options(std::move(opts)) {
     panels_.push_back(make_strings_panel());
     panels_.push_back(make_shipped_dialogs_panel());
     panels_.push_back(make_problems_panel());
+    panels_.push_back(make_live_panel());
     panels_.push_back(make_log_panel());
     panels_.push_back(make_settings_panel());
     for (auto& p : panels_) p->attach(*this);
@@ -685,7 +686,7 @@ void App::setup_default_layout(unsigned int dockspace_id) {
     dock(kPanelBrowser, left);
     dock(kPanelLog, bottom);
     dock(kPanelProblems, bottom);
-    for (const char* t : {kPanelItems, kPanelRecipes, kPanelNpcs, kPanelNpcGroups, kPanelSpells, kPanelDialogs, kPanelConversation, kPanelQuests, kPanelEvents, kPanelLayers, kPanelWorld, kPanelAssets, kPanelBehaviors, kPanelLua, kPanelPatches, kPanelStrings, kPanelShippedDialogs, kPanelSettings}) dock(t, center);
+    for (const char* t : {kPanelItems, kPanelRecipes, kPanelNpcs, kPanelNpcGroups, kPanelSpells, kPanelDialogs, kPanelConversation, kPanelQuests, kPanelEvents, kPanelLayers, kPanelWorld, kPanelAssets, kPanelBehaviors, kPanelLua, kPanelPatches, kPanelStrings, kPanelShippedDialogs, kPanelLive, kPanelSettings}) dock(t, center);
     ImGui::DockBuilderFinish(dockspace_id);
 }
 
@@ -1121,8 +1122,15 @@ int App::run() {
         // structural edits and file actions run between frames
         // --select: once the game data is there (or there is none to wait for)
         if (!pending_select_.empty() && (!any_busy() || glfwGetTime() > 60)) {
-            for (auto& p : panels_)
-                if (p->select(*this, pending_select_)) break;
+            bool done = false;
+            if (!options.panel.empty()) {  // the panel named by --panel gets the name first (Live inspects an entity by it)
+                for (auto& p : panels_)
+                    if (options.panel == p->title() && p->select(*this, pending_select_)) done = true;
+            }
+            if (!done) {
+                for (auto& p : panels_)
+                    if (p->select(*this, pending_select_)) break;
+            }
             pending_select_.clear();
         }
         auto todo = std::move(deferred_);

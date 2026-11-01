@@ -171,6 +171,16 @@ as recording sheets for voice actors, and finished recordings are imported in a 
 Everything the editor finds wrong before Play is listed here with a click-through to the object; while a game runs, the warnings and errors the
 game logs for your mod appear under *From the game*, linked to the object they name.
 
+### Live: look into the running game
+
+![Live](modkit/live.png)
+
+The **Live** panel connects to the running game by itself (over the live link below) and shows what is going on: the player's health (green) and mana (blue)
+and position, the NPCs and monsters around you with level, hit points, distance and AI state (an NPC of *your* mod is marked and opens in the NPCs panel with
+one click), and for the one you select every property set of the engine with its current values, plus the inventory. Further tabs show the state of your
+project's quests, any game variables you want to watch (the ones your dialogues set), the mods the game loaded (with a **Reload** button each) and the
+game's log, with a **show** button that jumps to the project object a warning names. Nothing in it changes the game except the reload.
+
 ### Play and the live link
 
 Play starts the game with **`[link] enabled = true`** in the layer's `config.toml`. That opens a **named pipe** (`\\.\pipe\risen-spass-<pid>`, no network

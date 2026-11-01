@@ -38,12 +38,15 @@ $shots = [ordered]@{
     'assets'       = @($chronicle, '--panel', 'Assets')
     'paint'        = @($chronicle, '--panel', 'World', '--camera', '-35080,1500,-6646,0,-40', '--frames', '500')
     'problems'     = @($chronicle, '--panel', 'Problems')
+    # needs a running game with [link] enabled (scripts	est-run.ps1 -Link -KeepRunning) and -GameDir: skipped without it
+    'live'         = @($chronicle, '--panel', 'Live', '--select', 'Sara', '--frames', '700', '--game-dir', 'B:\DevDrive\risen-test')
     'german'       = @($chronicle, '--panel', 'Items', '--select', 'MKC_Tide_Potion', '--lang', 'de')
 }
 foreach ($name in $shots.Keys) {
     if ($Only.Count -and $Only -notcontains $name) { continue }
     $png = Join-Path $out "$name.png"
     $extra = @($shots[$name])
+    if ($name -eq 'live' -and -not (Test-Path (Join-Path ($extra[$extra.IndexOf('--game-dir') + 1]) 'bin\spass\link.json'))) { "$name skipped (no running game with the live link)"; continue }
     if ($name -ne 'browser') { $extra += '--collapse-side' }  # the main panels get the whole width
     $frames = if ($extra -contains '--frames') { @() } else { @('--frames', '30') }
     $args = $extra + $frames + @('--data', $Data, '--size', $Size, '--screenshot', $png)

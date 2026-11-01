@@ -62,6 +62,7 @@ add_library(modkit_core STATIC
     core/pack2project.cpp
     core/paths.cpp
     core/link_client.cpp
+    core/link_worker.cpp
     core/play.cpp
     core/process.cpp
     core/project.cpp
@@ -139,6 +140,7 @@ add_executable(risen-modkit
     app/panels/layers_panel.cpp
     app/panels/quests_panel.cpp
     app/panels/recipes_panel.cpp
+    app/panels/live_panel.cpp
     app/panels/log_panel.cpp
     app/panels/npcs_panel.cpp
     app/panels/npc_groups_panel.cpp
@@ -184,5 +186,8 @@ if(SPASS_BUILD_TESTS)
     # LuaJIT compiles the runtime and the exported data files in the tests (the same LuaJIT the layer runs them with)
     target_link_libraries(modkit_tests PRIVATE modkit_core)
     target_compile_definitions(modkit_tests PRIVATE MODKIT_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+    if(MSVC)
+        target_compile_options(modkit_tests PRIVATE /bigobj)  # the single test translation unit has grown past the default section limit
+    endif()
     add_test(NAME modkit_tests COMMAND modkit_tests)
 endif()

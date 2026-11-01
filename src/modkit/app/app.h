@@ -15,6 +15,7 @@
 #include "core/assets.h"
 #include "core/gamedata.h"
 #include "core/gamelog.h"
+#include "core/link_worker.h"
 #include "core/history.h"
 #include "core/project.h"
 #include "core/settings.h"
@@ -94,6 +95,8 @@ public:
     Project project;
     std::string project_path;  // empty: not saved yet
     History history;
+    // the live connection to a running game (core/link_worker.h): started with the app, looks for <game folder>in\spass\link.json by itself
+    LinkWorker& link() { return link_; }
     Settings settings;
     AppOptions options;
 
@@ -205,6 +208,7 @@ private:
     std::unique_ptr<WizardUi> wizards_;
     LogTail game_log_;
     std::vector<GameLogLine> game_log_lines_;
+    LinkWorker link_;
     std::vector<Problem> game_problems_;
     double game_log_time_ = -1;
     bool game_problems_dirty_ = false;

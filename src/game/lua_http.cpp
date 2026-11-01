@@ -1,5 +1,7 @@
 #include "game/lua_http.h"
 
+#include <windows.h>
+
 #include <chrono>
 #include <cmath>
 #include <map>
@@ -31,6 +33,37 @@ using Two = std::tuple<sol::object, sol::object>;
 
 constexpr int kMaxDepth = 64;
 char g_nullTag = 0;  // the address is the `risen.json.null` sentinel
+
+// The engine's texts are Windows-1252 (German umlauts and so on). JSON must be UTF-8: a string that is not valid UTF-8 is read as Windows-1252.
+bool validUtf8(const std::string& s) {
+    std::size_t i = 0;
+    while (i < s.size()) {
+        const unsigned char c = static_cast<unsigned char>(s[i]);
+        const std::size_t n = c < 0x80 ? 0 : (c >> 5) == 6 ? 1 : (c >> 4) == 14 ? 2 : (c >> 3) == 30 ? 3 : 99;
+        if (n == 99) return false;
+        for (std::size_t k = 1; k <= n; ++k) {
+            if (i + k >= s.size() || (static_cast<unsigned char>(s[i + k]) & 0xC0) != 0x80) return false;
+        }
+        i += n + 1;
+    }
+    return true;
+}
+
+std::string toUtf8(const std::string& s) {
+    if (validUtf8(s)) {
+        return s;
+    }
+    const int wn = MultiByteToWideChar(1252, 0, s.data(), static_cast<int>(s.size()), nullptr, 0);
+    if (wn <= 0) {
+        return s;
+    }
+    std::wstring w(static_cast<std::size_t>(wn), wchar_t());
+    MultiByteToWideChar(1252, 0, s.data(), static_cast<int>(s.size()), w.data(), wn);
+    const int un = WideCharToMultiByte(CP_UTF8, 0, w.data(), wn, nullptr, 0, nullptr, nullptr);
+    std::string out(static_cast<std::size_t>(un), char());
+    WideCharToMultiByte(CP_UTF8, 0, w.data(), wn, out.data(), un, nullptr, nullptr);
+    return out;
+}
 
 Two fail(sol::state_view L, const std::string& why) { return {sol::make_object(L, sol::lua_nil), sol::make_object(L, why)}; }
 
@@ -99,7 +132,7 @@ bool fromLua(const sol::object& o, int depth, json& out, std::string& error) {
         case sol::type::lua_nil:
         case sol::type::none: out = nullptr; return true;
         case sol::type::boolean: out = o.as<bool>(); return true;
-        case sol::type::string: out = o.as<std::string>(); return true;
+        case sol::type::string: out = toUtf8(o.as<std::string>()); return true;
         case sol::type::number: {
             const double d = o.as<double>();
             if (!std::isfinite(d)) {
@@ -150,7 +183,7 @@ bool fromLua(const sol::object& o, int depth, json& out, std::string& error) {
             for (const auto& kv : t) {
                 std::string key;
                 if (kv.first.get_type() == sol::type::string) {
-                    key = kv.first.as<std::string>();
+                    key = toUtf8(kv.first.as<std::string>());
                 } else if (kv.first.get_type() == sol::type::number) {
                     char buf[64];
                     std::snprintf(buf, sizeof(buf), "%.14g", kv.first.as<double>());

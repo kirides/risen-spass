@@ -199,6 +199,8 @@ public:
 
     // Only valid while holding the lock returned by lock(); use for native code that must touch Lua.
     sol::state_view lua() { return sol::state_view(state_->lua_state()); }
+    // The shared `risen` table (native namespaces); only valid while holding lock(). For layer-internal Lua chunks such as the live link's inspection commands.
+    sol::table apiTable() { return risen_; }
     std::unique_lock<std::recursive_mutex> lock() { return std::unique_lock(mutex_); }
 
 private:

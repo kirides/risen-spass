@@ -14,6 +14,7 @@
 #include "common/crash.h"
 #include "common/link.h"
 #include "common/paths.h"
+#include "game/link_inspect_lua.h"
 #include "game/lua_http.h"
 #include "lua/runtime.h"
 
@@ -130,6 +131,61 @@ json fail(const json& id, const std::string& why) {
     return j;
 }
 
+// Calls a Lua command function with the request's args and turns its result (value | nil, reason) into a reply.
+json runLua(const json& id, sol::state_view L, sol::object fnObj, const json& args, const std::string& cmd, const std::string& mod) {
+    std::string error;
+    auto luaArgs = jsonDecode(L, dump(args), error);
+    if (!luaArgs) {
+        return fail(id, "bad args: " + error);
+    }
+    crash::Scope trail("link command", cmd);
+    sol::protected_function fn = fnObj.as<sol::protected_function>();
+    sol::protected_function_result res = fn(*luaArgs);
+    if (!res.valid()) {
+        const std::string what = res.get<sol::error>().what();
+        spdlog::error("lua: [{}] link command '{}' failed: {}", mod, cmd, what);
+        return fail(id, what);
+    }
+    sol::object result = res.get_type(0) == sol::type::none ? sol::object{} : res.get<sol::object>(0);
+    sol::object err = res.return_count() > 1 ? res.get<sol::object>(1) : sol::object{};
+    if (err.valid() && err.get_type() == sol::type::string) {
+        return fail(id, err.as<std::string>());
+    }
+    json j = reply(id, true);
+    if (result.valid() && result.get_type() != sol::type::lua_nil) {
+        auto text = jsonEncode(result, false, error);
+        if (!text) {
+            return fail(id, "the result cannot be encoded: " + error);
+        }
+        j["result"] = json::parse(*text, nullptr, false);
+    }
+    return j;
+}
+
+// The table of inspection functions (the chunk of link_inspect_lua.h run once per Lua state with the shared `risen` table).
+sol::table inspectTable(sol::state_view L) {
+    sol::table reg = L.registry();
+    sol::object o = reg["spass.link.inspect"];
+    if (o.is<sol::table>()) {
+        return o.as<sol::table>();
+    }
+    sol::load_result loaded = L.load(kLinkInspectLua, "=link.inspect");
+    sol::table t = L.create_table();
+    if (loaded.valid()) {
+        sol::protected_function fn = loaded;
+        sol::protected_function_result r = fn(lua::Runtime::instance().apiTable());
+        if (r.valid() && r.get_type() == sol::type::table) {
+            t = r.get<sol::table>();
+        } else if (!r.valid()) {
+            spdlog::error("link: the inspection chunk failed: {}", r.get<sol::error>().what());
+        }
+    } else {
+        spdlog::error("link: the inspection chunk does not load: {}", loaded.get<sol::error>().what());
+    }
+    reg["spass.link.inspect"] = t;
+    return t;
+}
+
 json handle(const json& msg) {
     const json id = msg.contains("id") ? msg["id"] : json();
     if (!msg.is_object() || !msg.contains("cmd") || !msg["cmd"].is_string()) {
@@ -206,12 +262,24 @@ json handle(const json& msg) {
         return j;
     }
     if (cmd == "commands") {
-        json list = json::array({"hello", "ping", "mods", "reload", "subscribe", "commands"});
+        json list = json::array({"hello", "ping", "mods", "reload", "subscribe", "commands", "inspect.state", "inspect.nearby", "inspect.entity", "inspect.props", "inspect.inventory", "inspect.quests", "inspect.gamevars"});
         std::lock_guard lock(g_mutex);
         for (const auto& [name, mod] : g_handlers) list.push_back(name);
         json j = reply(id, true);
         j["result"] = {{"commands", std::move(list)}};
         return j;
+    }
+
+    // the built-in read-only inspection commands (link_inspect_lua.h)
+    if (cmd.rfind("inspect.", 0) == 0) {
+        auto lock = rt.lock();
+        sol::state_view L = rt.lua();
+        sol::table tbl = inspectTable(L);
+        sol::object fnObj = tbl[cmd.substr(8)];
+        if (fnObj.get_type() != sol::type::function) {
+            return fail(id, "unknown command '" + cmd.substr(0, 60) + "'");
+        }
+        return runLua(id, L, fnObj, args, cmd, "link");
     }
 
     // a command of a mod
@@ -230,33 +298,7 @@ json handle(const json& msg) {
     if (fnObj.get_type() != sol::type::function) {
         return fail(id, "the command '" + cmd + "' is gone");
     }
-    std::string error;
-    auto luaArgs = jsonDecode(L, dump(args), error);
-    if (!luaArgs) {
-        return fail(id, "bad args: " + error);
-    }
-    crash::Scope trail("link command", cmd);
-    sol::protected_function fn = fnObj.as<sol::protected_function>();
-    sol::protected_function_result res = fn(*luaArgs);
-    if (!res.valid()) {
-        const std::string what = res.get<sol::error>().what();
-        spdlog::error("lua: [{}] link command '{}' failed: {}", mod, cmd, what);
-        return fail(id, what);
-    }
-    sol::object result = res.get_type(0) == sol::type::none ? sol::object{} : res.get<sol::object>(0);
-    sol::object err = res.return_count() > 1 ? res.get<sol::object>(1) : sol::object{};
-    if (err.valid() && err.get_type() == sol::type::string) {
-        return fail(id, err.as<std::string>());
-    }
-    json j = reply(id, true);
-    if (result.valid() && result.get_type() != sol::type::lua_nil) {
-        auto text = jsonEncode(result, false, error);
-        if (!text) {
-            return fail(id, "the result cannot be encoded: " + error);
-        }
-        j["result"] = json::parse(*text, nullptr, false);
-    }
-    return j;
+    return runLua(id, L, fnObj, args, cmd, mod);
 }
 
 bool validName(const std::string& s) {

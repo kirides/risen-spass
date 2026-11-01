@@ -173,3 +173,121 @@ TEST(link_client_reload_against_a_fake_game) {
     CHECK(!closed.request("hello").ok);
 }
 #endif
+
+#ifdef _WIN32
+#include "core/link_worker.h"
+
+namespace {
+// A fake game for the worker: answers hello / subscribe / inspect.state, pushes a log line after subscribe, and hangs up on request.
+struct FakeGame2 {
+    int pid_;
+    std::string path;
+    std::thread thread;
+    std::atomic<bool> hangup{false};
+    explicit FakeGame2(const std::string& name, int pid = 4242) : pid_(pid), path("\\\\.\\pipe\\" + name) {
+        HANDLE pipe = CreateNamedPipeA(path.c_str(), PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS, 1, 65536, 65536, 0, nullptr);
+        thread = std::thread([this, pipe] {
+            if (ConnectNamedPipe(pipe, nullptr) || GetLastError() == ERROR_PIPE_CONNECTED) {
+                auto send = [&](const nlohmann::json& j) {
+                    const std::string t = j.dump();
+                    DWORD w = 0;
+                    WriteFile(pipe, t.data(), static_cast<DWORD>(t.size()), &w, nullptr);
+                };
+                char buf[65536];
+                while (!hangup) {
+                    DWORD avail = 0;
+                    if (!PeekNamedPipe(pipe, nullptr, 0, nullptr, &avail, nullptr)) break;
+                    if (avail == 0) {
+                        Sleep(5);
+                        continue;
+                    }
+                    DWORD n = 0;
+                    if (!ReadFile(pipe, buf, sizeof buf, &n, nullptr)) break;
+                    const nlohmann::json req = nlohmann::json::parse(std::string(buf, n), nullptr, false);
+                    const std::string cmd = req.value("cmd", "");
+                    if (cmd == "hello") send({{"id", req["id"]}, {"ok", true}, {"result", {{"pid", pid_}, {"pipe", path}, {"layer", "9.9"}, {"session", "new"}}}});
+                    else if (cmd == "subscribe") {
+                        send({{"id", req["id"]}, {"ok", true}, {"result", {{"log", req["args"]["log"]}}}});
+                        send({{"event", "log"}, {"data", {{"level", "warning"}, {"text", "hello from the log"}}}});
+                    } else if (cmd == "inspect.state") send({{"id", req["id"]}, {"ok", true}, {"result", {{"running", true}, {"hour", 7}}}});
+                    else send({{"id", req["id"]}, {"ok", false}, {"error", "unknown command"}});
+                }
+            }
+            DisconnectNamedPipe(pipe);
+            CloseHandle(pipe);
+        });
+    }
+    ~FakeGame2() {
+        hangup = true;
+        if (thread.joinable()) thread.join();
+    }
+};
+
+template <class F>
+bool wait_for(F cond, int ms = 6000) {
+    for (int i = 0; i < ms / 20; ++i) {
+        if (cond()) return true;
+        Sleep(20);
+    }
+    return cond();
+}
+}  // namespace
+
+TEST(link_worker_finds_the_game_streams_the_log_and_reconnects) {
+    const fs::path dir = temp_dir("link_worker");
+    const fs::path info = dir / "bin" / "spass" / "link.json";
+    fs::create_directories(info.parent_path());
+    const std::string name = "mk-worker-" + std::to_string(GetCurrentProcessId());
+    LinkWorker worker;
+    worker.set_game_dir(u8str(dir));
+    CHECK(!worker.status().connected);  // nothing there yet
+
+    unsigned long long first = 0;
+    {
+        FakeGame2 game(name);
+        write_text(info, nlohmann::json{{"pipe", game.path}, {"pid", 4242}, {"protocol", 1}}.dump());
+        CHECK(wait_for([&] { return worker.status().connected; }));
+        const LinkWorker::Status st = worker.status();
+        CHECK(st.pid == 4242 && st.layer == "9.9" && st.session == "new");
+        first = st.connects;
+
+        worker.set_log_level("info");
+        std::vector<LinkWorker::LogLine> lines;
+        CHECK(wait_for([&] {
+            for (auto& l : worker.take_log()) lines.push_back(l);
+            return !lines.empty();
+        }));
+        CHECK(!lines.empty() && lines[0].text == "hello from the log" && lines[0].level == "warning");
+
+        worker.request("state", "inspect.state");
+        std::vector<LinkWorker::Result> results;
+        CHECK(wait_for([&] {
+            for (auto& r : worker.take_results()) results.push_back(std::move(r));
+            return !results.empty();
+        }));
+        CHECK(results.size() == 1 && results[0].tag == "state" && results[0].reply.ok && results[0].reply.result["hour"] == 7);
+
+        worker.request("bad", "no.such");
+        results.clear();
+        CHECK(wait_for([&] {
+            for (auto& r : worker.take_results()) results.push_back(std::move(r));
+            return !results.empty();
+        }));
+        CHECK(results.size() == 1 && !results[0].reply.ok && results[0].reply.error == "unknown command");
+        game.hangup = true;  // the game goes away
+        CHECK(wait_for([&] { return !worker.status().connected; }));
+    }
+    // a new game (a new pipe) is found again by itself
+    {
+        FakeGame2 game(name + "-2", 4343);
+        write_text(info, nlohmann::json{{"pipe", game.path}, {"pid", 4343}, {"protocol", 1}}.dump());
+        CHECK(wait_for([&] { return worker.status().connected && worker.status().pid == 4343; }, 8000));
+        CHECK(worker.status().connects > first);
+    }
+    // requests while nobody is connected are dropped, not queued
+    CHECK(wait_for([&] { return !worker.status().connected; }));
+    worker.request("late", "inspect.state");
+    Sleep(100);
+    CHECK(worker.take_results().empty());
+}
+#endif

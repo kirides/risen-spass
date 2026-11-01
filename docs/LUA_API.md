@@ -1275,6 +1275,10 @@ The layer writes `<Risen>\bin\spass\link.json` (`{"pipe": "\\\\.\\pipe\\risen-sp
 * **Built-in commands:** `hello` (protocol, layer version, pid, pipe, session/world mode, mod count), `ping`, `mods` (every mod with state, enabled, network, reloadable; the load order), `reload {mod = id | "all"}` (hot reload, the reply carries the per-mod actions: reloaded/failed, handlers removed/added, `restart_required`),
   `subscribe {log = "off|trace|debug|info|warn|error"}` (the game's log lines at or above the level are pushed as `log` events until the client leaves; this is how an editor shows the game's errors), `commands`.
 * **Commands of a mod:** `risen.link.on("inspect", function(args) return { ... } end)` registers `<mod id>.inspect`; the handler returns a result (anything `risen.json.encode` takes) or `nil, "reason"` (an error replies `ok = false`). `risen.link.send("changed", data)` pushes the event `<mod id>.changed`. Both are removed with the mod on a hot reload. There is deliberately no built-in "run this Lua code" command: a mod that wants one writes it (and decides who may call it).
+* **Inspection commands** (built in, read-only, used by the editor's Live panel; they need a running game and return `nil, reason` otherwise):
+  `inspect.state` (world, chapter, time, the player), `inspect.nearby {radius, limit}` (NPCs around the player, nearest first), `inspect.entity {id | name}` (summary, which property sets it has),
+  `inspect.props {id | name, set}` (every property of a set with its current value as text), `inspect.inventory {id | name}`, `inspect.quests {names}`, `inspect.gamevars {names}`.
+  Engine texts (Windows-1252) are sent as UTF-8.
 * Events for mods: `link.connected`, `link.disconnected`. `risen.link.available()` / `risen.link.connected()`.
 * Test client: `python tools/linktest_client.py <bin\spass> <result.json>`; scenario `link` (`test-run.ps1 -LinkClient`), unit test `link_pipe_round_trip_and_reconnect`.
 

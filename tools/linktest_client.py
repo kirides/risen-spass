@@ -184,6 +184,42 @@ def main():
     ev = link.wait_event('link_target.hello', 10)
     check('event from a mod', r.get('ok') and ev is not None and ev['data'] == {'n': 1, 'text': 'hi'}, ev)
 
+    # the inspection commands need a running game: wait for the player
+    state = None
+    end = time.time() + 150
+    while time.time() < end:
+        r = link.request('inspect.state')
+        if r.get('ok') and r['result'].get('running') and r['result'].get('player'):
+            state = r['result']
+            break
+        time.sleep(1)
+    player = (state or {}).get('player', {})
+    check('inspect.state', state is not None and (player.get('hp') or 0) > 0 and player.get('player') is True and player.get('x') is not None and state.get('hour') is not None, state)
+    r = link.request('inspect.nearby', {'radius': 20000, 'limit': 20})
+    ents = r.get('result', {}).get('entities', [])
+    check('inspect.nearby', r.get('ok') and len(ents) > 0 and all(e.get('id') for e in ents) and ents == sorted(ents, key=lambda e: e.get('distance') or 1e12) and not any(e.get('player') for e in ents), r.get('error') or len(ents))
+    target = ents[0] if ents else {}
+    r = link.request('inspect.entity', {'id': target.get('id')})
+    sets = {s['name']: s['count'] for s in r.get('result', {}).get('sets', [])}
+    check('inspect.entity', r.get('ok') and r['result']['id'] == target.get('id') and r['result'].get('template') and sets.get('gCNPC_PS', 0) > 0, r.get('error') or sets)
+    r = link.request('inspect.props', {'id': target.get('id'), 'set': 'gCNPC_PS'})
+    props = r.get('result', {}).get('properties', [])
+    check('inspect.props', r.get('ok') and len(props) > 3 and all('name' in p and 'type' in p for p in props) and any(p.get('value') for p in props), r.get('error') or len(props))
+    r = link.request('inspect.props', {'id': target.get('id'), 'set': 'gCNoSuch_PS'})
+    check('inspect.props bad set', r.get('ok') is False and 'no gCNoSuch_PS' in r.get('error', ''), r)
+    r = link.request('inspect.entity', {'id': '00000000-0000-0000-0000-000000000000'})
+    check('inspect.entity unknown', r.get('ok') is False and 'no such entity' in r.get('error', ''), r)
+    r = link.request('inspect.inventory', {'id': player.get('id')})
+    check('inspect.inventory', r.get('ok') and isinstance(r['result'].get('stacks'), list) and r['result']['count'] == len(r['result']['stacks']) if r.get('ok') else False, r.get('error') or r.get('result'))
+    r = link.request('inspect.quests', {'names': ['Q_NO_SUCH_QUEST', 5, 'Another']})
+    qs = r.get('result', {}).get('quests', [])
+    check('inspect.quests', r.get('ok') and len(qs) == 2 and qs[0]['name'] == 'Q_NO_SUCH_QUEST' and qs[0]['running'] is False, r)
+    r = link.request('inspect.gamevars', {'names': ['NoSuchVariableXyz']})
+    check('inspect.gamevars', r.get('ok') and r['result']['vars'][0]['exists'] is False, r)
+    r = link.request('inspect.nearby', {'radius': 'far', 'limit': 'x'})
+    check('inspect bad argument types', r.get('ok') is True, r)  # wrong types fall back to defaults
+    r = link.request('inspect.nosuch')
+    check('inspect unknown', r.get('ok') is False and 'unknown command' in r.get('error', ''), r)
     results['trace'] = [True, repr(link.trace[-60:])]
     json.dump(results, open(out, 'w'), indent=1)
     time.sleep(1)  # the scenario now waits for `link.disconnected`

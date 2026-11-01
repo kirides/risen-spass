@@ -30,6 +30,7 @@ std::unique_ptr<Panel> make_npc_groups_panel();
 std::unique_ptr<Panel> make_patches_panel();
 std::unique_ptr<Panel> make_strings_panel();
 std::unique_ptr<Panel> make_shipped_dialogs_panel();
+std::unique_ptr<Panel> make_live_panel();
 
 // window titles, used for the default docking layout
 inline constexpr const char* kPanelMod = N_("Mod");
@@ -54,5 +55,6 @@ inline constexpr const char* kPanelNpcGroups = N_("NPC groups");
 inline constexpr const char* kPanelPatches = N_("Patches");
 inline constexpr const char* kPanelStrings = N_("Strings");
 inline constexpr const char* kPanelShippedDialogs = N_("Shipped dialogues");
+inline constexpr const char* kPanelLive = N_("Live");
 
 }  // namespace mk
