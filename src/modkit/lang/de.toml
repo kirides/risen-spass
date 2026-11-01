@@ -158,33 +158,33 @@ author = "risen-spass"
 "Open the game's log" = "Protokoll des Spiels öffnen"
 # src/modkit/app/app.cpp:780
 "Forget the game's errors" = "Fehler des Spiels vergessen"
-# src/modkit/app/app.cpp:789
-"  Play  " = "  Spielen"
-# src/modkit/app/app.cpp:791
+# src/modkit/app/app.cpp:791 (+3)
+"Play" = "Spielen"
+# src/modkit/app/app.cpp:794
 "Export the mod into the game folder and start Risen (F5).\nA running game with hot reload picks the new files up." = "Exportiert die Mod in den Spielordner und startet Risen (F5).\nEin laufendes Spiel mit Hot Reload übernimmt die neuen Dateien."
-# src/modkit/app/app.cpp:795 (+1)
+# src/modkit/app/app.cpp:798 (+1)
 "Expand the side panels (Ctrl+B)" = "Seitenleiste ausklappen (Strg+B)"
-# src/modkit/app/app.cpp:795
+# src/modkit/app/app.cpp:798
 "Collapse the side panels into vertical tabs (Ctrl+B)" = "Seitenleiste zu senkrechten Reitern einklappen (Strg+B)"
-# src/modkit/app/app.cpp:810
+# src/modkit/app/app.cpp:813
 "loading {0}" = "lade {0}"
-# src/modkit/app/app.cpp:812
+# src/modkit/app/app.cpp:815
 "%s (%zu templates)" = "%s (%zu Vorlagen)"
-# src/modkit/app/app.cpp:814
+# src/modkit/app/app.cpp:817
 "No game data directory (Settings)" = "Kein Spieldatenverzeichnis (Einstellungen)"
-# src/modkit/app/app.cpp:814
+# src/modkit/app/app.cpp:817
 "Game data not loaded" = "Spieldaten nicht geladen"
-# src/modkit/app/app.cpp:872
+# src/modkit/app/app.cpp:875
 "No panel is docked at the left edge" = "Am linken Rand ist kein Fenster angedockt"
-# src/modkit/app/app.cpp:913 (+1)
+# src/modkit/app/app.cpp:916 (+1)
 "Unsaved changes" = "Ungespeicherte Änderungen"
-# src/modkit/app/app.cpp:917 (+2)
+# src/modkit/app/app.cpp:920 (+2)
 "Import" = "Importieren"
-# src/modkit/app/app.cpp:927
+# src/modkit/app/app.cpp:930
 "The project has unsaved changes." = "Das Projekt hat ungespeicherte Änderungen."
-# src/modkit/app/app.cpp:934
+# src/modkit/app/app.cpp:937
 "Discard" = "Verwerfen"
-# src/modkit/app/app.cpp:941 (+4)
+# src/modkit/app/app.cpp:944 (+4)
 "Cancel" = "Abbrechen"
 # src/modkit/app/dragdrop.cpp:45 (+2)
 "placed NPC" = "platzierter NPC"
@@ -302,8 +302,6 @@ author = "risen-spass"
 "Shipped {0}" = "Mitgeliefert: {0}"
 # src/modkit/app/palette.cpp:58 (+10)
 "Command" = "Befehl"
-# src/modkit/app/palette.cpp:58 (+2)
-"Play" = "Spielen"
 # src/modkit/app/palette.cpp:58
 "export and start the game (F5)" = "exportieren und das Spiel starten (F5)"
 # src/modkit/app/palette.cpp:59
@@ -3465,3 +3463,4 @@ author = "risen-spass"
 "the sequence returns to the start, so the sub-options are never shown" = "die Folge kehrt zum Anfang zurück, daher werden die Unteroptionen nie angezeigt"
 "exported as a loose copy of the material" = "wird als lose Kopie des Materials exportiert"
 "Points are relative to the NPC's home (where he is made). Humans work 6:00-20:00, relax from 20:00, sleep before 6:00. A post the NPC cannot walk to leaves him standing: choose connected points near his home." = "Die Punkte sind relativ zum Zuhause des NPCs (wo er erzeugt wird). Menschen arbeiten von 6:00 bis 20:00, ruhen ab 20:00 und schlafen vor 6:00. Ein Posten, den der NPC nicht erreichen kann, lässt ihn stehen: wähle verbundene Punkte in der Nähe seines Zuhauses."
+"  Play  " = "  Spielen"

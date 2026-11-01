@@ -786,7 +786,10 @@ void App::draw_menu() {
     {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.5f, 0.25f, 1));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.22f, 0.62f, 0.3f, 1));
-        if (ImGui::SmallButton(tr("  Play  "))) defer([this] { play(); });
+        // a full-height button: SmallButton has no vertical padding, so it was shorter than the menu bar and stuck to its top edge
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(16.0f, ImGui::GetStyle().FramePadding.y));  // wider than the text, the same on both sides in every language
+        if (ImGui::Button(tr("Play"))) defer([this] { play(); });
+        ImGui::PopStyleVar();
         ImGui::PopStyleColor(2);
         if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", tr("Export the mod into the game folder and start Risen (F5).\nA running game with hot reload picks the new files up."));
     }
