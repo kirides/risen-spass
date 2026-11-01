@@ -228,7 +228,7 @@ scenario `scene` (`mods/scene_test`, 35 checks, ~150 s): the same spot twice, th
 The logic of the page is a plain Lua module (`mods/modmanager/model.lua`) with unit tests against a fake `risen.mods` (`tests/modmanager_tests.inc`, 34 checks): navigation, paging, details, refusals with the host's reason, cascades, the data question, a failing host.
 
 ## Network tests (`risen.http`)
-`src/common/http.*` (WinHTTP client, worker threads) and the Lua side `src/game/lua_http.cpp` (`risen.http`, `risen.json`). Unit tests (`spass_tests`: `http_*`, `json_*`, `manifest_network_*`) run the client against a loopback server inside the test.
+`src/common/httpclient/` (the portable async WinHTTP client, see its README) and the Lua side `src/game/lua_http.cpp` (`risen.http`, `risen.json`). Unit tests (`spass_tests`: `http_*`, `json_*`, `manifest_network_*`) run the client against a loopback server inside the test.
 Scenario `http` (`smoke-test.ps1 -Scenario http`) uses `test-run.ps1 -HttpServer`: it starts `tools/httptest_server.py` on a free 127.0.0.1 port and passes it as `-Param http_port=N`; mods `http_test` (network), `http_test_off` (none), `http_test_hosts` (host list).
 `hardening` excludes `risen.mods.set_network` (valid arguments switch the network off). Known: the full `hardening` run crashes in an engine worker thread (`Engine.dll+0x3927ee`, while fuzzing `Entity.*`) with and without the network code (checked on 2026-11-01 against the unmodified baseline); `-Param "only=http;json;mods"` passes.
 

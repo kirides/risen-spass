@@ -29,7 +29,7 @@
 
 #include "common/asset_names.h"
 #include "common/crash.h"
-#include "common/http.h"
+#include "common/httpclient/httpclient.h"
 #include "common/link.h"
 #include "common/input_names.h"
 #include "common/pose.h"
@@ -634,26 +634,26 @@ TEST(manifest_network_key_and_player_switches) {
 }
 
 TEST(http_url_helpers) {
-    using namespace spass::http;
+    using namespace httpc;
     Url u;
     std::string e;
-    CHECK(parseUrl("https://Example.COM/a/b?x=1#frag", u, e) && u.https && u.host == "example.com" && u.port == 443 && u.path == "/a/b?x=1");
-    CHECK(parseUrl("http://127.0.0.1:8080", u, e) && !u.https && u.port == 8080 && u.path == "/");
-    CHECK(parseUrl("http://h?q=1", u, e) && u.path == "/?q=1");
-    CHECK(!parseUrl("ftp://x/", u, e));
-    CHECK(!parseUrl("https://user:pw@host/", u, e));
-    CHECK(!parseUrl("https://host:99999/", u, e));
-    CHECK(!parseUrl("https://ho st/", u, e));
-    CHECK(!parseUrl("https:///path", u, e));
-    CHECK(hostAllowed("a.com", {}));
-    CHECK(hostAllowed("API.a.com", {"api.a.com"}) && !hostAllowed("evil-api.a.com", {"api.a.com"}));
-    CHECK(hostAllowed("x.a.com", {"*.a.com"}) && !hostAllowed("a.com", {"*.a.com"}) && !hostAllowed("xa.com", {"*.a.com"}));
+    CHECK(parse_url("https://Example.COM/a/b?x=1#frag", u, e) && u.https && u.host == "example.com" && u.port == 443 && u.path == "/a/b?x=1");
+    CHECK(parse_url("http://127.0.0.1:8080", u, e) && !u.https && u.port == 8080 && u.path == "/");
+    CHECK(parse_url("http://h?q=1", u, e) && u.path == "/?q=1");
+    CHECK(!parse_url("ftp://x/", u, e));
+    CHECK(!parse_url("https://user:pw@host/", u, e));
+    CHECK(!parse_url("https://host:99999/", u, e));
+    CHECK(!parse_url("https://ho st/", u, e));
+    CHECK(!parse_url("https:///path", u, e));
+    CHECK(host_allowed("a.com", {}));
+    CHECK(host_allowed("API.a.com", {"api.a.com"}) && !host_allowed("evil-api.a.com", {"api.a.com"}));
+    CHECK(host_allowed("x.a.com", {"*.a.com"}) && !host_allowed("a.com", {"*.a.com"}) && !host_allowed("xa.com", {"*.a.com"}));
     Url base;
-    parseUrl("https://h.test/dir/file?q=1", base, e);
-    CHECK(resolveLocation(base, "/abs") == "https://h.test/abs");
-    CHECK(resolveLocation(base, "rel") == "https://h.test/dir/rel");
-    CHECK(resolveLocation(base, "//o.test/x") == "https://o.test/x");
-    CHECK(resolveLocation(base, "http://o.test/x") == "http://o.test/x");
+    parse_url("https://h.test/dir/file?q=1", base, e);
+    CHECK(resolve_location(base, "/abs") == "https://h.test/abs");
+    CHECK(resolve_location(base, "rel") == "https://h.test/dir/rel");
+    CHECK(resolve_location(base, "//o.test/x") == "https://o.test/x");
+    CHECK(resolve_location(base, "http://o.test/x") == "http://o.test/x");
 }
 
 TEST(json_decode_encode_round_trip) {
@@ -691,6 +691,8 @@ struct LoopbackServer {
     SOCKET listener = INVALID_SOCKET;
     int port = 0;
     std::thread thread;
+    std::vector<std::thread> workers;
+    std::mutex wm;
     std::atomic<bool> stop{false};
 
     LoopbackServer() {
@@ -718,6 +720,7 @@ struct LoopbackServer {
         connect(s, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
         closesocket(s);
         thread.join();
+        for (std::thread& w : workers) w.join();
         closesocket(listener);
         WSACleanup();
     }
@@ -741,6 +744,12 @@ struct LoopbackServer {
                 if (c != INVALID_SOCKET) closesocket(c);
                 continue;
             }
+            std::lock_guard<std::mutex> g(wm);
+            workers.emplace_back([this, c] { serve(c); });  // every connection on its own thread: the async tests keep several open at once
+        }
+    }
+    void serve(SOCKET c) {
+        {
             std::string req;
             char buf[4096];
             std::size_t headEnd = std::string::npos;
@@ -771,6 +780,8 @@ struct LoopbackServer {
                 else if (path == "/404") sendAll(c, reply(404, "nope"));
                 else if (path == "/big") sendAll(c, reply(200, std::string(200000, 'x')));
                 else if (path == "/slow") { Sleep(4000); sendAll(c, reply(200, "late")); }
+                else if (path == "/hold") { for (int i = 0; i < 100 && !stop; ++i) Sleep(100); sendAll(c, reply(200, "held")); }  // up to 10 s, ends early when the server stops
+                else if (path == "/trickle") { sendAll(c, "HTTP/1.1 200 X\r\nConnection: close\r\nContent-Length: 100000\r\n\r\n"); for (int i = 0; i < 100 && !stop; ++i) { sendAll(c, std::string(1000, 't')); Sleep(100); } }
                 else sendAll(c, reply(200, "other"));
             }
             shutdown(c, SD_SEND);
@@ -779,13 +790,13 @@ struct LoopbackServer {
     }
 };
 
-spass::http::Response fetch(const spass::http::Request& r) { return spass::http::perform(r); }
+httpc::Response fetch(const httpc::Request& r) { return httpc::perform(r); }
 
 }  // namespace
 
 TEST(http_client_against_a_loopback_server) {
     LoopbackServer srv;
-    using namespace spass::http;
+    using namespace httpc;
     Request r;
     r.url = srv.url("/text");
     Response a = fetch(r);
@@ -846,17 +857,21 @@ TEST(http_client_against_a_loopback_server) {
     CHECK(!fetch(r).ok);
     r.headers.clear();
 
-    // asynchronous use: submit, then poll
-    r.url = srv.url("/text");
-    const std::uint64_t id1 = submit(r);
-    const std::uint64_t id2 = submit(r);
-    std::vector<Completed> done;
-    for (int i = 0; i < 100 && done.size() < 2; ++i) {
-        poll(done);
-        Sleep(50);
+    // asynchronous use: submit with a completion queue, then poll
+    {
+        auto client = Client::create_winhttp();
+        CompletionQueue queue;
+        r.url = srv.url("/text");
+        const std::uint64_t id1 = client->submit(r, queue.sink());
+        const std::uint64_t id2 = client->submit(r, queue.sink());
+        std::vector<Completed> done;
+        for (int i = 0; i < 100 && done.size() < 2; ++i) {
+            queue.poll(done);
+            Sleep(50);
+        }
+        CHECK(done.size() == 2 && done[0].id != done[1].id && (done[0].id == id1 || done[0].id == id2) && done[0].response.body == "hello");
+        CHECK(client->in_flight() == 0);
     }
-    CHECK(done.size() == 2 && done[0].id != done[1].id && (done[0].id == id1 || done[0].id == id2) && done[0].response.body == "hello");
-    CHECK(inFlight() == 0);
 
     // timeout (last: the server is busy while it sleeps)
     r.url = srv.url("/slow");
@@ -867,11 +882,108 @@ TEST(http_client_against_a_loopback_server) {
     CHECK(std::chrono::steady_clock::now() - t0 < std::chrono::seconds(3));
 }
 
+TEST(http_async_queue_cancel_deadline_and_shutdown) {
+    LoopbackServer srv;
+    using namespace httpc;
+    const auto self = std::this_thread::get_id();
+    const auto since = [](std::chrono::steady_clock::time_point t) { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t).count(); };
+
+    {   // 40 requests through a client that runs 4 at a time: all arrive, none on the thread that submitted
+        ClientOptions o;
+        o.maxInFlight = 4;
+        auto client = Client::create_winhttp(o);
+        std::atomic<int> done{0}, good{0}, onCaller{0};
+        Request r;
+        r.url = srv.url("/text");
+        for (int i = 0; i < 40; ++i) {
+            client->submit(r, [&](std::uint64_t, Response res) {
+                if (std::this_thread::get_id() == self) ++onCaller;
+                if (res.ok && res.body == "hello") ++good;
+                ++done;
+            });
+        }
+        for (int i = 0; i < 300 && done < 40; ++i) Sleep(50);
+        CHECK(done == 40 && good == 40 && onCaller == 0);
+        CHECK(client->in_flight() == 0);
+    }
+    {   // cancel a running request, and one that still waits in the queue
+        ClientOptions o;
+        o.maxInFlight = 1;
+        auto client = Client::create_winhttp(o);
+        std::mutex m;
+        std::map<std::uint64_t, Response> got;
+        auto sink = [&](std::uint64_t id, Response res) {
+            std::lock_guard<std::mutex> lock(m);
+            got[id] = std::move(res);
+        };
+        Request hold, quick;
+        hold.url = srv.url("/hold");
+        quick.url = srv.url("/text");
+        const std::uint64_t a = client->submit(hold, sink);
+        const std::uint64_t b = client->submit(quick, sink);  // waits: maxInFlight is 1
+        Sleep(300);
+        CHECK(client->cancel(b));
+        const auto t0 = std::chrono::steady_clock::now();
+        CHECK(client->cancel(a));
+        for (int i = 0; i < 100; ++i) {
+            {
+                std::lock_guard<std::mutex> lock(m);
+                if (got.size() == 2) break;
+            }
+            Sleep(20);
+        }
+        std::lock_guard<std::mutex> lock(m);
+        CHECK(got.size() == 2 && got[a].cancelled && got[a].error == "cancelled" && got[b].cancelled && since(t0) < 2000);
+        CHECK(!client->cancel(a) && !client->cancel(999999));
+    }
+    {   // the deadline covers the whole transfer: a server that trickles data forever is stopped although every phase is fast
+        Request r;
+        r.url = srv.url("/trickle");
+        r.timeoutMs = 2000;
+        r.totalTimeoutMs = 1200;
+        r.maxBytes = 1 << 20;
+        const auto t0 = std::chrono::steady_clock::now();
+        const Response a = fetch(r);
+        CHECK(!a.ok && a.error == "timed out" && since(t0) < 4000);
+    }
+    {   // errors that are known at once are still delivered from another thread
+        auto client = Client::create_winhttp();
+        std::atomic<bool> got{false}, onCaller{false};
+        Request r;
+        r.url = "ftp://example.org/";
+        std::string err;
+        client->submit(r, [&](std::uint64_t, Response res) {
+            onCaller = std::this_thread::get_id() == self;
+            err = res.error;
+            got = true;
+        });
+        for (int i = 0; i < 100 && !got; ++i) Sleep(20);
+        CHECK(got && !onCaller && err.find("http") != std::string::npos);
+    }
+    {   // destroying a client with requests in flight cancels them: every callback runs exactly once, before the destructor returns
+        std::atomic<int> calls{0}, cancelled{0};
+        const auto t0 = std::chrono::steady_clock::now();
+        {
+            auto client = Client::create_winhttp();
+            Request r;
+            r.url = srv.url("/hold");
+            for (int i = 0; i < 3; ++i) {
+                client->submit(r, [&](std::uint64_t, Response res) {
+                    ++calls;
+                    if (res.cancelled) ++cancelled;
+                });
+            }
+            Sleep(300);
+        }
+        CHECK(calls == 3 && cancelled == 3 && since(t0) < 3000);
+    }
+}
+
 TEST(http_connection_failure_is_an_error_not_a_crash) {
-    spass::http::Request r;
+    httpc::Request r;
     r.url = "http://127.0.0.1:1/";  // nothing listens
     r.timeoutMs = 1000;
-    const auto a = spass::http::perform(r);
+    const auto a = httpc::perform(r);
     CHECK(!a.ok && !a.error.empty());
 }
 

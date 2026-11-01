@@ -9,7 +9,7 @@
 #include <spdlog/spdlog.h>
 
 #include "common/crash.h"
-#include "common/http.h"
+#include "common/httpclient/httpclient.h"
 #include "lua/runtime.h"
 
 // risen.json and risen.http (docs/LUA_API.md "Network access").
@@ -247,6 +247,18 @@ struct Pending {
 
 std::mutex g_mutex;
 std::map<std::uint64_t, Pending> g_pending;
+httpc::CompletionQueue g_queue;  // finished requests, handed from WinHTTP's threads to httpPump on the game thread
+
+// One client for the whole layer (WinHTTP async, no thread per request). Never destroyed: its threads may outlive main().
+httpc::Client& httpClient() {
+    static httpc::Client* client = [] {
+        httpc::ClientOptions o;
+        o.userAgent = "risen-spass/" SPASS_VERSION;
+        o.maxInFlight = 8;
+        return httpc::Client::create_winhttp(o).release();
+    }();
+    return *client;
+}
 
 sol::table callbackTable(sol::state_view L) {
     sol::table reg = L.registry();
@@ -274,7 +286,7 @@ std::string denyReason(const lua::ModInfo& mod) {
     return {};
 }
 
-std::string describeUrl(const http::Url& u) {
+std::string describeUrl(const httpc::Url& u) {
     const std::string q = u.path.substr(0, u.path.find('?'));  // the query may carry a token: never logged
     return u.host + q;
 }
@@ -286,7 +298,7 @@ Two startRequest(sol::state_view L, const lua::ModInfo& mod, sol::table opts, so
     if (const std::string why = denyReason(mod); !why.empty()) {
         return fail(L, why);
     }
-    http::Request req;
+    httpc::Request req;
     req.userAgent = "risen-spass/" SPASS_VERSION " (" + mod.id + ")";
     req.allowedHosts = mod.networkHosts;
 
@@ -317,12 +329,12 @@ Two startRequest(sol::state_view L, const lua::ModInfo& mod, sol::table opts, so
         return fail(L, "option 'as' must be \"text\" or \"json\"");
     }
 
-    http::Url parsed;
+    httpc::Url parsed;
     std::string why;
-    if (!http::parseUrl(url, parsed, why)) {
+    if (!httpc::parse_url(url, parsed, why)) {
         return fail(L, why);
     }
-    if (!http::hostAllowed(parsed.host, req.allowedHosts)) {
+    if (!httpc::host_allowed(parsed.host, req.allowedHosts)) {
         return fail(L, "host '" + parsed.host + "' is not in this mod's `network` host list");
     }
 
@@ -414,7 +426,7 @@ Two startRequest(sol::state_view L, const lua::ModInfo& mod, sol::table opts, so
         if (mine >= kMaxPerMod) {
             return fail(L, "too many requests in flight for this mod (16 at most)");
         }
-        id = http::submit(std::move(req));
+        id = httpClient().submit(std::move(req), g_queue.sink());
         g_pending[id] = Pending{mod.id, kind, false};
     }
     callbackTable(L)[id] = callback;
@@ -443,7 +455,7 @@ Two shortcut(sol::this_state ts, const lua::ModInfo& mod, sol::object url, sol::
     return startRequest(L, mod, opts, callback, method, kind);
 }
 
-sol::table makeInfo(sol::state_view L, const http::Response& r) {
+sol::table makeInfo(sol::state_view L, const httpc::Response& r) {
     sol::table info = L.create_table();
     info["status"] = r.status;
     info["url"] = r.finalUrl;
@@ -518,28 +530,29 @@ void bindHttpModApi(sol::state_view lua, sol::table api, const lua::ModInfo& mod
             return false;
         }
         it->second.cancelled = true;
+        httpClient().cancel(it->first);  // stops the transfer; its completion is dropped by httpPump
         return true;
     });
     api["http"] = http;
 }
 
 void httpPump() {
-    if (http::inFlight() == 0) {
+    if (g_queue.empty()) {
         return;
     }
     auto& rt = lua::Runtime::instance();
     if (!rt.running()) {
         return;
     }
-    std::vector<http::Completed> done;
-    http::poll(done);
+    std::vector<httpc::Completed> done;
+    g_queue.poll(done);
     if (done.empty()) {
         return;
     }
     auto lock = rt.lock();
     sol::state_view L = rt.lua();
     sol::table callbacks = callbackTable(L);
-    for (http::Completed& c : done) {
+    for (httpc::Completed& c : done) {
         Pending pending;
         {
             std::lock_guard g(g_mutex);
@@ -555,7 +568,7 @@ void httpPump() {
         if (pending.cancelled || cb.get_type() != sol::type::function) {
             continue;
         }
-        const http::Response& r = c.response;
+        const httpc::Response& r = c.response;
         sol::object result = sol::make_object(L, sol::lua_nil);
         sol::object err = sol::make_object(L, sol::lua_nil);
         sol::table info = makeInfo(L, r);
@@ -600,6 +613,7 @@ void httpReleaseOwner(const std::string& mod, std::vector<std::string>& released
     for (auto& [id, p] : g_pending) {
         if (p.mod == mod && !p.cancelled) {
             p.cancelled = true;
+            httpClient().cancel(id);
             ++n;
         }
     }

@@ -91,7 +91,8 @@ add_library(spass_core STATIC
     src/bootstrap.cpp
     src/config.cpp
     src/common/crash.cpp
-    src/common/http.cpp
+    src/common/httpclient/url.cpp
+    src/common/httpclient/winhttp_backend.cpp
     src/common/link.cpp
     src/common/log.cpp
     src/common/paths.cpp
