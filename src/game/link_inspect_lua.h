@@ -98,7 +98,9 @@ function M.nearby(args)
     return { center = brief(player), radius = radius, entities = out }
 end
 
--- the live mirror of the editor's World view (E35): the player and the NPCs around, only what is needed to draw them (id, template, pose, dead); polled several times a second
+-- the live mirror of the editor's World view (E35): the player and the NPCs around, only what is needed to draw them (id, template, pose, dead); polled several times a second.
+-- The nearest `state_limit` (default 24) also carry what the AI routine says they are doing: `ani` (gCScriptRoutine_PS.AniState without its prefix: Stand, SitBench,
+-- SleepBed, Kneel, Dead, ...) and `action` (the ActionString of an interaction: HandsOnHips, Think, Dance, ...), which the editor turns into a motion.
 function M.actors(args)
     local player = try(risen.entity.player)
     if not player then return nil, "there is no player (no game running)" end
@@ -106,22 +108,44 @@ function M.actors(args)
     if radius < 100 then radius = 100 elseif radius > 200000 then radius = 200000 end
     local limit = math.floor(tonumber(args.limit) or 150)
     if limit < 1 then limit = 1 elseif limit > 400 then limit = 400 end
+    local state_limit = math.floor(tonumber(args.state_limit) or 24)
+    if state_limit < 0 then state_limit = 0 elseif state_limit > 100 then state_limit = 100 end
     local function row(e, is_player)
         local p = try(e.pose, e)
         if not p then return nil end
         return { id = prim(try(e.id, e)), name = prim(try(e.name, e)), template = template_name(e), x = p.x, y = p.y, z = p.z, yaw = p.yaw,
-                 dead = try(e.is_dead, e) == true, player = is_player or nil }
+                 dead = try(e.is_dead, e) == true, player = is_player or nil }, e
     end
-    local out = {}
-    local me = row(player, true)
-    if me then out[1] = me end
-    local list = try(risen.entity.npcs, player, radius) or {}
-    for _, e in ipairs(list) do
-        if #out >= limit then break end
+    local function add_state(r, e)
+        local ani = try(e.get_property, e, "gCScriptRoutine_PS", "AniState")
+        if type(ani) == "string" then r.ani = ani:gsub("^gEAniState_", "") end
+        local action = try(e.get_property, e, "gCScriptRoutine_PS", "ActionString")
+        if type(action) == "string" and action ~= "" then r.action = action end
+    end
+    local rows = {}
+    local px, pz = 0, 0
+    local me, me_e = row(player, true)
+    if me then px, pz = me.x, me.z end
+    for _, e in ipairs(try(risen.entity.npcs, player, radius) or {}) do
         if not (try(e.is_player, e) == true) then
             local r = row(e, false)
-            if r then out[#out + 1] = r end
+            if r then
+                r.d2 = (r.x - px) ^ 2 + (r.z - pz) ^ 2
+                rows[#rows + 1] = { r = r, e = e }
+            end
         end
+    end
+    table.sort(rows, function(a, b) return a.r.d2 < b.r.d2 end)
+    local out = {}
+    if me then
+        add_state(me, me_e)
+        out[1] = me
+    end
+    for i, item in ipairs(rows) do
+        if #out >= limit then break end
+        item.r.d2 = nil
+        if i <= state_limit then add_state(item.r, item.e) end
+        out[#out + 1] = item.r
     end
     return { world = prim(try(risen.world.name)), time = prim(try(risen.world.time)), actors = out }
 end

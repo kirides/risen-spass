@@ -10,6 +10,7 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <unordered_set>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -1123,6 +1124,7 @@ private:
             if (mesh_names_[i].empty() || i == skip || (!ids && i == anim_entity_)) continue;
             const WorldEntity& e = world_->entities[i];
             if (!layer_on_[e.layer] || !kinds_[static_cast<int>(e.kind)]) continue;
+            if (!ids && !live_hide_.empty() && (e.kind == TplKind::Npc || e.kind == TplKind::Monster) && (live_hide_.count(e.guid) || live_hide_.count(e.name))) continue;
             const int edit = i < edit_state_.size() ? edit_state_[i] : 0;
             if (edit == 1) continue;  // removed by the mod
             const bool level = is_level_mesh(e);
@@ -1768,7 +1770,7 @@ private:
         ImGui::SameLine();
         ImGui::Checkbox(tr("animate"), &live_animate_);
         if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("%s", tr("Play a standing, walking or running motion on the nearest actors, chosen by how fast the game moves them (the game does not report its animation)."));
+            ImGui::SetTooltip("%s", tr("Play a motion on the nearest actors: standing, walking or running by how fast the game moves them, and sitting, sleeping, kneeling, lying dead or an interaction such as HandsOnHips by what the game's AI routine says (the game does not report the animation itself)."));
         ImGui::SameLine();
         const LinkWorker::Status st = app.link().status();
         if (!st.connected) {
@@ -1825,9 +1827,16 @@ private:
         }
         if (now - live_ask_ >= 0.2) {
             live_ask_ = now;
-            link.request("live:actors", "inspect.actors", {{"radius", 8000}, {"limit", 150}}, 1500);
+            link.request("live:actors", "inspect.actors", {{"radius", 8000}, {"limit", 150}, {"state_limit", 24}}, 1500);
         }
         live_mirror_.update(ImGui::GetIO().DeltaTime);
+        // the world's own copies of the actors the game shows are not drawn (they stand in their bind pose where the live one lies or sits)
+        live_hide_.clear();
+        if (live_here())
+            for (const LiveActor& a : live_mirror_.actors()) {
+                live_hide_.insert(a.id);
+                if (!a.name.empty()) live_hide_.insert(a.name);
+            }
         if (live_follow_ && live_here()) {
             const LiveActor* p = live_mirror_.player();
             if (p) {
@@ -1881,7 +1890,7 @@ private:
         const glm::vec3 cam = gfx::from_gl(cam_.pos);
         std::vector<std::pair<float, const LiveActor*>> near;
         for (const LiveActor& a : live_mirror_.actors()) {
-            if (a.dead || live_mesh_of(app, a.tpl).empty()) continue;
+            if (live_mesh_of(app, a.tpl).empty()) continue;
             const float d2 = (a.x - cam.x) * (a.x - cam.x) + (a.y - cam.y) * (a.y - cam.y) + (a.z - cam.z) * (a.z - cam.z);
             if (d2 < 4500.0f * 4500.0f) near.push_back({d2, &a});
         }
@@ -1914,7 +1923,13 @@ private:
                 for (const AssetEntry* e : motion_assets_for(app, mesh)) names.push_back(e->name);
                 fam = live_family_.emplace(mesh, std::move(names)).first;
             }
-            const MotionChoice c = choose_motion(fam->second, a.speed_avg, s.moving);
+            MotionRequest req;
+            req.speed = a.speed_avg;
+            req.was_moving = s.moving;
+            req.dead = a.dead;
+            req.stance = a.ani;
+            req.action = a.action;
+            const MotionChoice c = choose_motion(fam->second, req);
             s.moving = c.moving;
             if (c.name != s.motion_name) {
                 s.motion_name = c.name;
@@ -2626,6 +2641,7 @@ private:
     glm::vec3 live_last_player_{0.0f};
     std::map<std::string, std::string> live_mesh_;  // template -> its actor mesh ("" = none), a cache
     bool live_animate_ = true;
+    std::unordered_set<std::string> live_hide_;  // guids and names of the world entities the running game shows itself
     std::map<std::string, LiveSlot> live_slots_;                           // actor id -> its skinned mesh and motion
     std::map<std::string, std::shared_ptr<Motion>> live_motions_;          // motion file -> decoded (null = unreadable)
     std::map<std::string, std::vector<std::string>> live_family_;          // actor mesh -> the motion file names that fit it

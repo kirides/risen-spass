@@ -126,3 +126,67 @@ TEST(live_motion_is_chosen_by_speed) {
     CHECK(mk::choose_motion(wolf, 70, false).name == wolf[0]);
     CHECK(mk::choose_motion(wolf, 300, false).name == wolf[1]);
 }
+
+TEST(live_motion_follows_the_routines_state) {
+    const std::vector<std::string> hero = {
+        "Hero_Stand_None_None_P0_Move_Stand_N_Fwd_00_%_00_P0_0._xmot",       "Hero_Stand_None_None_P0_Move_Walk_N_Fwd_00_%_00_P0_150._xmot",
+        "Hero_Stand_None_None_P0_HandsOnHips_Loop_N_Fwd_00_%_00_P0_0._xmot", "Hero_Stand_None_None_P0_HandsOnHips_Begin_N_Fwd_00_%_00_P0_0._xmot",
+        "Hero_Stand_None_None_P0_Dance_Loop_N_Fwd_00_%_00_P0_0._xmot",       "Hero_SitBench_None_None_P0_Ambient_Loop_N_Fwd_00_%_00_P0_0._xmot",
+        "Hero_SitBench_None_None_P0_Stand_Begin_N_Fwd_00_%_00_P0_0._xmot",   "Hero_SleepBed_None_None_P0_Ambient_Loop_N_Left_00_%_00_P0_0._xmot",
+        "Hero_Dead_None_None_P0_Ambient_Loop_N_Fwd_00_%_00_P0_0._xmot",      "Hero_Sneak_None_None_P0_Move_Walk_N_Fwd_00_%_00_P0_90._xmot",
+        "Hero_Sneak_None_None_P0_Move_Stand_N_Fwd_00_%_00_P0_0._xmot"};
+    mk::MotionRequest r;
+    // the routine's interaction at rest: the loop, not the begin / end, whatever the case of the action string
+    r.action = "HandsOnHips";
+    CHECK(mk::choose_motion(hero, r).name == hero[2]);
+    r.action = "dance";
+    CHECK(mk::choose_motion(hero, r).name == hero[4]);
+    r.action = "NoSuchAction";
+    CHECK(mk::choose_motion(hero, r).name == hero[0]);  // unknown: just stands
+    // walking beats the interaction (he left it)
+    r.action = "Dance";
+    r.speed = 150;
+    CHECK(mk::choose_motion(hero, r).name == hero[1]);
+    // sitting, sleeping: the stance's ambient loop; they do not walk, whatever the speed
+    r = {};
+    r.stance = "SitBench";
+    CHECK(mk::choose_motion(hero, r).name == hero[5]);
+    r.speed = 400;
+    CHECK(mk::choose_motion(hero, r).name == hero[5] && !mk::choose_motion(hero, r).moving);
+    r.stance = "SleepBed";
+    CHECK(mk::choose_motion(hero, r).name == hero[7]);
+    r.stance = "SleepGround";  // the family has no such loop: bind pose, not a wrong motion
+    CHECK(mk::choose_motion(hero, r).name.empty());
+    // dead: lies down in its Dead loop, even when the routine still says Stand or the speed is large
+    r = {};
+    r.dead = true;
+    r.stance = "Stand";
+    r.speed = 200;
+    CHECK(mk::choose_motion(hero, r).name == hero[8]);
+    CHECK(mk::choose_motion({hero[0]}, r).name.empty());
+    // sneaking uses its own cycles, and falls back to the plain ones when the family has none for it
+    r = {};
+    r.stance = "Sneak";
+    r.speed = 90;
+    CHECK(mk::choose_motion(hero, r).name == hero[9]);
+    CHECK(mk::choose_motion(hero, r).moving);
+    r.speed = 0;
+    CHECK(mk::choose_motion(hero, r).name == hero[10]);
+    r.stance = "Wade";
+    r.speed = 150;
+    CHECK(mk::choose_motion(hero, r).name == hero[1]);
+}
+
+TEST(live_mirror_reads_the_routines_state) {
+    mk::LiveMirror m;
+    nlohmann::json s = live_sample(0, 0);
+    s["actors"][1]["ani"] = "SitBench";
+    s["actors"][1]["action"] = "Think";
+    s["actors"][0]["ani"] = 5;  // not a string: ignored
+    CHECK(m.apply(s, 1.0));
+    CHECK(m.find("W1")->ani == "SitBench" && m.find("W1")->action == "Think");
+    CHECK(m.player()->ani.empty() && m.player()->action.empty());
+    // a sample without the fields (the nearest ones only carry them) clears them
+    CHECK(m.apply(live_sample(0, 0), 1.2));
+    CHECK(m.find("W1")->ani.empty());
+}

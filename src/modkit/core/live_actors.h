@@ -11,6 +11,7 @@ namespace mk {
 
 struct LiveActor {
     std::string id, name, tpl;
+    std::string ani, action;                 // the routine's stance (Stand, SitBench, ...) and interaction (HandsOnHips, ...); "" = not reported
     bool player = false, dead = false;
     float x = 0, y = 0, z = 0, yaw = 0;      // shown (game units; yaw in degrees as `Entity:pose`)
     float tx = 0, ty = 0, tz = 0, tyaw = 0;  // the last sample

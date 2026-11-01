@@ -33,6 +33,8 @@ bool LiveMirror::apply(const nlohmann::json& result, double now) {
         if (!number(a, "yaw", n.tyaw)) n.tyaw = 0;
         if (a.contains("name") && a["name"].is_string()) n.name = a["name"].get<std::string>();
         if (a.contains("template") && a["template"].is_string()) n.tpl = a["template"].get<std::string>();
+        if (a.contains("ani") && a["ani"].is_string()) n.ani = a["ani"].get<std::string>();
+        if (a.contains("action") && a["action"].is_string()) n.action = a["action"].get<std::string>();
         n.dead = a.value("dead", false);
         n.player = a.value("player", false);
         n.x = n.tx;

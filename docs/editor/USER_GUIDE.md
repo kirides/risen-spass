@@ -574,9 +574,11 @@ In the **World** panel the checkbox **Live** shows the running game inside the 3
 them are drawn with their own meshes at the place and heading the game reports, five times a second and glided in between, with their names over them.
 
 * **follow the player**: the camera moves with the player; you can still turn it and fly it.
-* **animate**: the nearest 16 actors play a standing, walking or running motion of their own family. The game does not report which animation it plays, so the
-  editor picks the cycle from how fast the actor moves between two samples (walk 150, run 400, sprint 625 units a second for humans) and plays it at the rate
-  that fits the speed. What the game plays for other reasons (sitting, sleeping, fighting, talking) is not shown: those actors stand or walk in the picture.
+* **animate**: the nearest 16 actors play a motion of their own family. The game does not report which animation it plays, so the editor derives it from what it
+  can see: how fast the actor moves between two samples picks the walk, run or sprint cycle (150, 400 and 625 units a second for humans) at the rate that fits;
+  at rest the AI routine's state decides: the stance (`AniState`: sitting on a bench, a stool, the ground or a throne, sleeping in a bed or on the ground,
+  kneeling, lying down, dead) plays that stance's ambient loop, and an interaction (`ActionString`: HandsOnHips, Think, ArmsCrossed, Dance, ...) plays its loop.
+  Dead actors lie down. The world's own standing copy of an actor the game shows is hidden. Fighting, talking and one-off animations are not shown.
 * **Move**: select a placed NPC of the project and drag its gizmo: if it is in the running game it is moved and turned there at once, and the picture shows the
   game's own answer. Only NPCs and monsters, never the player; a load brings the saved place back.
 * **Game > Live edit** sends every change of the project to the game (see Play above).
