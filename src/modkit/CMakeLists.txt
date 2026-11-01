@@ -63,6 +63,7 @@ add_library(modkit_core STATIC
     core/paths.cpp
     core/link_client.cpp
     core/link_worker.cpp
+    core/live_actors.cpp
     core/play.cpp
     core/process.cpp
     core/project.cpp

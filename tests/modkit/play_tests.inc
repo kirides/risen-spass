@@ -209,7 +209,8 @@ struct FakeGame2 {
                     else if (cmd == "subscribe") {
                         send({{"id", req["id"]}, {"ok", true}, {"result", {{"log", req["args"]["log"]}}}});
                         send({{"event", "log"}, {"data", {{"level", "warning"}, {"text", "hello from the log"}}}});
-                    } else if (cmd == "inspect.state") send({{"id", req["id"]}, {"ok", true}, {"result", {{"running", true}, {"hour", 7}}}});
+                    } else if (cmd == "inspect.actors") send({{"id", req["id"]}, {"ok", true}, {"result", {{"world", "World"}, {"actors", nlohmann::json::array()}}}});
+                    else if (cmd == "inspect.state") send({{"id", req["id"]}, {"ok", true}, {"result", {{"running", true}, {"hour", 7}}}});
                     else send({{"id", req["id"]}, {"ok", false}, {"error", "unknown command"}});
                 }
             }
@@ -274,6 +275,15 @@ TEST(link_worker_finds_the_game_streams_the_log_and_reconnects) {
             return !results.empty();
         }));
         CHECK(results.size() == 1 && !results[0].reply.ok && results[0].reply.error == "unknown command");
+        // the World view's mirror asks with a "live:" tag: its answer stays out of take_results() (the Live panel drains that) and comes through take_live()
+        worker.request("live:actors", "inspect.actors");
+        std::vector<LinkWorker::Result> live;
+        CHECK(wait_for([&] {
+            for (auto& r : worker.take_live()) live.push_back(std::move(r));
+            return !live.empty();
+        }));
+        CHECK(live.size() == 1 && live[0].tag == "live:actors" && live[0].reply.ok && live[0].reply.result["world"] == "World");
+        CHECK(worker.take_results().empty());
         game.hangup = true;  // the game goes away
         CHECK(wait_for([&] { return !worker.status().connected; }));
     }

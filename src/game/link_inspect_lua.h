@@ -97,6 +97,34 @@ function M.nearby(args)
     return { center = brief(player), radius = radius, entities = out }
 end
 
+-- the live mirror of the editor's World view (E35): the player and the NPCs around, only what is needed to draw them (id, template, pose, dead); polled several times a second
+function M.actors(args)
+    local player = try(risen.entity.player)
+    if not player then return nil, "there is no player (no game running)" end
+    local radius = tonumber(args.radius) or 6000
+    if radius < 100 then radius = 100 elseif radius > 200000 then radius = 200000 end
+    local limit = math.floor(tonumber(args.limit) or 150)
+    if limit < 1 then limit = 1 elseif limit > 400 then limit = 400 end
+    local function row(e, is_player)
+        local p = try(e.pose, e)
+        if not p then return nil end
+        return { id = prim(try(e.id, e)), name = prim(try(e.name, e)), template = template_name(e), x = p.x, y = p.y, z = p.z, yaw = p.yaw,
+                 dead = try(e.is_dead, e) == true, player = is_player or nil }
+    end
+    local out = {}
+    local me = row(player, true)
+    if me then out[1] = me end
+    local list = try(risen.entity.npcs, player, radius) or {}
+    for _, e in ipairs(list) do
+        if #out >= limit then break end
+        if not (try(e.is_player, e) == true) then
+            local r = row(e, false)
+            if r then out[#out + 1] = r end
+        end
+    end
+    return { world = prim(try(risen.world.name)), time = prim(try(risen.world.time)), actors = out }
+end
+
 -- one entity: the summary and which property sets it has
 function M.entity(args)
     local e = find(args)

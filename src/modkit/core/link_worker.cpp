@@ -54,6 +54,13 @@ std::vector<LinkWorker::Result> LinkWorker::take_results() {
     return out;
 }
 
+std::vector<LinkWorker::Result> LinkWorker::take_live() {
+    std::lock_guard<std::mutex> lock(m_);
+    std::vector<Result> out;
+    out.swap(live_results_);
+    return out;
+}
+
 std::vector<LinkWorker::LogLine> LinkWorker::take_log() {
     std::lock_guard<std::mutex> lock(m_);
     std::vector<LogLine> out;
@@ -172,8 +179,13 @@ void LinkWorker::loop() {
             r.cmd = p.cmd;
             r.reply = client.request(p.cmd, p.args, p.timeout_ms);
             std::lock_guard<std::mutex> lock(m_);
-            results_.push_back(std::move(r));
-            if (results_.size() > 2000) results_.erase(results_.begin(), results_.begin() + 1000);
+            if (r.tag.rfind("live:", 0) == 0) {  // the World view's mirror: its own queue, the Live panel does not take these
+                live_results_.push_back(std::move(r));
+                if (live_results_.size() > 50) live_results_.erase(live_results_.begin(), live_results_.begin() + 25);
+            } else {
+                results_.push_back(std::move(r));
+                if (results_.size() > 2000) results_.erase(results_.begin(), results_.begin() + 1000);
+            }
         }
 
         // what the game pushed (log lines and other events), also read by request() while it waited

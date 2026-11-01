@@ -262,7 +262,7 @@ json handle(const json& msg) {
         return j;
     }
     if (cmd == "commands") {
-        json list = json::array({"hello", "ping", "mods", "reload", "subscribe", "commands", "inspect.state", "inspect.nearby", "inspect.entity", "inspect.props", "inspect.inventory", "inspect.quests", "inspect.gamevars"});
+        json list = json::array({"hello", "ping", "mods", "reload", "subscribe", "commands", "inspect.state", "inspect.nearby", "inspect.actors", "inspect.entity", "inspect.props", "inspect.inventory", "inspect.quests", "inspect.gamevars"});
         std::lock_guard lock(g_mutex);
         for (const auto& [name, mod] : g_handlers) list.push_back(name);
         json j = reply(id, true);

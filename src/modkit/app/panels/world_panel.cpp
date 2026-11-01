@@ -31,6 +31,8 @@
 #include "core/catalog.h"
 #include "core/i18n.h"
 #include "core/layers.h"
+#include "core/link_worker.h"
+#include "core/live_actors.h"
 #include "core/navzones.h"
 #include "core/routine.h"
 #include "core/skin.h"
@@ -118,6 +120,7 @@ public:
 
     void on_project_changed(App& app) override {
         overlay_dirty_ = true;
+        live_mesh_.clear();
         if (!app.game) {
             app.world.reset();
             world_.reset();
@@ -128,6 +131,11 @@ public:
     }
     bool select(App& app, const std::string& key_in) override {
         if (!world_) return false;
+        if (key_in == "@live") {  // --panel World --select @live: the mirror of the running game, following the player (screenshots, tests)
+            live_ = live_follow_ = true;
+            app.focus_panel(title());
+            return true;
+        }
         // "<uid>#<routine point>": a placed NPC with one of his routine points chosen for the gizmo (the NPCs panel's "Place it in the World view")
         std::string key = key_in, point;
         if (const size_t hash = key_in.find('#'); hash != std::string::npos) {
@@ -387,6 +395,7 @@ private:
         ImGui::RadioButton(tr("move"), &gizmo_op_, 0);
         ImGui::SameLine();
         ImGui::RadioButton(tr("turn"), &gizmo_op_, 1);
+        draw_live_controls(app);  // its own row: the toolbar above is full already
         ImGui::TextDisabled(tr("right mouse: look, WASD/QE: move, wheel: speed, click: %s, F: focus, End: align with mesh, gizmo: move / turn the selected project object"),
                             mode_ == 0 ? tr("select") : tr("place on the ground"));
     }
@@ -1072,10 +1081,12 @@ private:
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         const glm::mat4 vp = cam_.proj(aspect) * cam_.view();
         poll_nav(app);
+        poll_live(app);
         anim_update(app);
         if (draw_meshes_ && res_) draw_meshes(vp);
         if (draw_meshes_ && res_) draw_project_meshes(app, vp);
         if (draw_meshes_ && res_) draw_animated(app, vp);
+        if (res_) draw_live(app, vp);
         boxes_.draw(vp);
         if (clicked) place_at(app, cu, cv, w, h, vp);
         if (dropped) drop_at(app, *dropped, cu, cv, w, h, vp);
@@ -1086,6 +1097,7 @@ private:
         ImGui::GetWindowDrawList()->AddImage(static_cast<ImTextureID>(static_cast<intptr_t>(rt_.texture())), origin, ImVec2(origin.x + w, origin.y + h),
                                              ImVec2(0, 1), ImVec2(1, 0));
         draw_gizmo(app, origin, w, h, aspect);
+        draw_live_labels(origin, w, h, aspect);
         // camera position in game coordinates
         const glm::vec3 gp = gfx::from_gl(cam_.pos);
         char buf[96];
@@ -1730,6 +1742,107 @@ private:
             const bool off = app.navmap && routine_kind_walks(p.kind.empty() ? std::string("guard") : p.kind) && !app.navmap->on_ground(wp[0], wp[1], wp[2]);
             if (off) text += std::string(" - ") + tr("not on walkable ground");
             ImGui::GetWindowDrawList()->AddText(ImVec2(sx - 4, sy), off ? IM_COL32(255, 120, 90, 255) : p.key == rt_sel_ ? IM_COL32(255, 255, 255, 255) : routine_point_colour(p.key), text.c_str());
+        }
+    }
+
+    // ---- Live (stage E35): the running game mirrored in the view. The player and the NPCs around come over the live link (`inspect.actors`, polled five times
+    // a second) and are drawn with their meshes at their pose, smoothed in between (core/live_actors.h).
+
+    void draw_live_controls(App& app) {
+        if (ImGui::Checkbox(tr("Live"), &live_)) {
+            live_mirror_.clear();
+            live_ask_ = 0;
+        }
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("%s", tr("Show the running game in this view: the player and the NPCs around move as they do in the game. Needs the game started by Play (or with [link] enabled = true in its config.toml)."));
+        if (!live_) return;
+        ImGui::SameLine();
+        ImGui::Checkbox(tr("follow the player"), &live_follow_);
+        ImGui::SameLine();
+        const LinkWorker::Status st = app.link().status();
+        if (!st.connected) {
+            ImGui::TextDisabled("%s", tr("no game connected"));
+        } else if (!live_mirror_.has_data()) {
+            ImGui::TextDisabled("%s", tr("waiting for the game ..."));
+        } else if (world_ && live_mirror_.world() != world_->name) {
+            ImGui::TextColored(ImVec4(1, 0.8f, 0.35f, 1), "%s", trf("the game is in the world '{0}'", {live_mirror_.world()}).c_str());
+        } else {
+            ImGui::TextDisabled(tr("%zu in the game"), live_mirror_.actors().size());
+        }
+    }
+
+    // once per frame: ask the game, take the answers, glide
+    void poll_live(App& app) {
+        if (!live_) return;
+        LinkWorker& link = app.link();
+        link.set_game_dir(app.settings.game_dir);
+        const LinkWorker::Status st = link.status();
+        if (st.connects != live_connects_) {
+            live_connects_ = st.connects;
+            live_mirror_.clear();
+        }
+        if (!st.connected) {
+            live_mirror_.clear();
+            return;
+        }
+        const double now = ImGui::GetTime();
+        for (LinkWorker::Result& r : link.take_live())
+            if (r.tag == "live:actors" && r.reply.ok) live_mirror_.apply(r.reply.result, now);
+        if (now - live_ask_ >= 0.2) {
+            live_ask_ = now;
+            link.request("live:actors", "inspect.actors", {{"radius", 8000}, {"limit", 150}}, 1500);
+        }
+        live_mirror_.update(ImGui::GetIO().DeltaTime);
+        if (live_follow_ && live_here()) {
+            const LiveActor* p = live_mirror_.player();
+            if (p) {
+                const glm::vec3 now_gl = to_gl(p->x, p->y + 100, p->z);
+                if (!live_followed_) cam_.look_at(now_gl, 700);
+                else cam_.pos += now_gl - live_last_player_;  // the camera moves with the player and can still be turned and flown
+                live_last_player_ = now_gl;
+                live_followed_ = true;
+                return;
+            }
+        }
+        live_followed_ = false;
+    }
+
+    bool live_here() const { return live_ && world_ && live_mirror_.has_data() && live_mirror_.world() == world_->name; }
+
+    void draw_live(App& app, const glm::mat4& vp) {
+        if (!live_here()) return;
+        mesh_r_.begin(vp, glm::vec3(0.35f, -1.0f, 0.25f));
+        for (const LiveActor& a : live_mirror_.actors()) {
+            auto it = live_mesh_.find(a.tpl);
+            if (it == live_mesh_.end()) {
+                // the NPC mesh table is read as for a placed NPC (npc_mesh); asked only once per template
+                const std::string mesh = npc_mesh(app, a.tpl);
+                it = live_mesh_.emplace(a.tpl, mesh).first;
+            }
+            if (it->second.empty()) continue;
+            const gfx::GpuMesh* m = res_->mesh(it->second);
+            if (!m) continue;
+            const spass::pose::Matrix pm = spass::pose::compose(a.x, a.y, a.z, {a.yaw, 0.0f, 0.0f});
+            mesh_r_.draw(*m, gfx::entity_model(pm.data()), *res_, a.dead ? glm::vec4(0.55f, 0.55f, 0.55f, 1) : a.player ? glm::vec4(1.25f, 1.2f, 0.9f, 1) : glm::vec4(1));
+        }
+        mesh_r_.end();
+    }
+
+    // a dot and the name over every actor of the game (also those without a mesh)
+    void draw_live_labels(const ImVec2& origin, int w, int h, float aspect) {
+        if (!live_here()) return;
+        const glm::mat4 vp = cam_.proj(aspect) * cam_.view();
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        for (const LiveActor& a : live_mirror_.actors()) {
+            const glm::vec4 c = vp * glm::vec4(to_gl(a.x, a.y + 230, a.z), 1);
+            if (c.w <= 0) continue;
+            const float sx = origin.x + (c.x / c.w * 0.5f + 0.5f) * w, sy = origin.y + (1 - (c.y / c.w * 0.5f + 0.5f)) * h;
+            if (sx < origin.x - 50 || sx > origin.x + w + 50 || sy < origin.y - 20 || sy > origin.y + h + 20) continue;
+            const ImU32 col = a.dead ? IM_COL32(150, 150, 150, 255) : a.player ? IM_COL32(255, 220, 90, 255) : IM_COL32(120, 230, 140, 255);
+            dl->AddCircleFilled(ImVec2(sx, sy), 3.5f, col);
+            const std::string text = a.name.empty() ? a.tpl : a.name;
+            const ImVec2 sz = ImGui::CalcTextSize(text.c_str());
+            if (c.w < 6000 || a.player) dl->AddText(ImVec2(sx - sz.x * 0.5f, sy - sz.y - 4), col, text.c_str());
         }
     }
 
@@ -2382,6 +2495,13 @@ private:
     std::string anim_uid_;
     float anim_time_ = 0, anim_speed_ = 1;
     bool anim_play_ = true;
+    // ---- Live (stage E35)
+    bool live_ = false, live_follow_ = false, live_followed_ = false;
+    LiveMirror live_mirror_;
+    double live_ask_ = 0;
+    unsigned long long live_connects_ = 0;
+    glm::vec3 live_last_player_{0.0f};
+    std::map<std::string, std::string> live_mesh_;  // template -> its actor mesh ("" = none), a cache
     std::future<std::shared_ptr<NavMap>> nav_loading_;
     gfx::LineBatch nav_batch_;
     bool show_nav_ = false;
