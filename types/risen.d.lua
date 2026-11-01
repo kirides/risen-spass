@@ -4115,6 +4115,49 @@ function linkApi.on(command, handler) end
 function linkApi.send(event, data) end
 
 ---------------------------------------------------------------------------------------------------------------------
+-- Named pipes (the game as client)
+---------------------------------------------------------------------------------------------------------------------
+
+---Connects to a named pipe (`\\.\pipe\<name>`) that another local program hosts: a Twitch bridge, an overlay, a tool. The game is only ever the **client**, so nothing listens on the
+---network and there is never a firewall prompt. The mod lists the pipe names it may open in `pipes = ["name"]` of its `mod.toml`. A background thread connects (again and again every `retry`
+---seconds while the server is absent or went away), splits the received bytes into lines at the line break, and writes what `send` queued; the game thread never waits. The lines stay queued until the mod
+---asks for them with `Pipe:poll`, so a mod can leave them alone while no game session runs.
+---@class RisenPipeApi
+local pipeApi = {}
+---Opens the pipe (returns at once, the connection is made in the background). `nil, reason` for a name not listed in `pipes`, an invalid name, a pipe this mod already opened, or more than 4 pipes in one mod. Closed when the mod is reloaded.
+---@param name string The part after `\\.\pipe\`: 1..100 characters of a-z A-Z 0-9 _ . -
+---@param opts? { retry?: number } `retry`: seconds between connection attempts (default 5, at least 1).
+---@return Pipe|nil pipe
+---@return string|nil reason
+function pipeApi.open(name, opts) end
+
+---An open pipe (`risen.pipe.open`).
+---@class Pipe
+local Pipe = {}
+---Is the server connected right now?
+---@return boolean
+function Pipe:connected() end
+---Takes the complete lines received since the last call (line break removed, empty lines skipped). At most 1000 lines are kept unread (more are dropped and counted in `stats().dropped`), a line over 64 KB is dropped.
+---@param max? integer At most this many lines (default 100, 1..1000).
+---@return string[] lines
+function Pipe:poll(max) end
+---How many lines wait to be polled.
+---@return integer
+function Pipe:pending() end
+---Queues one line for the server (a line break is appended). False when the pipe is not connected, closed, `text` is not a string or 1 MB is already queued.
+---@param text string
+---@return boolean queued
+function Pipe:send(text) end
+---Counters of the pipe: how often it connected, how many lines were dropped (queue full / too long), how many wait.
+---@return { connects: integer, dropped: integer, pending: integer }
+function Pipe:stats() end
+---The pipe name it was opened with.
+---@return string
+function Pipe:name() end
+---Closes the pipe and stops its thread. Further calls return empty results.
+function Pipe:close() end
+
+---------------------------------------------------------------------------------------------------------------------
 -- Persistence, file system, debugging, engine info
 ---------------------------------------------------------------------------------------------------------------------
 
@@ -5296,6 +5339,7 @@ function behaviorApi.failures() end
 ---@field json RisenJsonApi
 ---@field http RisenHttpApi
 ---@field link RisenLinkApi
+---@field pipe RisenPipeApi Named pipes: the game as client (`mod.toml` `pipes`).
 ---@field vfs RisenVfsApi
 ---@field options RisenOptionsApi
 ---@field assets RisenAssetsApi

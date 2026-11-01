@@ -17,6 +17,7 @@
 #include "game/hooks.h"
 #include "game/instance_mutex.h"
 #include "game/lua_link.h"
+#include "game/lua_pipe.h"
 #include "game/lua_test.h"
 #include "game/symbols.h"
 #include "hook/hook_manager.h"
@@ -123,6 +124,7 @@ void onProcessDetach() {
         game::aiShutdown();
         game::combatShutdown();
         game::linkShutdown();
+        game::pipeShutdown();
         lua::Runtime::instance().stop();
         hooks::shutdown();
     }

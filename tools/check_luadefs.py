@@ -21,7 +21,7 @@ defs = (root / 'types' / 'risen.d.lua').read_text(encoding='utf-8')
 bound = {}      # "ns.fn" -> source
 members = {}    # "Type.member" -> source
 
-USERTYPES = {'LuaEntity': 'Entity', 'LuaTemplate': 'Template', 'LuaQuest': 'Quest', 'LuaInfo': 'Info', 'ScriptContext': 'ScriptContext', 'AiContext': 'AiContext', 'GuiWindow': 'GuiWindow'}
+USERTYPES = {'LuaPipe': 'Pipe', 'LuaEntity': 'Entity', 'LuaTemplate': 'Template', 'LuaQuest': 'Quest', 'LuaInfo': 'Info', 'ScriptContext': 'ScriptContext', 'AiContext': 'AiContext', 'GuiWindow': 'GuiWindow'}
 
 for path in sorted(list((root / 'src').rglob('*.cpp')) + [root / 'src/game/npc_balance_lua.h', root / 'src/game/template_create_lua.h', root / 'src/game/spell_lua.h', root / 'src/game/recipe_lua.h']):   # the .h files hold the Lua chunks of NPC balancing, template creation and spells
     text = path.read_text(encoding='utf-8', errors='replace')
@@ -87,6 +87,9 @@ for fn in re.findall(r'save\.set_function\("(\w+)"', (root / 'src/game/lua_save.
 # per-mod risen.http (lua_http.cpp: `http.set_function` on the mod's own table)
 for fn in re.findall(r'\bhttp\.set_function\("(\w+)"', (root / 'src/game/lua_http.cpp').read_text(encoding='utf-8')):
     bound[f'http.{fn}'] = 'src/game/lua_http.cpp'
+# per-mod risen.pipe (lua_pipe.cpp: `pipeApi.set_function` on the mod's own table)
+for fn in re.findall(r'pipeApi\.set_function\("(\w+)"', (root / 'src/game/lua_pipe.cpp').read_text(encoding='utf-8')):
+    bound[f'pipe.{fn}'] = 'src/game/lua_pipe.cpp'
 # per-mod risen.link (lua_link.cpp: `linkApi.set_function` on the mod's own table)
 for fn in re.findall(r'\blinkApi\.set_function\("(\w+)"', (root / 'src/game/lua_link.cpp').read_text(encoding='utf-8')):
     bound[f'link.{fn}'] = 'src/game/lua_link.cpp'
@@ -171,7 +174,7 @@ for var, fn in re.findall(r'^function (\w+)\.(\w+)\(', defs, flags=re.M):
     if var in var_ns:
         described[f'{var_ns[var]}.{fn}'] = True
 described_members = {}
-for typ, fn in re.findall(r'^function (Entity|Template|Quest|Info|ScriptContext|AiContext|RandomStream|GuiWindow):(\w+)\(', defs, flags=re.M):
+for typ, fn in re.findall(r'^function (Entity|Template|Quest|Info|ScriptContext|AiContext|RandomStream|GuiWindow|Pipe):(\w+)\(', defs, flags=re.M):
     described_members[f'{typ}.{fn}'] = True
 for typ in ('ScriptContext', 'AiContext'):
     block = re.search(rf'---@class {typ}\n((?:---.*\n)*)', defs).group(1)

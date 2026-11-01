@@ -1282,6 +1282,31 @@ The layer writes `<Risen>\bin\spass\link.json` (`{"pipe": "\\\\.\\pipe\\risen-sp
 * Events for mods: `link.connected`, `link.disconnected`. `risen.link.available()` / `risen.link.connected()`.
 * Test client: `python tools/linktest_client.py <bin\spass> <result.json>`; scenario `link` (`test-run.ps1 -LinkClient`), unit test `link_pipe_round_trip_and_reconnect`.
 
+## Named pipes (the game as client)
+
+`risen.pipe` (see the Twitch Integration mods in the `risen-twitch` repository for a user; unit test `pipeclient_lines_and_round_trip`).
+
+A mod can talk to another program on the same PC that hosts a **named pipe** (a Twitch bridge, an overlay, a tool). The game only ever **connects** (client), so nothing listens on the
+network and the player never sees a firewall prompt. The pipe is opened with `SECURITY_IDENTIFICATION`, so the server cannot act as the game's user.
+
+```toml
+# mod.toml: the pipes this mod may open (the part after \\.\pipe\)
+pipes = ["__TwitchIntegration_Kirides_Conn"]
+```
+
+```lua
+local pipe = assert(risen.pipe.open("__TwitchIntegration_Kirides_Conn", { retry = 5 }))   -- returns at once; connects (and reconnects) in the background
+risen.on("ui.frame", function()                           -- ui.frame also runs at the menu; `tick` only inside a game
+    for _, line in ipairs(pipe:poll(20)) do handle(line) end   -- complete lines, line break removed
+end)
+pipe:send("ACK ok")                                       -- one line to the server; false when not connected
+```
+
+* **Lines.** The stream is split at the line break (CRLF too; empty lines are skipped). Until the mod polls, up to 1000 lines are kept (`Pipe:stats().dropped` counts the rest and lines over 64 KB), so a mod can leave them queued while no session runs.
+  `Pipe:send` queues at most 1 MB.
+* **Connection.** One thread per pipe; while the server is absent or went away it tries again every `retry` seconds (default 5, at least 1). `Pipe:connected()`, `Pipe:stats().connects`.
+* **Limits.** A mod may open only pipes listed in its `pipes`, each once, 4 at most; they are closed when the mod is reloaded or unloaded.
+
 ## Network access
 
 `risen.http` and `risen.json` (see `mods/http_test`, `tools/httptest_server.py`).

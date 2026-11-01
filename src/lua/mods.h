@@ -28,6 +28,7 @@ inline constexpr int kApiVersion = 1;
 //                                     # false = none (docs/LUA_API.md "New meshes, textures and icons")
 //   network     = true            # optional: the mod may make outbound HTTP(S) requests (risen.http); default false
 //                                     # network = ["api.github.com", "*.example.com"] allows only those hosts
+//   pipes       = ["my_pipe"]         # optional: the named pipes (the part after \\.\pipe\) the mod may open as a CLIENT with risen.pipe
 //   retire      = { npcs = [...], quests = [...], ... }   # content older versions of the mod made that is cleaned up
 //                                     # (the same table as risen.retire, docs/LUA_API.md "Updating and removing content")
 struct ModInfo {
@@ -43,6 +44,7 @@ struct ModInfo {
     std::string assets = "assets";  // directory (relative to the mod directory) of loose resource files; empty = none
     bool network = false;                    // `network` in mod.toml: may use risen.http
     std::vector<std::string> networkHosts;   // the host allow-list (empty = any host while `network` is true)
+    std::vector<std::string> pipes;          // `pipes` in mod.toml: the named pipes (bare names) the mod may connect to with risen.pipe
     int apiVersion = 1;
     std::filesystem::path dir;
     std::map<std::string, std::vector<std::string>> retire;  // the `retire` table of mod.toml: kind ("npcs", "quests", ...) -> names

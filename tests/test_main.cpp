@@ -31,6 +31,7 @@
 #include "common/crash.h"
 #include "common/httpclient/httpclient.h"
 #include "common/link.h"
+#include "common/pipeclient.h"
 #include "common/input_names.h"
 #include "common/pose.h"
 #include "common/sound_file.h"
@@ -1067,4 +1068,60 @@ TEST(link_pipe_round_trip_and_reconnect) {
     CHECK(pollLink(in, 0, 0, 1));
     spass::link::stop();
     CHECK(!spass::link::running() && !spass::link::connected());
+}
+
+TEST(pipeclient_lines_and_round_trip) {
+    using spass::pipeclient::Client;
+    CHECK(spass::pipeclient::validName("__TwitchIntegration_Kirides_Conn"));
+    CHECK(!spass::pipeclient::validName("") && !spass::pipeclient::validName("a\\b") && !spass::pipeclient::validName("a b") && !spass::pipeclient::validName(std::string(101, 'a')));
+
+    // the line splitter: CRLF, empty lines, a line split over two reads, an over-long line is dropped
+    {
+        Client c("unit-split", 1.0);
+        c.feed("one\r\n\ntwo\nthr", 13);
+        c.feed("ee\n", 3);
+        auto lines = c.poll(10);
+        CHECK(lines.size() == 3 && lines[0] == "one" && lines[1] == "two" && lines[2] == "three");
+        const std::string big(spass::pipeclient::kMaxLineBytes + 10, 'x');
+        c.feed(big.data(), big.size());
+        c.feed("\nok\n", 4);
+        lines = c.poll(10);
+        CHECK(lines.size() == 1 && lines[0] == "ok" && c.dropped() == 1);
+    }
+
+    // a real pipe: the server comes AFTER the client started (it retries), lines flow both ways, the client reconnects after the server left
+    const std::string name = "spass-unit-pc-" + std::to_string(GetCurrentProcessId());
+    const std::string path = "\\\\.\\pipe\\" + name;
+    Client c(name, 1.0);
+    c.start();
+    CHECK(!c.connected() && !c.send("nobody"));
+    for (int round = 0; round < 2; ++round) {
+        HANDLE srv = CreateNamedPipeA(path.c_str(), PIPE_ACCESS_DUPLEX, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 65536, 65536, 0, nullptr);
+        CHECK(srv != INVALID_HANDLE_VALUE);
+        std::atomic<bool> ok{false};
+        std::thread acceptor([&] { ok = ConnectNamedPipe(srv, nullptr) || GetLastError() == ERROR_PIPE_CONNECTED; });
+        acceptor.join();
+        CHECK(ok);
+        bool up = false;
+        for (int i = 0; i < 100 && !up; ++i) { up = c.connected(); if (!up) Sleep(50); }
+        CHECK(up);
+        DWORD n = 0;
+        const std::string msg = "REWARD_ADD user cmd a b\nCHAT x y\n";
+        CHECK(WriteFile(srv, msg.data(), static_cast<DWORD>(msg.size()), &n, nullptr));
+        std::vector<std::string> got;
+        for (int i = 0; i < 100 && got.size() < 2; ++i) {
+            for (auto& l : c.poll(10)) got.push_back(l);
+            if (got.size() < 2) Sleep(30);
+        }
+        CHECK(got.size() == 2 && got[0] == "REWARD_ADD user cmd a b" && got[1] == "CHAT x y");
+        CHECK(c.send("ack 1"));
+        char buf[64] = {};
+        CHECK(ReadFile(srv, buf, sizeof(buf), &n, nullptr) && std::string(buf, n) == "ack 1\n");
+        CloseHandle(srv);  // the server goes away
+        bool down = false;
+        for (int i = 0; i < 100 && !down; ++i) { down = !c.connected(); if (!down) Sleep(30); }
+        CHECK(down);
+    }
+    CHECK(c.connects() == 2);
+    c.stop();
 }

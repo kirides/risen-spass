@@ -96,6 +96,7 @@ add_library(spass_core STATIC
     src/common/link.cpp
     src/common/log.cpp
     src/common/paths.cpp
+    src/common/pipeclient.cpp
     src/common/test_run.cpp
     src/common/trace.cpp
     src/game/abi.cpp
@@ -146,6 +147,7 @@ add_library(spass_core STATIC
     src/game/lua_test.cpp
     src/game/lua_http.cpp
     src/game/lua_link.cpp
+    src/game/lua_pipe.cpp
     src/game/lua_vfs.cpp
     src/game/lua_voice.cpp
     src/game/properties.cpp

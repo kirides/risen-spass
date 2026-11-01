@@ -91,6 +91,19 @@ std::optional<ModInfo> readManifest(const std::filesystem::path& modDir, std::st
             error = "'network' must be true, false or a list of host names";
             return std::nullopt;
         }
+        if (const auto* pa = t["pipes"].as_array()) {
+            for (const auto& el : *pa) {
+                if (auto n = el.value<std::string>(); n && !n->empty()) {
+                    m.pipes.push_back(*n);
+                } else {
+                    error = "'pipes' must be a list of pipe names";
+                    return std::nullopt;
+                }
+            }
+        } else if (t.contains("pipes")) {
+            error = "'pipes' must be a list of pipe names";
+            return std::nullopt;
+        }
         if (const toml::table* retire = t["retire"].as_table()) {
             for (const auto& [key, value] : *retire) {
                 if (const auto* arr = value.as_array()) {

@@ -8,6 +8,7 @@
 #include "game/loc_overlay.h"
 #include "game/lua_config.h"
 #include "game/lua_http.h"
+#include "game/lua_pipe.h"
 #include "game/lua_link.h"
 #include "game/lua_options.h"
 #include "game/lua_input.h"
@@ -189,6 +190,7 @@ void registerBindings() {
     rt.addBinding(bindJson);    // risen.json
     rt.addModBinding(bindLinkModApi);  // risen.link: commands for / events to a connected editor
     rt.addModBinding(bindHttpModApi);  // risen.http: per mod, gated by `network` in mod.toml and the player's switches
+    rt.addModBinding(bindPipeModApi);  // risen.pipe: the game as client of a named pipe, gated by `pipes` in mod.toml
     bindSave();
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installMigrateModApi(lua, api, mod); installRetireModApi(lua, api, mod); });  // after bindSave: risen.migrate, risen.retire (M15); the persistent NPCs are bound later but only asked at run time
     rt.addModBinding([](sol::state_view lua, sol::table api, const lua::ModInfo& mod) { installAiModApi(lua, api, mod.id); });  // after bindSave: risen.ai.start(persist = true) keeps its records in the mod's risen.save (M11)
@@ -206,6 +208,7 @@ void registerBindings() {
     rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { optionsReleaseOwner(mod, released); });
     rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { httpReleaseOwner(mod, released); });
     rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { linkReleaseOwner(mod, released); });
+    rt.addTeardown([](const std::string& mod, std::vector<std::string>& released) { pipeReleaseOwner(mod, released); });
 }
 
 }  // namespace spass::game
