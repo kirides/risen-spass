@@ -4120,13 +4120,13 @@ function linkApi.send(event, data) end
 
 ---Connects to a named pipe (`\\.\pipe\<name>`) that another local program hosts: a Twitch bridge, an overlay, a tool. The game is only ever the **client**, so nothing listens on the
 ---network and there is never a firewall prompt. The mod lists the pipe names it may open in `pipes = ["name"]` of its `mod.toml`. A background thread connects (again and again every `retry`
----seconds while the server is absent or went away), splits the received bytes into lines at the line break, and writes what `send` queued; the game thread never waits. The lines stay queued until the mod
+---seconds while the server is absent or went away), splits the received bytes into messages (text lines, or with `framing = "u16"` messages that carry a 2-byte little-endian length prefix), and writes what `send` queued; the game thread never waits. The lines stay queued until the mod
 ---asks for them with `Pipe:poll`, so a mod can leave them alone while no game session runs.
 ---@class RisenPipeApi
 local pipeApi = {}
 ---Opens the pipe (returns at once, the connection is made in the background). `nil, reason` for a name not listed in `pipes`, an invalid name, a pipe this mod already opened, or more than 4 pipes in one mod. Closed when the mod is reloaded.
 ---@param name string The part after `\\.\pipe\`: 1..100 characters of a-z A-Z 0-9 _ . -
----@param opts? { retry?: number } `retry`: seconds between connection attempts (default 5, at least 1).
+---@param opts? { retry?: number, framing?: "lines"|"u16", write?: boolean } `retry`: seconds between connection attempts (default 5, at least 1). `framing`: `"lines"` (default) or `"u16"` (each message is a 2-byte little-endian length and that many bytes; `poll` returns one string per message). `write`: also open for writing (default false: the pipe is opened read-only, `send` returns false).
 ---@return Pipe|nil pipe
 ---@return string|nil reason
 function pipeApi.open(name, opts) end
@@ -4144,7 +4144,7 @@ function Pipe:poll(max) end
 ---How many lines wait to be polled.
 ---@return integer
 function Pipe:pending() end
----Queues one line for the server (a line break is appended). False when the pipe is not connected, closed, `text` is not a string or 1 MB is already queued.
+---Queues one message for the server (with `lines` a line break is appended, with `u16` a length prefix is put in front, at most 65535 bytes). False when the pipe was not opened with `write = true`, is not connected, is closed, `text` is not a string or 1 MB is already queued.
 ---@param text string
 ---@return boolean queued
 function Pipe:send(text) end

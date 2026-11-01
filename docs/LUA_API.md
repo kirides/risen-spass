@@ -1304,6 +1304,8 @@ pipe:send("ACK ok")                                       -- one line to the ser
 
 * **Lines.** The stream is split at the line break (CRLF too; empty lines are skipped). Until the mod polls, up to 1000 lines are kept (`Pipe:stats().dropped` counts the rest and lines over 64 KB), so a mod can leave them queued while no session runs.
   `Pipe:send` queues at most 1 MB.
+* **Framing.** `framing = "u16"` is for servers that write a 2-byte little-endian length before every message (the Twitch connector does; a message pipe on the server side is fine, the client reads bytes): `Pipe:poll` then returns one string per message, empty ones skipped.
+* **Access.** The pipe is opened read-only unless `write = true` is given (then `Pipe:send` works).
 * **Connection.** One thread per pipe; while the server is absent or went away it tries again every `retry` seconds (default 5, at least 1). `Pipe:connected()`, `Pipe:stats().connects`.
 * **Limits.** A mod may open only pipes listed in its `pipes`, each once, 4 at most; they are closed when the mod is reloaded or unloaded.
 

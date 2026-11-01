@@ -9,7 +9,7 @@
 
 #include "common/pipeclient.h"
 
-// risen.pipe.open(name [, opts]) -> Pipe | nil, reason     opts.retry = seconds between connection attempts (default 5, at least 1)
+// risen.pipe.open(name [, opts]) -> Pipe | nil, reason     opts.retry = seconds between attempts (default 5, at least 1), opts.framing = "lines" | "u16", opts.write = bool
 // Pipe:connected(), Pipe:poll([max]) -> string[], Pipe:pending(), Pipe:send(text) -> bool, Pipe:stats(), Pipe:close(), Pipe:name()
 
 namespace spass::game {
@@ -120,9 +120,26 @@ void bindPipeModApi(sol::state_view lua, sol::table api, const lua::ModInfo& mod
                 retry = r.as<double>();
             }
         }
+        pipeclient::Options po;
+        if (opts) {
+            sol::object f = (*opts)["framing"];
+            if (f.valid() && f.get_type() != sol::type::lua_nil) {
+                if (f.get_type() != sol::type::string || (f.as<std::string>() != "lines" && f.as<std::string>() != "u16")) {
+                    return fail(L, "opts.framing must be \"lines\" or \"u16\"");
+                }
+                po.framed = f.as<std::string>() == "u16";
+            }
+            sol::object w = (*opts)["write"];
+            if (w.valid() && w.get_type() != sol::type::lua_nil) {
+                if (w.get_type() != sol::type::boolean) {
+                    return fail(L, "opts.write must be a boolean");
+                }
+                po.write = w.as<bool>();
+            }
+        }
         auto pipe = std::make_shared<LuaPipe>();
         pipe->owner = id;
-        pipe->client = std::make_shared<pipeclient::Client>(n, retry);
+        pipe->client = std::make_shared<pipeclient::Client>(n, retry, po);
         {
             std::lock_guard lock(g_mutex);
             auto& v = g_pipes[id];

@@ -17,7 +17,8 @@ bool validName(const std::string& name) {
     return true;
 }
 
-Client::Client(std::string name, double retrySeconds) : name_(std::move(name)), retry_(retrySeconds < 1.0 ? 1.0 : retrySeconds) {
+Client::Client(std::string name, double retrySeconds, Options options)
+    : name_(std::move(name)), retry_(retrySeconds < 1.0 ? 1.0 : retrySeconds), options_(options) {
     stopEvent_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     wakeEvent_ = CreateEventW(nullptr, FALSE, FALSE, nullptr);
 }
@@ -57,16 +58,27 @@ std::size_t Client::pending() const {
 }
 
 bool Client::send(const std::string& text) {
-    if (!connected_.load()) {
+    if (!connected_.load() || !options_.write) {
         return false;
+    }
+    std::string wire;
+    if (options_.framed) {
+        if (text.size() > 0xFFFF) {
+            return false;
+        }
+        wire.push_back(static_cast<char>(text.size() & 0xFF));
+        wire.push_back(static_cast<char>((text.size() >> 8) & 0xFF));
+        wire += text;
+    } else {
+        wire = text + "\n";
     }
     {
         std::lock_guard lock(mutex_);
-        if (outBytes_ + text.size() + 1 > kMaxOutBytes) {
+        if (outBytes_ + wire.size() > kMaxOutBytes) {
             return false;
         }
-        out_.push_back(text + "\n");
-        outBytes_ += text.size() + 1;
+        outBytes_ += wire.size();
+        out_.push_back(std::move(wire));
     }
     SetEvent(wakeEvent_);
     return true;
@@ -88,6 +100,26 @@ void Client::pushLine(std::string line) {
 
 void Client::feed(const char* data, std::size_t n) {
     std::lock_guard lock(mutex_);
+    if (options_.framed) {
+        partial_.append(data, n);
+        std::size_t pos = 0;
+        while (partial_.size() - pos >= 2) {
+            const std::size_t len = static_cast<unsigned char>(partial_[pos]) | (static_cast<std::size_t>(static_cast<unsigned char>(partial_[pos + 1])) << 8);
+            if (partial_.size() - pos - 2 < len) {
+                break;
+            }
+            if (len > 0) {
+                if (lines_.size() >= kMaxLines) {
+                    ++dropped_;
+                } else {
+                    lines_.emplace_back(partial_, pos + 2, len);
+                }
+            }
+            pos += 2 + len;
+        }
+        partial_.erase(0, pos);
+        return;
+    }
     for (std::size_t i = 0; i < n; ++i) {
         const char c = data[i];
         if (c == '\n') {
@@ -116,7 +148,7 @@ void Client::run() {
     const DWORD retryMs = static_cast<DWORD>(retry_ * 1000.0);
 
     while (WaitForSingleObject(stopEvent_, 0) != WAIT_OBJECT_0) {
-        HANDLE h = CreateFileA(path.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING,
+        HANDLE h = CreateFileA(path.c_str(), options_.write ? (GENERIC_READ | GENERIC_WRITE) : GENERIC_READ, 0, nullptr, OPEN_EXISTING,
                                FILE_FLAG_OVERLAPPED | SECURITY_SQOS_PRESENT | SECURITY_IDENTIFICATION, nullptr);
         if (h == INVALID_HANDLE_VALUE) {
             if (WaitForSingleObject(stopEvent_, retryMs) == WAIT_OBJECT_0) {

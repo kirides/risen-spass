@@ -1089,10 +1089,26 @@ TEST(pipeclient_lines_and_round_trip) {
         CHECK(lines.size() == 1 && lines[0] == "ok" && c.dropped() == 1);
     }
 
+    // the framed mode (2-byte little-endian length + payload): split over reads, two frames in one read, empty frames skipped
+    {
+        Client c("unit-framed", 1.0, spass::pipeclient::Options{true, false});
+        const std::string a = R"({"type":"ping"})";
+        std::string wire;
+        wire.push_back(static_cast<char>(a.size())); wire.push_back(0); wire += a;
+        wire.push_back(0); wire.push_back(0);
+        wire.push_back(2); wire.push_back(0); wire += "hi";
+        c.feed(wire.data(), 5);
+        CHECK(c.poll(10).empty());
+        c.feed(wire.data() + 5, wire.size() - 5);
+        auto frames = c.poll(10);
+        CHECK(frames.size() == 2 && frames[0] == a && frames[1] == "hi");
+        CHECK(!c.send("x"));  // not connected, and not opened for writing
+    }
+
     // a real pipe: the server comes AFTER the client started (it retries), lines flow both ways, the client reconnects after the server left
     const std::string name = "spass-unit-pc-" + std::to_string(GetCurrentProcessId());
     const std::string path = "\\\\.\\pipe\\" + name;
-    Client c(name, 1.0);
+    Client c(name, 1.0, spass::pipeclient::Options{false, true});
     c.start();
     CHECK(!c.connected() && !c.send("nobody"));
     for (int round = 0; round < 2; ++round) {
