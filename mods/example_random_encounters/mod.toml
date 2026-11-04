@@ -1,0 +1,6 @@
+id          = "example_random_encounters"
+name        = "Example: Random Encounters / live respawn"
+version     = "1.0.0"
+author      = "risen-spass"
+description = "Table driven random encounters: monsters from chapter dependent pools appear at waypoints the player cannot see, with cooldowns per category, surprise ambushes and a clean-up of leftovers. Edit encounters.lua and config.toml."
+main        = "main.lua"

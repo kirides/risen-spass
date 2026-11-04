@@ -1,0 +1,5 @@
+# Options of the Random Encounters example (the tables are in encounters.lua).
+enabled = true
+chance_scale = 1.0      # 2.0 = twice as often, 0 = never
+cooldown_scale = 1.0    # 0.5 = categories sleep half as long
+debug = false           # log every spawn / cleanup to spass.log

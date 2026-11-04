@@ -36,6 +36,7 @@
       modkit       - the export of risen-modkit (mods/modkit_showcase, made from examples/modkit/showcase.rmk.json, checked by mods/modkit_driver): new and changed items, item group, texts
       modkit_ext   - hand-written Lua in a risen-modkit project (mods/modkit_ext, made from examples/modkit/extensions.rmk.json, checked by mods/modkit_ext_driver): before_install / after_install hooks, a failing Lua file and a failing custom.lua leave the content working
       geometry     - vectors, the engine's ray test and field of view, the render camera, random streams (M13, mods/geometry): yaw convention against real entities, open air / terrain / rock, can_see against the AI's CanSee, camera, risen.random.persist across a quick save + load
+      ex_random_encounters - example: table driven random encounters / live respawn (mods/example_random_encounters)
       ex_unseen_spawn - example: an enemy appears at a waypoint/freepoint the player cannot see and that lies behind him (mods/example_unseen_spawn)
       ex_action_camera - example: action camera, the mouse orbits the camera, the hero turns where he runs; bow camera handover, quick save + load (mods/example_action_camera, RE.md section 61)
       damagehooks  - damage hooks (M14, mods/damagehooks): risen.combat.on_damage against real fireball casts (three dummies, area falloff), wolf bites and club blows; scaling, cancel, chains, filters, errors, unregister, a nested DoDamage; save, then a fresh-process load
@@ -73,7 +74,7 @@
 param(
     [string]$GameDir = '',
     [int]$Seconds = 200,
-    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'behaviors', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'ex_action_camera', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'capture', 'scene', 'modmanager', 'options', 'http', 'link', 'modkit', 'modkit_ext', 'evlive', 'extras', 'modkit_voice', 'chronicle', 'meshprobe', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
+    [ValidateSet('persistence', 'fetchquest', 'commands', 'branch', 'templates', 'balance', 'npcs', 'newtemplates', 'newassets', 'events', 'spells', 'ex_spell', 'recipes', 'ex_recipe', 'ex_template_patch', 'ex_balance', 'ex_custom_npc', 'ex_fetch_turnin', 'ex_fetch_pickup', 'ex_kill_quest', 'ex_quest_rewards', 'ex_quest_tracker', 'ex_material', 'ex_voice', 'quickloot', 'persistnpc', 'spawnwhen', 'ex_spawn_when', 'dialogcond', 'ex_dialog_when', 'routines', 'ex_routines', 'aistates', 'ex_ai', 'behaviors', 'hardening', 'showcase', 'geometry', 'ex_unseen_spawn', 'ex_random_encounters', 'ex_action_camera', 'damagehooks', 'ex_combat', 'quickloot_react', 'ex_ignore_theft', 'hotreload', 'suite', 'updsafe', 'gui', 'capture', 'scene', 'modmanager', 'options', 'http', 'link', 'modkit', 'modkit_ext', 'evlive', 'extras', 'modkit_voice', 'chronicle', 'meshprobe', 'extmod', 'extplay', 'all')][string[]]$Scenario = @('all'),
     [switch]$List,
     [switch]$FailFast,
     [int]$TotalSeconds = 3600,
@@ -240,6 +241,7 @@ $scenarios = [ordered]@{
     # geometry (M13): one process: conventions against real entities, rays (air, terrain, rock, characters), can_see against the AI's CanSee, camera, risen.random.persist across a quick save + load
     geometry          = @{ Est = 60; Title = 'geometry (M13: vectors, line of sight, field of view, camera, random streams)'; Kind = 'result'; Mods = @('geometry'); Limit = 300 }
     ex_unseen_spawn   = @{ Est = 45; Title = 'example: an enemy where the player cannot see it'; Kind = 'result'; Mods = @('example_unseen_spawn'); Limit = 300 }
+    ex_random_encounters = @{ Est = 45; Title = 'example: table driven random encounters / live respawn'; Kind = 'result'; Mods = @('example_random_encounters'); Limit = 300 }
     ex_action_camera  = @{ Est = 65; Title = 'example: action camera (free orbit, the hero turns where he runs; bow camera, quick save + load)'; Kind = 'result'; Mods = @('example_action_camera'); Limit = 300 }
     # damage hooks (M14): "save" plays everything in a new game and leaves a quick save, "load" (a fresh process) registers the handler at start and casts again
     damagehooks       = @{ Est = 175; Title = 'damage hooks (M14: real casts, bites and blows; save, fresh-process load)'; Kind = 'result'; Mods = @('damagehooks'); Limit = 300
