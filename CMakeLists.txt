@@ -33,6 +33,10 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 if(WIN32)
     # every <windows.h> in the project (and in the headers it includes) is the trimmed one, without min/max macros
     add_compile_definitions(WIN32_LEAN_AND_MEAN NOMINMAX)
+    # std::mutex keeps its runtime-initialised constructor: the constexpr one of MSVC 14.40+ crashes in _Mtx_lock with
+    # an older MSVCP140.dll (old VC++ redistributable, Proton/Wine prefixes). The vcpkg ports get the same define from
+    # the overlay triplet triplets/x64-windows-static-md.cmake.
+    add_compile_definitions(_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
 endif()
 
 # Build speed. MSBuild compiles the files of one project one after another unless cl.exe gets /MP (Ninja runs one
