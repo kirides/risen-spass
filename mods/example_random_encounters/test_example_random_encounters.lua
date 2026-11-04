@@ -22,7 +22,7 @@ return function(Enc)
     end
 
     T.plan {
-        "the data tables are valid (zones, pools, categories)", "the camera has settled behind the player", "a spot in plain view is never used", "a hidden spot behind him: the monster appears there",
+        "the data tables are valid (zones, pools, categories)", "special quest / boss monsters are never in a pool", "the camera has settled behind the player", "a spot in plain view is never used", "a hidden spot behind him: the monster appears there",
         "the monster is one of the pool's templates for the chapter", "the category sleeps for its cooldown", "a spot with enough monsters around it is not used", "chance 0 never spawns",
         "chapter 1 never yields a chapter 2 monster, chapter 4 does", "a group entry spawns 2 monsters around the spot", "a surprise comes from the nearest hidden spot", "far-away unseen leftovers are cleaned up",
         "a zone bound to an area is silent outside it", "every pool monster has a habitat in the game's world data", "habitat points follow chapter and region",
@@ -47,6 +47,17 @@ return function(Enc)
             end
         end
         T.expect("the data tables are valid (zones, pools, categories)", #problems == 0 and #Enc.zones >= 3, table.concat(problems, "; "))
+
+        -- special monsters: the filter knows the game's suffix variants, lets the regular species through, and no shipped pool holds a banned one
+        local must = { "Gyrger", "Titan", "LizardWarrior_Portal_03", "LizardWarrior_EliteBoss_02", "Rotworm_Don_01", "LizardScout_Spy", "AshBeast_Undead_StoryUnikat", "LizardWarrior_HunterBoss" }
+        local may = { "Wolf", "Boar", "Ghul", "Skeleton", "LizardScout", "LizardWarrior", "LizardWarrior_Elite", "GiantScorpion", "Ogre" }
+        local wrong = {}
+        for _, n in ipairs(must) do if not Enc.banned(n) then wrong[#wrong + 1] = "allowed " .. n end end
+        for _, n in ipairs(may) do if Enc.banned(n) then wrong[#wrong + 1] = "banned " .. n end end
+        for name, pool in pairs(Enc.pools) do
+            for _, e in ipairs(pool) do if Enc.banned(e.template) then wrong[#wrong + 1] = name .. "/" .. e.template end end
+        end
+        T.expect("special quest / boss monsters are never in a pool", #wrong == 0, table.concat(wrong, ", "))
 
         local cam
         local function settled()

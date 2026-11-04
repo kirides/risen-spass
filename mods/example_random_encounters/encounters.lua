@@ -34,6 +34,17 @@ return {
     },
 
     ---------------------------------------------------------------------------------------------------------------------------------
+    -- never: special monsters that a random encounter must NEVER create (quest targets, bosses, story unique ones). A pool entry that matches is
+    -- removed when the mod loads (and logged). `names` are exact template names, `patterns` Lua patterns on the template name. The game marks such
+    -- monsters by a suffix on the base species: LizardWarrior_Portal_03, LizardWarrior_EliteBoss_02, Rotworm_Don_01, LizardScout_Spy, ...
+    ---------------------------------------------------------------------------------------------------------------------------------
+    never = {
+        names = { "Gyrger", "Titan", "Inferno", "Tideworm", "SummonedSkeleton", "AttackBrontok", "LizardPriest", "Ogre_Tame", "Wolf_Tame" },
+        patterns = { "Boss", "Unikat", "Story", "Portal", "Gamestart", "_Don_%d", "_Spy$", "_Dead", "Hunter", "Keeper", "KeyMaster", "Severin", "Patroscon", "Monastery",
+                     "Crypt", "Titan", "Vulcan", "OldMine", "Dungeon", "Feather", "NoviceRanch", "_Bruce_", "_Paul_", "Chief", "Undead" },
+    },
+
+    ---------------------------------------------------------------------------------------------------------------------------------
     -- categories: the cooldown shared by their zones (seconds of play time; config.toml `cooldown_scale` multiplies them)
     ---------------------------------------------------------------------------------------------------------------------------------
     categories = {
@@ -62,7 +73,6 @@ return {
         lizards = {
             { template = "LizardScout",   weight = 3, chapters = { 2, 3 } },
             { template = "LizardWarrior", weight = 3, chapters = { 3, 4 } },
-            { template = "LizardPriest",  weight = 1, chapters = { 3, 4 } },
             { template = "LizardWarrior_Elite", weight = 2, chapters = { 4, 4 } },
         },
         big = {

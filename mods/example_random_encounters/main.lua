@@ -34,6 +34,25 @@ local last_clock
 local cleanup_at = 0
 local sweep_at = 0
 
+-- Special monsters (quest targets, bosses, story unique ones) are never created: see `never` in encounters.lua.
+local banned_names = {}
+for _, n in ipairs((data.never or {}).names or {}) do banned_names[n] = true end
+function Enc.banned(template)
+    if banned_names[template] then return true end
+    for _, pat in ipairs((data.never or {}).patterns or {}) do
+        if template:find(pat) then return true end
+    end
+    return false
+end
+for pool_name, pool in pairs(data.pools) do
+    for i = #pool, 1, -1 do
+        if Enc.banned(pool[i].template) then
+            risen.log.warn(("[encounters] pool %s: %s is a special monster (encounters.lua `never`), removed"):format(pool_name, pool[i].template))
+            table.remove(pool, i)
+        end
+    end
+end
+
 -- every template that is part of a pool counts as "ours / hostile" when monsters are counted near a spot
 local hostile = {}
 for _, pool in pairs(data.pools) do
