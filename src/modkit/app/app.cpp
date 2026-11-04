@@ -1082,6 +1082,9 @@ int App::run() {
     io.IniFilename = options.screenshot.empty() ? ini_path.c_str() : nullptr;
     ImGui::StyleColorsDark();
     ImGuiStyle& style = ImGui::GetStyle();
+    // imgui 1.93's dark style draws input fields (FrameBg 0.10) darker than the windows (0.18) but popups and modal dialogs
+    // at 0.08, where the fields vanish (the wizards' text boxes did): give popups a background the fields stand out from
+    style.Colors[ImGuiCol_PopupBg] = ImVec4(0.15f, 0.15f, 0.15f, 0.97f);
     style.WindowRounding = 4;
     style.FrameRounding = 3;
     style.GrabRounding = 3;
