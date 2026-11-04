@@ -67,7 +67,6 @@ return {
         },
         big = {
             { template = "Thundertail", weight = 2, chapters = { 2, 4 } },
-            { template = "Gyrger",      weight = 2, chapters = { 2, 4 } },
             { template = "AshBeast",    weight = 2, chapters = { 4, 4 } },
             { template = "GiantScorpion", weight = 2, chapters = { 4, 4 } },
             { template = "Ogre",        weight = 1, chapters = { 4, 4 } },
@@ -83,13 +82,18 @@ return {
     --   max_near / near_radius        at most this many of our monsters within this radius of the spot
     --   chapters     { from, to }: the zone is only active in these chapters
     --   area         { x =, z =, radius = }: only while the PLAYER is inside this circle (use it to bind a zone to a region of the island)
+    --   habitat      true: HABITAT MODE (the default of the shipped zones). The monster is picked from the pool first, then the spot: only places where the GAME
+    --                itself puts that species (habitats.lua, generated from the world files), hidden from the player, not already crowded. A wolf pack comes back
+    --                where wolves live, a ghul where the ghuls are; a species that has no home near the player is skipped (the next of the pool is tried).
+    --   regions      habitat mode only: { "Swamp_Outdoor", ... } the game's own outdoor regions (Game_Start, Harbour_Outdoor, Wild_Outdoor, Swamp_Outdoor, Pirate_Coast,
+    --                Monastery_Outdoor, Druid_Outdoor, Gyrger_Island, OutMain): the zone only uses habitats there
     --   spots        explicit spots { {x, y, z}, ... }; without it the world's own points are used:
     --   points       filter for risen.world.points: { kind = "guard" } / { template = "Anchor_Patrol" } / { name_prefix = "..." }
     ---------------------------------------------------------------------------------------------------------------------------------
     zones = {
-        { name = "roaming wildlife", category = "small", pool = "wildlife", chance = 0.20, min_distance = 700, max_distance = 2800, max_near = 2, near_radius = 1500 },
-        { name = "lizard patrol",    category = "human", pool = "lizards",  chance = 0.10, min_distance = 900, max_distance = 3000, max_near = 2, near_radius = 1500, chapters = { 2, 4 } },
-        { name = "rare big beast",   category = "big",   pool = "big",      chance = 0.05, min_distance = 1200, max_distance = 3500, max_near = 1, near_radius = 2500, chapters = { 2, 4 } },
+        { name = "roaming wildlife", habitat = true, category = "small", pool = "wildlife", chance = 0.20, min_distance = 700, max_distance = 2800, max_near = 2, near_radius = 1500 },
+        { name = "lizard patrol",    habitat = true, category = "human", pool = "lizards",  chance = 0.10, min_distance = 900, max_distance = 3000, max_near = 2, near_radius = 1500, chapters = { 2, 4 } },
+        { name = "rare big beast",   habitat = true, category = "big",   pool = "big",      chance = 0.05, min_distance = 1200, max_distance = 3500, max_near = 1, near_radius = 2500, chapters = { 2, 4 } },
 
         -- Bind a zone to a region: only while the player stands within 3000 units of the point, and only on these hand-made spots.
         -- (Replace the numbers with a place of your own; `risen.entity.player():position()` tells you where you are.)

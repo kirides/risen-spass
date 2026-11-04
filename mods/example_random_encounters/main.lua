@@ -21,9 +21,10 @@ local cfg = risen.config({
 })
 
 local data = require("encounters")
+local habitats = require("habitats")    -- GENERATED: where the game itself places each monster (tools/gen_habitats.py)
 local S = data.settings
 
-local Enc = { zones = data.zones, pools = data.pools, categories = data.categories, settings = S, cfg = cfg }
+local Enc = { habitats = habitats, zones = data.zones, pools = data.pools, categories = data.categories, settings = S, cfg = cfg }
 
 local spawned = {}          -- the monsters this mod made
 local serial = 0            -- numbers their unique names: Entity:valid() looks an entity up BY NAME, an unnamed spawn is called like its template and would match any other wolf
@@ -72,6 +73,34 @@ function Enc.pick_entry(pool_name, ch)
     return (R.weighted(items, weights))
 end
 
+-- Every entry of the pool that fits the chapter, in a random order that follows the weights (the first is what pick_entry would give).
+function Enc.ordered_entries(pool_name, ch)
+    local pool = data.pools[pool_name]
+    local items, weights, out = {}, {}, {}
+    for _, e in ipairs(pool or {}) do
+        if in_range(e.chapters, ch) then items[#items + 1] = e; weights[#weights + 1] = e.weight or 1 end
+    end
+    while #items > 0 do
+        local e, i = R.weighted(items, weights)
+        if not e or type(i) ~= "number" then break end
+        out[#out + 1] = e
+        table.remove(items, i)
+        table.remove(weights, i)
+    end
+    return out
+end
+
+-- Where the game itself places a species (habitats.lua), usable in this chapter, optionally only in some of its outdoor regions (a list of names like "Swamp_Outdoor").
+function Enc.habitat_points(template, ch, regions)
+    local want
+    if regions then want = {}; for _, r in ipairs(regions) do want[r] = true end end
+    local out = {}
+    for _, h in ipairs(habitats[template] or {}) do
+        if (h[5] or 1) <= ch and (not want or want[h[4]]) then out[#out + 1] = { x = h[1], y = h[2], z = h[3], region = h[4] } end
+    end
+    return out
+end
+
 local function count_of(entry)
     local c = entry.count or 1
     if type(c) == "table" then return R.int(c[1], c[2]) end
@@ -95,11 +124,13 @@ local function monsters_near(p, radius, npcs)
 end
 
 -- The spots of a zone that qualify: in distance range, hidden from the player. Returns the list sorted nearest first, or nil and a reason.
-function Enc.spots(zone, player, min_distance)
+function Enc.spots(zone, player, min_distance, given)
     local max_d = zone.max_distance or 3000
     local min_d = min_distance or zone.min_distance or 600
-    local points = zone.spots
-    if points then
+    local points = given or zone.spots
+    if given then
+        -- a ready list of { x, y, z } (the habitat of one species)
+    elseif points then
         local list = {}
         for _, s in ipairs(points) do list[#list + 1] = { x = s.x or s[1], y = s.y or s[2], z = s.z or s[3] } end
         points = list
@@ -114,7 +145,7 @@ function Enc.spots(zone, player, min_distance)
             if d and d >= min_d and d <= max_d then
                 local seen, why = W.is_seen_by({ p.x, p.y + 100, p.z }, player, { camera = true, range = S.sight })
                 if seen == nil then return nil, why end
-                if not seen then out[#out + 1] = { x = p.x, y = p.y, z = p.z, d = d } end
+                if not seen then out[#out + 1] = { x = p.x, y = p.y, z = p.z, d = d, region = p.region } end
             end
         end
     end
@@ -123,8 +154,9 @@ function Enc.spots(zone, player, min_distance)
 end
 
 -- Spawns the pool's pick at (or around) a spot. Returns the list of entities, or nil and a reason.
-function Enc.spawn(zone, spot, ch)
-    local entry, why = Enc.pick_entry(zone.pool, ch)
+function Enc.spawn(zone, spot, ch, entry)
+    local why
+    if not entry then entry, why = Enc.pick_entry(zone.pool, ch) end
     if not entry then return nil, why end
     local made = {}
     for i = 1, count_of(entry) do
@@ -159,21 +191,40 @@ function Enc.try_zone(zone, player, ch, npcs, forced_surprise)
 
     local surprise = forced_surprise
     if surprise == nil then surprise = S.surprise_chance > 0 and R.chance(S.surprise_chance) end
-    local list, why = Enc.spots(zone, player, surprise and S.surprise_min_distance or nil)
-    if not list then return nil, why end
+    local min_d = surprise and S.surprise_min_distance or nil
     -- spots that already have their share of monsters around them are no use
-    local usable = {}
-    for _, s in ipairs(list) do
-        if monsters_near(s, zone.near_radius or 1500, npcs) < (zone.max_near or 2) then usable[#usable + 1] = s end
+    local function usable_of(list)
+        local usable = {}
+        for _, s in ipairs(list) do
+            if monsters_near(s, zone.near_radius or 1500, npcs) < (zone.max_near or 2) then usable[#usable + 1] = s end
+        end
+        return usable
+    end
+    local usable, entry
+    if zone.habitat then
+        -- the monster is chosen first (weighted, chapter), then a hidden spot where the GAME places that species; a species with no such spot near the player is skipped
+        for _, e in ipairs(Enc.ordered_entries(zone.pool, ch)) do
+            local pts = Enc.habitat_points(e.template, ch, zone.regions)
+            if #pts > 0 then
+                local list, why = Enc.spots(zone, player, min_d, pts)
+                if not list then return nil, why end
+                local u = usable_of(list)
+                if #u > 0 then usable, entry = u, e break end
+            end
+        end
+    else
+        local list, why = Enc.spots(zone, player, min_d)
+        if not list then return nil, why end
+        usable = usable_of(list)
     end
     local cooldown = ((data.categories[cat] or {}).cooldown or 240) * cfg.cooldown_scale
-    if #usable == 0 then
+    if not usable or #usable == 0 then
         ready_at[cat] = play_time + S.retry_after
         return nil, "no hidden spot"
     end
     local spot = surprise and usable[1] or R.choice(usable)   -- surprise: the nearest hidden spot, otherwise any
     if not spot then return nil, "no spot" end
-    local made, what = Enc.spawn(zone, spot, ch)
+    local made, what = Enc.spawn(zone, spot, ch, entry)
     if not made then return nil, what end
     ready_at[cat] = play_time + cooldown
     debug_log("%s: %s x%d at (%.0f, %.0f, %.0f), %.0f from the player%s", zone.name or zone.pool, what, #made, spot.x, spot.y, spot.z, spot.d, surprise and " (surprise)" or "")

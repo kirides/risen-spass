@@ -25,7 +25,8 @@ return function(Enc)
         "the data tables are valid (zones, pools, categories)", "the camera has settled behind the player", "a spot in plain view is never used", "a hidden spot behind him: the monster appears there",
         "the monster is one of the pool's templates for the chapter", "the category sleeps for its cooldown", "a spot with enough monsters around it is not used", "chance 0 never spawns",
         "chapter 1 never yields a chapter 2 monster, chapter 4 does", "a group entry spawns 2 monsters around the spot", "a surprise comes from the nearest hidden spot", "far-away unseen leftovers are cleaned up",
-        "a zone bound to an area is silent outside it",
+        "a zone bound to an area is silent outside it", "every pool monster has a habitat in the game's world data", "habitat points follow chapter and region",
+        "habitat mode: the species spawns at its hidden home, never at the one in view", "habitat mode: a species without a hidden home is skipped for the next one", "habitat mode: a region without homes spawns nothing",
     }
 
     T.run(function()
@@ -158,6 +159,58 @@ return function(Enc)
         Enc.reset()
         local outside, why5 = try(zone({ area = { x = px + 20000, z = pz, radius = 1000 } }))
         T.expect("a zone bound to an area is silent outside it", outside == nil and why5 == "outside area", tostring(why5))
+
+        -- habitats: the game's own data
+        local H = Enc.habitats
+        local missing = {}
+        for name, pool in pairs(Enc.pools) do
+            for _, e in ipairs(pool) do
+                if #Enc.habitat_points(e.template, 4) == 0 then missing[#missing + 1] = name .. "/" .. e.template end
+            end
+        end
+        T.expect("every pool monster has a habitat in the game's world data", #missing == 0, table.concat(missing, ", "))
+        local all_w, ch1_w = #Enc.habitat_points("Wolf", 4), #Enc.habitat_points("Wolf", 1)
+        local swamp = Enc.habitat_points("Wolf", 4, { "Swamp_Outdoor" })
+        local only_swamp = #swamp > 0
+        for _, p in ipairs(swamp) do if p.region ~= "Swamp_Outdoor" then only_swamp = false end end
+        T.expect("habitat points follow chapter and region", ch1_w > 0 and all_w > ch1_w and only_swamp, f(ch1_w, all_w, #swamp))
+
+        -- habitat mode with homes made around the player (the real ones are far away): Boar lives behind him and in view, Stingrat only in view
+        local saved = { Boar = H.Boar, Stingrat = H.Stingrat }
+        H.Boar = { { back1[1], back1[2], back1[3], "Test" }, { front[1], front[2], front[3], "Test" } }
+        H.Stingrat = { { front[1], front[2], front[3], "Test" } }
+        Enc.pools.test_h = { { template = "Boar" }, { template = "Stingrat" } }
+        local hz = zone({ habitat = true, pool = "test_h", spots = false, max_near = 9 })
+        Enc.reset()
+        local hits, bad = 0, 0
+        local made_h = {}
+        for _ = 1, 3 do
+            Enc.reset()
+            local mm, sp = try(hz)
+            if mm then
+                for _, e in ipairs(mm) do made_h[#made_h + 1] = e end
+                local tn = mm[1]:template():name()
+                if tn == "Boar" and M.distance2d(sp, back1) < 5 then hits = hits + 1 else bad = bad + 1 end
+            else
+                bad = bad + 1
+            end
+        end
+        T.expect("habitat mode: the species spawns at its hidden home, never at the one in view", hits == 3 and bad == 0, f(hits, bad))
+        kill_all(made_h)
+        -- Stingrat alone has only the visible home: nothing hidden, so the zone gives up
+        Enc.pools.test_h = { { template = "Stingrat" }, { template = "Boar" } }
+        local skipped = 0
+        for _ = 1, 4 do
+            Enc.reset()
+            local mm = try(hz)
+            if mm and mm[1]:template():name() == "Boar" then skipped = skipped + 1 end
+            kill_all(mm)
+        end
+        T.expect("habitat mode: a species without a hidden home is skipped for the next one", skipped == 4, skipped)
+        Enc.reset()
+        local nothing, why6 = try(zone({ habitat = true, pool = "test_h", spots = false, regions = { "Nowhere" } }))
+        T.expect("habitat mode: a region without homes spawns nothing", nothing == nil and why6 == "no hidden spot", tostring(why6))
+        H.Boar, H.Stingrat = saved.Boar, saved.Stingrat
 
         T.finish("random encounters")
     end, "ex_random_encounters")

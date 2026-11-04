@@ -1605,6 +1605,11 @@ The standalone converter ([PACK2MOD.md](PACK2MOD.md), `src/pack2mod/`) re-implem
   Every layer starts with a root record `DRE` (identity, an empty box: `FLT_MAX` / `-FLT_MAX`) that holds the layer's own properties. The World has
   317 layer files with 48347 entities (1.5 s to read all). The player's start point is the entity `SP_Start` of `_System/_StartPoints.lrent`
   (-32103, 596, -4723); the other `SP_*` entities there are the travel points of the story.
+  **Where the monsters live** (`tools/world_monsters.py`, read only; `tools/gen_habitats.py` -> `mods/example_random_encounters/habitats.lua`): 1360 placed monsters of 88 templates in 47 `*Monster*` / story layers,
+  one set per outdoor region (`Game_Start`, `Harbour_Outdoor`, `Wild_Outdoor`, `Swamp_Outdoor`, `Pirate_Coast`, `Monastery_Outdoor`, `Druid_Outdoor`, `Gyrger_Island`, `OutMain`; the dungeons have their own). The chapter
+  refills are layers named `...Chapter2_MonsterRefill_Off` (83 monsters), `...Chapter3_Lizards_Off`, `...Ch4Lizards`: the chapter in the name is the first one in which they exist. The coordinates agree with the live world
+  (the start island's monsters surround `SP_Start`). **The running world holds almost none of them at start** (5 NPCs right after a new game): the world streams by area, so the offline data is the only complete source.
+  Gyrger has no outdoor placement (dungeon only); ghuls and skeletons are Pirate Coast, lizard warriors Pirate Coast / OutMain, ogres Druid / Swamp.
 * **A mesh file `._xmsh`** (GR01 / MS02; the header, section 26): after the property stream (`eCMeshResource2`: `SubMeshes[]` with `MaterialName`, `Extends`,
   `FirstIndex`, `IndexCount`, `FirstVertex`, `VertexCount`; `LightmapName`; `Boundary`) the payload at the header's offset holds a **D3D9 vertex declaration**
   (`D3DVERTEXELEMENT9` records up to `D3DDECL_END` = `ff 00 00 00 11 00 00 00`; stream 0 is the vertex buffer, a stream-3 FLOAT1 element follows in most
