@@ -146,6 +146,7 @@ end
 function Enc.spots(zone, player, min_distance, given)
     local max_d = zone.max_distance or 3000
     local min_d = min_distance or zone.min_distance or 600
+    ---@type table[] entries { x, y, z, kind?, region? }; habitat points carry the outdoor region name
     local points = given or zone.spots
     if given then
         -- a ready list of { x, y, z } (the habitat of one species)

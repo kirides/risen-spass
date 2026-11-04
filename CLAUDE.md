@@ -18,6 +18,9 @@ Docs: `docs/RE.md` (reverse-engineering findings, by section), `docs/LUA_API.md`
    `B:\DevDrive\risen-test`, **always windowed** (the user does not want a fullscreen game taking over the screen).
 3. **Commit at milestones**: small, reviewable commits once a feature is built *and* verified (live in the game where it
    touches the engine). Do not let changes pile up. Commit trailers come from the session's attribution reminder.
+   **Before every commit that touches `*.lua`, `types/` or `mods/`, run `.\scripts\check-lua.ps1` (skill `lua-typecheck`)**: it is the
+   GitHub Action's Lua job (check_luadefs + LuaLS 3.19.2 `--checklevel Warning`, git-ignored files skipped). Only right before committing, not after each edit;
+   never commit with findings (CI fails on them).
 4. Verify engine behaviour in the running game instead of assuming. Record findings (RVAs, offsets, what is confirmed vs.
    inferred) in `docs/RE.md`, tick off / extend `docs/NEXT_STEPS.md`.
 
