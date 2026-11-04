@@ -3,7 +3,7 @@
   "name": "risen-spass",
   "version-string": "0.1.0",
   "description": "Hook-based Lua (LuaJIT) scripting layer for Risen (Enhanced, x64)",
-  "builtin-baseline": "39344dff01c5a5a0134caf2624cdd492f05d30ea",
+  "builtin-baseline": "a4f7741c53c97354fc43222fea17955c657dd549",
   "dependencies": [
     "luajit",
     "nlohmann-json",
