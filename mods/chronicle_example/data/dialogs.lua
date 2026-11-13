@@ -11,6 +11,10 @@ return {
                     speaker = "player",
                     listener = "npc",
                     text = { default = "Who are you?", de = "Wer bist du?" },
+                    sound = {
+                        en = "sounds/chronicle_example_83b90f41_English.ogg",
+                        de = "sounds/chronicle_example_83b90f41_German.ogg",
+                    },
                 },
                 {
                     speaker = "npc",
@@ -19,7 +23,11 @@ return {
                         default = "I am Maren. I write down what the island forgets.",
                         de = "Ich bin Maren. Ich schreibe auf, was die Insel vergisst.",
                     },
-                    sound = { default = "sounds/maren_who.wav", de = "sounds/maren_who_de.wav" },
+                    sound = {
+                        default = "sounds/maren_who.wav",
+                        en = "sounds/chronicle_example_6fac19b3_English.ogg",
+                        de = "sounds/chronicle_example_6fac19b3_German.ogg",
+                    },
                 },
             },
         },
@@ -32,6 +40,10 @@ return {
                     speaker = "player",
                     listener = "npc",
                     text = { default = "Do you have work for me?", de = "Hast du Arbeit fuer mich?" },
+                    sound = {
+                        en = "sounds/chronicle_example_f32b8741_English.ogg",
+                        de = "sounds/chronicle_example_f32b8741_German.ogg",
+                    },
                 },
                 {
                     speaker = "npc",
@@ -40,11 +52,19 @@ return {
                         default = "The ink is running low. Bring me three pearls from the shore: salt pearls make the best ink.",
                         de = "Die Tinte wird knapp. Bring mir drei Perlen vom Strand: Salzperlen geben die beste Tinte.",
                     },
+                    sound = {
+                        en = "sounds/chronicle_example_e74f633d_English.ogg",
+                        de = "sounds/chronicle_example_e74f633d_German.ogg",
+                    },
                 },
                 {
                     speaker = "player",
                     listener = "npc",
                     text = { default = "Pearls. Fine.", de = "Perlen. Gut." },
+                    sound = {
+                        en = "sounds/chronicle_example_3892ba1e_English.ogg",
+                        de = "sounds/chronicle_example_3892ba1e_German.ogg",
+                    },
                 },
                 { script = "MK_Q_MKC_Ink_start" },
                 {
@@ -62,6 +82,10 @@ return {
                     speaker = "player",
                     listener = "npc",
                     text = { default = "Here are your pearls.", de = "Hier sind deine Perlen." },
+                    sound = {
+                        en = "sounds/chronicle_example_b8c2fcca_English.ogg",
+                        de = "sounds/chronicle_example_b8c2fcca_German.ogg",
+                    },
                 },
                 {
                     command = "Give",
@@ -76,6 +100,10 @@ return {
                     text = {
                         default = "Salt and shine. Take this plan: it will turn your iron into a story.",
                         de = "Salz und Glanz. Nimm diesen Plan: er macht aus deinem Eisen eine Geschichte.",
+                    },
+                    sound = {
+                        en = "sounds/chronicle_example_c501e0fb_English.ogg",
+                        de = "sounds/chronicle_example_c501e0fb_German.ogg",
                     },
                 },
                 { command = "SetGameEvent", GameEvent = "MKC_Maren_Paid" },
@@ -94,11 +122,19 @@ return {
                         default = "Tell me about the Chronicle.",
                         de = "Erzaehl mir von der Chronik.",
                     },
+                    sound = {
+                        en = "sounds/chronicle_example_023b4f7b_English.ogg",
+                        de = "sounds/chronicle_example_023b4f7b_German.ogg",
+                    },
                 },
                 {
                     speaker = "npc",
                     listener = "player",
                     text = { default = "What do you want to hear?", de = "Was willst du hoeren?" },
+                    sound = {
+                        en = "sounds/chronicle_example_e6aa814e_English.ogg",
+                        de = "sounds/chronicle_example_e6aa814e_German.ogg",
+                    },
                 },
             },
         },
@@ -112,6 +148,10 @@ return {
                     speaker = "player",
                     listener = "npc",
                     text = { default = "About the ash.", de = "Ueber die Asche." },
+                    sound = {
+                        en = "sounds/chronicle_example_6d69a23d_English.ogg",
+                        de = "sounds/chronicle_example_6d69a23d_German.ogg",
+                    },
                 },
                 {
                     speaker = "npc",
@@ -119,6 +159,10 @@ return {
                     text = {
                         default = "The ash falls from a sky that no longer has a sun.",
                         de = "Die Asche faellt von einem Himmel, der keine Sonne mehr hat.",
+                    },
+                    sound = {
+                        en = "sounds/chronicle_example_4e5103bb_English.ogg",
+                        de = "sounds/chronicle_example_4e5103bb_German.ogg",
                     },
                 },
             },
@@ -134,6 +178,10 @@ return {
                     speaker = "player",
                     listener = "npc",
                     text = { default = "About the tide.", de = "Ueber die Flut." },
+                    sound = {
+                        en = "sounds/chronicle_example_02448456_English.ogg",
+                        de = "sounds/chronicle_example_02448456_German.ogg",
+                    },
                 },
                 {
                     speaker = "npc",
@@ -141,6 +189,10 @@ return {
                     text = {
                         default = "The tide brings the raiders and takes the dead. It will rise four times.",
                         de = "Die Flut bringt die Pluenderer und holt die Toten. Sie wird viermal steigen.",
+                    },
+                    sound = {
+                        en = "sounds/chronicle_example_6f87b138_English.ogg",
+                        de = "sounds/chronicle_example_6f87b138_German.ogg",
                     },
                 },
             },
@@ -155,6 +207,10 @@ return {
                     speaker = "player",
                     listener = "npc",
                     text = { default = "Enough about the Chronicle.", de = "Genug von der Chronik." },
+                    sound = {
+                        en = "sounds/chronicle_example_0a2601d7_English.ogg",
+                        de = "sounds/chronicle_example_0a2601d7_German.ogg",
+                    },
                 },
                 { command = "Back" },
             },
@@ -171,6 +227,10 @@ return {
                         default = "I will pay the raiders' tithe (200 gold).",
                         de = "Ich zahle den Zoll der Pluenderer (200 Gold).",
                     },
+                    sound = {
+                        en = "sounds/chronicle_example_272c76ca_English.ogg",
+                        de = "sounds/chronicle_example_272c76ca_German.ogg",
+                    },
                 },
                 {
                     command = "Give",
@@ -185,6 +245,10 @@ return {
                     text = {
                         default = "Gold buys silence. The camp will leave you alone, and so will the tide, for a while.",
                         de = "Gold kauft Schweigen. Das Lager laesst dich in Ruhe, und die Flut auch, eine Weile.",
+                    },
+                    sound = {
+                        en = "sounds/chronicle_example_21f1351a_English.ogg",
+                        de = "sounds/chronicle_example_21f1351a_German.ogg",
                     },
                 },
                 { command = "End" },
@@ -202,6 +266,10 @@ return {
                     speaker = "player",
                     listener = "npc",
                     text = { default = "Show me the old trail.", de = "Zeig mir den alten Pfad." },
+                    sound = {
+                        en = "sounds/chronicle_example_f745e069_English.ogg",
+                        de = "sounds/chronicle_example_f745e069_German.ogg",
+                    },
                 },
                 {
                     command = "SetSectorStatus",
@@ -215,6 +283,10 @@ return {
                     text = {
                         default = "Follow the smoke. The lizards have woken on the old trail.",
                         de = "Folge dem Rauch. Auf dem alten Pfad sind die Echsen erwacht.",
+                    },
+                    sound = {
+                        en = "sounds/chronicle_example_058708ad_English.ogg",
+                        de = "sounds/chronicle_example_058708ad_German.ogg",
                     },
                 },
                 { command = "End" },
@@ -233,6 +305,10 @@ return {
                     speaker = "player",
                     listener = "npc",
                     text = { default = "Is the Chronicle complete?", de = "Ist die Chronik vollstaendig?" },
+                    sound = {
+                        en = "sounds/chronicle_example_b1d87fd4_English.ogg",
+                        de = "sounds/chronicle_example_b1d87fd4_German.ogg",
+                    },
                 },
                 {
                     speaker = "npc",
@@ -240,6 +316,10 @@ return {
                     text = {
                         default = "Almost. The last line is yours to write.",
                         de = "Fast. Die letzte Zeile schreibst du.",
+                    },
+                    sound = {
+                        en = "sounds/chronicle_example_4eb9af20_English.ogg",
+                        de = "sounds/chronicle_example_4eb9af20_German.ogg",
                     },
                 },
                 { script = "MKC_TideBell" },
@@ -255,6 +335,10 @@ return {
                     speaker = "player",
                     listener = "npc",
                     text = { default = "Farewell.", de = "Lebewohl." },
+                    sound = {
+                        en = "sounds/chronicle_example_b144adf9_English.ogg",
+                        de = "sounds/chronicle_example_b144adf9_German.ogg",
+                    },
                 },
                 { command = "End" },
             },
@@ -268,6 +352,10 @@ return {
                     speaker = "player",
                     listener = "npc",
                     text = { default = "What happened to you?", de = "Was ist dir passiert?" },
+                    sound = {
+                        en = "sounds/chronicle_example_a6af22d2_English.ogg",
+                        de = "sounds/chronicle_example_a6af22d2_German.ogg",
+                    },
                 },
                 {
                     speaker = "npc",
@@ -276,6 +364,10 @@ return {
                         default = "Raiders at the Ash Camp. They burned my boat.",
                         de = "Pluenderer im Aschelager. Sie haben mein Boot verbrannt.",
                     },
+                    sound = {
+                        en = "sounds/chronicle_example_3b6588a1_English.ogg",
+                        de = "sounds/chronicle_example_3b6588a1_German.ogg",
+                    },
                 },
                 {
                     speaker = "MKC_Maren",
@@ -283,6 +375,10 @@ return {
                     text = {
                         default = "(Maren, from afar) Write that down, someone.",
                         de = "(Maren, aus der Ferne) Schreibt das jemand auf.",
+                    },
+                    sound = {
+                        en = "sounds/chronicle_example_3fc4094a_English.ogg",
+                        de = "sounds/chronicle_example_3fc4094a_German.ogg",
                     },
                 },
                 { command = "End" },
@@ -299,6 +395,10 @@ return {
                     text = {
                         default = "Take this, you look half dead.",
                         de = "Nimm das, du siehst halb tot aus.",
+                    },
+                    sound = {
+                        en = "sounds/chronicle_example_ce13f7bc_English.ogg",
+                        de = "sounds/chronicle_example_ce13f7bc_German.ogg",
                     },
                 },
                 {
@@ -322,6 +422,10 @@ return {
                         default = "Thank you. Take a potion; I owe you.",
                         de = "Danke. Nimm einen Trank; ich stehe in deiner Schuld.",
                     },
+                    sound = {
+                        en = "sounds/chronicle_example_7c728f9a_English.ogg",
+                        de = "sounds/chronicle_example_7c728f9a_German.ogg",
+                    },
                 },
                 { command = "End" },
             },
@@ -335,6 +439,10 @@ return {
                     speaker = "player",
                     listener = "npc",
                     text = { default = "What do you sell?", de = "Was verkaufst du?" },
+                    sound = {
+                        en = "sounds/chronicle_example_4e27306e_English.ogg",
+                        de = "sounds/chronicle_example_4e27306e_German.ogg",
+                    },
                 },
                 {
                     speaker = "npc",
@@ -342,6 +450,10 @@ return {
                     text = {
                         default = "Things the Inquisition would rather you did not own.",
                         de = "Dinge, die die Inquisition lieber nicht in deinem Besitz saehe.",
+                    },
+                    sound = {
+                        en = "sounds/chronicle_example_519a428d_English.ogg",
+                        de = "sounds/chronicle_example_519a428d_German.ogg",
                     },
                 },
                 { command = "DoTrade", Entity1 = "player", Entity2 = "npc" },
@@ -358,6 +470,10 @@ return {
                     speaker = "player",
                     listener = "npc",
                     text = { default = "I know the Chronicle.", de = "Ich kenne die Chronik." },
+                    sound = {
+                        en = "sounds/chronicle_example_d71e0307_English.ogg",
+                        de = "sounds/chronicle_example_d71e0307_German.ogg",
+                    },
                 },
                 {
                     speaker = "npc",
@@ -365,6 +481,10 @@ return {
                     text = {
                         default = "Then you know why the tide is wrong. Take a scroll from me, for free.",
                         de = "Dann weisst du, warum die Flut falsch ist. Nimm eine Schriftrolle, umsonst.",
+                    },
+                    sound = {
+                        en = "sounds/chronicle_example_8d4e0af1_English.ogg",
+                        de = "sounds/chronicle_example_8d4e0af1_German.ogg",
                     },
                 },
                 {

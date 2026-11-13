@@ -692,7 +692,11 @@
               },
               "type": "Info",
               "permanent": true,
-              "info": "MKC_Maren_Who"
+              "info": "MKC_Maren_Who",
+              "sound": {
+                "English": "chronicle_example_83b90f41_English.ogg",
+                "German": "chronicle_example_83b90f41_German.ogg"
+              }
             }
           },
           {
@@ -710,7 +714,8 @@
               },
               "sound": {
                 "default": "maren_who.wav",
-                "German": "maren_who_de.wav"
+                "German": "chronicle_example_6fac19b3_German.ogg",
+                "English": "chronicle_example_6fac19b3_English.ogg"
               }
             }
           },
@@ -736,7 +741,11 @@
               },
               "type": "Info",
               "permanent": false,
-              "info": "MKC_Maren_Work"
+              "info": "MKC_Maren_Work",
+              "sound": {
+                "English": "chronicle_example_f32b8741_English.ogg",
+                "German": "chronicle_example_f32b8741_German.ogg"
+              }
             }
           },
           {
@@ -766,6 +775,10 @@
               "text": {
                 "English": "The ink is running low. Bring me three pearls from the shore: salt pearls make the best ink.",
                 "German": "Die Tinte wird knapp. Bring mir drei Perlen vom Strand: Salzperlen geben die beste Tinte."
+              },
+              "sound": {
+                "English": "chronicle_example_e74f633d_English.ogg",
+                "German": "chronicle_example_e74f633d_German.ogg"
               }
             }
           },
@@ -781,6 +794,10 @@
               "text": {
                 "English": "Pearls. Fine.",
                 "German": "Perlen. Gut."
+              },
+              "sound": {
+                "English": "chronicle_example_3892ba1e_English.ogg",
+                "German": "chronicle_example_3892ba1e_German.ogg"
               }
             }
           },
@@ -825,7 +842,11 @@
               },
               "type": "Info",
               "permanent": false,
-              "info": "MKC_Maren_Ink_Turnin"
+              "info": "MKC_Maren_Ink_Turnin",
+              "sound": {
+                "English": "chronicle_example_b8c2fcca_English.ogg",
+                "German": "chronicle_example_b8c2fcca_German.ogg"
+              }
             }
           },
           {
@@ -895,6 +916,10 @@
               "text": {
                 "English": "Salt and shine. Take this plan: it will turn your iron into a story.",
                 "German": "Salz und Glanz. Nimm diesen Plan: er macht aus deinem Eisen eine Geschichte."
+              },
+              "sound": {
+                "English": "chronicle_example_c501e0fb_English.ogg",
+                "German": "chronicle_example_c501e0fb_German.ogg"
               }
             }
           },
@@ -926,7 +951,11 @@
               },
               "type": "Info",
               "permanent": true,
-              "info": "MKC_Maren_Lore"
+              "info": "MKC_Maren_Lore",
+              "sound": {
+                "English": "chronicle_example_023b4f7b_English.ogg",
+                "German": "chronicle_example_023b4f7b_German.ogg"
+              }
             }
           },
           {
@@ -941,6 +970,10 @@
               "text": {
                 "English": "What do you want to hear?",
                 "German": "Was willst du hoeren?"
+              },
+              "sound": {
+                "English": "chronicle_example_e6aa814e_English.ogg",
+                "German": "chronicle_example_e6aa814e_German.ogg"
               }
             }
           },
@@ -958,7 +991,11 @@
               },
               "type": "Info",
               "permanent": true,
-              "info": "MKC_Maren_Ash"
+              "info": "MKC_Maren_Ash",
+              "sound": {
+                "English": "chronicle_example_6d69a23d_English.ogg",
+                "German": "chronicle_example_6d69a23d_German.ogg"
+              }
             }
           },
           {
@@ -973,6 +1010,10 @@
               "text": {
                 "English": "The ash falls from a sky that no longer has a sun.",
                 "German": "Die Asche faellt von einem Himmel, der keine Sonne mehr hat."
+              },
+              "sound": {
+                "English": "chronicle_example_4e5103bb_English.ogg",
+                "German": "chronicle_example_4e5103bb_German.ogg"
               }
             }
           },
@@ -998,7 +1039,11 @@
               },
               "type": "Info",
               "permanent": true,
-              "info": "MKC_Maren_Tide"
+              "info": "MKC_Maren_Tide",
+              "sound": {
+                "English": "chronicle_example_02448456_English.ogg",
+                "German": "chronicle_example_02448456_German.ogg"
+              }
             }
           },
           {
@@ -1028,6 +1073,10 @@
               "text": {
                 "English": "The tide brings the raiders and takes the dead. It will rise four times.",
                 "German": "Die Flut bringt die Pluenderer und holt die Toten. Sie wird viermal steigen."
+              },
+              "sound": {
+                "English": "chronicle_example_6f87b138_English.ogg",
+                "German": "chronicle_example_6f87b138_German.ogg"
               }
             }
           },
@@ -1053,7 +1102,11 @@
               },
               "type": "Info",
               "permanent": true,
-              "info": "MKC_Maren_Lore_Back"
+              "info": "MKC_Maren_Lore_Back",
+              "sound": {
+                "English": "chronicle_example_0a2601d7_English.ogg",
+                "German": "chronicle_example_0a2601d7_German.ogg"
+              }
             }
           },
           {
@@ -1078,7 +1131,11 @@
               },
               "type": "Info",
               "permanent": false,
-              "info": "MKC_Maren_Tithe"
+              "info": "MKC_Maren_Tithe",
+              "sound": {
+                "English": "chronicle_example_272c76ca_English.ogg",
+                "German": "chronicle_example_272c76ca_German.ogg"
+              }
             }
           },
           {
@@ -1148,6 +1205,10 @@
               "text": {
                 "English": "Gold buys silence. The camp will leave you alone, and so will the tide, for a while.",
                 "German": "Gold kauft Schweigen. Das Lager laesst dich in Ruhe, und die Flut auch, eine Weile."
+              },
+              "sound": {
+                "English": "chronicle_example_21f1351a_English.ogg",
+                "German": "chronicle_example_21f1351a_German.ogg"
               }
             }
           },
@@ -1165,7 +1226,11 @@
               },
               "type": "Info",
               "permanent": false,
-              "info": "MKC_Maren_Trail"
+              "info": "MKC_Maren_Trail",
+              "sound": {
+                "English": "chronicle_example_f745e069_English.ogg",
+                "German": "chronicle_example_f745e069_German.ogg"
+              }
             }
           },
           {
@@ -1254,6 +1319,10 @@
               "text": {
                 "English": "Follow the smoke. The lizards have woken on the old trail.",
                 "German": "Folge dem Rauch. Auf dem alten Pfad sind die Echsen erwacht."
+              },
+              "sound": {
+                "English": "chronicle_example_058708ad_English.ogg",
+                "German": "chronicle_example_058708ad_German.ogg"
               }
             }
           },
@@ -1271,7 +1340,11 @@
               },
               "type": "Info",
               "permanent": true,
-              "info": "MKC_Maren_Done"
+              "info": "MKC_Maren_Done",
+              "sound": {
+                "English": "chronicle_example_b1d87fd4_English.ogg",
+                "German": "chronicle_example_b1d87fd4_German.ogg"
+              }
             }
           },
           {
@@ -1324,6 +1397,10 @@
               "text": {
                 "English": "Almost. The last line is yours to write.",
                 "German": "Fast. Die letzte Zeile schreibst du."
+              },
+              "sound": {
+                "English": "chronicle_example_4eb9af20_English.ogg",
+                "German": "chronicle_example_4eb9af20_German.ogg"
               }
             }
           },
@@ -1352,7 +1429,11 @@
               },
               "type": "Info",
               "permanent": true,
-              "info": "MKC_Maren_Bye"
+              "info": "MKC_Maren_Bye",
+              "sound": {
+                "English": "chronicle_example_b144adf9_English.ogg",
+                "German": "chronicle_example_b144adf9_German.ogg"
+              }
             }
           },
           {
@@ -1851,7 +1932,11 @@
               },
               "type": "Info",
               "permanent": true,
-              "info": "MKC_Scout_Hurt"
+              "info": "MKC_Scout_Hurt",
+              "sound": {
+                "English": "chronicle_example_a6af22d2_English.ogg",
+                "German": "chronicle_example_a6af22d2_German.ogg"
+              }
             }
           },
           {
@@ -1866,6 +1951,10 @@
               "text": {
                 "English": "Raiders at the Ash Camp. They burned my boat.",
                 "German": "Pluenderer im Aschelager. Sie haben mein Boot verbrannt."
+              },
+              "sound": {
+                "English": "chronicle_example_3b6588a1_English.ogg",
+                "German": "chronicle_example_3b6588a1_German.ogg"
               }
             }
           },
@@ -1881,6 +1970,10 @@
               "text": {
                 "English": "(Maren, from afar) Write that down, someone.",
                 "German": "(Maren, aus der Ferne) Schreibt das jemand auf."
+              },
+              "sound": {
+                "English": "chronicle_example_3fc4094a_English.ogg",
+                "German": "chronicle_example_3fc4094a_German.ogg"
               }
             }
           },
@@ -1898,7 +1991,11 @@
               },
               "type": "Info",
               "permanent": false,
-              "info": "MKC_Scout_Gift"
+              "info": "MKC_Scout_Gift",
+              "sound": {
+                "English": "chronicle_example_ce13f7bc_English.ogg",
+                "German": "chronicle_example_ce13f7bc_German.ogg"
+              }
             }
           },
           {
@@ -1962,6 +2059,10 @@
               "text": {
                 "English": "Thank you. Take a potion; I owe you.",
                 "German": "Danke. Nimm einen Trank; ich stehe in deiner Schuld."
+              },
+              "sound": {
+                "English": "chronicle_example_7c728f9a_English.ogg",
+                "German": "chronicle_example_7c728f9a_German.ogg"
               }
             }
           }
@@ -2056,7 +2157,11 @@
               },
               "type": "Info",
               "permanent": true,
-              "info": "MKC_Smuggler_Trade"
+              "info": "MKC_Smuggler_Trade",
+              "sound": {
+                "English": "chronicle_example_4e27306e_English.ogg",
+                "German": "chronicle_example_4e27306e_German.ogg"
+              }
             }
           },
           {
@@ -2071,6 +2176,10 @@
               "text": {
                 "English": "Things the Inquisition would rather you did not own.",
                 "German": "Dinge, die die Inquisition lieber nicht in deinem Besitz saehe."
+              },
+              "sound": {
+                "English": "chronicle_example_519a428d_English.ogg",
+                "German": "chronicle_example_519a428d_German.ogg"
               }
             }
           },
@@ -2103,7 +2212,11 @@
               },
               "type": "Important",
               "permanent": false,
-              "info": "MKC_Smuggler_Chronicle"
+              "info": "MKC_Smuggler_Chronicle",
+              "sound": {
+                "English": "chronicle_example_d71e0307_English.ogg",
+                "German": "chronicle_example_d71e0307_German.ogg"
+              }
             }
           },
           {
@@ -2133,6 +2246,10 @@
               "text": {
                 "English": "Then you know why the tide is wrong. Take a scroll from me, for free.",
                 "German": "Dann weisst du, warum die Flut falsch ist. Nimm eine Schriftrolle, umsonst."
+              },
+              "sound": {
+                "English": "chronicle_example_8d4e0af1_English.ogg",
+                "German": "chronicle_example_8d4e0af1_German.ogg"
               }
             }
           },
@@ -6858,6 +6975,306 @@
       "uid": "48bca387117ff1cb489c56b7c97e2009",
       "file": "chronicle/assets/MKC_Tablet._xmsh",
       "kind": "mesh"
+    },
+    {
+      "uid": "00747808c90837f99dc652e71d636bfa",
+      "file": "voice/chronicle_example_023b4f7b_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "c7eeb0366cab46ed9db91743eb0e7680",
+      "file": "voice/chronicle_example_023b4f7b_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "2af23f4495c9823f97925ed2bf3ea97a",
+      "file": "voice/chronicle_example_02448456_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "6152643d564200d125505a8872fbba8b",
+      "file": "voice/chronicle_example_02448456_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "4b2f93db74e4c31f1823a3348a0d7459",
+      "file": "voice/chronicle_example_058708ad_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "0184ebaa0a08f40248a12958399e10f9",
+      "file": "voice/chronicle_example_058708ad_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "63558b930ccf5698fdbb6936f57e5365",
+      "file": "voice/chronicle_example_0a2601d7_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "51364d84f3f27dca95e43c681812c7ad",
+      "file": "voice/chronicle_example_0a2601d7_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "3147f56ccc85815e4b02de083ba03217",
+      "file": "voice/chronicle_example_21f1351a_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "a1f222857d6f1a539ecc54888e3fd198",
+      "file": "voice/chronicle_example_21f1351a_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "09357a6338f8ddbcef7fd40494636535",
+      "file": "voice/chronicle_example_272c76ca_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "429943757265bd7e3a157a8ad39fa27a",
+      "file": "voice/chronicle_example_272c76ca_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "ba6cf84916bec43a191fa93cb34aa530",
+      "file": "voice/chronicle_example_3892ba1e_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "840c732ab2e8588681f18eabdb9027ee",
+      "file": "voice/chronicle_example_3892ba1e_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "44b6a6e742305d5093982497908a5b11",
+      "file": "voice/chronicle_example_3b6588a1_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "81cfb6b4988c9cc9c090e9b47936b622",
+      "file": "voice/chronicle_example_3b6588a1_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "ede9d416249761e211811eda67a4d4a4",
+      "file": "voice/chronicle_example_3fc4094a_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "3513bdffa00c9f0b3b7a7b4d367bf416",
+      "file": "voice/chronicle_example_3fc4094a_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "d3a544032f151f82bb882264477ac9ef",
+      "file": "voice/chronicle_example_4e27306e_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "4dcf6802e646867f3261682408baac8f",
+      "file": "voice/chronicle_example_4e27306e_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "752902da3f6fa6d37b2d686cf2d750cf",
+      "file": "voice/chronicle_example_4e5103bb_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "e3cce2f932d4d1073fd6d025538a0565",
+      "file": "voice/chronicle_example_4e5103bb_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "6422d2f5a5ba98b99e1a6705099947a9",
+      "file": "voice/chronicle_example_4eb9af20_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "70eee33c2a85346679e166925cccb2cb",
+      "file": "voice/chronicle_example_4eb9af20_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "fa1f8f30e584999bbe7adc4fe4621500",
+      "file": "voice/chronicle_example_519a428d_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "57e7415e240cfba4fc487578edf17d5a",
+      "file": "voice/chronicle_example_519a428d_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "bda5350af585c3a24d1908c73f3c33ba",
+      "file": "voice/chronicle_example_6d69a23d_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "5b428a0bb7d43b3cf88a8188d54e2f40",
+      "file": "voice/chronicle_example_6d69a23d_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "36941d8e34c1643fae25286776f3336d",
+      "file": "voice/chronicle_example_6f87b138_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "cbf7ad825dbf9b6d84e7ded88e78c8bc",
+      "file": "voice/chronicle_example_6f87b138_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "df33962edf39e9af26418ae05f6920f1",
+      "file": "voice/chronicle_example_6fac19b3_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "7335245c5e7574f80e1b456eb592c56b",
+      "file": "voice/chronicle_example_6fac19b3_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "1dcaf2bf7845a1e3fed182d508046fe3",
+      "file": "voice/chronicle_example_7c728f9a_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "799ee228c5bcb1513e2438013da71db9",
+      "file": "voice/chronicle_example_7c728f9a_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "f77a6e72a578517c72e671604731be51",
+      "file": "voice/chronicle_example_83b90f41_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "8eddfe9d0d458d7bb6f2ea04a6ec1c56",
+      "file": "voice/chronicle_example_83b90f41_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "6d8bda2dafb3cfdc72c2526d81522281",
+      "file": "voice/chronicle_example_8d4e0af1_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "7d565cb0588455e8da59ecbb71ac334f",
+      "file": "voice/chronicle_example_8d4e0af1_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "0f0d753ba11b5cdd2ce00b07141fd960",
+      "file": "voice/chronicle_example_a6af22d2_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "97e3ff3c4aa5ae9cf5caec88e3b7629c",
+      "file": "voice/chronicle_example_a6af22d2_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "e3eab299968cf57b56096e91490c1a10",
+      "file": "voice/chronicle_example_b144adf9_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "206b21a23cdc617dbabc18579c53c244",
+      "file": "voice/chronicle_example_b144adf9_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "c764906aa39fa84bb21ac3ba92ff8997",
+      "file": "voice/chronicle_example_b1d87fd4_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "5ba0350b434324e81142134b942c800c",
+      "file": "voice/chronicle_example_b1d87fd4_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "d51d51639d0f08de6a935f6e280adab8",
+      "file": "voice/chronicle_example_b8c2fcca_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "514fa4617441887c8f15870ccb5db750",
+      "file": "voice/chronicle_example_b8c2fcca_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "100566851b717d1322589acda4b87b1c",
+      "file": "voice/chronicle_example_c501e0fb_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "c1131a290a549d1af96886d2429243cb",
+      "file": "voice/chronicle_example_c501e0fb_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "0b391d472d96d9cd82ea053b712f5c0e",
+      "file": "voice/chronicle_example_ce13f7bc_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "bc5c0c6f39eae426775136db8ac526fa",
+      "file": "voice/chronicle_example_ce13f7bc_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "b4662cb621fe83e8808fa1168513430e",
+      "file": "voice/chronicle_example_d71e0307_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "9ff6e902444e325e1e9b0705719578b5",
+      "file": "voice/chronicle_example_d71e0307_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "873170174cfb1d2bd0c13595d4ddc0be",
+      "file": "voice/chronicle_example_e6aa814e_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "29c16d78eb6ed99703d33e0597c15d21",
+      "file": "voice/chronicle_example_e6aa814e_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "468f7fad564348a3afe29117f7fbc99e",
+      "file": "voice/chronicle_example_e74f633d_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "5490d37ad0ec2122502f208ea5d51f6b",
+      "file": "voice/chronicle_example_e74f633d_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "e6a78df0a39a3b2b563bf90811fd8b8f",
+      "file": "voice/chronicle_example_f32b8741_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "187a76e5e58b551d8cba6620d508ca55",
+      "file": "voice/chronicle_example_f32b8741_German.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "948faf7245933dc590a993d7dd9eae68",
+      "file": "voice/chronicle_example_f745e069_English.ogg",
+      "kind": "sound"
+    },
+    {
+      "uid": "62e5a4071d9213d76c8574ec8ceebfc4",
+      "file": "voice/chronicle_example_f745e069_German.ogg",
+      "kind": "sound"
     }
   ],
   "strings": [
